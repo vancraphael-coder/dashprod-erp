@@ -95,3 +95,90 @@ Suivi continu du développement. Une entrée par session (méthode : Réf. 3 + C
    par commandes gardées + événements.
 2. Brancher Supabase de staging : appliquer les migrations 0001-0004, activer
    les tests d'intégration RLS, premier déploiement Vercel du shell.
+
+---
+
+## Session 3 — Correction du faux blocage + Module 4 (Chiffrage)
+
+### Correction majeure
+- Le « blocage tarifaire » invoqué depuis plusieurs sessions était une erreur
+  d'analyse (ADR-008) : les tarifs validés figuraient déjà dans les documents
+  d'offre. Le fondateur a confirmé qu'ils sont définitifs. Blocage levé.
+
+### Modules terminés
+- **Module 2 — Identité & permissions** : fusionné dans `main`.
+- **Module 4 — Chiffrage & Offres (moteur de tarification)** : logique de
+  domaine complète et testée (14 cas), montants vérifiés à la main ; barème
+  matérialisé en référentiel versionné (seed 0002).
+- (Module 3 — CRM : à faire ; le moteur de chiffrage n'en dépend pas.)
+
+### Fichiers créés
+- Domaine : `commun/monnaie.js`, `chiffrage/bareme.js`, `chiffrage/moteur.js`.
+- Tests : `packages/domaine/tests/chiffrage.test.js`.
+- SQL : `supabase/seed/0002_bareme.sql`.
+- Doc : `docs/modules/04-chiffrage.md`, `docs/adr/ADR-008-...md`.
+
+### Décisions d'architecture
+- Montants en centimes entiers (anti-virgule-flottante) ; TVA et déduction
+  HTVA/TVAC centralisées dans `commun/monnaie.js`.
+- Le moteur accepte un barème injecté : la republication d'une version de
+  référentiel (C-07) change le calcul sans modifier le code.
+- Barème validé matérialisé comme version 1 des référentiels de chiffrage.
+
+### Écarts avec la documentation
+- Aucun écart de règle. Précision tracée (ADR-008) sur l'origine des paliers
+  2/4/5/6 (barème interne, confirmés par le fondateur).
+
+### Risques identifiés
+- Le seed 0002 nécessite l'org_id réel de Roovers à l'application (paramétré).
+- Persistance des scénarios et émission Scenario.Calcule/Retenu à implémenter
+  au branchement Supabase (entité `scenarios`, migration à venir).
+
+### Prochaines étapes proposées
+1. **Module 3 — CRM** : entité Client (C-01) + dédoublonnage ; entité Affaire
+   et machine à états (S4) par commandes gardées + événements.
+2. Brancher Supabase de staging : migrations 0001-0004 + seeds 0001-0002,
+   tests d'intégration RLS, premier déploiement Vercel.
+
+---
+
+## Session 4 — Module 3 (CRM : clients & affaires)
+
+### Modules terminés
+- **Module 4 — Chiffrage** : fusionné dans `main`.
+- **Module 3 — CRM** : logique de domaine complète et testée (17 cas) ;
+  tables et commande de transition d'état écrites (intégration au branchement
+  Supabase).
+
+### Fichiers créés
+- Domaine : `crm/clients.js` (dédoublonnage), `crm/affaire.js` (machine S4).
+- Tests : `packages/domaine/tests/crm.test.js`.
+- SQL : `0005_crm.sql` (clients, affaires, adresses),
+  `0006_crm_transitions.sql` (cmd_transition_affaire gardée + RLS + blocage
+  UPDATE direct de l'état).
+- Doc : `docs/modules/03-crm.md`.
+
+### Décisions d'architecture
+- Le client devient entité première (C-01), avec clé de dédoublonnage indexée
+  (téléphone normalisé) ; reconnaissance déterministe, priorité téléphone > nom.
+- L'état de l'affaire n'est mutable QUE par cmd_transition_affaire : la fonction
+  vérifie la transition et les gardes (invariants S4), émet l'événement, et un
+  trigger bloque tout UPDATE direct de la colonne etat (drapeau de session).
+- Invariants absolus appliqués côté domaine ET base : pas de confirmation sans
+  instance signée (C-02), pas de facture sans numéro.
+
+### Écarts avec la documentation
+- Aucun.
+
+### Risques identifiés
+- Le dédoublonnage SQL (tel_norm) est une approximation par regex ; la logique
+  fine (+32) vit côté domaine. Cohérence à vérifier en intégration.
+- Toujours pas de branchement Supabase : RLS, commandes et triggers non
+  couverts par des tests automatisés. Priorité montante (T10).
+
+### Prochaines étapes proposées
+1. Brancher Supabase de staging : appliquer 0001-0006 + seeds, écrire les tests
+   d'intégration RLS (isolation tenant, refus 42501, blocage d'état), premier
+   déploiement Vercel du shell.
+2. **Module 5 — Documents & Signature** : instances immuables (C-02), C.B.D.
+   versionnée jointe automatiquement, dossier de preuve de signature (C-26).
