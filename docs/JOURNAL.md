@@ -182,3 +182,49 @@ Suivi continu du développement. Une entrée par session (méthode : Réf. 3 + C
    déploiement Vercel du shell.
 2. **Module 5 — Documents & Signature** : instances immuables (C-02), C.B.D.
    versionnée jointe automatiquement, dossier de preuve de signature (C-26).
+
+---
+
+## Session 5 — Module 5 (Shell applicatif & branchement)
+
+### Modules terminés
+- **Module 3 — CRM** : fusionné dans `main`.
+- **Module 5 — Shell applicatif** : frontend Vite déployable, connexion
+  email+mot de passe, diagnostic de branchement ; garde de configuration pure
+  et testée. Build Vite vert.
+
+### Fichiers créés
+- Frontend : `apps/web/` (package.json, vite.config.js, index.html),
+  `src/main.jsx`, `src/lib/supabase.js`, `src/ecrans/Connexion.jsx`,
+  `src/ecrans/Diagnostic.jsx`.
+- Domaine : `packages/domaine/src/commun/config.js`.
+- Tests : `packages/domaine/tests/config.test.js`.
+- Config : `vercel.json` (monorepo : build du workspace @dashprod/web),
+  workspaces racine étendus à `apps/*`.
+- Doc : `docs/modules/05-shell.md`.
+
+### Décisions d'architecture
+- Monorepo : le domaine est consommé en source par le front via l'alias
+  `@domaine` — une seule implémentation des règles (T1).
+- Le client Supabase ne se crée qu'avec des clés valides ; sans config, l'app
+  affiche un état clair (prévention de l'écran blanc des prototypes). La garde
+  est une fonction pure testée, câblée par le client.
+- vercel.json configure explicitement le build monorepo (outputDirectory
+  apps/web/dist) — évite l'échec de déploiement d'un repo sans app à la racine.
+
+### Écarts avec la documentation
+- Aucun.
+
+### Blocage externe (non lié au code)
+- Le connecteur Supabase répond « permission denied » sur toutes les actions
+  (lecture comprise) pour le projet mjezskjdnylmcjygpppr. Cause probable :
+  connecteur en lecture seule / portée restreinte, ou organisation différente.
+  L'application des migrations est donc différée. Plan B disponible : appliquer
+  les 6 migrations + 2 seeds à la main dans le SQL Editor Supabase.
+
+### Prochaines étapes proposées
+1. Débloquer le connecteur Supabase (permissions d'écriture sur le projet), OU
+   appliquer les migrations à la main ; puis renseigner les variables
+   d'environnement Vercel et vérifier le diagnostic au vert.
+2. **Module 6 — Documents & Signature** : instances immuables (C-02), C.B.D.
+   versionnée jointe automatiquement, dossier de preuve de signature (C-26).

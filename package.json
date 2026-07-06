@@ -2,7 +2,10 @@
   "name": "dashprod-erp",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "test": "node --test packages/domaine/tests/*.test.js",
     "lint": "echo \"(lint configuré au module frontend)\" && exit 0"
