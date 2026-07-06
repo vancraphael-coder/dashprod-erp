@@ -52,3 +52,46 @@ Suivi continu du développement. Une entrée par session (méthode : Réf. 3 + C
 2. Puis **Module 3 — CRM** (clients, affaires, dédoublonnage).
 3. Brancher un projet Supabase de staging pour activer les migrations et la CI
    d'intégration ; premier déploiement Vercel du shell applicatif.
+
+---
+
+## Session 2 — Module 2 (Identité & permissions)
+
+### Modules terminés
+- **Module 1 — Noyau** : fusionné dans `main` (module stable, 12/12).
+- **Module 2 — Identité & permissions** : logique de domaine complète et testée
+  (9 cas) ; commandes SQL SECURITY DEFINER écrites (vérification d'intégration
+  au branchement Supabase).
+
+### Fichiers créés
+- Domaine : `packages/domaine/src/noyau/autorisation.js`, `jwt.js`.
+- Tests : `packages/domaine/tests/identite.test.js`.
+- SQL : `supabase/migrations/0004_identite_commandes.sql`.
+- Doc : `docs/modules/02-identite.md`.
+
+### Décisions d'architecture
+- Les écritures sensibles du noyau passent exclusivement par des commandes
+  SECURITY DEFINER gardées par capacité (famille 2 de la RLS centralisée, T3) —
+  jamais d'UPDATE direct. Chaque commande émet son événement dans sa transaction.
+- Autorisation en liste blanche stricte : une commande inconnue est refusée par
+  défaut. `verifierCommande` renvoie la raison du refus pour l'audit.
+- Défense en profondeur sur le JWT : validation de forme des claims et filtrage
+  des rôles hors catalogue, en plus de la barrière RLS.
+- `acteur_a_capacite` prend déjà en compte l'expiration des rôles
+  (`expire_le`) : les délégations temporaires futures fonctionneront sans refonte.
+
+### Écarts avec la documentation
+- Aucun.
+
+### Risques identifiés
+- **Dépendance bloquante inchangée** : grilles tarifaires client toujours
+  absentes. Progression possible jusqu'au CRM et Documents ; arrêt au Chiffrage.
+- RLS et commandes SQL non couvertes par tests automatisés tant que Supabase
+  n'est pas branché — tests d'intégration requis avant production (T10).
+
+### Prochaines étapes proposées
+1. **Module 3 — CRM** : entité Client (résout C-01), dédoublonnage sur
+   téléphone/nom normalisés, entité Affaire et sa machine à états (S4) opérée
+   par commandes gardées + événements.
+2. Brancher Supabase de staging : appliquer les migrations 0001-0004, activer
+   les tests d'intégration RLS, premier déploiement Vercel du shell.
