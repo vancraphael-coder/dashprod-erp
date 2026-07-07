@@ -228,3 +228,87 @@ Suivi continu du développement. Une entrée par session (méthode : Réf. 3 + C
    d'environnement Vercel et vérifier le diagnostic au vert.
 2. **Module 6 — Documents & Signature** : instances immuables (C-02), C.B.D.
    versionnée jointe automatiquement, dossier de preuve de signature (C-26).
+
+---
+
+## Session 6 — Module 6 (Documents & Signature)
+
+### Modules terminés
+- **Module 5 — Shell** : fusionné dans `main`.
+- **Module 6 — Documents & Signature** : logique de domaine complète et testée
+  (13 cas) ; tables et commandes documentaires écrites (intégration différée).
+
+### Fichiers créés
+- Domaine : `documents/instances.js` (immuabilité, empreinte),
+  `documents/modeles.js` (versions, règle C.B.D.).
+- Tests : `packages/domaine/tests/documents.test.js`.
+- SQL : `0007_documents.sql` (modèles, instances, signatures + immuabilité),
+  `0008_documents_commandes.sql` (instancier/geler/signer).
+- Doc : `docs/modules/06-documents.md`.
+
+### Décisions d'architecture
+- Résolution du C-02 : une instance figée est gelée (Object.freeze côté domaine,
+  gele=true + trigger côté base) ; empreinte déterministe rejouable pour prouver
+  l'intégrité lors d'un litige.
+- C.B.D. non négociable (S6) : transportée telle quelle (fichier_ref, jamais
+  générée), jointe automatiquement à toute offre ; refus d'instancier une offre
+  sans C.B.D. active, côté domaine ET base — protection juridique non désactivable.
+- Signatures en écriture seule (dossier de preuve C-26) ; la signature scelle
+  l'instance et déverrouille la garde de transition vers 'confirme'.
+
+### Écarts avec la documentation
+- Aucun.
+
+### Risques identifiés
+- Empreinte domaine = somme de contrôle déterministe (FNV-1a) pour testabilité
+  sans dépendance ; l'empreinte cryptographique SHA-256 est calculée côté base
+  (colonne dédiée). Cohérence des deux à vérifier en intégration.
+- Génération PDF réelle et stockage du fichier gelé non implémentés (T5, D-2).
+- Connecteur Supabase toujours restreint : commandes et triggers non testés
+  contre une vraie base.
+
+### Prochaines étapes proposées
+1. **Module 7 — Opérations** : missions (séparées de l'affaire, C-04), planning
+   multi-événements, affectations (source unique de l'effectif, C-13), chrono.
+2. Débloquer Supabase et appliquer les migrations 0001-0008 + seeds ; tests
+   d'intégration RLS et immuabilité ; brancher les variables Vercel.
+
+---
+
+## Session 7 — Module 7 (Opérations : missions, planning, chrono)
+
+### Modules terminés
+- **Module 6 — Documents & Signature** : fusionné dans `main`.
+- **Module 7 — Opérations** : logique de domaine complète et testée (12 cas) ;
+  tables et commandes écrites (intégration différée).
+
+### Fichiers créés
+- Domaine : `operations/chrono.js`, `operations/missions.js`.
+- Tests : `packages/domaine/tests/operations.test.js`.
+- SQL : `0009_operations.sql` (missions, affectations, véhicules, chrono),
+  `0010_operations_commandes.sql` (créer mission, affecter, chrono).
+- Doc : `docs/modules/07-operations.md`.
+
+### Décisions d'architecture
+- Mission séparée de l'affaire (C-04) : une affaire confirmée porte n missions
+  datées ; création déclenchée par Affaire.Confirme (cascade S10-2).
+- Affectation = source unique de l'effectif (C-13) ; conflits (congé, double
+  affectation) détectés côté domaine, remplaçants proposés (décision humaine).
+- Chrono par sessions : temps réel = somme, pauses exclues ; coût d'équipe aux
+  taux réels avec repli prudent. Chrono.Arrete → proposition « effectuée ».
+
+### Écarts avec la documentation
+- Aucun.
+
+### Risques identifiés
+- mission_vehicules et les conflits de congé dépendent des modules Flotte et RH
+  (à venir) pour être pleinement alimentés ; FK vehicules à ajouter alors.
+- Connecteur Supabase toujours restreint : 10 migrations désormais en attente
+  d'application et de tests d'intégration.
+
+### Prochaines étapes proposées
+1. **Module 8 — RH · Flotte · Stocks** (ou l'un des trois isolément) : congés
+   avec workflow (C-25), véhicules et signalements (C-15), matériel E/U/R
+   valorisé (C-09, C-18).
+2. Priorité montante : débloquer Supabase, appliquer 0001-0010 + seeds, tests
+   d'intégration (RLS, immuabilité, transitions), variables Vercel.
