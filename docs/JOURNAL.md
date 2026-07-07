@@ -312,3 +312,47 @@ Suivi continu du développement. Une entrée par session (méthode : Réf. 3 + C
    valorisé (C-09, C-18).
 2. Priorité montante : débloquer Supabase, appliquer 0001-0010 + seeds, tests
    d'intégration (RLS, immuabilité, transitions), variables Vercel.
+
+---
+
+## Session 8 — Module 8 (RH · Flotte · Stocks)
+
+### Modules terminés
+- **Module 7 — Opérations** : fusionné dans `main`.
+- **Module 8 — RH · Flotte · Stocks** : logique de domaine complète et testée
+  (11 cas) ; tables des trois domaines écrites, FK vehicules complétée.
+
+### Fichiers créés
+- Domaine : `commun/echeances.js`, `stocks/stock.js`, `rh/conges.js`.
+- Tests : `packages/domaine/tests/rh-flotte-stocks.test.js`.
+- SQL : `0011_rh_flotte_stocks.sql` (conges, donnees_paie [RLS renforcée],
+  equipements_rh, documents_rh, vehicules + FK mission_vehicules, stock_articles,
+  stock_mouvements).
+- Doc : `docs/modules/08-rh-flotte-stocks.md`.
+
+### Décisions d'architecture
+- Séparation RH / Flotte / Stocks (C-08) ; échéances qualifiées par une règle
+  unique partagée (commun/echeances).
+- Paie isolée dans donnees_paie sous RLS renforcée (tenant + capacité voir_paie)
+  : résout structurellement le problème connu n°2 (salaires UI-only).
+- Stock : contrôle E/U/R avec alerte d'écart ; consommé valorisé injectable en
+  facture (C-18). Congés avec workflow gardé par approuver_conge (C-25).
+
+### Écarts avec la documentation
+- Aucun.
+
+### Point utilisateur / accès (soulevé en session)
+- Aucun identifiant n'existe : ni utilisateur créé, ni migrations appliquées.
+  Pour entrer dans l'app il faut (A) créer un user dans Supabase Auth, (B)
+  appliquer 0001-0011 + seeds et rattacher le user à l'organisation avec le rôle
+  direction. Au-delà de la connexion, aucun écran métier n'existe encore.
+
+### Risques identifiés
+- 11 migrations désormais en attente d'application/test contre une vraie base.
+- L'écart « construit » vs « utilisable » grandit : priorité forte au branchement
+  Supabase + premier écran métier avant d'empiler d'autres modules.
+
+### Prochaines étapes proposées
+1. DÉCISION requise : brancher Supabase (migrations + user + rattachement, puis
+   premier écran métier) OU continuer le code (Facturation, Pilotage).
+2. Modules restants : Facturation & Peppol, Pilotage.
