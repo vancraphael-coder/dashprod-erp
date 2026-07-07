@@ -397,3 +397,53 @@ Suivi continu du développement. Une entrée par session (méthode : Réf. 3 + C
 2. **Module 10 — Pilotage** : dernier module du vertical (CA, marges, charge,
    tableaux de bord par rôle) — clôt le domaine.
 3. Puis : branchement Supabase + premier écran métier réel.
+
+---
+
+## Session 10 — Module 10 (Pilotage) — VERTICAL DOMAINE COMPLET
+
+### Modules terminés
+- **Module 10 — Pilotage** : logique de domaine complète et testée (10 cas) ;
+  vues d'agrégation écrites. C'est le DERNIER module du vertical côté domaine.
+
+### Fichiers créés
+- Domaine : `pilotage/finances.js` (CA signé, dérive de marge),
+  `pilotage/charge.js` (équilibre d'équipe).
+- Tests : `packages/domaine/tests/pilotage.test.js`.
+- SQL : `0013_pilotage.sql` (vues v_ca_signe, v_charge_membre — aucune table).
+- Doc : `docs/modules/10-pilotage.md`.
+
+### Décisions d'architecture
+- Le pilotage AGRÈGE, ne possède rien : vues SQL sur les données existantes,
+  respectant « une donnée existe une seule fois ». RLS héritée des tables.
+- CA signé = états engagés (confirme→paye), cohérent avec la liste des dossiers.
+- Rentabilité par chantier : dérive marge devisée vs réelle, avec alerte (S5).
+- Charge d'équipe : heures depuis les affectations (source unique C-13),
+  équilibre ±20 %.
+
+### Bilan de complétude — vertical déménagement (domaine)
+- 10 modules construits : Noyau, Identité, Chiffrage, CRM, Shell, Documents,
+  Opérations, RH·Flotte·Stocks, Facturation, Pilotage.
+- 114 tests unitaires verts ; 13 migrations SQL ; build front vert.
+- Constats du diagnostic (Réf. 2, S1) couverts par le domaine et le schéma :
+  C-01 (client), C-02 (instances immuables), C-03 (séquences), C-04 (mission),
+  C-05 (journal/audit), C-06 (machine à états), C-07 (référentiels versionnés),
+  C-08/09 (RH/Flotte/Stocks séparés), C-13 (effectif source unique),
+  C-18 (solde matériel), C-23 (indemnités), C-24 (acomptes/solde), C-25 (congés),
+  C-26 (preuve de signature). Problème connu n°2 (paie) résolu par RLS renforcée.
+
+### Écarts avec la documentation
+- Aucun.
+
+### Ce qui reste (hors domaine)
+- BRANCHEMENT SUPABASE : 13 migrations à appliquer (Supabase à passer en Pro).
+  Sans base, aucune vérification d'intégration (RLS, triggers, vues).
+- ÉCRANS MÉTIER : au-delà de connexion + diagnostic, aucun écran ne projette
+  encore le domaine (liste dossiers, devis, signature, planning, facture…).
+- Adaptateurs au bord : génération PDF (T5), envoi Peppol (D-1), envoi mail.
+
+### Prochaine étape recommandée (forte)
+Le vertical est complet en logique. Le prochain jalon n'est plus un module de
+domaine mais : (1) brancher Supabase et appliquer/tester les migrations, puis
+(2) construire le PREMIER ÉCRAN MÉTIER réel de bout en bout (liste dossiers →
+création d'un devis → offre signée). C'est ce qui rend l'ensemble utilisable.
