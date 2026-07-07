@@ -2,11 +2,45 @@
 -- Migration 0013 — Pilotage
 -- Source : Réf. 2 (indicateur CA signé ; Ressources · Heures) et Réf. 3 (T2 :
 -- Pilotage lit, ne possède pas ; T8 : vues matérialisables).
--- Ce module n'introduit AUCUNE table : il AGRÈGE ce que les autres produisent,
--- via des vues. C'est le principe « une donnée existe une seule fois » (noyau) :
--- le pilotage ne duplique rien, il lit. Les vues sont miroir des fonctions de
--- domaine (finances.js, charge.js).
+-- Ce module introduit la table SCENARIOS (persistance des chiffrages) et AGRÈGE
+-- ce que les autres produisent via des vues. C'est le principe « une donnée
+-- existe une seule fois » (noyau) : le pilotage ne duplique rien, il lit. Les
+-- vues sont miroir des fonctions de domaine (finances.js, charge.js).
 -- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- SCENARIOS — persistance des scénarios calculés par le moteur de chiffrage
+-- (module Chiffrage, moteur.js). Chaque affaire peut avoir plusieurs scénarios
+-- (alternatives de tarification) ; un seul est marqué « retenu ». Les résultats
+-- sont en JSONB pour accepter la forme calculée par le moteur (montants en
+-- centimes, zones de marge, etc.). Les entrées sont mémorisées pour pouvoir
+-- rejouer le calcul avec un barème ultérieur (rebase de tarification).
+-- -----------------------------------------------------------------------------
+create table scenarios (
+  id                uuid primary key default gen_random_uuid(),
+  org_id            uuid not null references organisations(id),
+  affaire_id        uuid not null references affaires(id) on delete cascade,
+  nom               text,                                    -- nom du scénario (« Base », « Avec emballage », etc.)
+  retenu            boolean not null default false,          -- un seul retenu par affaire
+  entrees           jsonb,                                   -- faits d'entrée : {heures, effectif, km, etc.}
+  resultats         jsonb not null,                          -- résultats : {tvac_centimes, marge, zone, ...}
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+create index idx_scenarios_org     on scenarios(org_id);
+create index idx_scenarios_affaire on scenarios(affaire_id);
+create index idx_scenarios_retenu  on scenarios(affaire_id, retenu);
+comment on table scenarios is
+  'Scénarios de chiffrage (persistance Chiffrage). Un retenu par affaire. Agrégés par Pilotage.';
+
+-- Trigger pour touch_updated_at
+create trigger touch_scenarios before update on scenarios
+  for each row execute function touch_updated_at();
+
+-- RLS — isolation de tenant (T3, famille 1).
+alter table scenarios enable row level security;
+create policy scenarios_tenant on scenarios
+  for all using (org_id = jwt_org()) with check (org_id = jwt_org());
 
 -- -----------------------------------------------------------------------------
 -- v_ca_signe — carnet signé par organisation : somme des montants TVAC des
