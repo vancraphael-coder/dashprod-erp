@@ -447,3 +447,42 @@ Le vertical est complet en logique. Le prochain jalon n'est plus un module de
 domaine mais : (1) brancher Supabase et appliquer/tester les migrations, puis
 (2) construire le PREMIER ÉCRAN MÉTIER réel de bout en bout (liste dossiers →
 création d'un devis → offre signée). C'est ce qui rend l'ensemble utilisable.
+
+---
+
+## Session 11 — Module 11 (Écrans du parcours commercial, v1)
+
+### Modules terminés
+- **Module 11 — Écrans commerciaux v1** : liste des dossiers, création avec
+  reconnaissance client, devis branché sur le moteur réel. Build Vite vert.
+  UTILISABLE EN MODE DÉMONSTRATION dès le prochain déploiement Vercel.
+
+### Fichiers créés / modifiés
+- Nouveaux : `apps/web/src/lib/theme.jsx`, `apps/web/src/lib/adaptateur.js`,
+  `apps/web/src/ecrans/ListeAffaires.jsx`, `NouvelleAffaire.jsx`, `Devis.jsx`,
+  `docs/modules/11-ecrans-commercial.md`.
+- Remplacé : `apps/web/src/main.jsx` (routage + règle d'accès + bandeau démo).
+
+### Décisions d'architecture
+- Adaptateur de données à deux modes (T0) : « réel » (Supabase) / « démo »
+  (localStorage seedé). Les écrans ne parlent jamais à Supabase directement —
+  au branchement, rien ne change côté écrans.
+- Zéro logique métier dans les écrans : CA signé = caSigne (Pilotage), marge =
+  zoneMarge, calcul = calculerScenario, reconnaissance = trouverDoublon. Une
+  seule implémentation des règles (T1), enfin visible.
+- Base absente → l'app s'ouvre en mode démo avec bandeau violet + lien
+  Diagnostic (au lieu d'un écran de connexion sans issue).
+- Écart assumé et tracé : le mode démo est un échafaudage de visualisation,
+  hors Références — décision de retrait/conservation à la gate de branchement.
+
+### Risques identifiés
+- Le chemin « réel » de l'adaptateur (insert clients/affaires/scenarios) est
+  écrit mais non vérifié : tests d'intégration au branchement (T10).
+- Écrans restants : Offre/signature, Contact/adresses, Relevé, Planning,
+  Facture — à construire module par module.
+
+### Prochaines étapes proposées
+1. Déployer sur Vercel et VÉRIFIER LE VISUEL en mode démo (parcours complet :
+   créer un dossier → reconnaître un client → chiffrer → marge en direct).
+2. **Module 12 — Écran Offre & signature** : instanciation figée (C-02) + CBD
+   + pad de signature — la suite naturelle du parcours commercial.
