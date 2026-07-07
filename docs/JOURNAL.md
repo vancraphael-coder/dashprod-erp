@@ -356,3 +356,44 @@ Suivi continu du développement. Une entrée par session (méthode : Réf. 3 + C
 1. DÉCISION requise : brancher Supabase (migrations + user + rattachement, puis
    premier écran métier) OU continuer le code (Facturation, Pilotage).
 2. Modules restants : Facturation & Peppol, Pilotage.
+
+---
+
+## Session 9 — Module 9 (Facturation & Peppol)
+
+### Modules terminés
+- **Module 9 — Facturation & Peppol** : logique de domaine complète et testée
+  (11 cas) ; tables, vue de solde et commande d'émission écrites.
+
+### Fichiers créés
+- Domaine : `facturation/facture.js` (total, solde, note de crédit),
+  `facturation/peppol.js` (mapping UBL BIS 3.0).
+- Tests : `packages/domaine/tests/facturation.test.js`.
+- SQL : `0012_facturation.sql` (factures immuables, lignes typées, paiements,
+  vue v_factures_solde, cmd_emettre_facture, trigger d'immuabilité).
+- Doc : `docs/modules/09-facturation.md`.
+
+### Décisions d'architecture
+- Facture = entité légale : numéro via sequence_suivante (continu, C-03) ;
+  immuable dès emise=true (domaine + trigger) ; correction = note de crédit.
+- Solde et statut calculés depuis paiements datés (C-24) ; remboursement =
+  montant négatif. Vue SQL v_factures_solde miroir de etatPaiement.
+- Peppol : structure UBL BIS 3.0 produite en domaine pur ; sérialisation XML et
+  envoi via point d'accès (D-1) délégués à un adaptateur au bord (T0).
+
+### Écarts avec la documentation
+- Aucun.
+
+### Point relevé par l'utilisateur
+- Migrations 0005 et 0006 manquantes de son côté : à re-livrer (elles existent
+  dans le dépôt, sessions CRM).
+
+### Risques identifiés
+- 12 migrations en attente d'application (Supabase à passer en Pro / débloquer).
+- Sérialisation XML Peppol et adaptateur d'envoi non implémentés (D-1).
+
+### Prochaines étapes proposées
+1. Re-livrer 0005_crm.sql et 0006_crm_transitions.sql à l'utilisateur.
+2. **Module 10 — Pilotage** : dernier module du vertical (CA, marges, charge,
+   tableaux de bord par rôle) — clôt le domaine.
+3. Puis : branchement Supabase + premier écran métier réel.
