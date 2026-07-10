@@ -1,91 +1,45 @@
 // =============================================================================
-// Chiffrage — Barème de tarification
-// Source : Réf. 2 (C-08 : barèmes internes) ; Réf. 3 (T2 : référentiel versionné).
-// Le barème vit en base comme référentiel ; ici, la structure et les valeurs.
+// Chiffrage — Barème de référence (valeurs validées client)
+// Source : les trois modèles d'offre validés ; confirmés par le fondateur
+// (ADR-008). Ces constantes sont la valeur INITIALE du référentiel versionné
+// `bareme_horaire` (et apparentés) — le seed SQL 0002 en est le miroir.
+// En production, le barème vit en base (referentiels) et se republie sans
+// toucher au code (C-07). Ici : la référence de calcul et de test.
 // =============================================================================
 
-/**
- * Barème par défaut (v1) : structure et valeurs de tarification.
- * @type {{
- *   nom: string,
- *   version: number,
- *   version_date: string,
- *   devise: string,
- *   tva_pct: number,
- *   taux_horaire: number,
- *   supplement_emballage_horaire: number,
- *   supplement_emballage_km: number,
- *   taux_km: number,
- *   elevateurPct: number,
- *   cibleMarge_pct: number,
- *   paliers_demenageurs: number[],
- *   zones_marge: {sous_cible: number, dans_cible: [number, number], premium: number},
- *   indemnites: {report: number[], annulation: number[]}
- * }}
- */
-export const BAREME_DEFAUT = Object.freeze({
-  nom: "Tarif standard 2026",
-  version: 1,
-  version_date: "2026-01-01",
-  devise: "EUR",
-  tva_pct: 21,
-  
-  // Tarification horaire de base (€/h pour 1 ou 2 déménageurs)
-  taux_horaire: 85, // tarif minimum
-  
-  // Suppléments emballage (régie : +75 €/h et +0,75 €/km)
-  supplement_emballage_horaire: 75,
-  supplement_emballage_km: 0.75,
-  
-  // Tarification au km (€/km par camion)
-  taux_km: 1.0,
-  
-  // Élévateur (% du montant horaire)
-  elevateurPct: 15,
-  
-  // Cible de marge (%)
-  cibleMarge_pct: 30,
-  
-  // Paliers de tarif selon le nombre de déménageurs
-  // Clés = nombre de déménageurs ; valeurs = taux €/h
-  paliers_demenageurs: [
-    85,    // 1 déménageur
-    85,    // 2 déménageurs (pas d'augmentation pour 2)
-    130,   // 3 déménageurs
-    160,   // 4 déménageurs
-    185,   // 5 déménageurs
-    210,   // 6 déménageurs
-  ],
-  
-  // Zones de marge
-  zones_marge: Object.freeze({
-    sous_cible: 25,      // < 25 % = alerte rouge
-    dans_cible: [25, 45], // 25–45 % = cible verte
-    premium: 45,         // > 45 % = premium bleu
-  }),
-  
-  // Indemnités (pourcentages selon la distance en jours)
-  indemnites: Object.freeze({
-    report: [25, 50, 75],     // jours <7, <15, ≥15
-    annulation: [50, 70, 100], // jours <7, <15, ≥15
-  }),
+/** Taux horaire HTVA par nombre de déménageurs (€/heure). */
+export const BAREME_HORAIRE = Object.freeze({
+  2: 85,
+  3: 130,   // seul palier figurant dans le texte des offres
+  4: 170,
+  5: 215,
+  6: 255,
 });
 
-/**
- * Résout le taux horaire en fonction du nombre de déménageurs.
- * @param {number} effectif nombre de déménageurs
- * @param {typeof BAREME_DEFAUT} [bareme=BAREME_DEFAUT]
- * @returns {number} taux horaire (€/h)
- */
-export function resoudreTauxHoraire(effectif, bareme = BAREME_DEFAUT) {
-  const idx = Math.min(Math.max(0, effectif - 1), bareme.paliers_demenageurs.length - 1);
-  return bareme.paliers_demenageurs[idx];
-}
+/** Options et suppléments (HTVA sauf mention). */
+export const TARIFS = Object.freeze({
+  elevateur: 150,          // forfait, maximum 7e étage
+  km_facture: 1,           // € / km / camion (dépôt → dépôt)
+  emballage_horaire: 75,   // € / heure (2 déménageurs, en régie)
+  emballage_km: 0.75,      // € / km
+  heure_sup_forfait: 42.5, // € HTVA / déménageur / heure (dépassement forfait)
+  assurance_htva: 50,      // € HTVA (60,50 € TVAC)
+});
 
-// Aliases pour la rétrocompatibilité avec le frontend
-export const BAREME_HORAIRE = BAREME_DEFAUT.paliers_demenageurs;
-export const TARIFS = {
-  tarifaire: BAREME_DEFAUT.taux_horaire,
-  emballage: BAREME_DEFAUT.supplement_emballage_horaire,
-  km: BAREME_DEFAUT.taux_km,
-};
+/** Taux de TVA applicable (%). */
+export const TVA_PCT = 21;
+
+/** Cible de marge (sur recette HTVA) : zone saine 25 % – 45 %. */
+export const MARGE_CIBLE = Object.freeze({ min: 25, max: 45 });
+
+/** Barèmes d'indemnité (% du total TVAC) selon la distance à la date. */
+export const REPORT = Object.freeze([
+  { seuil_jours: 5, pct: 25 },   // jusqu'à 5 jours avant
+  { seuil_jours: 2, pct: 50 },   // jusqu'à 2 jours avant
+  { seuil_jours: 0, pct: 75 },   // veille ou jour même
+]);
+export const ANNULATION = Object.freeze([
+  { seuil_jours: 5, pct: 50 },
+  { seuil_jours: 2, pct: 70 },
+  { seuil_jours: 0, pct: 100 },
+]);

@@ -151,3 +151,52 @@ export async function enregistrerChiffrage(affaireId, { faits, couts, resultat }
     ecrireDemo(d);
   }
 }
+
+// ── Profil, invitations et gestion d'équipe (réel uniquement — l'auth réelle
+// n'a pas de sens en mode démonstration) ──────────────────────────────────────
+
+/**
+ * Réclame l'invitation en attente pour l'email Google connecté (lie
+ * auth.uid() à la ligne créée par le master). Idempotent.
+ * @returns {Promise<{statut: "lie"|"deja_lie", org_id: string}>}
+ */
+export async function reclamerInvitation() {
+  const { data, error } = await supabase.rpc("cmd_reclamer_invitation");
+  if (error) throw error;
+  return data;
+}
+
+/** Profil courant : identité, organisation, capacités (S9). */
+export async function monProfil() {
+  const { data, error } = await supabase.rpc("mon_profil");
+  if (error) throw error;
+  return data;
+}
+
+/** Liste les membres de l'organisation avec leurs rôles (pour l'admin). */
+export async function listerMembres() {
+  const { data, error } = await supabase
+    .from("utilisateurs")
+    .select("id, nom, email, actif, utilisateur_roles(roles(cle, libelle))");
+  if (error) throw error;
+  return (data || []).map((u) => ({
+    id: u.id, nom: u.nom, email: u.email, actif: u.actif,
+    roles: (u.utilisateur_roles || []).map((r) => r.roles?.cle).filter(Boolean),
+  }));
+}
+
+/**
+ * Invite un membre (email + rôle) — le master décide qui rejoint quel secteur.
+ * Deux commandes gardées enchaînées : provisionner puis affecter (cmd_*, 0004).
+ */
+export async function inviterMembre({ email, nom, roleCle }) {
+  const { data: id, error } = await supabase.rpc("cmd_inviter_utilisateur", {
+    p_email: email, p_nom: nom,
+  });
+  if (error) throw error;
+  const { error: e2 } = await supabase.rpc("cmd_affecter_role", {
+    p_utilisateur: id, p_role_cle: roleCle,
+  });
+  if (e2) throw e2;
+  return id;
+}

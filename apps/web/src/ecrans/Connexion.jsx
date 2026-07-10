@@ -4,7 +4,7 @@
 // =============================================================================
 
 import React, { useState } from "react";
-import { supabase, configPresente } from "../lib/supabase.js";
+import { supabase, configPresente, connecterAvecGoogle } from "../lib/supabase.js";
 
 export default function Connexion({ onConnecte }) {
   const [email, setEmail] = useState("");
@@ -25,11 +25,29 @@ export default function Connexion({ onConnecte }) {
     else onConnecte?.();
   }
 
+  async function avecGoogle() {
+    setErreur(null);
+    try { await connecterAvecGoogle(); }
+    catch (e) { setErreur(e.message); }
+  }
+
   return (
     <div style={S.wrap}>
       <div style={S.carte}>
         <div style={S.logo}>Dashprod</div>
         <div style={S.sous}>Connexion</div>
+
+        <button style={S.boutonGoogle} onClick={avecGoogle}>
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path fill="#4285F4" d="M17.6 9.2c0-.6-.05-1.2-.15-1.8H9v3.4h4.8c-.2 1.1-.85 2-1.8 2.6v2.2h2.9c1.7-1.6 2.7-3.9 2.7-6.4Z"/>
+            <path fill="#34A853" d="M9 18c2.4 0 4.5-.8 6-2.2l-2.9-2.2c-.8.5-1.9.9-3.1.9-2.4 0-4.4-1.6-5.1-3.8H.9v2.3C2.4 15.9 5.5 18 9 18Z"/>
+            <path fill="#FBBC05" d="M3.9 10.7c-.2-.5-.3-1.1-.3-1.7s.1-1.2.3-1.7V4.9H.9C.3 6.1 0 7.5 0 9s.3 2.9.9 4.1l3-2.4Z"/>
+            <path fill="#EA4335" d="M9 3.6c1.3 0 2.5.45 3.4 1.35l2.6-2.6C13.5.9 11.4 0 9 0 5.5 0 2.4 2.1.9 4.9l3 2.3C4.6 5.1 6.6 3.6 9 3.6Z"/>
+          </svg>
+          Continuer avec Google
+        </button>
+
+        <div style={S.separateur}><span>ou</span></div>
 
         <label style={S.label}>Email</label>
         <input
@@ -52,6 +70,7 @@ export default function Connexion({ onConnecte }) {
 
         <div style={S.note}>
           Votre rôle et vos accès sont déterminés automatiquement après la connexion.
+          L'accès se fait uniquement sur invitation de votre administrateur.
         </div>
       </div>
     </div>
@@ -66,6 +85,12 @@ const S = {
            padding: "28px 24px", boxShadow: "0 8px 30px rgba(15,23,42,.08)" },
   logo: { fontSize: 22, fontWeight: 800, color: ENCRE },
   sous: { fontSize: 13, color: MUET, marginTop: 2, marginBottom: 20 },
+  boutonGoogle: { width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
+                  gap: 10, padding: "11px", border: `1.5px solid ${BORD}`, borderRadius: 10,
+                  background: "#fff", fontSize: 13.5, fontWeight: 600, color: ENCRE,
+                  cursor: "pointer" },
+  separateur: { display: "flex", alignItems: "center", gap: 10, margin: "16px 0",
+                fontSize: 11.5, color: MUET },
   label: { display: "block", fontSize: 12, fontWeight: 600, color: ENCRE,
            marginTop: 14, marginBottom: 6 },
   input: { width: "100%", boxSizing: "border-box", padding: "11px 12px",
@@ -77,3 +102,4 @@ const S = {
             border: "1px solid #FECACA", borderRadius: 9, color: "#991B1B", fontSize: 12.5 },
   note: { marginTop: 16, fontSize: 11.5, color: MUET, lineHeight: 1.5, textAlign: "center" },
 };
+

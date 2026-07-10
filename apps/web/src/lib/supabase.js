@@ -8,8 +8,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { configPresente as calcConfigPresente, interpreterEtatConnexion } from "@domaine/commun/config.js";
 
-const url = import.meta.env.VITE_SUPABASE_URL ?? import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 /** Vrai si les deux variables d'environnement sont fournies. */
 export const configPresente = calcConfigPresente(url, anon);
@@ -49,4 +49,22 @@ export async function testerConnexion() {
   } catch (e) {
     return { ok: false, message: `Base injoignable : ${e.message}` };
   }
+}
+
+/**
+ * Lance la connexion Google (T3 : email/mdp OU Google, jamais de choix de rôle).
+ * Redirige vers Google puis revient sur l'URL courante ; supabase-js relève la
+ * session automatiquement à l'atterrissage.
+ */
+export async function connecterAvecGoogle() {
+  if (!supabase) throw new Error("Supabase non configuré");
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) throw error;
+}
+
+export async function deconnecter() {
+  if (supabase) await supabase.auth.signOut();
 }

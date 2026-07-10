@@ -486,3 +486,62 @@ création d'un devis → offre signée). C'est ce qui rend l'ensemble utilisable
    créer un dossier → reconnaître un client → chiffrer → marge en direct).
 2. **Module 12 — Écran Offre & signature** : instanciation figée (C-02) + CBD
    + pad de signature — la suite naturelle du parcours commercial.
+
+---
+
+## Session 12 — Module 12 (OAuth Google sur invitation) + réconciliation Copilot
+
+### Réconciliation (avant le module)
+- Repo distant cloné et comparé : Copilot VS Code avait réécrit monnaie.js,
+  bareme.js, moteur.js, clients.js avec une API incompatible — CASSAIT Devis.jsx
+  en production (formule « emballage » → 0 € silencieux ; écran plantait sur
+  champs renommés) — et supprimé affaire.js (machine à états S4/C-02).
+- Restauré : les 7 fichiers testés (114/114, tarifs ADR-008). Adopté : la table
+  `scenarios` ajoutée par Copilot dans 0013 (bon ajout, compatible, comblait un
+  manque réel) — mon 0013 local mis à jour en conséquence.
+
+### Modules terminés
+- **Module 12 — OAuth Google sur invitation** : connexion Google, réclamation
+  d'invitation par email, hook d'enrichissement JWT, écran Équipe (le master
+  décide qui rejoint quel secteur), écran de refus propre si non invité.
+
+### Fichiers créés / modifiés
+- SQL : `0014_invitations_oauth.sql` (provisionner_roles_standard, mon_profil,
+  cmd_reclamer_invitation, hook_ajouter_claims + grants).
+- Front nouveaux : `ecrans/NonInvite.jsx`, `ecrans/Equipe.jsx`.
+- Front modifiés : `lib/supabase.js` (+connecterAvecGoogle, deconnecter),
+  `lib/adaptateur.js` (+reclamerInvitation, monProfil, listerMembres,
+  inviterMembre), `ecrans/Connexion.jsx` (+bouton Google),
+  `ecrans/ListeAffaires.jsx` (+lien Équipe conditionnel), `main.jsx` (routage
+  complet : session → réclamation → profil → capacités → navigation).
+- Doc : `docs/modules/12-oauth-invitations.md`.
+
+### Gap comblé (critique, non documenté avant)
+- Aucune organisation n'avait de rôles en base (roles/role_capacites vides à la
+  création) : sans provisionner_roles_standard(), AUCUNE capacité n'aurait
+  fonctionné après branchement — bloquant pour tout le système de permissions,
+  pas seulement l'OAuth.
+
+### Décisions d'architecture
+- Le rôle n'est jamais choisi par l'utilisateur : le master invite + assigne
+  (cmd_inviter_utilisateur + cmd_affecter_role, réutilise Module 2 tel quel).
+- Réclamation par correspondance d'email (auth.jwt()->>'email'), idempotente,
+  refus propre et explicite si aucune invitation ne correspond.
+- Hook JWT : nécessite un enregistrement MANUEL côté Dashboard Supabase — tracé
+  comme procédure hors-SQL dans la fiche module.
+
+### Risques identifiés
+- Le hook doit être enregistré côté Dashboard pour que jwt_org() fonctionne —
+  sans ça, la RLS ne verra jamais org_id après connexion.
+- Le bootstrap du tout premier master (avant qu'aucun master n'existe pour
+  l'inviter) nécessite une étape manuelle en SQL Editor — à documenter au
+  moment du branchement réel avec l'utilisateur.
+- Deux constructeurs (Copilot + moi) sur le même repo sans processus de revue :
+  risque de récidive identifié, décision de gouvernance en attente du fondateur.
+
+### Prochaines étapes proposées
+1. Décision de gouvernance : un seul constructeur sur packages/domaine et
+   supabase/migrations, ou processus de revue formel.
+2. Branchement réel (Codespaces) : appliquer 0001-0014, configurer Google OAuth
+   + hook, provisionner les rôles de l'organisation, bootstrap du master.
+3. Écrans restants : Offre & signature (C-02 visible), Contact/Relevé, Planning.

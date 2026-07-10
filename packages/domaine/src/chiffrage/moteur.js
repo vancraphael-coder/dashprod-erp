@@ -1,144 +1,152 @@
 // =============================================================================
 // Chiffrage — Moteur de tarification
-// Source : Réf. 2 (tarification selon formule, effectif, heures, km) et
-// Réf. 3 (T2 : moteur pur, sans base ni réseau).
-// Logique PURE : prend des faits + barème, retourne un scénario chiffré.
+// Source : Réf. 2 (S5 : entrées, règles, sorties ; onglets Devis/Offre) et les
+// trois modèles d'offre validés.
+// Logique PURE : (faits + barème) → scénario chiffré comparable. Une seule
+// implémentation, consommée par le front (onglet Devis) et le serveur (offre).
+// Tous les montants internes sont en CENTIMES ; la sortie expose aussi l'euro.
 // =============================================================================
 
-import { calcTVA, calcTVAC } from "../commun/monnaie.js";
-import { BAREME_DEFAUT, resoudreTauxHoraire } from "./bareme.js";
+import { versCentimes, versEuros, tva, htvaDepuisTvac } from "../commun/monnaie.js";
+import { BAREME_HORAIRE, TARIFS, TVA_PCT, MARGE_CIBLE, REPORT, ANNULATION } from "./bareme.js";
 
 /**
- * Calcule un scénario complet (recette, coûts, marge, zone).
- * @param {{
- *   formule: string,
- *   effectif: number,
- *   heures: number,
- *   km: number,
- *   camions: number,
- *   emballage: boolean,
- *   elevateur: boolean,
- *   remise_pct: number
- * }} faits entrées du calcul
- * @param {{devise: string, coutes: number}} [couts] coûts réels pour la marge réelle (opt.)
- * @param {typeof BAREME_DEFAUT} [bareme=BAREME_DEFAUT]
- * @returns {{
- *   nom: string,
- *   entrees: object,
- *   recette_htva_centimes: number,
- *   tva_centimes: number,
- *   recette_tvac_centimes: number,
- *   coutes_centimes: number,
- *   marge_htva_centimes: number,
- *   marge_pct: number,
- *   zone: string,
- *   devise: string
- * }}
+ * @typedef {Object} Faits
+ * @property {"tarifaire"|"emballage"|"forfait"} formule
+ * @property {number} nbDemenageurs   effectif (clé du barème horaire)
+ * @property {number} heures          heures facturées (régimes horaires)
+ * @property {number} nbCamions       nombre de camions (multiplie les km)
+ * @property {number} km              kilomètres facturés dépôt→dépôt
+ * @property {boolean} elevateur      option élévateur
+ * @property {number} [remisePct]     remise commerciale en % (0 par défaut)
+ * @property {number} [heuresEmballage] régime +emballage
+ * @property {number} [kmEmballage]     régime +emballage
+ * @property {number} [forfaitTvacEuros] prix TVAC ferme (régime forfait)
  */
-export function calculerScenario(faits, couts, bareme = BAREME_DEFAUT) {
-  const {
-    formule = "tarifaire",
-    effectif = 2,
-    heures = 8,
-    km = 100,
-    camions = 1,
-    emballage = false,
-    elevateur = false,
-    remise_pct = 0,
-  } = faits || {};
 
-  // Résoudre le taux horaire selon l'effectif
-  const taux = resoudreTauxHoraire(effectif, bareme);
+/**
+ * @typedef {Object} Couts
+ * @property {number} [mainOeuvreEuros] coût réel de main-d'œuvre
+ * @property {number} [carburantEuros]
+ * @property {number} [materielEuros]
+ * @property {number} [diversEuros]
+ * @property {number} [peagesEuros]
+ */
 
-  // Recette brute (avant remise)
-  let recetteBrute = 0;
-
-  if (formule === "tarifaire") {
-    // Tarif horaire + km + élévateur
-    recetteBrute = taux * heures * 100; // en centimes
-    recetteBrute += km * camions * bareme.taux_km * 100;
-    if (elevateur) recetteBrute += Math.round(recetteBrute * (bareme.elevateurPct / 100));
-  } else if (formule === "tarifaire_emballage") {
-    // Tarif horaire + supplément emballage + km
-    recetteBrute = (taux + bareme.supplement_emballage_horaire) * heures * 100;
-    recetteBrute += (km * camions * (bareme.taux_km + bareme.supplement_emballage_km)) * 100;
-    if (elevateur) recetteBrute += Math.round(recetteBrute * (bareme.elevateurPct / 100));
-  } else if (formule === "forfait") {
-    // TVAC déduit fourni (ex. 10 000 € = 1 000 000 centimes)
-    // On calcule HTVA depuis TVAC en assumant 21% TVA EUR
-    recetteBrute = faits.tvac_centimes ? 
-      Math.round((faits.tvac_centimes * 100) / 121) : 0;
+/**
+ * Calcule la recette HTVA (en centimes) selon la formule.
+ * Règles (S5 / documents validés) :
+ *  - horaire : heures × taux(effectif) + élévateur + km×1×camions [+ emballage régie] − remise
+ *  - forfait : HTVA déduit du prix TVAC ferme
+ */
+function recetteHtvaCentimes(f, bareme = BAREME_HORAIRE, tarifs = TARIFS) {
+  if (f.formule === "forfait") {
+    const tvac = versCentimes(f.forfaitTvacEuros || 0);
+    return htvaDepuisTvac(tvac, TVA_PCT);
   }
+  const taux = bareme[f.nbDemenageurs];
+  if (taux == null) {
+    throw new Error(`Barème absent pour ${f.nbDemenageurs} déménageurs`);
+  }
+  let c = versCentimes((f.heures || 0) * taux);
+  if (f.elevateur) c += versCentimes(tarifs.elevateur);
+  c += versCentimes((f.km || 0) * tarifs.km_facture * Math.max(1, f.nbCamions || 1));
+  if (f.formule === "emballage") {
+    c += versCentimes((f.heuresEmballage || 0) * tarifs.emballage_horaire);
+    c += versCentimes((f.kmEmballage || 0) * tarifs.emballage_km);
+  }
+  const remise = f.remisePct ? Math.round(c * f.remisePct / 100) : 0;
+  return c - remise;
+}
 
-  // Appliquer la remise (%)
-  const recetteHTVA = Math.round(recetteBrute * (1 - remise_pct / 100));
-  const tva = calcTVA(recetteHTVA, bareme.devise);
-  const recetteTVAC = calcTVAC(recetteHTVA, tva);
+/** Somme des coûts réels (centimes). */
+function coutsTotalCentimes(couts = {}) {
+  const p = (v) => versCentimes(v || 0);
+  return p(couts.mainOeuvreEuros) + p(couts.carburantEuros) + p(couts.materielEuros)
+       + p(couts.diversEuros) + p(couts.peagesEuros);
+}
 
-  // Coûts et marge
-  const coutsCentimes = (couts?.centimes || faits.couts_centimes || 0);
-  const margeHTVA = recetteHTVA - coutsCentimes;
-  const margePct = coutsCentimes > 0 ? 
-    Math.round((margeHTVA / recetteHTVA) * 1000) / 10 : 0;
+/** Qualifie la zone de marge (S5 : rouge / vert / premium). */
+export function zoneMarge(margePct) {
+  if (margePct < MARGE_CIBLE.min) return "sous_cible";
+  if (margePct > MARGE_CIBLE.max) return "premium";
+  return "dans_cible";
+}
 
-  const zone = zoneMarge(margePct, bareme);
+/**
+ * Calcule un scénario complet : recette, TVA, TVAC, coûts, marge, zone.
+ * @param {Faits} faits
+ * @param {Couts} [couts]
+ * @param {{bareme?: Object, tarifs?: Object}} [ref] barème/tarifs (défaut : référence)
+ * @returns {Object} scénario chiffré (montants en euros + centimes)
+ */
+export function calculerScenario(faits, couts = {}, ref = {}) {
+  const bareme = ref.bareme || BAREME_HORAIRE;
+  const tarifs = ref.tarifs || TARIFS;
+
+  const htva = recetteHtvaCentimes(faits, bareme, tarifs);
+  const tvaC = tva(htva, TVA_PCT);
+  const tvac = htva + tvaC;
+
+  const coutC = coutsTotalCentimes(couts);
+  const margeC = htva - coutC;
+  const margePct = htva > 0 ? Math.round((margeC / htva) * 1000) / 10 : 0;
 
   return {
-    nom: faits.nom || "Scénario",
-    entrees: { formule, effectif, heures, km, camions, emballage, elevateur, remise_pct },
-    recette_htva_centimes: recetteHTVA,
-    tva_centimes: tva,
-    recette_tvac_centimes: recetteTVAC,
-    coutes_centimes: coutsCentimes,
-    marge_htva_centimes: margeHTVA,
+    formule: faits.formule,
+    htva_centimes: htva,
+    tva_centimes: tvaC,
+    tvac_centimes: tvac,
+    couts_centimes: coutC,
+    marge_centimes: margeC,
+    htva: versEuros(htva),
+    tva: versEuros(tvaC),
+    tvac: versEuros(tvac),
+    couts: versEuros(coutC),
+    marge: versEuros(margeC),
     marge_pct: margePct,
-    zone,
-    devise: bareme.devise,
+    zone: zoneMarge(margePct),
   };
 }
 
 /**
- * Détermine la zone de marge (sous_cible, dans_cible, premium).
- * @param {number} marge_pct pourcentage de marge
- * @param {typeof BAREME_DEFAUT} [bareme=BAREME_DEFAUT]
- * @returns {string} "sous_cible" | "dans_cible" | "premium"
+ * Compare plusieurs scénarios nommés (S5 : scénarios côte à côte).
+ * @param {{nom: string, faits: Faits, couts?: Couts}[]} entrees
+ * @param {{bareme?: Object, tarifs?: Object}} [ref]
+ * @returns {{nom: string, scenario: Object}[]}
  */
-export function zoneMarge(marge_pct, bareme = BAREME_DEFAUT) {
-  const { sous_cible, dans_cible, premium } = bareme.zones_marge;
-  if (marge_pct < sous_cible) return "sous_cible";
-  if (marge_pct >= dans_cible[0] && marge_pct <= dans_cible[1]) return "dans_cible";
-  if (marge_pct > premium) return "premium";
-  return "sous_cible"; // fallback
-}
-
-/**
- * Compare plusieurs scénarios.
- * @param {Array<{nom: string, faits: object, couts?: object}>} scenarios
- * @param {typeof BAREME_DEFAUT} [bareme=BAREME_DEFAUT]
- * @returns {Array<{nom: string, scenario: ReturnType<typeof calculerScenario>}>}
- */
-export function comparerScenarios(scenarios, bareme = BAREME_DEFAUT) {
-  return (scenarios || []).map((s) => ({
-    nom: s.nom,
-    scenario: calculerScenario(s.faits, s.couts, bareme),
+export function comparerScenarios(entrees, ref = {}) {
+  return (entrees || []).map((e) => ({
+    nom: e.nom,
+    scenario: calculerScenario(e.faits, e.couts || {}, ref),
   }));
 }
 
 /**
- * Calcule une indemnité (report ou annulation).
- * @param {number} recetteTVACCentimes montant TVAC
- * @param {number} joursAvant jours avant la date
- * @param {"report"|"annulation"} type type d'indemnité
- * @param {typeof BAREME_DEFAUT} [bareme=BAREME_DEFAUT]
- * @returns {{pct: number, montant_centimes: number}}
+ * Calcule l'indemnité de report ou d'annulation (résout C-23).
+ * Applique le barème (% du TVAC) selon le nombre de jours avant la date.
+ *
+ * Lecture métier des documents validés (report) :
+ *   « 25 % jusqu'à 5 jours » → 5 jours avant ou plus : 25 %
+ *   « 50 % jusqu'à 2 jours » → de 2 à 4 jours avant : 50 %
+ *   « 75 % la veille ou le jour même » → 0 ou 1 jour avant : 75 %
+ * (annulation : mêmes seuils, 50 / 70 / 100 %.)
+ *
+ * On retient donc le palier de seuil le plus élevé qui reste <= joursAvant :
+ * plus la date est proche (joursAvant petit), plus le pourcentage monte.
+ * @param {number} tvacCentimes total TVAC de l'affaire
+ * @param {number} joursAvant   jours entre aujourd'hui et la date de mission
+ * @param {"report"|"annulation"} type
+ * @returns {{pct: number, montant_centimes: number, montant: number}}
  */
-export function indemnite(recetteTVACCentimes, joursAvant, type, bareme = BAREME_DEFAUT) {
-  const paliers = bareme.indemnites[type] || [0, 0, 0];
-  let pct = 0;
-  if (joursAvant < 7) pct = paliers[0];
-  else if (joursAvant < 15) pct = paliers[1];
-  else pct = paliers[2];
-
-  const montant = Math.round((recetteTVACCentimes * pct) / 100);
-  return { pct, montant_centimes: montant };
+export function indemnite(tvacCentimes, joursAvant, type) {
+  const bareme = type === "annulation" ? ANNULATION : REPORT;
+  // bareme trié par seuil décroissant (5, 2, 0). On prend le premier palier
+  // dont le seuil est atteint (joursAvant >= seuil) ; sinon, le plus proche.
+  let choisi = bareme[bareme.length - 1]; // seuil 0, pct max — la veille/jour même
+  for (const palier of bareme) {
+    if (joursAvant >= palier.seuil_jours) { choisi = palier; break; }
+  }
+  const montant = Math.round(tvacCentimes * choisi.pct / 100);
+  return { pct: choisi.pct, montant_centimes: montant, montant: versEuros(montant) };
 }

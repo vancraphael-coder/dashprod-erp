@@ -1,82 +1,61 @@
 // =============================================================================
-// CRM — Clients & dédoublonnage
-// Source : Réf. 2 (C-01 : client existe une seule fois) et Réf. 3 (T2).
-// Reconnaissance du client existant au branchement Supabase (trouverDoublon,
-// cascade S10-1) : correspondance forte (téléphone) ou faible (nom).
+// CRM — Normalisation et dédoublonnage des clients
+// Source : Réf. 2 (C-01 « le client n'existe pas » ; cascade S10-1
+// « Client.Reconnu ou Client.Créé »).
+// Logique PURE : la reconnaissance d'un client existant doit être déterministe,
+// pas une devinette. Ces fonctions produisent les clés normalisées que la base
+// indexe, et comparent une saisie entrante aux clients connus.
 // =============================================================================
 
 /**
- * Normalise un numéro de téléphone : garde les chiffres et +.
- * @param {string} tel numéro brut
- * @returns {string} normalisé (ex. "+32123456789")
+ * Normalise un numéro de téléphone belge vers un format comparable (E.164
+ * simplifié) : retire espaces, points, tirets, parenthèses ; convertit un 0
+ * initial en +32. Ne valide pas le numéro — normalise pour comparer.
+ * @param {string} tel
+ * @returns {string} téléphone normalisé, ou "" si vide
  */
 export function normaliserTel(tel) {
   if (!tel) return "";
-  return tel.replace(/[^0-9+]/g, "");
+  let t = String(tel).replace(/[\s.\-()/]/g, "");
+  if (t.startsWith("00")) t = "+" + t.slice(2);
+  else if (t.startsWith("0")) t = "+32" + t.slice(1);
+  return t;
 }
 
 /**
- * Normalise un nom : minuscules, sans accents ni espaces multiples.
- * @param {string} nom nom brut
- * @returns {string} normalisé (ex. "dupont")
+ * Normalise un nom pour comparaison : minuscules, accents retirés, espaces
+ * réduits. Sert de clé de rapprochement secondaire (le téléphone prime).
+ * @param {string} nom
+ * @returns {string}
  */
 export function normaliserNom(nom) {
   if (!nom) return "";
-  return nom
+  return String(nom)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // retire les accents
     .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // ôter diacritiques
     .replace(/\s+/g, " ")
     .trim();
 }
 
 /**
- * Cherche un doublon probable dans une liste de clients.
- * Correspondance forte : téléphone exact (normalisé).
- * Correspondance faible : nom (normalisé) proche.
- * @param {{nom?: string, tel?: string, email?: string}} entree données saisies
- * @param {Array} clients liste complète des clients
- * @returns {{client: object, type: "fort"|"faible"} | null}
+ * Cherche un client existant correspondant à une saisie entrante.
+ * Priorité métier : un téléphone normalisé identique est une correspondance
+ * forte ; à défaut, un nom normalisé identique est une correspondance faible.
+ * @param {{nom?: string, tel?: string}} saisie
+ * @param {{id: string, nom?: string, tel?: string}[]} clients existants (même tenant)
+ * @returns {{client: Object, confiance: "forte"|"faible"}|null}
  */
-export function trouverDoublon(entree, clients = []) {
-  if (!entree || (!entree.nom && !entree.tel)) return null;
+export function trouverDoublon(saisie, clients) {
+  const telS = normaliserTel(saisie && saisie.tel);
+  const nomS = normaliserNom(saisie && saisie.nom);
 
-  const telEntree = normaliserTel(entree.tel || "");
-  const nomEntree = normaliserNom(entree.nom || "");
-
-  // Correspondance forte : téléphone exact
-  if (telEntree) {
-    const fort = clients.find((c) => {
-      const telClient = normaliserTel(c.tel || "");
-      return telClient && telClient === telEntree;
-    });
-    if (fort) return { client: fort, type: "fort" };
+  if (telS) {
+    const parTel = (clients || []).find((c) => normaliserTel(c.tel) === telS);
+    if (parTel) return { client: parTel, confiance: "forte" };
   }
-
-  // Correspondance faible : nom simplement présent
-  if (nomEntree && nomEntree.length > 2) {
-    const faible = clients.find((c) => {
-      const nomClient = normaliserNom(c.nom || "");
-      return nomClient && nomClient.includes(nomEntree);
-    });
-    if (faible) return { client: faible, type: "faible" };
+  if (nomS) {
+    const parNom = (clients || []).find((c) => normaliserNom(c.nom) === nomS);
+    if (parNom) return { client: parNom, confiance: "faible" };
   }
-
   return null;
-}
-
-/**
- * Valide les données d'un client avant insertion.
- * @param {{nom: string, tel?: string, email?: string, societe?: string}} client
- * @returns {{valide: boolean, erreurs: string[]}}
- */
-export function validerClient(client) {
-  const erreurs = [];
-  if (!client.nom || client.nom.trim().length < 2) {
-    erreurs.push("Le nom est requis (min. 2 caractères)");
-  }
-  if (client.email && !client.email.includes("@")) {
-    erreurs.push("L'email doit être valide");
-  }
-  return { valide: erreurs.length === 0, erreurs };
 }

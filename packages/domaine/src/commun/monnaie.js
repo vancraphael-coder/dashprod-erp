@@ -1,59 +1,36 @@
 // =============================================================================
-// Utilitaires — Montants en centimes entiers (anti-virgule-flottante)
-// Source : Réf. 3 (I-2 : montants en centimes).
+// Commun — Monnaie
+// Source : Réf. 3 (T2 : montants ; I-2 : tout montant porte sa devise).
+// Les montants sont manipulés en CENTIMES entiers pour éviter les erreurs de
+// virgule flottante, puis présentés en euros. TVA belge par défaut : 21 %.
 // =============================================================================
 
-/**
- * Détermine la TVA à partir d'une devise.
- * @param {string} [devise="EUR"] code devise (EUR|...)
- * @returns {number} TVA en pourcentage (21 pour EUR)
- */
-export function tauxTVA(devise = "EUR") {
-  const taux = { EUR: 21, USD: 0, GBP: 20 };
-  return taux[devise] || 21;
+/** Convertit des euros (nombre) en centimes entiers. */
+export function versCentimes(euros) {
+  return Math.round(Number(euros) * 100);
+}
+
+/** Convertit des centimes entiers en euros (nombre à 2 décimales). */
+export function versEuros(centimes) {
+  return Math.round(centimes) / 100;
 }
 
 /**
- * Calcule la TVA sur un montant HTVA.
- * @param {number} htvaCentimes montant HTVA en centimes
- * @param {string} [devise="EUR"] devise
- * @returns {number} TVA en centimes
+ * Applique un taux de TVA à un montant HTVA en centimes.
+ * @param {number} htvaCentimes
+ * @param {number} tauxPct ex. 21 pour 21 %
+ * @returns {number} montant de TVA en centimes (arrondi)
  */
-export function calcTVA(htvaCentimes, devise = "EUR") {
-  const taux = tauxTVA(devise);
-  return Math.round((htvaCentimes * taux) / 100);
+export function tva(htvaCentimes, tauxPct) {
+  return Math.round(htvaCentimes * tauxPct / 100);
 }
 
 /**
- * Calcule le montant TVAC (TTC).
- * @param {number} htvaCentimes montant HTVA en centimes
- * @param {number} [tvaCentimes] TVA en centimes (calculée si absent)
- * @returns {number} TVAC en centimes
+ * Déduit le HTVA d'un montant TVAC (cas du forfait : prix TVAC ferme donné).
+ * @param {number} tvacCentimes
+ * @param {number} tauxPct
+ * @returns {number} HTVA en centimes (arrondi)
  */
-export function calcTVAC(htvaCentimes, tvaCentimes) {
-  const tva = tvaCentimes !== undefined ? tvaCentimes : calcTVA(htvaCentimes);
-  return htvaCentimes + tva;
-}
-
-/**
- * Décode un montant HTVA depuis un montant TVAC connu.
- * Formule : HTVA = TVAC / (1 + taux/100)
- * @param {number} tvacCentimes montant TVAC en centimes
- * @param {string} [devise="EUR"] devise
- * @returns {number} HTVA en centimes
- */
-export function decodeTVAC(tvacCentimes, devise = "EUR") {
-  const taux = tauxTVA(devise);
-  return Math.round((tvacCentimes * 100) / (100 + taux));
-}
-
-/**
- * Formate un montant en centimes vers chaîne EUR avec symbole €.
- * @param {number} centimes montant en centimes
- * @returns {string} ex. « 1 234,56 € »
- */
-export function formatterEuros(centimes) {
-  const euros = Math.floor(centimes / 100);
-  const cents = centimes % 100;
-  return `${euros.toLocaleString("fr-FR")} €${cents ? ` ${String(cents).padStart(2, "0")} c` : ""}`;
+export function htvaDepuisTvac(tvacCentimes, tauxPct) {
+  return Math.round(tvacCentimes / (1 + tauxPct / 100));
 }

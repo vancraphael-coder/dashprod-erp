@@ -13,7 +13,7 @@ import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 
 const FILTRES = ["tous", "devis", "confirme", "en_cours", "effectue"];
 
-export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
+export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, peutGererEquipe, ouvrirEquipe }) {
   const [affaires, setAffaires] = useState([]);
   const [recherche, setRecherche] = useState("");
   const [filtre, setFiltre] = useState("tous");
@@ -36,9 +36,14 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
       <div style={S.entete}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div style={S.titre}>Dossiers</div>
-          <div style={{ fontSize: 12.5, color: C.muet }}>
-            CA signé&nbsp;
-            <b style={{ color: C.encre }}>{euros(ca)}</b>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {peutGererEquipe && (
+              <button style={S.boutonLien} onClick={ouvrirEquipe}>Équipe</button>
+            )}
+            <div style={{ fontSize: 12.5, color: C.muet }}>
+              CA signé&nbsp;
+              <b style={{ color: C.encre }}>{euros(ca)}</b>
+            </div>
           </div>
         </div>
         <input
