@@ -8,6 +8,8 @@
 // =============================================================================
 
 import { supabase, configPresente } from "./supabase.js";
+import { figerInstance, empreinte } from "@domaine/documents/instances.js";
+import { resoudreCbd } from "@domaine/documents/modeles.js";
 
 const CLE = "dashprod-demo-v1";
 
@@ -199,4 +201,106 @@ export async function inviterMembre({ email, nom, roleCle }) {
   });
   if (e2) throw e2;
   return id;
+}
+
+// ── Offre & Signature (résout C-02, C-26) ─────────────────────────────────────
+
+/**
+ * Prépare et fige une instance d'offre (résout C-02). En mode réel : appelle
+ * cmd_instancier_offre (C.B.D. obligatoire, non désactivable, S6). En mode
+ * démo : utilise le domaine PUR (figerInstance/resoudreCbd) directement — la
+ * même garantie d'immuabilité, sans base.
+ */
+export async function envoyerOffre(affaireId, { type, contenu }) {
+  if (modeDonnees() === "reel") {
+    const empreinteLocale = empreinte(contenu);
+    const { data: id, error } = await supabase.rpc("cmd_instancier_offre", {
+      p_affaire: affaireId, p_type: type, p_contenu: contenu, p_empreinte: empreinteLocale,
+    });
+    if (error) throw error;
+    const { error: e2 } = await supabase.rpc("cmd_geler_instance", { p_instance: id });
+    if (e2) throw e2;
+    return { id, empreinte: empreinteLocale };
+  }
+  // Démo : la C.B.D. est jointe symboliquement (aucun fichier réel en local).
+  const verifCbd = resoudreCbd(
+    [{ id: "cbd-demo", type: "cbd", version: 1, actif: true, langue: "fr", juridiction: "BE" }],
+    type
+  );
+  if (verifCbd.erreur) throw new Error("C.B.D. active absente — offre non instanciable.");
+  const instance = figerInstance({
+    modeleVersionId: `${type}-demo`, cbdVersionId: verifCbd.cbdVersionId,
+    contenu, horodatage: new Date().toISOString(),
+  });
+  const d = lireDemo();
+  d.instances = d.instances || {};
+  d.instances[affaireId] = { ...instance, id: idDemo(), statut: "envoyee" };
+  ecrireDemo(d);
+  return { id: d.instances[affaireId].id, empreinte: instance.empreinte };
+}
+
+/** Récupère l'instance d'offre d'une affaire (figée), si elle existe. */
+export async function obtenirInstance(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("documents_instances")
+      .select("id, contenu, empreinte_sha256, statut, envoye_le")
+      .eq("affaire_id", affaireId).order("genere_le", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  return (d.instances && d.instances[affaireId]) || null;
+}
+
+/**
+ * Recueille la signature (dossier de preuve, C-26). En mode réel : commande
+ * gardée cmd_signer_instance. En mode démo : simule le scellement local.
+ */
+export async function signerOffre(instanceId, { affaireId, nom, canal, image }) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_signer_instance", {
+      p_instance: instanceId, p_nom: nom, p_canal: canal || "ecran", p_image: image,
+    });
+    if (error) throw error;
+    // La signature déverrouille la garde : transition de l'affaire vers 'confirme'.
+    const { error: e2 } = await supabase.rpc("cmd_transition_affaire", {
+      p_affaire: affaireId, p_cible: "confirme", p_contexte: { instanceSignee: true },
+    });
+    if (e2) throw e2;
+    return;
+  }
+  const d = lireDemo();
+  if (d.instances?.[affaireId]) d.instances[affaireId].statut = "signee";
+  const a = d.affaires.find((x) => x.id === affaireId);
+  if (a) a.etat = "confirme";
+  ecrireDemo(d);
+}
+
+// ── Relevé volumétrique ───────────────────────────────────────────────────────
+
+/** Enregistre l'inventaire d'une affaire (volume calculé côté domaine). */
+export async function enregistrerReleve(affaireId, inventaire) {
+  if (modeDonnees() === "reel") {
+    // En réel : persistance dans une colonne jsonb de l'affaire (releve).
+    const { error } = await supabase.from("affaires")
+      .update({ releve: inventaire }).eq("id", affaireId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  if (a) { a.releve = inventaire; ecrireDemo(d); }
+}
+
+/** Récupère l'inventaire d'une affaire, ou tableau vide. */
+export async function obtenirReleve(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("affaires")
+      .select("releve").eq("id", affaireId).maybeSingle();
+    if (error) throw error;
+    return data?.releve || [];
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  return (a && a.releve) || [];
 }

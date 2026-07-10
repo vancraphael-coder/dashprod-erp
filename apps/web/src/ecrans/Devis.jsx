@@ -18,7 +18,7 @@ const FORMULES = [
   { cle: "forfait", libelle: "Forfait" },
 ];
 
-export default function Devis({ affaireId, retour }) {
+export default function Devis({ affaireId, retour, versOffre, versReleve }) {
   const [affaire, setAffaire] = useState(null);
   const [faits, setFaits] = useState({
     formule: "tarifaire", nbDemenageurs: 3, heures: 6, nbCamions: 1,
@@ -68,6 +68,12 @@ export default function Devis({ affaireId, retour }) {
             </div>
           )}
         </div>
+        {versReleve && (
+          <button style={{ ...S.boutonLien, paddingLeft: 0 }}
+                  onClick={() => versReleve(affaireId)}>
+            📦 Relevé volumétrique →
+          </button>
+        )}
       </div>
 
       {/* Formule */}
@@ -209,6 +215,12 @@ export default function Devis({ affaireId, retour }) {
         <button style={S.boutonPlein} onClick={enregistrer}>
           {sauve ? "✓ Chiffrage enregistré" : "Enregistrer le chiffrage"}
         </button>
+        {sauve && versOffre && (
+          <button style={{ ...S.boutonLien, width: "100%", textAlign: "center", marginTop: 8 }}
+                  onClick={() => versOffre(affaireId)}>
+            Passer à l'offre →
+          </button>
+        )}
       </div>
     </div>
   );

@@ -545,3 +545,93 @@ création d'un devis → offre signée). C'est ce qui rend l'ensemble utilisable
 2. Branchement réel (Codespaces) : appliquer 0001-0014, configurer Google OAuth
    + hook, provisionner les rôles de l'organisation, bootstrap du master.
 3. Écrans restants : Offre & signature (C-02 visible), Contact/Relevé, Planning.
+
+---
+
+## Session 13 — Écran Offre & Signature (finalise Module 6) + Module 13 (Conformité RGPD)
+
+### Modules terminés
+- **Finalisation Module 6** : écran Offre & Signature — instanciation figée,
+  C.B.D. jointe automatiquement, pad de signature, transition vers confirmé.
+- **Module 13 — Conformité RGPD & Gouvernance** : registres, demandes RGPD,
+  anonymisation avec verrou légal, incidents de sécurité.
+
+### Fichiers créés / modifiés
+- SQL : `0015_documents_offre_ecran.sql` (seed templates offre + C.B.D. par
+  organisation, FK scenario_id enfin posée), `0016_conformite_rgpd.sql`
+  (registre_traitements, sous_traitants, consentements, demandes_rgpd + 2
+  commandes, cmd_anonymiser_client, incidents_securite).
+- Domaine : `conformite/retention.js` (échéances légales 30j/72h, minimisation).
+- Tests : `packages/domaine/tests/conformite.test.js` (8 cas).
+- Front nouveaux : `ecrans/Offre.jsx` (avec pad de signature canvas intégré).
+- Front modifiés : `lib/adaptateur.js` (+envoyerOffre, obtenirInstance,
+  signerOffre), `ecrans/Devis.jsx` (+bouton vers l'offre), `main.jsx`
+  (+route offre).
+- Doc : `docs/modules/13-conformite-rgpd.md` (couvre les deux compléments).
+
+### Décisions d'architecture
+- RGPD scopé à ce qui est porteur aujourd'hui : pas d'écran pour les registres
+  (SQL/export DPO), pas de gestion de consentement marketing active (table
+  accueillante, usage non fictif). Refusé : liste exhaustive spéculative.
+- Anonymisation avec verrou légal explicite : une facture émise < 7 ans bloque
+  l'effacement du client — la fonction refuse plutôt que de casser une
+  obligation comptable.
+- Tension documentée et NON corrigée rétroactivement : des événements déjà
+  émis portent un email en clair (append-only, C-05) — techniquement
+  inefficaçable sans casser l'audit. Retenu pour la suite : IDs seulement.
+- C.B.D. par organisation (pas système) car juridiquement propre à chaque
+  entreprise ; templates d'offre système (org_id null, réutilisables) car
+  structurels, pas juridiques.
+
+### Écarts avec la documentation
+- Sujet non couvert par les Références (S1-S11, T0-T12) — pas d'écart, un
+  ajout motivé par une demande légale explicite.
+
+### Risques identifiés
+- Le fichier C.B.D. réel (texte validé) doit être déposé en Storage par le
+  fondateur — jamais généré ni inventé par le système.
+- Pas d'écran pour traiter les demandes RGPD/incidents : géré en SQL pour
+  l'instant, à réévaluer si le volume le justifie.
+
+### Prochaines étapes proposées
+1. Écrans restants : Contact/adresses, Relevé volumétrique, Planning, Facture.
+2. Branchement réel : appliquer 0001-0016, uploader la C.B.D. réelle en Storage,
+   configurer le hook OAuth (Module 12).
+
+---
+
+## Session 14 — Module 14 (Relevé volumétrique)
+
+### Modules terminés
+- **Module 14 — Relevé volumétrique** : logique de domaine testée (8 cas),
+  écran complet, colonne d'affaire. Build Vite vert.
+
+### Fichiers créés / modifiés
+- Domaine : `releve/volumetrie.js` (catalogue, volumes, suggestion).
+- Tests : `packages/domaine/tests/releve.test.js`.
+- SQL : `0017_releve.sql` (colonne affaires.releve jsonb).
+- Front nouveaux : `ecrans/Releve.jsx`.
+- Front modifiés : `lib/adaptateur.js` (+enregistrerReleve, obtenirReleve),
+  `ecrans/Devis.jsx` (+lien vers relevé), `main.jsx` (+route releve).
+- Doc : `docs/modules/14-releve.md`.
+
+### Décisions d'architecture
+- Table de volumes et catalogue alignés sur roovers-mobile.jsx (modèle validé),
+  pas réinventés. Résolution tolérante (préfixe le plus spécifique).
+- Volume et composition CALCULÉS côté domaine, jamais stockés (une donnée existe
+  une seule fois). L'inventaire seul est persisté (jsonb sur l'affaire).
+- Suggestion de composition explicitement indicative : le devis reste souverain
+  sur les prix. L'IA/le système propose, l'humain décide.
+
+### Écarts avec la documentation
+- Aucun.
+
+### Risques identifiés
+- Le report de la suggestion dans le devis est manuel (lien) : l'injection
+  automatique volume→heures reste à faire si souhaité.
+- 17 migrations désormais en attente d'application contre une vraie base.
+
+### Prochaines étapes proposées
+1. Écrans restants : Contact/adresses (compléter le dossier), Planning
+   (projeter les missions et affectations), Facture (émission + paiements).
+2. PWA (manifest, service worker, icônes) — prérequis du but 3 (Play Store).

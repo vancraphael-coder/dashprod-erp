@@ -17,6 +17,8 @@ import NonInvite from "./ecrans/NonInvite.jsx";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import NouvelleAffaire from "./ecrans/NouvelleAffaire.jsx";
 import Devis from "./ecrans/Devis.jsx";
+import Offre from "./ecrans/Offre.jsx";
+import Releve from "./ecrans/Releve.jsx";
 import Equipe from "./ecrans/Equipe.jsx";
 
 function BandeauDemo({ versDiagnostic }) {
@@ -75,6 +77,8 @@ function App() {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
     nouvelle: () => setRoute({ ecran: "nouvelle", affaireId: null }),
     devis: (id) => setRoute({ ecran: "devis", affaireId: id }),
+    offre: (id) => setRoute({ ecran: "offre", affaireId: id }),
+    releve: (id) => setRoute({ ecran: "releve", affaireId: id }),
     diagnostic: () => setRoute({ ecran: "diagnostic", affaireId: null }),
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
   };
@@ -97,7 +101,11 @@ function App() {
   } else if (route.ecran === "nouvelle") {
     ecran = <NouvelleAffaire retour={nav.liste} versDevis={nav.devis} />;
   } else if (route.ecran === "devis") {
-    ecran = <Devis affaireId={route.affaireId} retour={nav.liste} />;
+    ecran = <Devis affaireId={route.affaireId} retour={nav.liste} versOffre={nav.offre} versReleve={nav.releve} />;
+  } else if (route.ecran === "releve") {
+    ecran = <Releve affaireId={route.affaireId} retour={nav.liste} versDevis={nav.devis} />;
+  } else if (route.ecran === "offre") {
+    ecran = <Offre affaireId={route.affaireId} retour={nav.liste} />;
   } else {
     ecran = (
       <ListeAffaires
