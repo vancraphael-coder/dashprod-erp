@@ -8,8 +8,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { configPresente as calcConfigPresente, interpreterEtatConnexion } from "@domaine/commun/config.js";
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL ?? import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 /** Vrai si les deux variables d'environnement sont fournies. */
 export const configPresente = calcConfigPresente(url, anon);
