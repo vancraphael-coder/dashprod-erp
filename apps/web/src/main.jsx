@@ -19,6 +19,7 @@ import NouvelleAffaire from "./ecrans/NouvelleAffaire.jsx";
 import Devis from "./ecrans/Devis.jsx";
 import Offre from "./ecrans/Offre.jsx";
 import Releve from "./ecrans/Releve.jsx";
+import Planning from "./ecrans/Planning.jsx";
 import Equipe from "./ecrans/Equipe.jsx";
 
 function BandeauDemo({ versDiagnostic }) {
@@ -79,6 +80,7 @@ function App() {
     devis: (id) => setRoute({ ecran: "devis", affaireId: id }),
     offre: (id) => setRoute({ ecran: "offre", affaireId: id }),
     releve: (id) => setRoute({ ecran: "releve", affaireId: id }),
+    planning: () => setRoute({ ecran: "planning", affaireId: null }),
     diagnostic: () => setRoute({ ecran: "diagnostic", affaireId: null }),
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
   };
@@ -96,6 +98,8 @@ function App() {
         </div>
       </div>
     );
+  } else if (route.ecran === "planning") {
+    ecran = <Planning retour={nav.liste} />;
   } else if (route.ecran === "equipe") {
     ecran = <Equipe retour={nav.liste} />;
   } else if (route.ecran === "nouvelle") {
@@ -112,6 +116,7 @@ function App() {
         ouvrirAffaire={nav.devis} nouvelleAffaire={nav.nouvelle}
         peutGererEquipe={capacites.includes("gerer_referentiels")}
         ouvrirEquipe={nav.equipe}
+        ouvrirPlanning={nav.planning}
       />
     );
   }

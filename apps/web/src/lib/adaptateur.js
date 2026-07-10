@@ -37,6 +37,16 @@ const DEMO_INITIAL = {
       couts: { mainOeuvreEuros: 900, carburantEuros: 120, materielEuros: 150 },
       tvac_centimes: 242000, marge_pct: 41.5 },
   ],
+  missions: [
+    { id: "m1", affaireId: "a1", date: "2026-07-14", heure: "08:00", type: "demenagement",
+      etat: "planifiee", client: "Famille Lambert",
+      affectations: [{ utilisateur_id: "t1" }, { utilisateur_id: "t2" }, { utilisateur_id: "t3" }] },
+    { id: "m2", affaireId: "a2", date: "2026-07-14", heure: "13:30", type: "demenagement",
+      etat: "planifiee", client: "SPRL Delcourt",
+      affectations: [{ utilisateur_id: "t1" }] },
+    { id: "m3", affaireId: "a2", date: "2026-07-16", heure: "09:00", type: "emballage",
+      etat: "planifiee", client: "SPRL Delcourt", affectations: [] },
+  ],
 };
 
 function lireDemo() {
@@ -303,4 +313,81 @@ export async function obtenirReleve(affaireId) {
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
   return (a && a.releve) || [];
+}
+
+// ── Planning / Missions ───────────────────────────────────────────────────────
+
+const MEMBRES_DEMO = [
+  { id: "t1", nom: "Marco" }, { id: "t2", nom: "Yassine" },
+  { id: "t3", nom: "David" }, { id: "t4", nom: "Sofiane" },
+];
+
+/** Membres de l'organisation (pour l'affectation). */
+export async function listerMembresSimples() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("utilisateurs").select("id, nom").eq("actif", true);
+    if (error) throw error;
+    return data || [];
+  }
+  return MEMBRES_DEMO;
+}
+
+/** Liste les missions (avec affectations) — planning bureau. */
+export async function listerMissions() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("missions")
+      .select("id, date, heure, type, etat, affaire_id, affaires(clients(nom)), mission_affectations(utilisateur_id)")
+      .order("date", { ascending: true });
+    if (error) throw error;
+    return (data || []).map((m) => ({
+      id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
+      client: m.affaires?.clients?.nom,
+      affectations: (m.mission_affectations || []).map((a) => ({ utilisateur_id: a.utilisateur_id })),
+    }));
+  }
+  const d = lireDemo();
+  return d.missions || [];
+}
+
+/** Crée une mission pour une affaire (planification). */
+export async function creerMission(affaireId, { date, heure, type }) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_creer_mission", {
+      p_affaire: affaireId, p_type: type || "demenagement", p_date: date, p_heure: heure,
+    });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  d.missions = d.missions || [];
+  const aff = d.affaires.find((a) => a.id === affaireId);
+  const client = aff && d.clients.find((c) => c.id === aff.clientId);
+  const id = idDemo();
+  d.missions.push({
+    id, affaireId, date, heure: heure || "08:00", type: type || "demenagement",
+    etat: "planifiee", client: client?.nom, affectations: [],
+  });
+  ecrireDemo(d);
+  return id;
+}
+
+/** Affecte (ou désaffecte) un membre à une mission — bascule. */
+export async function basculerAffectation(missionId, utilisateurId, roleMission) {
+  if (modeDonnees() === "reel") {
+    // En réel, l'affectation est idempotente côté commande ; la désaffectation
+    // serait une commande dédiée (à ajouter). Ici on affecte.
+    const { error } = await supabase.rpc("cmd_affecter_membre", {
+      p_mission: missionId, p_utilisateur: utilisateurId, p_role: roleMission || "demenageur",
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (!m) return;
+  m.affectations = m.affectations || [];
+  const existe = m.affectations.find((a) => a.utilisateur_id === utilisateurId);
+  if (existe) m.affectations = m.affectations.filter((a) => a.utilisateur_id !== utilisateurId);
+  else m.affectations.push({ utilisateur_id: utilisateurId });
+  ecrireDemo(d);
 }

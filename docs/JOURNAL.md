@@ -635,3 +635,42 @@ création d'un devis → offre signée). C'est ce qui rend l'ensemble utilisable
 1. Écrans restants : Contact/adresses (compléter le dossier), Planning
    (projeter les missions et affectations), Facture (émission + paiements).
 2. PWA (manifest, service worker, icônes) — prérequis du but 3 (Play Store).
+
+---
+
+## Session 15 — Module 15 (Planning, écran)
+
+### Modules terminés
+- **Module 15 — Planning** : agenda par jour, affectation avec détection de
+  conflits en direct. Domaine testé (5 cas), build Vite vert.
+
+### Fichiers créés / modifiés
+- Domaine : `operations/agenda.js` (grouperParJour, chargeDuJour, missionsDuMembre).
+- Tests : `packages/domaine/tests/agenda.test.js`.
+- Front nouveaux : `ecrans/Planning.jsx`.
+- Front modifiés : `lib/adaptateur.js` (+listerMissions, listerMembresSimples,
+  creerMission, basculerAffectation ; +missions de démo au seed),
+  `ecrans/ListeAffaires.jsx` (+lien Planning), `main.jsx` (+route planning).
+- Doc : `docs/modules/15-planning.md`.
+
+### Décisions d'architecture
+- L'agenda réutilise conflitsAffectation (Module 7, déjà testé) : aucune
+  duplication de la logique de conflit. Le nouveau domaine ne fait qu'organiser
+  l'affichage (regroupement, charge, filtre membre).
+- Conflit signalé en direct (rouge) mais NON interdit : décision humaine (C-20).
+- missionsDuMembre prêt pour le filtre terrain (un déménageur ne voit que ses
+  missions) — câblage au rôle à activer au branchement réel.
+
+### Écarts avec la documentation
+- Aucun.
+
+### Risques identifiés
+- La désaffectation en mode réel nécessiterait une commande dédiée (actuellement
+  cmd_affecter_membre est idempotent à l'ajout) — à ajouter au branchement.
+- Congés pas encore alimentés dans la détection de conflit (le domaine les
+  accepte ; les brancher depuis le module RH).
+
+### Prochaines étapes proposées
+1. Écran Facture (émission + paiements + solde) — dernier grand écran du parcours.
+2. PWA (manifest, service worker, icônes) — prérequis du but 3 (Play Store).
+3. Écran Contact/adresses (compléter le dossier).
