@@ -6,6 +6,7 @@
 --
 -- NB : ce seed suppose une organisation existante. Remplacer :org_id par
 -- l'identifiant de l'organisation Roovers lors de l'application.
+-- Pour Roovers, utiliser :org_id = '893d9c67-9d07-4408-a484-13fa31aec500'.
 -- Idempotent : n'insère la version 1 que si aucune version active n'existe.
 -- =============================================================================
 

@@ -674,3 +674,41 @@ création d'un devis → offre signée). C'est ce qui rend l'ensemble utilisable
 1. Écran Facture (émission + paiements + solde) — dernier grand écran du parcours.
 2. PWA (manifest, service worker, icônes) — prérequis du but 3 (Play Store).
 3. Écran Contact/adresses (compléter le dossier).
+
+---
+
+## Session 16 — Module 16 (Facture, écran)
+
+### Modules terminés
+- **Module 16 — Facture** : composition, émission (numéro légal), paiements et
+  solde en direct. Build Vite vert. Le parcours financier est bouclé.
+
+### Fichiers créés / modifiés
+- Front nouveaux : `ecrans/Facture.jsx`.
+- Front modifiés : `lib/adaptateur.js` (+lignesFacturePour, listerFactures,
+  emettreFacture, obtenirFacture, enregistrerPaiement), `ecrans/ListeAffaires.jsx`
+  (+bouton Facturer/Voir la facture sur affaires effectuées/confirmées),
+  `main.jsx` (+route facture).
+- Doc : `docs/modules/16-facture.md`.
+
+### Décisions d'architecture
+- Zéro logique métier dans l'écran : composerTotal et etatPaiement viennent du
+  Module 9 (déjà testé). L'écran saisit et affiche.
+- Deux vues : composition/émission puis suivi des paiements. Solde et statut
+  dérivés en direct (C-24). Facture émise présentée comme immuable (correction =
+  note de crédit, mentionné à l'utilisateur).
+
+### Écarts avec la documentation
+- Aucun.
+
+### Risques identifiés
+- L'insertion facture+lignes en mode réel est écrite mais non testée contre une
+  vraie base (vérification au branchement). L'émission de séquence passe par
+  cmd_emettre_facture (déjà en base).
+- Injection matériel consommé, note de crédit UI, PDF/Peppol : prêts côté
+  domaine, à câbler.
+
+### Prochaines étapes proposées
+1. PWA (manifest, service worker, icônes) — prérequis du but 3 (Play Store).
+2. Écran Contact/adresses (compléter le dossier).
+3. Branchement réel : bootstrap master, hook OAuth, upload C.B.D.

@@ -23,8 +23,10 @@ on conflict do nothing;
 -- (texte validé) doit être déposé par le fondateur dans Supabase Storage —
 -- fichier_ref est un chemin, jamais un contenu inventé ici. Nécessite l'org_id
 -- réel : remplacer :'org_id' à l'application, comme pour le seed du barème.
+-- Pour Roovers, utiliser org_id = '893d9c67-9d07-4408-a484-13fa31aec500' et
+-- fichier_ref = 'cbd/roovers-v1.pdf'.
 insert into documents_modele_versions (org_id, type, version, langue, juridiction, fichier_ref, actif)
-values (:'org_id', 'cbd', 1, 'fr', 'BE', 'cbd/roovers-v1.pdf', true)
+values ('893d9c67-9d07-4408-a484-13fa31aec500', 'cbd', 1, 'fr', 'BE', 'cbd/roovers-v1.pdf', true)
 on conflict do nothing;
 comment on table documents_modele_versions is
   'Modèles versionnés (I-6). type=cbd : fichier_ref pointe un document déposé en Storage — à uploader par le fondateur, jamais généré ni inventé.';

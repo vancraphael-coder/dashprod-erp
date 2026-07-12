@@ -391,3 +391,105 @@ export async function basculerAffectation(missionId, utilisateurId, roleMission)
   else m.affectations.push({ utilisateur_id: utilisateurId });
   ecrireDemo(d);
 }
+
+// ── Facturation ───────────────────────────────────────────────────────────────
+
+/**
+ * Construit les lignes de facture proposées pour une affaire : la prestation
+ * (depuis le chiffrage retenu) et, à terme, le matériel consommé (Stocks).
+ * En démo, dérive du montant TVAC déjà calculé.
+ */
+export async function lignesFacturePour(affaireId) {
+  const a = await obtenirAffaire(affaireId);
+  if (!a) return [];
+  const lignes = [];
+  if (a.faits) {
+    // Recompose la prestation HTVA depuis le TVAC connu (démo) ou le scénario (réel).
+    const htva = a.tvac_centimes ? Math.round(a.tvac_centimes / 1.21) : 0;
+    lignes.push({ type: "prestation", libelle: `Déménagement — ${a.client?.nom || ""}`.trim(),
+                  montant_htva_centimes: htva });
+  }
+  return lignes;
+}
+
+/** Liste les factures d'une organisation avec leur solde (vue). */
+export async function listerFactures() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("factures")
+      .select("id, numero, type, date_emission, tvac_centimes, emise, affaire_id, affaires(clients(nom))")
+      .order("date_emission", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+  const d = lireDemo();
+  return (d.factures || []).slice().sort((x, y) => (y.date_emission || "").localeCompare(x.date_emission || ""));
+}
+
+/** Émet une facture pour une affaire (numéro légal + gel). */
+export async function emettreFacture(affaireId, lignes, tauxTva = 21) {
+  if (modeDonnees() === "reel") {
+    // En réel : insérer la facture + lignes, puis cmd_emettre_facture (séquence).
+    // Le détail d'insertion est vérifié au branchement ; ici l'appel de commande.
+    const { data: fid, error } = await supabase.from("factures")
+      .insert({ affaire_id: affaireId, type: "facture" }).select("id").single();
+    if (error) throw error;
+    for (const [i, l] of lignes.entries()) {
+      await supabase.from("facture_lignes").insert({
+        facture_id: fid.id, type: l.type, libelle: l.libelle,
+        montant_htva_centimes: l.montant_htva_centimes, ordre: i + 1,
+      });
+    }
+    const { data: numero, error: e2 } = await supabase.rpc("cmd_emettre_facture", { p_facture: fid.id });
+    if (e2) throw e2;
+    return { id: fid.id, numero };
+  }
+  const d = lireDemo();
+  d.factures = d.factures || [];
+  d.seqFacture = (d.seqFacture || 0) + 1;
+  const annee = new Date().getFullYear();
+  const numero = `${annee}-${String(d.seqFacture).padStart(6, "0")}`;
+  const htva = lignes.reduce((s, l) => s + l.montant_htva_centimes, 0);
+  const tva = Math.round(htva * tauxTva / 100);
+  const aff = d.affaires.find((a) => a.id === affaireId);
+  const client = aff && d.clients.find((c) => c.id === aff.clientId);
+  const id = idDemo();
+  d.factures.push({
+    id, affaire_id: affaireId, numero, type: "facture",
+    date_emission: new Date().toISOString().slice(0, 10),
+    htva_centimes: htva, tva_centimes: tva, tvac_centimes: htva + tva,
+    emise: true, lignes, paiements: [], client: client?.nom,
+  });
+  if (aff) aff.etat = "facture";
+  ecrireDemo(d);
+  return { id, numero };
+}
+
+/** Récupère une facture avec ses paiements. */
+export async function obtenirFacture(factureId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("factures")
+      .select("*, facture_lignes(*), paiements(*)").eq("id", factureId).single();
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  return (d.factures || []).find((f) => f.id === factureId) || null;
+}
+
+/** Enregistre un paiement (ou remboursement si négatif) sur une facture. */
+export async function enregistrerPaiement(factureId, { montant_centimes, moyen, date }) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("paiements").insert({
+      facture_id: factureId, montant_centimes, moyen, date_paiement: date,
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const f = (d.factures || []).find((x) => x.id === factureId);
+  if (f) {
+    f.paiements = f.paiements || [];
+    f.paiements.push({ montant_centimes, moyen, date: date || new Date().toISOString().slice(0, 10) });
+    ecrireDemo(d);
+  }
+}
