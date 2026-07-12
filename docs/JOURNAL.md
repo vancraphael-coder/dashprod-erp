@@ -712,3 +712,36 @@ création d'un devis → offre signée). C'est ce qui rend l'ensemble utilisable
 1. PWA (manifest, service worker, icônes) — prérequis du but 3 (Play Store).
 2. Écran Contact/adresses (compléter le dossier).
 3. Branchement réel : bootstrap master, hook OAuth, upload C.B.D.
+
+---
+
+## Session 17 — Incident au branchement réel : privilèges perdus (0018)
+
+### Incident
+Premier vrai test d'intégration (connexion réelle de l'utilisateur master) :
+403 / 42501 « permission denied for table clients » sur toutes les tables.
+Cause racine : le reset « drop schema public cascade » recommandé avant de
+rejouer les migrations a effacé les privilèges par défaut du schéma public
+(installés par Supabase à la création du projet) ; le script de recréation ne
+les restaurait que partiellement (usage sur le schéma, pas les grants tables).
+Second bug latent identifié dans la foulée : l'adaptateur insère sans org_id
+(colonne NOT NULL) — aurait échoué juste après la réparation des grants.
+
+### Correctif — migration 0018_reparation_privileges.sql
+- Rétablit les grants standard Supabase (tables, séquences, fonctions) pour
+  anon/authenticated/service_role — la RLS reste la couche de sécurité (modèle
+  Supabase : grants larges, RLS restreint).
+- alter default privileges : les migrations futures n'auront plus ce piège.
+- Re-verrouille hook_ajouter_claims (réexposé par le grant global) : exécution
+  réservée à supabase_auth_admin.
+- DEFAULT jwt_org() sur toutes les colonnes org_id du schéma : l'organisation
+  vient du jeton ; le with check RLS reste le garde-fou.
+
+### Leçon (procédure)
+Tout futur reset de schéma doit utiliser 0018 comme post-scriptum obligatoire,
+ou mieux : ne plus jamais dropper le schéma entier (préférer drop des objets).
+
+### Premier branchement réel par ailleurs RÉUSSI
+Auth Google OK, hook OK, réclamation OK, master en rôle direction, app servie
+par Vercel sur la vraie base. Restent les 403 (corrigés par 0018) puis reprise
+de la construction : navigation, création de dossier complète, écrans manquants.
