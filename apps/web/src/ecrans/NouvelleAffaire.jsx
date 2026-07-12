@@ -95,7 +95,7 @@ export default function NouvelleAffaire({ retour, versDevis }) {
       <div style={{ margin: "0 16px" }}>
         <button style={{ ...S.boutonPlein, opacity: pret ? 1 : 0.5 }}
                 disabled={!pret || enCours} onClick={creer}>
-          {enCours ? "Création…" : "Créer et chiffrer →"}
+          {enCours ? "Création…" : "Créer le dossier →"}
         </button>
       </div>
     </div>

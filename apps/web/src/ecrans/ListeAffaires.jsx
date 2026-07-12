@@ -13,7 +13,7 @@ import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 
 const FILTRES = ["tous", "devis", "confirme", "en_cours", "effectue"];
 
-export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, peutGererEquipe, ouvrirEquipe, ouvrirPlanning, ouvrirFacture }) {
+export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
   const [affaires, setAffaires] = useState([]);
   const [recherche, setRecherche] = useState("");
   const [filtre, setFiltre] = useState("tous");
@@ -36,17 +36,9 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, peutGere
       <div style={S.entete}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div style={S.titre}>Dossiers</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {ouvrirPlanning && (
-              <button style={S.boutonLien} onClick={ouvrirPlanning}>Planning</button>
-            )}
-            {peutGererEquipe && (
-              <button style={S.boutonLien} onClick={ouvrirEquipe}>Équipe</button>
-            )}
-            <div style={{ fontSize: 12.5, color: C.muet }}>
-              CA signé&nbsp;
-              <b style={{ color: C.encre }}>{euros(ca)}</b>
-            </div>
+          <div style={{ fontSize: 12.5, color: C.muet }}>
+            CA signé&nbsp;
+            <b style={{ color: C.encre }}>{euros(ca)}</b>
           </div>
         </div>
         <input
@@ -100,14 +92,7 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, peutGere
               )}
             </div>
           </div>
-          {ouvrirFacture && ["effectue", "confirme", "facture", "paye"].includes(a.etat) && (
-            <button
-              onClick={(e) => { e.stopPropagation(); ouvrirFacture(a.id); }}
-              style={{ ...S.boutonLien, marginTop: 8, border: `1.5px solid ${C.bord}`,
-                       borderRadius: 9, padding: "6px 12px", width: "100%", textAlign: "center" }}>
-              {a.etat === "facture" || a.etat === "paye" ? "Voir la facture" : "Facturer →"}
-            </button>
-          )}
+
         </div>
       ))}
 

@@ -745,3 +745,40 @@ ou mieux : ne plus jamais dropper le schéma entier (préférer drop des objets)
 Auth Google OK, hook OK, réclamation OK, master en rôle direction, app servie
 par Vercel sur la vraie base. Restent les 403 (corrigés par 0018) puis reprise
 de la construction : navigation, création de dossier complète, écrans manquants.
+
+---
+
+## Session 17b — Module 17 (Dossier complet & navigation)
+
+### Contexte
+Premier retour d'usage réel du fondateur après branchement : création minimale,
+pas de barre de navigation, écrans non reliés, planning nu. Réponse directe.
+
+### Modules terminés
+- **Module 17 — Dossier & navigation** : barre inférieure (Dossiers, Planning,
+  Équipe, Compte avec déconnexion), écran Dossier hub avec Contact complet
+  (adresses multiples chargement/déchargement : type, étage, ascenseur,
+  monte-meubles ; date/heure souhaitées ; remarques), recâblage du parcours
+  (carte → Dossier ; retours → Dossier ; fin des culs-de-sac).
+
+### Fichiers créés / modifiés
+- SQL : `0019_dossier_contact.sql` (date_souhaitee/heure_souhaitee — les
+  adresses existaient depuis 0005, enfin projetées).
+- Front nouveaux : `ecrans/Dossier.jsx`.
+- Front modifiés : `main.jsx` (barre de nav, écran Compte, recâblage),
+  `lib/adaptateur.js` (+obtenirContact, sauverContact),
+  `ecrans/ListeAffaires.jsx` (nettoyage en-tête, carte → dossier),
+  `ecrans/NouvelleAffaire.jsx` (libellé bouton).
+- Doc : `docs/modules/17-dossier-navigation.md`.
+
+### Décisions d'architecture
+- Date souhaitée sur l'affaire (commerciale) vs date d'exécution sur la mission
+  (C-04) — la confirmation transformera l'une en l'autre.
+- Le Dossier devient le hub : les écrans du parcours y reviennent.
+- Barre de nav : Équipe conditionnée à gerer_referentiels ; Compte porte la
+  déconnexion (absente jusqu'ici — un utilisateur réel ne pouvait pas sortir).
+
+### Prochaines étapes proposées
+1. PWA (manifest, service worker, icônes) — but 3.
+2. Création de mission à la confirmation (date souhaitée → mission planifiée).
+3. Fiche membre Équipe (congés, documents — domaine Module 8 prêt).

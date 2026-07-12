@@ -493,3 +493,68 @@ export async function enregistrerPaiement(factureId, { montant_centimes, moyen, 
     ecrireDemo(d);
   }
 }
+
+// ── Dossier : contact, adresses, date souhaitée ───────────────────────────────
+
+/**
+ * Récupère le volet Contact d'une affaire : adresses de chargement et de
+ * déchargement (étage, ascenseur, monte-meubles — table affaire_adresses,
+ * Module 3), date/heure souhaitées, remarques.
+ */
+export async function obtenirContact(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data: a, error } = await supabase.from("affaires")
+      .select("date_souhaitee, heure_souhaitee, notes_commerciales")
+      .eq("id", affaireId).single();
+    if (error) throw error;
+    const { data: adr, error: e2 } = await supabase.from("affaire_adresses")
+      .select("*").eq("affaire_id", affaireId).order("ordre");
+    if (e2) throw e2;
+    const map = (sens) => (adr || []).filter((x) => x.sens === sens).map((x) => ({
+      id: x.id, adresse: x.adresse || "", type: x.type_lieu || "maison",
+      etage: x.etage || "", ascenseur: !!x.ascenseur, monteMeubles: !!x.monte_meubles,
+    }));
+    return {
+      charges: map("chargement"), decharges: map("dechargement"),
+      date: a?.date_souhaitee || "", heure: (a?.heure_souhaitee || "08:00").slice(0, 5),
+      notes: a?.notes_commerciales || "",
+    };
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  return (a && a.contact) || { charges: [], decharges: [], date: "", heure: "08:00", notes: "" };
+}
+
+/**
+ * Sauve le volet Contact : remplace les adresses de l'affaire (stratégie
+ * simple delete+insert — volumes minuscules), met à jour date/heure/notes.
+ */
+export async function sauverContact(affaireId, { charges, decharges, date, heure, notes }) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("affaires").update({
+      date_souhaitee: date || null, heure_souhaitee: heure || null,
+      notes_commerciales: notes || null,
+    }).eq("id", affaireId);
+    if (error) throw error;
+    const { error: eDel } = await supabase.from("affaire_adresses")
+      .delete().eq("affaire_id", affaireId);
+    if (eDel) throw eDel;
+    const lignes = [];
+    (charges || []).forEach((c, i) => lignes.push({
+      affaire_id: affaireId, sens: "chargement", ordre: i + 1, adresse: c.adresse,
+      type_lieu: c.type, etage: c.etage, ascenseur: c.ascenseur, monte_meubles: c.monteMeubles,
+    }));
+    (decharges || []).forEach((c, i) => lignes.push({
+      affaire_id: affaireId, sens: "dechargement", ordre: i + 1, adresse: c.adresse,
+      type_lieu: c.type, etage: c.etage, ascenseur: c.ascenseur, monte_meubles: c.monteMeubles,
+    }));
+    if (lignes.length) {
+      const { error: eIns } = await supabase.from("affaire_adresses").insert(lignes);
+      if (eIns) throw eIns;
+    }
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  if (a) { a.contact = { charges, decharges, date, heure, notes }; ecrireDemo(d); }
+}
