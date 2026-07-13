@@ -83,22 +83,44 @@ export async function listerClients() {
 
 /** Liste les affaires avec leur client (pour la liste des dossiers). */
 export async function listerAffaires() {
+  // Tri métier : le bureau vit dans l'ordre chronologique des CHANTIERS
+  // (date souhaitée), les dossiers sans date en fin, puis créations récentes.
+  const trier = (liste) => liste.sort((x, y) => {
+    if (x.date_souhaitee && y.date_souhaitee)
+      return x.date_souhaitee.localeCompare(y.date_souhaitee);
+    if (x.date_souhaitee) return -1;
+    if (y.date_souhaitee) return 1;
+    return (y.creeLe || "").localeCompare(x.creeLe || "");
+  });
+
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase
       .from("affaires")
-      .select("id, etat, formule, created_at, clients(id, nom, tel)")
+      .select("id, etat, formule, created_at, date_souhaitee, clients(id, nom, tel), scenarios(retenu, resultats)")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    // Montants : lus depuis le scénario retenu à l'intégration (vérifié au branchement).
-    return (data || []).map((a) => ({
-      id: a.id, etat: a.etat, formule: a.formule, creeLe: a.created_at,
-      client: a.clients, tvac_centimes: null, marge_pct: null, faits: null, couts: null,
+    return trier((data || []).map((a) => {
+      // Montants depuis le scénario retenu (corrige : les cartes réelles
+      // n'affichaient jamais aucun montant).
+      const retenu = (a.scenarios || []).find((sc) => sc.retenu) || (a.scenarios || [])[0];
+      const r = retenu?.resultats || {};
+      return {
+        id: a.id, etat: a.etat, formule: a.formule, creeLe: a.created_at,
+        date_souhaitee: a.date_souhaitee || null,
+        client: a.clients,
+        tvac_centimes: r.tvac_centimes ?? null,
+        marge_pct: r.marge_pct ?? null,
+        faits: null, couts: null,
+      };
     }));
   }
   const d = lireDemo();
-  return d.affaires
-    .map((a) => ({ ...a, client: d.clients.find((c) => c.id === a.clientId) }))
-    .sort((x, y) => (y.creeLe || "").localeCompare(x.creeLe || ""));
+  return trier(d.affaires
+    .map((a) => ({
+      ...a,
+      client: d.clients.find((c) => c.id === a.clientId),
+      date_souhaitee: a.contact?.date || null,
+    })));
 }
 
 /** Récupère une affaire complète. */
@@ -713,4 +735,18 @@ export async function sauverCamionsAffaire(affaireId, ids) {
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
   if (a) { a.camions = ids; ecrireDemo(d); }
+}
+
+/** Retrouve la facture d'une affaire (retour depuis le dossier), ou null. */
+export async function obtenirFacturePourAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("factures")
+      .select("*, facture_lignes(*), paiements(*)")
+      .eq("affaire_id", affaireId).eq("emise", true)
+      .order("date_emission", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  return (d.factures || []).find((f) => f.affaire_id === affaireId) || null;
 }

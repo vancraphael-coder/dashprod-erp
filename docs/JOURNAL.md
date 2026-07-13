@@ -893,3 +893,28 @@ etat_affaire (0005) contient planifie/en_cours/clos. Corrigé dans la fiche 19.
 Refactor d'Equipe.jsx (mode intégré) : premier remplacement Python trop
 optimiste → fragment JSX non fermé, build cassé. Corrigé au motif exact ;
 leçon réitérée : toujours rebuilder après un refactor scripté.
+
+---
+
+## Session 22 — Clôture de la vague P0 (n°5, 7, 8, 9)
+
+### Livré
+- **OGM** (facturation/ogm.js) : mod 97 belge, déterministe, +4 tests → 155/155.
+- **FactureDoc.jsx** : facture imprimable (client, lignes, totaux, acompte/solde,
+  IBAN + OGM, pied légal) — même mécanique print que le contrat.
+- **Liste** : date de chantier en toutes lettres + tri métier (par date de
+  chantier, sans-date en fin) + CORRECTION : les cartes réelles n'affichaient
+  jamais de montant (tvac null) — jointure scénario retenu.
+- **Devis** : Divers + Péages (le moteur les acceptait déjà !) + gating
+  voir_prix sur coûts et marge (le domaine l'exigeait, l'écran l'ignorait).
+- **Facture** : retour sur un dossier facturé retrouve la facture émise.
+
+### Corrections de ma cartographie
+- Marge € : déjà affichée (04 la disait manquante).
+- diversEuros/peagesEuros : déjà dans le moteur (04 les croyait absents du
+  domaine). La cartographie reste juste sur les ÉCRANS, trop pessimiste sur le
+  domaine — biais à garder en tête pour la vague P1.
+
+### État : LES 9 P0 DE LA SYNTHÈSE SONT CLOS.
+Prochaine vague (P1, ordre proposé) : brief WhatsApp + itinéraire Maps (quick
+wins), écran Mail, congés + métier terrain, matériel E/U/R, réduction devis.

@@ -18,14 +18,14 @@ const FORMULES = [
   { cle: "forfait", libelle: "Forfait" },
 ];
 
-export default function Devis({ affaireId, retour, versOffre, versReleve }) {
+export default function Devis({ affaireId, retour, versOffre, versReleve, peutVoirPrix = true }) {
   const [affaire, setAffaire] = useState(null);
   const [faits, setFaits] = useState({
     formule: "tarifaire", nbDemenageurs: 3, heures: 6, nbCamions: 1,
     km: 0, elevateur: false, remisePct: 0,
     heuresEmballage: 0, kmEmballage: 0, forfaitTvacEuros: 0,
   });
-  const [couts, setCouts] = useState({ mainOeuvreEuros: 0, carburantEuros: 0, materielEuros: 0 });
+  const [couts, setCouts] = useState({ mainOeuvreEuros: 0, carburantEuros: 0, materielEuros: 0, diversEuros: 0, peagesEuros: 0 });
   const [sauve, setSauve] = useState(false);
 
   useEffect(() => {
@@ -169,23 +169,38 @@ export default function Devis({ affaireId, retour, versOffre, versReleve }) {
         )}
       </div>
 
-      {/* Coûts réels — internes, jamais dans un document client */}
-      <div style={S.carte}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
-          Coûts réels <span style={{ fontWeight: 500, color: C.muet }}>(internes)</span>
+      {/* Coûts réels — CONFIDENTIEL : jamais dans un document client, et
+          invisibles sans la capacité voir_prix (S3) — le domaine l'exigeait,
+          l'écran le respecte enfin (alignement 04 §7). */}
+      {peutVoirPrix && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+            Coûts réels <span style={{ fontWeight: 500, color: C.muet }}>— confidentiel</span>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {[["mainOeuvreEuros", "Main-d'œuvre"], ["carburantEuros", "Carburant"], ["materielEuros", "Matériel"]]
+              .map(([cle, lib]) => (
+              <div key={cle} style={{ flex: 1 }}>
+                <label style={S.label}>{lib} (€)</label>
+                <input style={S.input} type="number" min="0"
+                       value={couts[cle]}
+                       onChange={(e) => majCout(cle, num(e.target.value))} />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {[["diversEuros", "Divers"], ["peagesEuros", "Péages"]]
+              .map(([cle, lib]) => (
+              <div key={cle} style={{ flex: 1 }}>
+                <label style={S.label}>{lib} (€)</label>
+                <input style={S.input} type="number" min="0"
+                       value={couts[cle] ?? 0}
+                       onChange={(e) => majCout(cle, num(e.target.value))} />
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          {[["mainOeuvreEuros", "Main-d'œuvre"], ["carburantEuros", "Carburant"], ["materielEuros", "Matériel"]]
-            .map(([cle, lib]) => (
-            <div key={cle} style={{ flex: 1 }}>
-              <label style={S.label}>{lib} (€)</label>
-              <input style={S.input} type="number" min="0"
-                     value={couts[cle]}
-                     onChange={(e) => majCout(cle, num(e.target.value))} />
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Résultat — le moteur parle */}
       {scenario && (
@@ -193,21 +208,25 @@ export default function Devis({ affaireId, retour, versOffre, versReleve }) {
           <Ligne l="Total HTVA" v={euros(scenario.htva_centimes)} />
           <Ligne l="TVA 21 %" v={euros(scenario.tva_centimes)} />
           <Ligne l="Total TVAC" v={euros(scenario.tvac_centimes)} gras />
-          <div style={{
-            marginTop: 12, padding: "10px 12px", borderRadius: 10,
-            background: "#F8FAFC", border: `1px solid ${C.bord}`,
-            display: "flex", justifyContent: "space-between", alignItems: "center",
-          }}>
-            <span style={{ fontSize: 12.5, color: C.muet }}>
-              Marge (recette − coûts)
-            </span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: ZONES_MARGE[scenario.zone] }}>
-              {euros(scenario.marge_centimes)} · {scenario.marge_pct} %
-            </span>
-          </div>
-          <div style={{ fontSize: 11, color: C.muet, marginTop: 6 }}>
-            Zone cible : 25 – 45 % de la recette HTVA.
-          </div>
+          {peutVoirPrix && (
+            <>
+              <div style={{
+                marginTop: 12, padding: "10px 12px", borderRadius: 10,
+                background: "#F8FAFC", border: `1px solid ${C.bord}`,
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}>
+                <span style={{ fontSize: 12.5, color: C.muet }}>
+                  Marge (recette − coûts)
+                </span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: ZONES_MARGE[scenario.zone] }}>
+                  {euros(scenario.marge_centimes)} · {scenario.marge_pct} %
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: C.muet, marginTop: 6 }}>
+                Zone cible : 25 – 45 % de la recette HTVA.
+              </div>
+            </>
+          )}
         </div>
       )}
 

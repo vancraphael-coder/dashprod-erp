@@ -9,7 +9,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   obtenirAffaire, lignesFacturePour, emettreFacture, obtenirFacture, enregistrerPaiement,
+  obtenirOrganisation, obtenirContact, obtenirFacturePourAffaire,
 } from "../lib/adaptateur.js";
+import FactureDoc from "./FactureDoc.jsx";
 import { composerTotal, etatPaiement } from "@domaine/facturation/facture.js";
 import { C, S, euros } from "../lib/theme.jsx";
 
@@ -28,13 +30,29 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
   // Saisie de paiement
   const [montant, setMontant] = useState("");
   const [moyen, setMoyen] = useState("virement");
+  const [org, setOrg] = useState(null);
+  const [adresses, setAdresses] = useState(null);
 
   async function recharger() {
+    setOrg(await obtenirOrganisation().catch(() => null));
+    if (affaireId) {
+      const a = await obtenirAffaire(affaireId);
+      setAffaire(a);
+      setLignes(await lignesFacturePour(affaireId));
+      const c = await obtenirContact(affaireId).catch(() => null);
+      if (c) setAdresses({
+        date: c.date,
+        charge: c.charges?.[0]?.adresse || "",
+        decharge: c.decharges?.[0]?.adresse || "",
+      });
+      // Une facture existe-t-elle déjà pour cette affaire ? (retour sur le dossier)
+      if (!facture) {
+        const existante = await obtenirFacturePourAffaire(affaireId).catch(() => null);
+        if (existante) setFacture(existante);
+      }
+    }
     if (factureExistanteId) {
       setFacture(await obtenirFacture(factureExistanteId));
-    } else if (affaireId) {
-      setAffaire(await obtenirAffaire(affaireId));
-      setLignes(await lignesFacturePour(affaireId));
     }
   }
   useEffect(() => { recharger(); }, [affaireId, factureExistanteId]);
@@ -129,6 +147,19 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
           <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: st.couleur,
                          borderRadius: 999, padding: "3px 10px" }}>{st.libelle}</span>
         </div>
+      </div>
+
+      {/* Le document lui-même — imprimable seul (classe partagée avec le contrat) */}
+      <FactureDoc facture={facture} organisation={org}
+                  client={{ nom: facture.client || affaire?.client?.nom }}
+                  adresses={adresses} />
+
+      <div className="no-print" style={{ margin: "0 16px 12px" }}>
+        <button style={{ ...S.boutonLien, width: "100%", textAlign: "center",
+                          border: `1.5px solid ${C.bord}`, borderRadius: 11, padding: "11px" }}
+                onClick={() => window.print()}>
+          🖨️ Imprimer / Enregistrer en PDF
+        </button>
       </div>
 
       <div style={S.carte}>

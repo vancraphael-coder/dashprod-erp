@@ -75,8 +75,13 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
             <Badge etat={a.etat} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-            <div style={{ fontSize: 12.5, color: C.muet }}>
-              {a.client?.tel || "—"} · créé le {a.creeLe || "—"}
+            <div style={{ fontSize: 12.5,
+                          color: a.date_souhaitee ? C.encre : C.muet,
+                          fontWeight: a.date_souhaitee ? 600 : 400 }}>
+              {a.date_souhaitee
+                ? "📅 " + new Date(a.date_souhaitee + "T00:00:00")
+                    .toLocaleDateString("fr-BE", { weekday: "long", day: "numeric", month: "long" })
+                : "Date à définir"}
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: C.encre }}>

@@ -134,6 +134,7 @@ function App() {
 
   const capacites = profil?.capacites || [];
   const peutGererEquipe = modeDonnees() === "demo" || capacites.includes("gerer_referentiels");
+  const peutVoirPrix = modeDonnees() === "demo" || capacites.includes("voir_prix");
   const nav = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
     nouvelle: () => setRoute({ ecran: "nouvelle", affaireId: null }),
@@ -179,7 +180,8 @@ function App() {
     ecran = <Releve affaireId={route.affaireId} retour={retourDossier} versDevis={nav.devis} />;
   } else if (route.ecran === "devis") {
     ecran = <Devis affaireId={route.affaireId} retour={retourDossier}
-                   versOffre={nav.offre} versReleve={nav.releve} />;
+                   versOffre={nav.offre} versReleve={nav.releve}
+                   peutVoirPrix={peutVoirPrix} />;
   } else if (route.ecran === "offre") {
     ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
   } else if (route.ecran === "facture") {
