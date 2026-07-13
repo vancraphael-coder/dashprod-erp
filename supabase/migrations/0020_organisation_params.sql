@@ -29,4 +29,3 @@ update organisations set
   email   = coalesce(email,   'raphael.roovers@gmail.com'),
   iban    = coalesce(iban,    'BE73 3101 6268 5860')
 where tva = 'BE0478363616';
->>>>>>> 1302b51 (sql 20 et 21 orga)

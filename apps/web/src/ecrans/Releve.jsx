@@ -7,7 +7,11 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from "react";
-import { obtenirAffaire, enregistrerReleve, obtenirReleve } from "../lib/adaptateur.js";
+import {
+  obtenirAffaire, enregistrerReleve, obtenirReleve,
+  listerVehicules, obtenirCamionsAffaire,
+} from "../lib/adaptateur.js";
+import { capaciteFlotte, jaugeCapacite } from "@domaine/flotte/vehicules.js";
 import {
   PIECES, volumeTotal, suggererComposition, grouperParPiece, volumeUnitaire,
   articlesADemonter,
@@ -32,16 +36,22 @@ export default function Releve({ affaireId, retour, versDevis }) {
   const [inv, setInv] = useState([]);
   const [piece, setPiece] = useState("Salon");
   const [libre, setLibre] = useState("");
+  const [camionsSel, setCamionsSel] = useState([]);
   const [sauve, setSauve] = useState(false);
 
   useEffect(() => {
     obtenirAffaire(affaireId).then(setAffaire);
     obtenirReleve(affaireId).then((r) => setInv(r || []));
+    Promise.all([listerVehicules(), obtenirCamionsAffaire(affaireId)])
+      .then(([flotte, ids]) => setCamionsSel(flotte.filter((v) => ids.includes(v.id))))
+      .catch(() => {});
   }, [affaireId]);
 
   const volume = useMemo(() => volumeTotal(inv), [inv]);
   const compo = useMemo(() => suggererComposition(volume), [volume]);
   const groupes = useMemo(() => grouperParPiece(inv), [inv]);
+  const capacite = useMemo(() => capaciteFlotte(camionsSel), [camionsSel]);
+  const jauge = useMemo(() => jaugeCapacite(volume, capacite), [volume, capacite]);
   const aDemonter = useMemo(() => articlesADemonter(inv), [inv]);
 
   function ajouter(nom) {
@@ -111,6 +121,33 @@ export default function Releve({ affaireId, retour, versDevis }) {
           <span style={{ color: C.muet }}> — à confirmer au devis</span>
         </div>
       </div>
+
+      {/* Jauge capacité : volume relevé vs camions sélectionnés au dossier.
+          Évite le « tout ne rentre pas » découvert le jour J (alignement 03 §2). */}
+      {capacite > 0 && (
+        <div style={S.carte}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.muet }}>
+              CAPACITÉ CAMIONS
+            </span>
+            <span style={{ fontSize: 12.5, fontWeight: 800,
+              color: jauge.zone === "surcharge" ? C.rouge
+                   : jauge.zone === "serre" ? C.ambre : C.vert }}>
+              {volume} / {capacite} m³{jauge.zone === "surcharge" ? " — surchargé" : ""}
+            </span>
+          </div>
+          <div style={{ height: 8, borderRadius: 999, background: "#EEF2F9", overflow: "hidden" }}>
+            <div style={{
+              height: "100%", width: `${Math.min(100, jauge.pct)}%`, borderRadius: 999,
+              background: jauge.zone === "surcharge" ? C.rouge
+                        : jauge.zone === "serre" ? C.ambre : C.vert,
+            }} />
+          </div>
+          <div style={{ fontSize: 11, color: C.fantome, marginTop: 5 }}>
+            {camionsSel.map((v) => v.nom).join(" · ")}
+          </div>
+        </div>
+      )}
 
       {/* Sélecteur de pièce */}
       <div style={{ padding: "0 16px", display: "flex", gap: 6, overflowX: "auto", marginBottom: 10 }}>

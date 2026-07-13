@@ -873,3 +873,23 @@ pourrait oublier de créer la mission ; un trigger, non.
 ### Correction d'une erreur de ma cartographie
 docs/alignement/01 disait « Dashprod n'a pas d'état en cours » : FAUX, l'enum
 etat_affaire (0005) contient planifie/en_cours/clos. Corrigé dans la fiche 19.
+
+---
+
+## Session 21 — P0 n°4 : la flotte (camions)
+
+### Livré
+- Domaine `flotte/vehicules.js` (capacité, jauge 85/100 %, alertes via
+  qualifierEcheance — une seule règle d'échéance RH/Flotte). 5 tests → 151/151.
+- 0022 : `affaires.camions` (sélection commerciale) + trigger étendu qui
+  REPORTE la sélection dans mission_vehicules à la confirmation (C-04).
+- Écran Ressources (barre de nav) : onglet Camions complet (fiches, CT,
+  assurance, état méca horodaté, alerte agrégée) + onglet Membres (invitations
+  existantes, intégrées).
+- Dossier : chips camions (alerte = rouge mais sélectionnable, C-20).
+- Relevé : jauge volume/capacité réelle des camions sélectionnés.
+
+### Incident réglé en session
+Refactor d'Equipe.jsx (mode intégré) : premier remplacement Python trop
+optimiste → fragment JSX non fermé, build cassé. Corrigé au motif exact ;
+leçon réitérée : toujours rebuilder après un refactor scripté.

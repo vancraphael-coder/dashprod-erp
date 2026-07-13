@@ -16,7 +16,7 @@ const LIBELLES_ROLE = {
   chef_equipe: "Chef d'équipe", demenageur: "Déménageur",
 };
 
-export default function Equipe({ retour }) {
+export default function Equipe({ retour, integre }) {
   const [membres, setMembres] = useState([]);
   const [email, setEmail] = useState("");
   const [nom, setNom] = useState("");
@@ -42,12 +42,8 @@ export default function Equipe({ retour }) {
     }
   }
 
-  return (
-    <div style={S.page}>
-      <div style={S.entete}>
-        <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
-        <div style={S.titre}>Équipe</div>
-      </div>
+  const contenu = (
+    <>
 
       <div style={S.carte}>
         <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 4 }}>
@@ -115,6 +111,15 @@ export default function Equipe({ retour }) {
           </div>
         </div>
       ))}
+    </>
+  );
+  if (integre) return contenu;
+  return (
+    <div style={S.page}>
+      <div style={S.entete}>
+        <div style={S.titre}>Équipe</div>
+      </div>
+      {contenu}
     </div>
   );
 }

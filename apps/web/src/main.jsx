@@ -22,7 +22,7 @@ import Devis from "./ecrans/Devis.jsx";
 import Offre from "./ecrans/Offre.jsx";
 import Facture from "./ecrans/Facture.jsx";
 import Planning from "./ecrans/Planning.jsx";
-import Equipe from "./ecrans/Equipe.jsx";
+import Ressources from "./ecrans/Ressources.jsx";
 
 function BandeauDemo({ versDiagnostic }) {
   if (modeDonnees() !== "demo") return null;
@@ -42,7 +42,7 @@ function BarreNav({ actif, aller, peutGererEquipe }) {
   const items = [
     ["liste", "📁", "Dossiers"],
     ["planning", "📅", "Planning"],
-    ...(peutGererEquipe ? [["equipe", "👥", "Équipe"]] : []),
+    ...(peutGererEquipe ? [["equipe", "🚛", "Ressources"]] : []),
     ["compte", "⚙️", "Compte"],
   ];
   return (
@@ -166,7 +166,7 @@ function App() {
   } else if (route.ecran === "compte") {
     ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic} />;
   } else if (route.ecran === "equipe") {
-    ecran = <Equipe retour={nav.liste} />;
+    ecran = <Ressources />;
   } else if (route.ecran === "planning") {
     ecran = <Planning ouvrirDossier={nav.dossier} />;
   } else if (route.ecran === "nouvelle") {

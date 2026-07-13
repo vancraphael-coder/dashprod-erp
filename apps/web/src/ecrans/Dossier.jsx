@@ -8,7 +8,11 @@
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
-import { obtenirAffaire, obtenirContact, sauverContact } from "../lib/adaptateur.js";
+import {
+  obtenirAffaire, obtenirContact, sauverContact,
+  listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
+} from "../lib/adaptateur.js";
+import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { C, S, Badge, euros } from "../lib/theme.jsx";
 
 function adrVide() {
@@ -21,9 +25,13 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const [contact, setContact] = useState(null);
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
+  const [flotte, setFlotte] = useState([]);
+  const [camions, setCamions] = useState([]);
 
   useEffect(() => {
     obtenirAffaire(affaireId).then(setAffaire);
+    listerVehicules().then(setFlotte).catch(() => {});
+    obtenirCamionsAffaire(affaireId).then(setCamions).catch(() => {});
     obtenirContact(affaireId).then((c) => setContact({
       ...c,
       charges: c.charges.length ? c.charges : [adrVide()],
@@ -50,10 +58,20 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   }
   function maj(champ, valeur) { setContact((c) => ({ ...c, [champ]: valeur })); setSauve(false); }
 
+  async function basculerCamion(id) {
+    const suivant = camions.includes(id)
+      ? camions.filter((x) => x !== id) : [...camions, id];
+    setCamions(suivant);
+    setSauve(false);
+  }
+
   async function enregistrer() {
     setErreur(null);
-    try { await sauverContact(affaireId, contact); setSauve(true); }
-    catch (e) { setErreur(e.message); }
+    try {
+      await sauverContact(affaireId, contact);
+      await sauverCamionsAffaire(affaireId, camions);
+      setSauve(true);
+    } catch (e) { setErreur(e.message); }
   }
 
   const chiffree = affaire.tvac_centimes != null;
@@ -109,6 +127,37 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </div>
         </div>
       </div>
+
+      {/* Camions pressentis — reportés sur la mission à la confirmation (0022).
+          Un camion en alerte (méca urgente, CT expiré) reste sélectionnable
+          mais s'affiche en rouge : le système signale, l'humain décide. */}
+      {flotte.length > 0 && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
+            Camions ({camions.length})
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {flotte.map((v) => {
+              const sel = camions.includes(v.id);
+              const alerte = alertesVehicule(v).niveau === "urgent";
+              return (
+                <button key={v.id} onClick={() => basculerCamion(v.id)} style={{
+                  padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+                  fontSize: 12.5, fontWeight: 600,
+                  border: `1.5px solid ${sel ? C.bleu : alerte ? "#F3C7C7" : C.bord}`,
+                  background: sel ? "#E7EFFC" : alerte ? "#FEF2F2" : C.blanc,
+                  color: sel ? C.bleu : alerte ? C.rouge : C.encre,
+                }}>
+                  {alerte ? "⚠ " : "🚛 "}{v.nom}
+                  <span style={{ color: sel ? C.bleu : C.fantome, fontWeight: 500 }}>
+                    {" "}· {v.volume_m3 || "?"} m³
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Adresses */}
       <BlocAdresses titre="Chargement" liste={contact.charges}

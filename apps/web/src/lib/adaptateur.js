@@ -628,3 +628,89 @@ export async function composerOffre(affaireId) {
     tvac_centimes: tvac,
   };
 }
+
+// ── Flotte (véhicules) ────────────────────────────────────────────────────────
+
+const CAMIONS_DEMO = [
+  { id: "v1", nom: "Iveco 1", type: "fourgon", volume_m3: 20, immatriculation: "1-ABC-123",
+    ct_echeance: "2026-11-15", assurance_echeance: "2026-09-30", assurance_scannee: true,
+    etat_mecanique: "ok", meca_note: "", meca_constat_le: null },
+  { id: "v2", nom: "Renault Master", type: "hayon", volume_m3: 12, immatriculation: "1-XYZ-789",
+    ct_echeance: "2026-07-28", assurance_echeance: "2027-01-15", assurance_scannee: false,
+    etat_mecanique: "surveiller", meca_note: "Bruit embrayage", meca_constat_le: "2026-07-01" },
+];
+
+/** Liste les véhicules de l'organisation. */
+export async function listerVehicules() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("vehicules").select("*").order("nom");
+    if (error) throw error;
+    return data || [];
+  }
+  const d = lireDemo();
+  if (!d.vehicules) { d.vehicules = CAMIONS_DEMO; ecrireDemo(d); }
+  return d.vehicules;
+}
+
+/** Crée ou met à jour un véhicule (id absent = création). */
+export async function sauverVehicule(v) {
+  if (modeDonnees() === "reel") {
+    if (v.id) {
+      const { id, ...champs } = v;
+      const { error } = await supabase.from("vehicules").update(champs).eq("id", id);
+      if (error) throw error;
+      return id;
+    }
+    const { data, error } = await supabase.from("vehicules").insert(v).select("id").single();
+    if (error) throw error;
+    return data.id;
+  }
+  const d = lireDemo();
+  d.vehicules = d.vehicules || [];
+  if (v.id) {
+    d.vehicules = d.vehicules.map((x) => x.id === v.id ? { ...x, ...v } : x);
+  } else {
+    v.id = idDemo();
+    d.vehicules.push(v);
+  }
+  ecrireDemo(d);
+  return v.id;
+}
+
+/** Supprime un véhicule. */
+export async function supprimerVehicule(id) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("vehicules").delete().eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.vehicules = (d.vehicules || []).filter((x) => x.id !== id);
+  ecrireDemo(d);
+}
+
+/** Camions pressentis d'une affaire (identifiants). */
+export async function obtenirCamionsAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("affaires")
+      .select("camions").eq("id", affaireId).single();
+    if (error) throw error;
+    return data?.camions || [];
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  return (a && a.camions) || [];
+}
+
+/** Sauve la sélection de camions d'une affaire. */
+export async function sauverCamionsAffaire(affaireId, ids) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("affaires")
+      .update({ camions: ids }).eq("id", affaireId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  if (a) { a.camions = ids; ecrireDemo(d); }
+}
