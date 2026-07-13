@@ -4,7 +4,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { grouperParJour, chargeDuJour, missionsDuMembre } from "../src/operations/agenda.js";
+import {
+  grouperParJour, chargeDuJour, missionsDuMembre, grilleMois, missionsDuJour,
+} from "../src/operations/agenda.js";
 
 test("grouperParJour trie les jours et les missions par heure", () => {
   const missions = [
@@ -47,4 +49,42 @@ test("missionsDuMembre tolère différentes formes d'affectation", () => {
     { id: "b", affectations: [{ utilisateurId: "u1" }] },    // camelCase
   ];
   assert.equal(missionsDuMembre(missions, "u1").length, 2);
+});
+
+// --- Grille calendrier (vue mensuelle) ---------------------------------------
+
+test("grilleMois : décalage correct pour une semaine commençant lundi", () => {
+  // 1er juillet 2026 est un MERCREDI → 2 cases vides (lundi, mardi).
+  const g = grilleMois(2026, 6, []);
+  assert.equal(g.decalage, 2);
+  assert.equal(g.jours.length, 31);
+});
+
+test("grilleMois : un mois commençant un dimanche décale de 6 (piège getDay)", () => {
+  // 1er mars 2026 est un DIMANCHE → getDay()=0, mais 6 cases vides au lundi.
+  const g = grilleMois(2026, 2, []);
+  assert.equal(g.decalage, 6);
+});
+
+test("grilleMois : densité des missions par jour", () => {
+  const missions = [
+    { date: "2026-07-14" }, { date: "2026-07-14" }, { date: "2026-07-20" },
+  ];
+  const g = grilleMois(2026, 6, missions);
+  assert.equal(g.jours.find((j) => j.jour === 14).nb, 2);
+  assert.equal(g.jours.find((j) => j.jour === 20).nb, 1);
+  assert.equal(g.jours.find((j) => j.jour === 15).nb, 0);
+});
+
+test("grilleMois : février bissextile 2028 → 29 jours", () => {
+  assert.equal(grilleMois(2028, 1, []).jours.length, 29);
+});
+
+test("missionsDuJour filtre et trie par heure", () => {
+  const missions = [
+    { id: "b", date: "2026-07-14", heure: "14:00" },
+    { id: "a", date: "2026-07-14", heure: "08:00" },
+    { id: "c", date: "2026-07-15", heure: "09:00" },
+  ];
+  assert.deepEqual(missionsDuJour(missions, "2026-07-14").map((m) => m.id), ["a", "b"]);
 });

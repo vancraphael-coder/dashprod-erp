@@ -1,14 +1,20 @@
 // =============================================================================
 // Écran — Offre & Signature.
-// Projection du module Documents (S9) : envoi = instanciation figée + C.B.D.
-// jointe automatiquement (S6, non désactivable) ; signature = dossier de
-// preuve (C-26) qui déverrouille la transition d'affaire vers « confirmé »
-// (invariant C-02 : aucun autre chemin n'y mène).
+// Trois temps : (1) APERÇU vivant du contrat, tant que rien n'est envoyé ;
+// (2) ENVOI = instanciation figée (contenu gelé + empreinte + C.B.D. jointe,
+// S6/C-02) — le contrat rendu vient dès lors du contenu FIGÉ, plus de la base
+// courante ; (3) SIGNATURE (C-26) qui déverrouille la transition vers
+// « confirmé » — aucun autre chemin n'y mène.
+// Impression : window.print() + CSS ciblant .contrat-imprimable (index.html).
 // =============================================================================
 
 import React, { useEffect, useRef, useState } from "react";
-import { obtenirAffaire, envoyerOffre, obtenirInstance, signerOffre } from "../lib/adaptateur.js";
+import {
+  obtenirAffaire, composerOffre, envoyerOffre, obtenirInstance, signerOffre,
+} from "../lib/adaptateur.js";
 import { instanceIntacte } from "@domaine/documents/instances.js";
+import { ACOMPTE_PCT } from "@domaine/documents/cgv.js";
+import Contrat from "./Contrat.jsx";
 import { C, S, euros } from "../lib/theme.jsx";
 
 const TYPE_PAR_FORMULE = {
@@ -18,180 +24,246 @@ const TYPE_PAR_FORMULE = {
 export default function Offre({ affaireId, retour }) {
   const [affaire, setAffaire] = useState(null);
   const [instance, setInstance] = useState(null);
+  const [apercu, setApercu] = useState(null);   // contenu composé, avant envoi
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
-  const [signature, setSignature] = useState(false); // pad ouvert ?
+  const [padOuvert, setPadOuvert] = useState(false);
 
   async function recharger() {
-    const a = await obtenirAffaire(affaireId);
-    setAffaire(a);
-    setInstance(await obtenirInstance(affaireId));
+    setAffaire(await obtenirAffaire(affaireId));
+    const inst = await obtenirInstance(affaireId);
+    setInstance(inst);
+    if (!inst) setApercu(await composerOffre(affaireId));
   }
   useEffect(() => { recharger(); }, [affaireId]);
 
   async function envoyer() {
-    if (!affaire?.faits) { setErreur("Chiffrez d'abord le devis."); return; }
     setErreur(null); setEnCours(true);
     try {
-      const contenu = {
-        client: affaire.client?.nom, faits: affaire.faits,
-        tvac_centimes: affaire.tvac_centimes, date: new Date().toISOString().slice(0, 10),
-      };
-      const type = TYPE_PAR_FORMULE[affaire.faits.formule] || "offre_tarifaire";
+      const contenu = await composerOffre(affaireId);   // recomposé à l'instant du gel
+      const type = TYPE_PAR_FORMULE[contenu.formule] || "offre_tarifaire";
       await envoyerOffre(affaireId, { type, contenu });
       await recharger();
     } catch (e) { setErreur(e.message); }
     finally { setEnCours(false); }
   }
 
-  const intacte = instance && instance.contenu && instance.empreinte_sha256
-    ? instanceIntacte({ contenu: instance.contenu, empreinte: instance.empreinte_sha256 })
-    : instance ? instanceIntacte(instance) : null;
+  if (!affaire) return null;
+
+  const contenu = instance?.contenu || apercu;
+  const signee = instance?.statut === "signee";
+  const chiffree = affaire.tvac_centimes != null;
+  const intacte = instance?.contenu
+    ? instanceIntacte({
+        contenu: instance.contenu,
+        empreinte: instance.empreinte_sha256 || instance.empreinte,
+      })
+    : null;
+  const acompte = contenu ? Math.round(contenu.tvac_centimes * ACOMPTE_PCT / 100) : 0;
 
   return (
     <div style={S.page}>
-      <div style={S.entete}>
-        <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
-        <div style={S.titre}>Offre — {affaire?.client?.nom || "…"}</div>
+      <div style={{ ...S.entete }} className="no-print">
+        <button style={S.boutonLien} onClick={retour}>← Dossier</button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={S.titre}>Offre — {affaire.client?.nom || "…"}</div>
+          {instance && (
+            <span style={{
+              fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
+              background: signee ? "#ECFDF5" : "#EFF6FF",
+              color: signee ? "#065F46" : "#1E40AF",
+            }}>{signee ? "SIGNÉE" : "ENVOYÉE"}</span>
+          )}
+        </div>
       </div>
 
-      {!instance && (
-        <div style={S.carte}>
-          <div style={{ fontSize: 13, color: C.muet, lineHeight: 1.6 }}>
-            L'envoi fige le document : contenu gelé, empreinte calculée, C.B.D.
-            jointe automatiquement — plus rien ne peut le modifier ensuite (C-02).
+      {!chiffree && (
+        <div style={{ ...S.carte, color: C.muet, fontSize: 13 }}>
+          Cette affaire n'est pas encore chiffrée — établissez le devis d'abord.
+        </div>
+      )}
+
+      {/* Le document lui-même : aperçu vivant, puis contenu figé après envoi. */}
+      {chiffree && contenu && (
+        <Contrat contenu={contenu} signature={instance?.signature} />
+      )}
+
+      {/* Preuve d'intégrité (spécifique Dashprod, discret, hors impression) */}
+      {instance && (
+        <div className="no-print" style={{ ...S.carte, padding: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 11.5, color: C.muet }}>
+              Document scellé · C.B.D. jointe
+            </span>
+            {intacte != null && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: intacte ? C.vert : C.rouge }}>
+                {intacte ? "✓ intègre" : "⚠ altéré"}
+              </span>
+            )}
           </div>
-          {affaire && (
-            <div style={{ marginTop: 12, padding: "10px 12px", background: "#F8FAFC",
-                          borderRadius: 10, border: `1px solid ${C.bord}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 12.5, color: C.muet }}>Montant TVAC</span>
-                <span style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
-                  {affaire.tvac_centimes != null ? euros(affaire.tvac_centimes) : "à chiffrer"}
-                </span>
-              </div>
+          <div style={{ fontSize: 10, color: C.fantome, marginTop: 4, wordBreak: "break-all" }}>
+            {instance.empreinte_sha256 || instance.empreinte}
+          </div>
+        </div>
+      )}
+
+      {erreur && (
+        <div className="no-print" style={{ margin: "0 16px 10px", fontSize: 12.5, color: C.rouge }}>
+          {erreur}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="no-print" style={{ margin: "0 16px 20px" }}>
+        {!instance && chiffree && (
+          <>
+            <button style={S.boutonPlein} disabled={enCours} onClick={envoyer}>
+              {enCours ? "Instanciation…" : "Envoyer l'offre (fige le document)"}
+            </button>
+            <div style={{ fontSize: 11.5, color: C.muet, marginTop: 8, textAlign: "center",
+                          lineHeight: 1.5 }}>
+              L'envoi gèle le document et calcule son empreinte : plus rien ne pourra
+              le modifier, même si les tarifs changent.
             </div>
-          )}
-          {erreur && <div style={{ marginTop: 10, fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
-          <button style={{ ...S.boutonPlein, marginTop: 14 }} disabled={enCours} onClick={envoyer}>
-            {enCours ? "Instanciation…" : "Envoyer l'offre (fige le document)"}
+          </>
+        )}
+
+        {instance && !signee && !padOuvert && (
+          <button style={S.boutonPlein} onClick={() => setPadOuvert(true)}>
+            Recueillir la signature du client
           </button>
-        </div>
-      )}
+        )}
 
-      {instance && instance.statut !== "signee" && (
-        <>
-          <div style={S.carte}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: C.vert }}>DOCUMENT ENVOYÉ</span>
-              {intacte != null && (
-                <span style={{ fontSize: 11, color: intacte ? C.vert : C.rouge }}>
-                  {intacte ? "✓ intègre" : "⚠ altéré"}
-                </span>
-              )}
-            </div>
-            <div style={{ fontSize: 12, color: C.muet, marginTop: 6, wordBreak: "break-all" }}>
-              Empreinte : {instance.empreinte_sha256 || instance.empreinte}
-            </div>
-          </div>
-          {!signature ? (
-            <div style={{ margin: "0 16px" }}>
-              <button style={S.boutonPlein} onClick={() => setSignature(true)}>
-                Recueillir la signature
-              </button>
-            </div>
-          ) : (
-            <PadSignature
-              onAnnuler={() => setSignature(false)}
-              onSigner={async ({ nom, image }) => {
-                setEnCours(true); setErreur(null);
-                try {
-                  await signerOffre(instance.id, { affaireId, nom, canal: "ecran", image });
-                  setSignature(false);
-                  await recharger();
-                } catch (e) { setErreur(e.message); }
-                finally { setEnCours(false); }
-              }}
-            />
-          )}
-          {erreur && <div style={{ margin: "0 16px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
-        </>
-      )}
+        {instance && !signee && padOuvert && (
+          <PadSignature
+            enCours={enCours}
+            onAnnuler={() => setPadOuvert(false)}
+            onSigner={async ({ nom, image }) => {
+              setEnCours(true); setErreur(null);
+              try {
+                await signerOffre(instance.id, { affaireId, nom, canal: "ecran", image });
+                setPadOuvert(false);
+                await recharger();
+              } catch (e) { setErreur(e.message); }
+              finally { setEnCours(false); }
+            }}
+          />
+        )}
 
-      {instance && instance.statut === "signee" && (
-        <div style={{ ...S.carte, textAlign: "center" }}>
-          <div style={{ fontSize: 30 }}>✅</div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: C.encre, marginTop: 6 }}>
-            Offre signée
+        {signee && (
+          <div style={{ padding: "10px 12px", background: "#ECFDF5", border: "1px solid #A7F3D0",
+                        borderRadius: 10, fontSize: 12.5, color: "#065F46", fontWeight: 600,
+                        marginBottom: 10 }}>
+            Offre acceptée — le dossier est confirmé. Acompte de {ACOMPTE_PCT} % à
+            réclamer : <b>{euros(acompte)}</b>.
           </div>
-          <div style={{ fontSize: 12.5, color: C.muet, marginTop: 4 }}>
-            Le dossier passe automatiquement à l'état Confirmé.
-          </div>
-        </div>
-      )}
+        )}
+
+        {instance && (
+          <button style={{ ...S.boutonLien, width: "100%", textAlign: "center", marginTop: 10,
+                            border: `1.5px solid ${C.bord}`, borderRadius: 11, padding: "11px" }}
+                  onClick={() => window.print()}>
+            🖨️ Imprimer / Enregistrer en PDF
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
-/** Pad de signature tactile minimal — canvas natif, sans dépendance. */
-function PadSignature({ onSigner, onAnnuler }) {
+/**
+ * Pad de signature — pointer events (doigt, stylet, souris) et mise à l'échelle
+ * devicePixelRatio pour un tracé net sur écran haute densité.
+ */
+function PadSignature({ onSigner, onAnnuler, enCours }) {
   const canvasRef = useRef(null);
+  const ctxRef = useRef(null);
+  const wrapRef = useRef(null);
   const dessine = useRef(false);
+  const precedent = useRef(null);
   const [nom, setNom] = useState("");
-  const [vide, setVide] = useState(true);
+  const [encre, setEncre] = useState(false);
 
-  function pos(e, canvas) {
-    const r = canvas.getBoundingClientRect();
-    const p = e.touches ? e.touches[0] : e;
-    return { x: p.clientX - r.left, y: p.clientY - r.top };
-  }
-  function debut(e) {
-    dessine.current = true;
-    const ctx = canvasRef.current.getContext("2d");
-    const { x, y } = pos(e, canvasRef.current);
-    ctx.beginPath(); ctx.moveTo(x, y);
-  }
-  function trace(e) {
-    if (!dessine.current) return;
+  useEffect(() => {
+    function preparer() {
+      const cv = canvasRef.current, w = wrapRef.current;
+      if (!cv || !w) return;
+      const dpr = window.devicePixelRatio || 1;
+      const largeur = w.clientWidth, hauteur = 160;
+      cv.width = largeur * dpr; cv.height = hauteur * dpr;
+      cv.style.width = largeur + "px"; cv.style.height = hauteur + "px";
+      const ctx = cv.getContext("2d");
+      ctx.scale(dpr, dpr);
+      ctx.lineWidth = 2.3; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.strokeStyle = "#0F172A";
+      ctxRef.current = ctx;
+    }
+    preparer();
+    window.addEventListener("resize", preparer);
+    return () => window.removeEventListener("resize", preparer);
+  }, []);
+
+  const pos = (e) => {
+    const r = canvasRef.current.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  const debut = (e) => {
     e.preventDefault();
-    const ctx = canvasRef.current.getContext("2d");
-    const { x, y } = pos(e, canvasRef.current);
-    ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.strokeStyle = C.encre;
-    ctx.lineTo(x, y); ctx.stroke();
-    setVide(false);
-  }
-  function fin() { dessine.current = false; }
-  function effacer() {
-    const c = canvasRef.current;
-    c.getContext("2d").clearRect(0, 0, c.width, c.height);
-    setVide(true);
-  }
+    dessine.current = true; setEncre(true);
+    precedent.current = pos(e);
+    try { canvasRef.current.setPointerCapture(e.pointerId); } catch { /* ignoré */ }
+  };
+  const trace = (e) => {
+    if (!dessine.current) return;
+    const p = pos(e), ctx = ctxRef.current;
+    ctx.beginPath();
+    ctx.moveTo(precedent.current.x, precedent.current.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    precedent.current = p;
+  };
+  const fin = () => { dessine.current = false; };
+  const effacer = () => {
+    const cv = canvasRef.current;
+    ctxRef.current.clearRect(0, 0, cv.width, cv.height);
+    setEncre(false);
+  };
 
   return (
-    <div style={S.carte}>
-      <label style={S.label}>Nom du signataire</label>
+    <div style={{ ...S.carte, margin: "0 0 10px" }}>
+      <label style={{ ...S.label, marginTop: 0 }}>Nom du signataire</label>
       <input style={S.input} value={nom} onChange={(e) => setNom(e.target.value)}
-             placeholder="Cédric Hermand" />
+             placeholder="Prénom Nom" />
       <label style={S.label}>Signature</label>
-      <canvas
-        ref={canvasRef} width={440} height={140}
-        style={{ width: "100%", height: 140, border: `1.5px dashed ${C.bord}`,
-                 borderRadius: 10, touchAction: "none", background: "#fff" }}
-        onMouseDown={debut} onMouseMove={trace} onMouseUp={fin} onMouseLeave={fin}
-        onTouchStart={debut} onTouchMove={trace} onTouchEnd={fin}
-      />
+      <div ref={wrapRef} style={{ position: "relative" }}>
+        <canvas
+          ref={canvasRef}
+          onPointerDown={debut} onPointerMove={trace}
+          onPointerUp={fin} onPointerLeave={fin}
+          style={{ width: "100%", height: 160, border: `1.5px dashed ${C.bord}`,
+                   borderRadius: 12, background: "#fff", touchAction: "none" }}
+        />
+        {!encre && (
+          <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center",
+                         pointerEvents: "none", color: C.fantome, fontSize: 13 }}>
+            Signez ici avec le doigt
+          </span>
+        )}
+      </div>
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <button style={{ ...S.boutonLien, border: `1.5px solid ${C.bord}`, borderRadius: 10,
-                          flex: 1, textAlign: "center" }} onClick={effacer}>Effacer</button>
-        <button style={{ ...S.boutonLien, border: `1.5px solid ${C.bord}`, borderRadius: 10,
-                          flex: 1, textAlign: "center" }} onClick={onAnnuler}>Annuler</button>
+        <button style={{ ...S.boutonLien, flex: 1, textAlign: "center",
+                          border: `1.5px solid ${C.bord}`, borderRadius: 10 }}
+                onClick={effacer}>Effacer</button>
+        <button style={{ ...S.boutonLien, flex: 1, textAlign: "center",
+                          border: `1.5px solid ${C.bord}`, borderRadius: 10 }}
+                onClick={onAnnuler}>Annuler</button>
       </div>
       <button
-        style={{ ...S.boutonPlein, marginTop: 10, opacity: (nom && !vide) ? 1 : 0.5 }}
-        disabled={!nom || vide}
+        style={{ ...S.boutonPlein, marginTop: 10, opacity: (nom && encre && !enCours) ? 1 : 0.5 }}
+        disabled={!nom || !encre || enCours}
         onClick={() => onSigner({ nom, image: canvasRef.current.toDataURL("image/png") })}
       >
-        Valider la signature
+        {enCours ? "Enregistrement…" : "Valider la signature"}
       </button>
     </div>
   );

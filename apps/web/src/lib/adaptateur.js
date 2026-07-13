@@ -10,6 +10,8 @@
 import { supabase, configPresente } from "./supabase.js";
 import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
+import { CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
+import { volumeTotal, articlesADemonter } from "@domaine/releve/volumetrie.js";
 
 const CLE = "dashprod-demo-v1";
 
@@ -38,13 +40,13 @@ const DEMO_INITIAL = {
       tvac_centimes: 242000, marge_pct: 41.5 },
   ],
   missions: [
-    { id: "m1", affaireId: "a1", date: "2026-07-14", heure: "08:00", type: "demenagement",
+    { id: "m1", affaire_id: "a1", date: "2026-07-14", heure: "08:00", type: "demenagement",
       etat: "planifiee", client: "Famille Lambert",
       affectations: [{ utilisateur_id: "t1" }, { utilisateur_id: "t2" }, { utilisateur_id: "t3" }] },
-    { id: "m2", affaireId: "a2", date: "2026-07-14", heure: "13:30", type: "demenagement",
+    { id: "m2", affaire_id: "a2", date: "2026-07-14", heure: "13:30", type: "demenagement",
       etat: "planifiee", client: "SPRL Delcourt",
       affectations: [{ utilisateur_id: "t1" }] },
-    { id: "m3", affaireId: "a2", date: "2026-07-16", heure: "09:00", type: "emballage",
+    { id: "m3", affaire_id: "a2", date: "2026-07-16", heure: "09:00", type: "emballage",
       etat: "planifiee", client: "SPRL Delcourt", affectations: [] },
   ],
 };
@@ -253,10 +255,15 @@ export async function envoyerOffre(affaireId, { type, contenu }) {
 export async function obtenirInstance(affaireId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("documents_instances")
-      .select("id, contenu, empreinte_sha256, statut, envoye_le")
+      .select("id, contenu, empreinte_sha256, statut, envoye_le, signatures(signataire_nom, image_trait, horodatage)")
       .eq("affaire_id", affaireId).order("genere_le", { ascending: false }).limit(1).maybeSingle();
     if (error) throw error;
-    return data;
+    if (!data) return null;
+    const sig = (data.signatures && data.signatures[0]) || null;
+    return {
+      ...data,
+      signature: sig ? { nom: sig.signataire_nom, image: sig.image_trait, date: sig.horodatage } : null,
+    };
   }
   const d = lireDemo();
   return (d.instances && d.instances[affaireId]) || null;
@@ -280,7 +287,10 @@ export async function signerOffre(instanceId, { affaireId, nom, canal, image }) 
     return;
   }
   const d = lireDemo();
-  if (d.instances?.[affaireId]) d.instances[affaireId].statut = "signee";
+  if (d.instances?.[affaireId]) {
+    d.instances[affaireId].statut = "signee";
+    d.instances[affaireId].signature = { nom, image, date: new Date().toISOString() };
+  }
   const a = d.affaires.find((x) => x.id === affaireId);
   if (a) a.etat = "confirme";
   ecrireDemo(d);
@@ -364,8 +374,9 @@ export async function creerMission(affaireId, { date, heure, type }) {
   const client = aff && d.clients.find((c) => c.id === aff.clientId);
   const id = idDemo();
   d.missions.push({
-    id, affaireId, date, heure: heure || "08:00", type: type || "demenagement",
-    etat: "planifiee", client: client?.nom, affectations: [],
+    id, affaire_id: affaireId, date, heure: heure || "08:00",
+    type: type || "demenagement", etat: "planifiee",
+    client: client?.nom, affectations: [],
   });
   ecrireDemo(d);
   return id;
@@ -557,4 +568,63 @@ export async function sauverContact(affaireId, { charges, decharges, date, heure
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
   if (a) { a.contact = { charges, decharges, date, heure, notes }; ecrireDemo(d); }
+}
+
+// ── Organisation (paramètres d'en-tête des documents) ─────────────────────────
+
+const ORG_DEMO = {
+  nom: "Déménagements Roovers", bce: "BE 0478.363.616", tva: "BE0478363616",
+  adresse: "Rue de l'Avenir 9", cp: "1370", ville: "Jodoigne",
+  tel: "0455/17.16.79", email: "raphael.roovers@gmail.com",
+  iban: "BE73 3101 6268 5860",
+};
+
+/** Paramètres de l'organisation courante (identité imprimée sur les documents). */
+export async function obtenirOrganisation() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("organisations")
+      .select("nom, tva, bce, adresse, cp, ville, tel, email, iban").limit(1).maybeSingle();
+    if (error) throw error;
+    return data || {};
+  }
+  return ORG_DEMO;
+}
+
+/**
+ * Compose le CONTENU de l'offre : l'objet complet qui sera FIGÉ à l'envoi
+ * (empreinte calculée dessus) et qui suffira ensuite à rejouer le document à
+ * l'identique, des années plus tard, sans dépendre de l'état courant de la
+ * base (C-02). Tout ce qui s'imprime sur le contrat vient d'ici.
+ */
+export async function composerOffre(affaireId) {
+  const [affaire, contact, inventaire, org] = await Promise.all([
+    obtenirAffaire(affaireId), obtenirContact(affaireId),
+    obtenirReleve(affaireId), obtenirOrganisation(),
+  ]);
+  const faits = affaire?.faits || {};
+  const tvac = affaire?.tvac_centimes || 0;
+  const htva = Math.round(tvac / 1.21);
+  return {
+    version: 1,
+    emis_le: new Date().toISOString(),
+    cgv_version: CGV_VERSION_COURANTE,
+    organisation: org,
+    client: {
+      nom: affaire?.client?.nom || "", tel: affaire?.client?.tel || "",
+      email: affaire?.client?.email || "",
+    },
+    charges: contact?.charges || [],
+    decharges: contact?.decharges || [],
+    date_dem: contact?.date || "", heure_dem: contact?.heure || "",
+    remarques: contact?.notes || "",
+    volume_m3: volumeTotal(inventaire),
+    a_demonter: articlesADemonter(inventaire),
+    formule: faits.formule || "tarifaire",
+    nb_demenageurs: faits.nbDemenageurs || null,
+    heures: faits.heures || null,
+    elevateur: !!faits.elevateur,
+    htva_centimes: htva,
+    tva_centimes: tvac - htva,
+    tvac_centimes: tvac,
+  };
 }

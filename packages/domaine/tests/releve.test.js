@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  volumeUnitaire, volumeTotal, suggererComposition, grouperParPiece, PIECES,
+  volumeUnitaire, volumeTotal, suggererComposition, grouperParPiece, PIECES, articlesADemonter,
 } from "../src/releve/volumetrie.js";
 
 test("volumeUnitaire résout les volumes de référence", () => {
@@ -62,4 +62,21 @@ test("le catalogue de pièces est stable", () => {
   assert.ok(PIECES.includes("Salon"));
   assert.ok(PIECES.includes("Cave/Garage"));
   assert.equal(PIECES.length, 7);
+});
+
+test("articlesADemonter ne retient que les articles marqués", () => {
+  const inv = [
+    { nom: "Armoire 3p", quantite: 1, demont: true },
+    { nom: "Canapé 3pl", quantite: 1 },
+    { nom: "Lit 160", quantite: 2, demont: true },
+  ];
+  assert.deepEqual(articlesADemonter(inv), [
+    { nom: "Armoire 3p", quantite: 1 },
+    { nom: "Lit 160", quantite: 2 },
+  ]);
+});
+
+test("articlesADemonter tolère un inventaire vide ou absent", () => {
+  assert.deepEqual(articlesADemonter([]), []);
+  assert.deepEqual(articlesADemonter(undefined), []);
 });

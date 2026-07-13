@@ -168,7 +168,7 @@ function App() {
   } else if (route.ecran === "equipe") {
     ecran = <Equipe retour={nav.liste} />;
   } else if (route.ecran === "planning") {
-    ecran = <Planning retour={nav.liste} />;
+    ecran = <Planning ouvrirDossier={nav.dossier} />;
   } else if (route.ecran === "nouvelle") {
     ecran = <NouvelleAffaire retour={nav.liste} versDevis={nav.dossier} />;
   } else if (route.ecran === "dossier") {

@@ -55,3 +55,50 @@ export function missionsDuMembre(missions, utilisateurId) {
     (m.affectations || []).some((a) => (a.utilisateur_id || a.utilisateurId || a) === utilisateurId)
   );
 }
+
+/**
+ * Construit la grille d'un mois pour la vue calendrier (alignement page 09 §1).
+ * Semaine commençant le LUNDI (usage belge) — attention, getDay() renvoie 0
+ * pour dimanche : le décalage se calcule (jour+6)%7.
+ *
+ * @param {number} annee
+ * @param {number} mois  index 0-11 (comme Date)
+ * @param {{date: string}[]} missions
+ * @returns {{
+ *   annee: number, mois: number,
+ *   decalage: number,            // cases vides avant le 1er
+ *   jours: {jour: number, date: string, nb: number}[]
+ * }}
+ */
+export function grilleMois(annee, mois, missions) {
+  const premier = new Date(annee, mois, 1);
+  // getDay() : 0=dimanche … 6=samedi. Semaine au lundi → dimanche vaut 6.
+  const decalage = (premier.getDay() + 6) % 7;
+  const nbJours = new Date(annee, mois + 1, 0).getDate();
+
+  // Densité : combien de missions par date.
+  const densite = new Map();
+  for (const m of missions || []) {
+    if (!m.date) continue;
+    const d = String(m.date).slice(0, 10);
+    densite.set(d, (densite.get(d) || 0) + 1);
+  }
+
+  const jours = [];
+  for (let j = 1; j <= nbJours; j++) {
+    const date = `${annee}-${String(mois + 1).padStart(2, "0")}-${String(j).padStart(2, "0")}`;
+    jours.push({ jour: j, date, nb: densite.get(date) || 0 });
+  }
+  return { annee, mois, decalage, jours };
+}
+
+/**
+ * Missions d'une date donnée, triées par heure.
+ * @param {any[]} missions
+ * @param {string} date  AAAA-MM-JJ
+ */
+export function missionsDuJour(missions, date) {
+  return (missions || [])
+    .filter((m) => m.date && String(m.date).slice(0, 10) === date)
+    .sort((a, b) => (a.heure || "").localeCompare(b.heure || ""));
+}

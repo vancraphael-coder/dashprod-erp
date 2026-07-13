@@ -4,6 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Dashprod ERP</title>
+    <style>
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; background: #F1F5FB; }
+      /* iOS zoome les champs sous 16px : on impose 16 pour éviter le saut. */
+      input, select, textarea { font-family: system-ui, sans-serif; font-size: 16px; color: #0F172A; }
+      input:focus, select:focus, textarea:focus {
+        outline: none; border-color: #2563EB !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+      }
+
+      /*
+        IMPRESSION — seul le contrat part sur le papier / le PDF.
+        Tout le reste de l'application (barres, boutons, preuve d'intégrité)
+        est masqué : le client ne doit recevoir QUE son document.
+        Utilisé par le bouton « Imprimer / Enregistrer en PDF » (window.print).
+      */
+      @media print {
+        body * { visibility: hidden !important; }
+        .contrat-imprimable, .contrat-imprimable * { visibility: visible !important; }
+        .contrat-imprimable {
+          position: absolute !important; left: 0; top: 0; width: 100% !important;
+          margin: 0 !important; border: none !important;
+          box-shadow: none !important; border-radius: 0 !important;
+        }
+        .no-print { display: none !important; }
+        @page { margin: 12mm; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

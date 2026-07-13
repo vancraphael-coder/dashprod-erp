@@ -82,6 +82,6 @@ insert into missions (org_id, affaire_id, type, date, heure, etat)
 select a.org_id, a.id, 'demenagement', a.date_souhaitee,
        coalesce(a.heure_souhaitee, '08:00'::time), 'planifiee'
   from affaires a
- where a.etat in ('confirme', 'effectue', 'facture', 'paye')
+ where a.etat in ('confirme', 'planifie', 'en_cours', 'effectue', 'facture', 'paye', 'clos')
    and not exists (select 1 from missions m
                     where m.affaire_id = a.id and m.type = 'demenagement');

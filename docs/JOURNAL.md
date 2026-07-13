@@ -782,3 +782,94 @@ pas de barre de navigation, écrans non reliés, planning nu. Réponse directe.
 1. PWA (manifest, service worker, icônes) — but 3.
 2. Création de mission à la confirmation (date souhaitée → mission planifiée).
 3. Fiche membre Équipe (congés, documents — domaine Module 8 prêt).
+
+---
+
+## Session 18 — Cartographie d'alignement complète (docs/alignement/)
+
+### Contexte
+Demande explicite du fondateur après premier usage réel : cesser de découvrir
+les manques au fil de l'eau ; cartographier EXACTEMENT chaque écart entre la
+vraie app et le modèle validé (roovers-mobile.jsx, relu intégralement —
+1647 lignes), page par page, élément par élément : design, logique, pourquoi,
+priorité.
+
+### Livré : 13 documents dans docs/alignement/
+00 synthèse (P0 globaux, décisions à trancher, avantages Dashprod à préserver),
+01 liste, 02 contact, 03 relevé, 04 devis, 05 offre (le plus gros P0 : rendu
+du contrat lisible), 06 matériel E/U/R (absent, domaine prêt), 07 mail
+(absent), 08 facture (mécanique supérieure, rendu absent), 09 planning
+(P0 : mission auto à la confirmation + calendrier mensuel), 10 équipe & flotte
+(P0 : camions minimaux), 11 terrain (P0 : routage + mes chantiers),
+12 connexion/compte (supérieur au modèle, reste : réglages organisation).
+
+### Décisions à trancher par le fondateur (documentées en synthèse)
+1. Monte-meubles : 125 €/jour (modèle) vs 150 € forfait (ADR-008) — je garde
+   ADR-008 sauf contrordre.
+2. Estimation camions : /30 m³ (modèle) vs /12 (domaine actuel) vs capacité
+   réelle des camions sélectionnés (recommandé).
+3. Statut « en cours » : dériver de la mission, pas un nouvel état d'affaire.
+4. Rôles terrain (métier) ≠ rôles d'accès S3 : champ metier séparé.
+
+---
+
+## Session 19 — P0 n°1 : le rendu du contrat + relevé complété
+
+### Contexte
+Première vague P0 de la cartographie d'alignement, dans l'ordre de la synthèse.
+
+### Livré
+- **Module 18 — Rendu du contrat** : `Contrat.jsx` (le document que le client
+  lit et signe), CGV versionnées (`documents/cgv.js`), paramètres organisation
+  (0020), `composerOffre` (contenu figé complet), impression navigateur
+  (@media print sur `.contrat-imprimable`), pad de signature en pointer events
+  + devicePixelRatio.
+- **P0 relevé** : article libre (« Autre meuble… »), **démontage par article**
+  + « Tout démonter », volume unitaire ajustable (±0,1) — le démontage alimente
+  directement le bloc « Démontage prévu » du contrat.
+
+### Décisions d'architecture
+- CGV VERSIONNÉES et `cgv_version` figée dans le contenu de l'instance : une
+  offre signée rejoue SES CGV, jamais les dernières (C-02). Une version inconnue
+  renvoie [] et non la dernière — un document visiblement incomplet vaut mieux
+  qu'un document silencieusement faux.
+- Le composant Contrat ne connaît QUE le contenu reçu : aperçu vivant avant
+  envoi, contenu FIGÉ après. Le document rendu ne peut plus bouger — c'est ce
+  qui nous distingue du modèle, qui réédite après signature.
+- Identité de l'émetteur en base (0020) et non en constantes : le modèle avait
+  IBAN/tél/mail EN DUR — impossible en multi-tenant (I-1).
+
+### Fichiers
+- SQL : `0020_organisation_params.sql`.
+- Domaine : `documents/cgv.js`, `releve/volumetrie.js` (+articlesADemonter).
+- Tests : `cgv.test.js` (4), `releve.test.js` (+2) → 141/141.
+- Front : `ecrans/Contrat.jsx` (nouveau), `ecrans/Offre.jsx` (réécrit),
+  `ecrans/Releve.jsx` (enrichi), `lib/adaptateur.js` (+obtenirOrganisation,
+  composerOffre, signature ramenée sur l'instance), `index.html` (CSS print).
+- Doc : `docs/modules/18-contrat-offre.md`.
+
+### Prochain P0 (ordre de la synthèse)
+n°2 création de mission à la confirmation ; n°3 calendrier mensuel ; n°4 camions.
+
+---
+
+## Session 20 — P0 n°2 (mission à la confirmation) et n°3 (calendrier)
+
+### Livré
+- **0021** : trigger `creer_missions_a_la_confirmation` — la signature crée la
+  mission (et celle d'emballage si date). Colonnes `date_emballage`/
+  `heure_emballage`. Idempotent + rattrapage de l'existant. Résout un TROU
+  D'ARCHITECTURE : sans ce pont, le Planning restait vide à vie.
+- **Domaine** : `grilleMois` (décalage lundi, densité, bissextiles),
+  `missionsDuJour`. 5 tests → 146/146.
+- **Planning.jsx** réécrit : calendrier mensuel avec pastilles + journée
+  détaillée + affectation/conflits + lien vers le dossier.
+
+### Décision d'architecture
+Trigger plutôt que code dans la commande : la règle vaut pour TOUT chemin vers
+« confirmé », y compris ceux qu'on écrira plus tard. Une commande future
+pourrait oublier de créer la mission ; un trigger, non.
+
+### Correction d'une erreur de ma cartographie
+docs/alignement/01 disait « Dashprod n'a pas d'état en cours » : FAUX, l'enum
+etat_affaire (0005) contient planifie/en_cours/clos. Corrigé dans la fiche 19.

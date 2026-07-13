@@ -90,3 +90,16 @@ export function grouperParPiece(inventaire) {
     piece, articles, volume: volumeTotal(articles),
   }));
 }
+
+/**
+ * Articles marqués pour démontage/remontage (drapeau `demont` posé au relevé).
+ * Alimente : l'offre (« Démontage / remontage prévu »), la fiche terrain
+ * (« À démonter ») et le brief équipe. Une seule implémentation, trois usages.
+ * @param {{nom: string, quantite?: number, demont?: boolean}[]} inventaire
+ * @returns {{nom: string, quantite: number}[]}
+ */
+export function articlesADemonter(inventaire) {
+  return (inventaire || [])
+    .filter((it) => it.demont)
+    .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 }));
+}

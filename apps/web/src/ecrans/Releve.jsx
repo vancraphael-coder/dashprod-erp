@@ -10,6 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { obtenirAffaire, enregistrerReleve, obtenirReleve } from "../lib/adaptateur.js";
 import {
   PIECES, volumeTotal, suggererComposition, grouperParPiece, volumeUnitaire,
+  articlesADemonter,
 } from "@domaine/releve/volumetrie.js";
 import { C, S } from "../lib/theme.jsx";
 
@@ -30,6 +31,7 @@ export default function Releve({ affaireId, retour, versDevis }) {
   const [affaire, setAffaire] = useState(null);
   const [inv, setInv] = useState([]);
   const [piece, setPiece] = useState("Salon");
+  const [libre, setLibre] = useState("");
   const [sauve, setSauve] = useState(false);
 
   useEffect(() => {
@@ -40,6 +42,7 @@ export default function Releve({ affaireId, retour, versDevis }) {
   const volume = useMemo(() => volumeTotal(inv), [inv]);
   const compo = useMemo(() => suggererComposition(volume), [volume]);
   const groupes = useMemo(() => grouperParPiece(inv), [inv]);
+  const aDemonter = useMemo(() => articlesADemonter(inv), [inv]);
 
   function ajouter(nom) {
     setInv((v) => {
@@ -56,6 +59,32 @@ export default function Releve({ affaireId, retour, versDevis }) {
     setSauve(false);
   }
   function retirer(id) { setInv((v) => v.filter((it) => it.id !== id)); setSauve(false); }
+
+  /** Ajuste le volume UNITAIRE d'un article (le volume saisi prime sur la référence). */
+  function ajusterVolume(id, delta) {
+    setInv((v) => v.map((it) => {
+      if (it.id !== id) return it;
+      const actuel = it.vol != null ? it.vol : volumeUnitaire(it.nom);
+      return { ...it, vol: Math.max(0, Math.round((actuel + delta) * 100) / 100) };
+    }));
+    setSauve(false);
+  }
+  /** Marque un article à démonter/remonter — alimente l'offre et le terrain. */
+  function basculerDemontage(id) {
+    setInv((v) => v.map((it) => it.id === id ? { ...it, demont: !it.demont } : it));
+    setSauve(false);
+  }
+  function toutDemonter() {
+    const tous = inv.length > 0 && inv.every((it) => it.demont);
+    setInv((v) => v.map((it) => ({ ...it, demont: !tous })));
+    setSauve(false);
+  }
+  function ajouterLibre() {
+    const nom = libre.trim();
+    if (!nom) return;
+    ajouter(nom);
+    setLibre("");
+  }
 
   async function enregistrer() {
     await enregistrerReleve(affaireId, inv);
@@ -96,7 +125,7 @@ export default function Releve({ affaireId, retour, versDevis }) {
         ))}
       </div>
 
-      {/* Catalogue de la pièce */}
+      {/* Catalogue de la pièce + article libre */}
       <div style={S.carte}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {(CATALOGUE[piece] || []).map((nom) => (
@@ -108,7 +137,32 @@ export default function Releve({ affaireId, retour, versDevis }) {
             </button>
           ))}
         </div>
+        {/* Un relevé réel contient toujours des objets hors catalogue (aquarium,
+            billard…) : sans ce champ, l'outil est inutilisable sur place. */}
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <input style={{ ...S.input, flex: 1 }} value={libre}
+                 onChange={(e) => setLibre(e.target.value)}
+                 onKeyDown={(e) => e.key === "Enter" && ajouterLibre()}
+                 placeholder="Autre meuble…" />
+          <button style={{ ...S.boutonPlein, width: "auto", padding: "0 16px", marginTop: 0 }}
+                  onClick={ajouterLibre}>Ajouter</button>
+        </div>
       </div>
+
+      {/* Démontage : barre d'action globale */}
+      {inv.length > 0 && (
+        <div style={{ padding: "0 16px 8px", display: "flex", justifyContent: "space-between",
+                      alignItems: "center" }}>
+          <span style={{ fontSize: 12, color: C.muet }}>
+            {aDemonter.length > 0
+              ? `${aDemonter.length} article(s) à démonter`
+              : "Aucun démontage prévu"}
+          </span>
+          <button onClick={toutDemonter} style={{ ...S.boutonLien, padding: "4px 8px" }}>
+            🔧 Tout démonter
+          </button>
+        </div>
+      )}
 
       {/* Inventaire groupé par pièce */}
       {groupes.map((g) => (
@@ -117,15 +171,50 @@ export default function Releve({ affaireId, retour, versDevis }) {
             <span style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>{g.piece}</span>
             <span style={{ fontSize: 12.5, color: C.muet }}>{g.volume} m³</span>
           </div>
-          {g.articles.map((it) => (
-            <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
-              <span style={{ flex: 1, fontSize: 13.5, color: C.encre }}>{it.nom}</span>
-              <button onClick={() => quantite(it.id, -1)} style={btnQ}>−</button>
-              <span style={{ minWidth: 22, textAlign: "center", fontWeight: 700, fontSize: 14 }}>{it.quantite}</span>
-              <button onClick={() => quantite(it.id, +1)} style={btnQ}>+</button>
-              <button onClick={() => retirer(it.id)} style={{ ...btnQ, color: C.rouge, borderColor: "#F3C7C7" }}>×</button>
-            </div>
-          ))}
+          {g.articles.map((it) => {
+            const unitaire = it.vol != null ? it.vol : volumeUnitaire(it.nom);
+            return (
+              <div key={it.id} style={{
+                padding: "8px 9px", marginBottom: 6, borderRadius: 10,
+                background: it.demont ? "#EFF6FF" : "#F8FAFC",
+                border: `1px solid ${it.demont ? "#BFDBFE" : "transparent"}`,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: C.encre }}>
+                    {it.nom}
+                  </span>
+                  {/* Le démontage est la variable d'heures la plus sous-estimée :
+                      le tracer article par article protège la marge et briefe l'équipe. */}
+                  <button onClick={() => basculerDemontage(it.id)} title="Démontage"
+                          style={{ ...btnQ, width: 32,
+                                   borderColor: it.demont ? C.bleu : C.bord,
+                                   background: it.demont ? C.bleu : "#fff",
+                                   color: it.demont ? "#fff" : C.muet }}>🔧</button>
+                  <button onClick={() => quantite(it.id, -1)} style={btnQ}>−</button>
+                  <span style={{ minWidth: 20, textAlign: "center", fontWeight: 700, fontSize: 14 }}>
+                    {it.quantite}
+                  </span>
+                  <button onClick={() => quantite(it.id, +1)} style={btnQ}>+</button>
+                  <button onClick={() => retirer(it.id)}
+                          style={{ ...btnQ, color: C.rouge, borderColor: "#F3C7C7" }}>×</button>
+                </div>
+                {/* Volume ajustable : un meuble atypique prime sur la référence. */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
+                  <span style={{ fontSize: 11, color: C.fantome }}>{it.piece}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 2,
+                                 background: "#fff", border: `1px solid ${C.bord}`,
+                                 borderRadius: 6, padding: "1px 4px", marginLeft: "auto" }}>
+                    <button onClick={() => ajusterVolume(it.id, -0.1)} style={btnVol}>−</button>
+                    <span style={{ fontSize: 11, fontWeight: 600, minWidth: 58,
+                                   textAlign: "center", color: C.encre }}>
+                      {(unitaire * it.quantite).toFixed(2)} m³
+                    </span>
+                    <button onClick={() => ajusterVolume(it.id, +0.1)} style={btnVol}>+</button>
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ))}
 
@@ -152,5 +241,9 @@ export default function Releve({ affaireId, retour, versDevis }) {
 
 const btnQ = {
   width: 30, height: 30, borderRadius: 8, border: `1.5px solid #DCE4F0`,
-  background: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer", color: "#0F172A",
+  background: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", color: "#0F172A",
+};
+const btnVol = {
+  border: "none", background: "none", cursor: "pointer", color: "#64748B",
+  fontWeight: 700, fontSize: 14, lineHeight: 1, padding: "0 4px",
 };
