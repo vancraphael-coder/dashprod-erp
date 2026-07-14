@@ -12,6 +12,7 @@ import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
 import { CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
 import { volumeTotal, articlesADemonter } from "@domaine/releve/volumetrie.js";
+import { briefMission } from "@domaine/communication/brief.js";
 
 const CLE = "dashprod-demo-v1";
 
@@ -749,4 +750,29 @@ export async function obtenirFacturePourAffaire(affaireId) {
   }
   const d = lireDemo();
   return (d.factures || []).find((f) => f.affaire_id === affaireId) || null;
+}
+
+/**
+ * Compose le brief d'équipe d'une mission : rassemble contact, relevé, camions
+ * et identité de l'organisation, puis délègue le formatage au domaine
+ * (briefMission) — une seule implémentation du format, testée.
+ */
+export async function composerBrief(affaireId, { date, heure, equipeNoms = [] }) {
+  const [contact, inventaire, camionIds, flotte, org] = await Promise.all([
+    obtenirContact(affaireId).catch(() => null),
+    obtenirReleve(affaireId).catch(() => []),
+    obtenirCamionsAffaire(affaireId).catch(() => []),
+    listerVehicules().catch(() => []),
+    obtenirOrganisation().catch(() => ({})),
+  ]);
+  const camions = flotte.filter((v) => camionIds.includes(v.id));
+  return briefMission({
+    date: date || contact?.date, heure: heure || contact?.heure,
+    camions,
+    equipe: equipeNoms.map((nom, i) => ({ nom, chef: i === 0 })),
+    charges: contact?.charges || [], decharges: contact?.decharges || [],
+    inventaire, remarques: contact?.notes || "",
+    iban: org.iban,
+    signature: org.tel ? `Raphaël — ${org.tel}` : undefined,
+  });
 }

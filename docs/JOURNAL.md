@@ -918,3 +918,19 @@ leçon réitérée : toujours rebuilder après un refactor scripté.
 ### État : LES 9 P0 DE LA SYNTHÈSE SONT CLOS.
 Prochaine vague (P1, ordre proposé) : brief WhatsApp + itinéraire Maps (quick
 wins), écran Mail, congés + métier terrain, matériel E/U/R, réduction devis.
+
+---
+
+## Session 23 — P1 quick wins : brief équipe & itinéraire
+
+### Livré
+- Domaine `communication/brief.js` : briefMission (format terrain exact du
+  modèle : troncature 6 articles, démontage, blocs sans lignes vides),
+  urlWhatsApp, urlItineraire (multi-arrêts ordonnés). 6 tests → 161/161.
+- Adaptateur composerBrief : rassemble contact+relevé+camions+organisation,
+  délègue le formatage au domaine (une implémentation, testée).
+- Planning : boutons Copier (presse-papier + repli prompt) et WhatsApp par
+  mission — LE geste quotidien : briefer l'équipe du lendemain en un tap.
+- Dossier : bouton itinéraire Google Maps sous les adresses (zéro API).
+
+### Prochains P1 : écran Mail, congés + métier terrain, matériel E/U/R.

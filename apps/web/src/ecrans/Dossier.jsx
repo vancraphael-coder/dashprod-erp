@@ -13,6 +13,7 @@ import {
   listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
+import { urlItineraire } from "@domaine/communication/brief.js";
 import { C, S, Badge, euros } from "../lib/theme.jsx";
 
 function adrVide() {
@@ -168,6 +169,23 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         onMaj={(id, ch, v) => majAdr("decharges", id, ch, v)}
         onAjouter={() => ajouterAdr("decharges")}
         onRetirer={(id) => retirerAdr("decharges", id)} />
+
+      {/* Itinéraire multi-arrêts : zéro API payante — Maps s'ouvre, on lit
+          distance et durée (alignement 02 §3). */}
+      {(() => {
+        const url = urlItineraire(contact.charges, contact.decharges);
+        return url ? (
+          <div style={{ margin: "0 16px 14px" }}>
+            <a href={url} target="_blank" rel="noreferrer" style={{
+              display: "block", textAlign: "center", padding: "13px",
+              borderRadius: 12, textDecoration: "none", fontSize: 14, fontWeight: 700,
+              color: "#fff", background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
+            }}>
+              🗺️ Ouvrir l'itinéraire (Google Maps)
+            </a>
+          </div>
+        ) : null;
+      })()}
 
       {/* Remarques */}
       <div style={S.carte}>

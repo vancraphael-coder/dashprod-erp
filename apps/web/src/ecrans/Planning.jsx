@@ -7,7 +7,10 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from "react";
-import { listerMissions, listerMembresSimples, basculerAffectation } from "../lib/adaptateur.js";
+import {
+  listerMissions, listerMembresSimples, basculerAffectation, composerBrief,
+} from "../lib/adaptateur.js";
+import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
 import { conflitsAffectation } from "@domaine/operations/missions.js";
 import { C, S } from "../lib/theme.jsx";
@@ -34,6 +37,7 @@ export default function Planning({ ouvrirDossier }) {
   const [mois, setMois] = useState(now.getMonth());
   const [jourSel, setJourSel] = useState(aujourdhui());
   const [ouvert, setOuvert] = useState(null);
+  const [copie, setCopie] = useState(null); // id de mission dont le brief vient d'être copié
 
   async function recharger() {
     setMissions(await listerMissions());
@@ -66,6 +70,23 @@ export default function Planning({ ouvrirDossier }) {
   async function basculer(missionId, membreId) {
     await basculerAffectation(missionId, membreId, "demenageur");
     await recharger();
+  }
+
+  async function brief(m) {
+    const noms = (m.affectations || [])
+      .map((a) => membres.find((x) => x.id === a.utilisateur_id)?.nom)
+      .filter(Boolean);
+    return composerBrief(m.affaire_id, { date: m.date, heure: m.heure, equipeNoms: noms });
+  }
+  async function copierBrief(m) {
+    const texte = await brief(m);
+    try { await navigator.clipboard.writeText(texte); setCopie(m.id); }
+    catch { window.prompt("Copiez le brief :", texte); }
+    setTimeout(() => setCopie(null), 2000);
+  }
+  async function whatsappBrief(m) {
+    const texte = await brief(m);
+    window.open(urlWhatsApp(texte), "_blank");
   }
 
   return (
@@ -176,6 +197,22 @@ export default function Planning({ ouvrirDossier }) {
                     </span>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Brief équipe : LE geste quotidien (alignement 09 §3) */}
+            {m.affaire_id && (
+              <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                <button onClick={() => copierBrief(m)} style={{
+                  flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer",
+                  border: `1.5px solid ${C.bord}`, background: "#fff",
+                  fontSize: 12.5, fontWeight: 700, color: C.encre,
+                }}>{copie === m.id ? "✓ Copié" : "📋 Copier le brief"}</button>
+                <button onClick={() => whatsappBrief(m)} style={{
+                  flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer",
+                  border: "none", background: "#25D366", color: "#fff",
+                  fontSize: 12.5, fontWeight: 700,
+                }}>💬 WhatsApp</button>
               </div>
             )}
 
