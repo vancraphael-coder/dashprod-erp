@@ -950,3 +950,24 @@ wins), écran Mail, congés + métier terrain, matériel E/U/R, réduction devis
 
 ### Prochains P1 : congés + métier terrain (nourrit les conflits planning),
 matériel E/U/R, réduction devis.
+
+---
+
+## Session 25 — P1 : congés & métier terrain
+
+### Livré
+- 0023 : utilisateurs.metier + cmd_definir_metier (gardée — la RLS
+  utilisateurs est SELECT-only par conception, toute écriture d'identité passe
+  par une commande). Décision synthèse §4 actée : métier ≠ rôle d'accès.
+- Adaptateur : listerConges (approuvés), ajouterConge (saisie direction,
+  directement approuvé — le workflow terrain du Module 8 reste), supprimerConge,
+  definirMetier ; listerMembresSimples expose le métier.
+- Ressources → Membres : fiches dépliables (accès, métier 3 boutons, congés
+  liste+ajout+suppression, badge N congés).
+- Planning : congés branchés dans conflitsAffectation ; chips avec RAISON
+  (« congé » vs « pris »), toujours sélectionnables (C-20).
+
+### Incident évité
+Premier câblage lisait verdict.raisons ; le contrat réel retourne
+{enConge, doubleAffectation, conflit} — vérifié à la source, corrigé avant
+livraison (un congé aurait été étiqueté « pris »).

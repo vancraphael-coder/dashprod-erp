@@ -351,18 +351,22 @@ export async function obtenirReleve(affaireId) {
 // ── Planning / Missions ───────────────────────────────────────────────────────
 
 const MEMBRES_DEMO = [
-  { id: "t1", nom: "Marco" }, { id: "t2", nom: "Yassine" },
-  { id: "t3", nom: "David" }, { id: "t4", nom: "Sofiane" },
+  { id: "t1", nom: "Marco", metier: "chef_equipe" },
+  { id: "t2", nom: "Yassine", metier: "chauffeur" },
+  { id: "t3", nom: "David", metier: "demenageur" },
+  { id: "t4", nom: "Sofiane", metier: "demenageur" },
 ];
 
 /** Membres de l'organisation (pour l'affectation). */
 export async function listerMembresSimples() {
   if (modeDonnees() === "reel") {
-    const { data, error } = await supabase.from("utilisateurs").select("id, nom").eq("actif", true);
+    const { data, error } = await supabase.from("utilisateurs")
+      .select("id, nom, metier").eq("actif", true);
     if (error) throw error;
     return data || [];
   }
-  return MEMBRES_DEMO;
+  const d = lireDemo();
+  return MEMBRES_DEMO.map((m) => ({ ...m, metier: (d.metiers || {})[m.id] || m.metier }));
 }
 
 /** Liste les missions (avec affectations) — planning bureau. */
@@ -775,4 +779,72 @@ export async function composerBrief(affaireId, { date, heure, equipeNoms = [] })
     iban: org.iban,
     signature: org.tel ? `Raphaël — ${org.tel}` : undefined,
   });
+}
+
+// ── Congés & métier (RH minimal — alignement page 10) ────────────────────────
+
+const CONGES_DEMO = [
+  { id: "cg1", utilisateur_id: "t2", debut: "2026-07-14", fin: "2026-07-18",
+    etat: "approuve", motif: "Vacances" },
+];
+
+/** Congés APPROUVÉS de l'organisation (ceux qui comptent pour les conflits). */
+export async function listerConges() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("conges")
+      .select("id, utilisateur_id, debut, fin, etat, motif")
+      .eq("etat", "approuve").order("debut");
+    if (error) throw error;
+    return data || [];
+  }
+  const d = lireDemo();
+  if (!d.conges) { d.conges = CONGES_DEMO; ecrireDemo(d); }
+  return d.conges.filter((c) => c.etat === "approuve");
+}
+
+/**
+ * Saisie directe d'un congé par la direction : créé directement APPROUVÉ
+ * (le workflow demande→approbation du Module 8 reste disponible pour les
+ * demandes venant du terrain — deux portes, une seule table).
+ */
+export async function ajouterConge({ utilisateurId, debut, fin, motif }) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("conges").insert({
+      utilisateur_id: utilisateurId, debut, fin, motif: motif || null, etat: "approuve",
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.conges = d.conges || [];
+  d.conges.push({ id: idDemo(), utilisateur_id: utilisateurId, debut, fin,
+                  etat: "approuve", motif: motif || null });
+  ecrireDemo(d);
+}
+
+/** Supprime un congé (saisi par erreur). */
+export async function supprimerConge(id) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("conges").delete().eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.conges = (d.conges || []).filter((c) => c.id !== id);
+  ecrireDemo(d);
+}
+
+/** Définit le métier terrain d'un membre (commande gardée en réel). */
+export async function definirMetier(utilisateurId, metier) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_definir_metier", {
+      p_utilisateur: utilisateurId, p_metier: metier,
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.metiers = d.metiers || {};
+  d.metiers[utilisateurId] = metier;
+  ecrireDemo(d);
 }

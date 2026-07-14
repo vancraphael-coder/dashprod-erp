@@ -9,6 +9,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   listerMissions, listerMembresSimples, basculerAffectation, composerBrief,
+  listerConges,
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
@@ -32,6 +33,7 @@ function dateLongue(iso) {
 export default function Planning({ ouvrirDossier }) {
   const [missions, setMissions] = useState([]);
   const [membres, setMembres] = useState([]);
+  const [conges, setConges] = useState([]);
   const now = new Date();
   const [annee, setAnnee] = useState(now.getFullYear());
   const [mois, setMois] = useState(now.getMonth());
@@ -42,6 +44,7 @@ export default function Planning({ ouvrirDossier }) {
   async function recharger() {
     setMissions(await listerMissions());
     setMembres(await listerMembresSimples());
+    setConges(await listerConges().catch(() => []));
   }
   useEffect(() => { recharger(); }, []);
 
@@ -62,8 +65,14 @@ export default function Planning({ ouvrirDossier }) {
       .filter((m) => m.id !== mission.id)
       .filter((m) => (m.affectations || []).some((a) => a.utilisateur_id === membreId))
       .map((m) => ({ missionId: m.id, date: m.date }));
+    // Congés approuvés du membre : le domaine les qualifie avec la double
+    // affectation en un seul verdict (C-20).
+    const congesMembre = conges
+      .filter((c) => c.utilisateur_id === membreId)
+      .map((c) => ({ debut: c.debut, fin: c.fin }));
     return conflitsAffectation({
-      date: mission.date, missionId: mission.id, conges: [], affectations: autres,
+      date: mission.date, missionId: mission.id,
+      conges: congesMembre, affectations: autres,
     });
   }
 
@@ -225,7 +234,10 @@ export default function Planning({ ouvrirDossier }) {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {membres.map((mem) => {
                     const estAffecte = affectes.includes(mem.id);
-                    const conflit = !estAffecte && conflitPour(mem.id, m).conflit;
+                    const verdict = estAffecte ? null : conflitPour(mem.id, m);
+                    const conflit = verdict?.conflit;
+                    const raison = verdict?.enConge ? "congé"
+                                 : conflit ? "pris" : null;
                     return (
                       <button key={mem.id} onClick={() => basculer(m.id, mem.id)} style={{
                         padding: "7px 12px", borderRadius: 999, cursor: "pointer",
@@ -235,6 +247,7 @@ export default function Planning({ ouvrirDossier }) {
                         color: estAffecte ? C.bleu : conflit ? C.rouge : C.encre,
                       }}>
                         {estAffecte ? "✓ " : conflit ? "⚠ " : ""}{mem.nom}
+                        {raison ? ` · ${raison}` : ""}
                       </button>
                     );
                   })}
