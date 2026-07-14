@@ -934,3 +934,19 @@ wins), écran Mail, congés + métier terrain, matériel E/U/R, réduction devis
 - Dossier : bouton itinéraire Google Maps sous les adresses (zéro API).
 
 ### Prochains P1 : écran Mail, congés + métier terrain, matériel E/U/R.
+
+---
+
+## Session 24 — P1 : écran Mail
+
+### Livré
+- Domaine : emailOffre (salutation par nom de famille, segment signé
+  conditionnel, horaire/forfait, validité, dates longues, signature depuis les
+  paramètres organisation) + urlMailto. 3 tests → 164/164.
+- Écran Mail : pièce jointe avec état (signée/non signée/à émettre) + lien
+  impression PDF, en-tête À/Objet avec alerte si email client absent, corps
+  scrollable, Copier + Ouvrir dans Mail.
+- Dossier : chip ✉️ Mail (dès que chiffré).
+
+### Prochains P1 : congés + métier terrain (nourrit les conflits planning),
+matériel E/U/R, réduction devis.

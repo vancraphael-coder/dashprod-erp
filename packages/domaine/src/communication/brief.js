@@ -107,3 +107,82 @@ export function urlItineraire(charges, decharges) {
   return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}` +
          (way ? `&waypoints=${way}` : "") + `&travelmode=driving`;
 }
+
+/**
+ * Compose l'email d'envoi d'offre (alignement page 07 §2 — format du modèle).
+ * @param {object} p
+ * @param {{nom: string, email?: string}} p.client
+ * @param {boolean} [p.signee]  l'offre jointe est-elle signée ?
+ * @param {{adresse: string}[]} [p.charges]
+ * @param {{adresse: string}[]} [p.decharges]
+ * @param {string} [p.formule]  tarifaire|emballage|forfait
+ * @param {number} [p.heures]
+ * @param {number} [p.nbDemenageurs]
+ * @param {number} p.tvacCentimes
+ * @param {string} [p.date]  ISO
+ * @param {string} [p.heure]
+ * @param {string} [p.dateEmballage]
+ * @param {string} [p.remarques]
+ * @param {{nom?: string, tel?: string, email?: string}} [p.organisation]
+ * @param {number} [p.validiteJours=10]
+ * @returns {{a: string, objet: string, corps: string}}
+ */
+export function emailOffre(p) {
+  const org = p.organisation || {};
+  const euros = (c) => (c / 100).toLocaleString("fr-BE", {
+    style: "currency", currency: "EUR",
+  });
+  // Salutation par nom de famille : dernier mot du nom complet (modèle).
+  const famille = String(p.client?.nom || "").trim().split(/\s+/).pop() || "";
+
+  const l = [];
+  l.push(`Bonjour ${famille},`);
+  l.push("");
+  l.push(`vous trouverez en pièce jointe votre offre de prix détaillée${
+    p.signee ? ", revêtue de votre bon pour accord signé" : ""}.`);
+  l.push("");
+  const charge = (p.charges || []).map((a) => a.adresse).filter(Boolean).join(" | ");
+  const decharge = (p.decharges || []).map((a) => a.adresse).filter(Boolean).join(" | ");
+  if (charge) l.push(`Chargement : ${charge}`);
+  if (decharge) l.push(`Déchargement : ${decharge}`);
+  l.push("");
+  if (p.formule === "forfait") {
+    l.push(`Montant forfaitaire : ${euros(p.tvacCentimes)} TVAC (TVA 21 %).`);
+  } else {
+    l.push(`Montant pour ${p.heures || "…"} h avec ${p.nbDemenageurs || "…"} déménageurs : ${
+      euros(p.tvacCentimes)} TVAC (TVA 21 %).`);
+  }
+  l.push(`Kilométrage offert. Offre valable ${p.validiteJours ?? 10} jours ouvrables.`);
+  l.push("");
+  if (p.date) {
+    const longue = new Date(p.date + "T00:00:00").toLocaleDateString("fr-BE", {
+      weekday: "long", day: "numeric", month: "long",
+    });
+    l.push(`Date prévue : ${longue}${p.heure ? ` — arrivée ${p.heure}` : ""}.`);
+  }
+  if (p.dateEmballage) {
+    const longueE = new Date(p.dateEmballage + "T00:00:00").toLocaleDateString("fr-BE", {
+      weekday: "long", day: "numeric", month: "long",
+    });
+    l.push(`Emballage : ${longueE}.`);
+  }
+  if (p.remarques) { l.push(""); l.push(`Remarques : ${p.remarques}`); }
+  l.push("");
+  l.push("Bien à vous,");
+  l.push("Raphaël Van Cutsem");
+  l.push(org.nom || "");
+  l.push([org.tel, org.email].filter(Boolean).join(" · "));
+
+  return {
+    a: p.client?.email || "",
+    objet: `Offre de prix — ${org.nom || "Déménagements Roovers"} — ${p.client?.nom || ""}`,
+    corps: l.filter((x, i, arr) => !(x === "" && arr[i - 1] === "")).join("\n"),
+  };
+}
+
+/** URL mailto: portant destinataire, objet et corps encodés. */
+export function urlMailto({ a, objet, corps }) {
+  return `mailto:${encodeURIComponent(a || "")}` +
+         `?subject=${encodeURIComponent(objet || "")}` +
+         `&body=${encodeURIComponent(corps || "")}`;
+}

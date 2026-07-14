@@ -21,6 +21,7 @@ import Releve from "./ecrans/Releve.jsx";
 import Devis from "./ecrans/Devis.jsx";
 import Offre from "./ecrans/Offre.jsx";
 import Facture from "./ecrans/Facture.jsx";
+import Mail from "./ecrans/Mail.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
@@ -143,6 +144,7 @@ function App() {
     devis: (id) => setRoute({ ecran: "devis", affaireId: id }),
     offre: (id) => setRoute({ ecran: "offre", affaireId: id }),
     facture: (id) => setRoute({ ecran: "facture", affaireId: id }),
+    mail: (id) => setRoute({ ecran: "mail", affaireId: id }),
     planning: () => setRoute({ ecran: "planning", affaireId: null }),
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
     compte: () => setRoute({ ecran: "compte", affaireId: null }),
@@ -175,7 +177,7 @@ function App() {
   } else if (route.ecran === "dossier") {
     ecran = <Dossier affaireId={route.affaireId} retour={nav.liste}
                      versReleve={nav.releve} versDevis={nav.devis}
-                     versOffre={nav.offre} versFacture={nav.facture} />;
+                     versOffre={nav.offre} versFacture={nav.facture} versMail={nav.mail} />;
   } else if (route.ecran === "releve") {
     ecran = <Releve affaireId={route.affaireId} retour={retourDossier} versDevis={nav.devis} />;
   } else if (route.ecran === "devis") {
@@ -184,6 +186,8 @@ function App() {
                    peutVoirPrix={peutVoirPrix} />;
   } else if (route.ecran === "offre") {
     ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
+  } else if (route.ecran === "mail") {
+    ecran = <Mail affaireId={route.affaireId} retour={retourDossier} versOffre={nav.offre} />;
   } else if (route.ecran === "facture") {
     ecran = <Facture affaireId={route.affaireId} retour={retourDossier} />;
   } else {

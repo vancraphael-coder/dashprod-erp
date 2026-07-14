@@ -4,7 +4,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { briefMission, urlItineraire, urlWhatsApp } from "../src/communication/brief.js";
+import {
+  briefMission, urlItineraire, urlWhatsApp, emailOffre, urlMailto,
+} from "../src/communication/brief.js";
 
 const BASE = {
   date: "2026-07-17", heure: "08:00",
@@ -67,4 +69,36 @@ test("urlItineraire : null sous deux adresses (rien à tracer)", () => {
 
 test("urlWhatsApp encode le texte", () => {
   assert.match(urlWhatsApp("é &"), /wa\.me\/\?text=%C3%A9%20%26/);
+});
+
+// --- Email d'offre -------------------------------------------------------------
+
+test("emailOffre : salutation par nom de famille, montant horaire, validité", () => {
+  const m = emailOffre({
+    client: { nom: "Jean Dupont", email: "j@d.be" },
+    charges: [{ adresse: "Rue A 1" }], decharges: [{ adresse: "Rue B 2" }],
+    formule: "tarifaire", heures: 6, nbDemenageurs: 3, tvacCentimes: 114950,
+    date: "2026-07-17", heure: "08:00",
+    organisation: { nom: "Déménagements Roovers", tel: "0455/17.16.79" },
+  });
+  assert.match(m.corps, /^Bonjour Dupont,/);
+  assert.match(m.corps, /6 h avec 3 déménageurs/);
+  assert.match(m.corps, /valable 10 jours ouvrables/);
+  assert.match(m.corps, /vendredi 17 juillet — arrivée 08:00/);
+  assert.match(m.objet, /Offre de prix — Déménagements Roovers — Jean Dupont/);
+  assert.equal(m.a, "j@d.be");
+});
+
+test("emailOffre : segment 'signé' conditionnel et forfait", () => {
+  const signe = emailOffre({ client: { nom: "X" }, signee: true,
+    formule: "forfait", tvacCentimes: 242000 });
+  assert.match(signe.corps, /revêtue de votre bon pour accord signé/);
+  assert.match(signe.corps, /Montant forfaitaire/);
+  const non = emailOffre({ client: { nom: "X" }, formule: "forfait", tvacCentimes: 1 });
+  assert.ok(!non.corps.includes("bon pour accord"));
+});
+
+test("urlMailto encode destinataire, objet et corps", () => {
+  const u = urlMailto({ a: "a@b.be", objet: "Été", corps: "ligne 1\nligne 2" });
+  assert.match(u, /^mailto:a%40b\.be\?subject=%C3%89t%C3%A9&body=ligne%201%0Aligne%202$/);
 });
