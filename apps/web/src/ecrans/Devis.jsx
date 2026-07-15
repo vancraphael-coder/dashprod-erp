@@ -22,7 +22,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   const [affaire, setAffaire] = useState(null);
   const [faits, setFaits] = useState({
     formule: "tarifaire", nbDemenageurs: 3, heures: 6, nbCamions: 1,
-    km: 0, elevateur: false, remisePct: 0,
+    km: 0, elevateur: false, remisePct: 0, remiseMotif: "promo",
     heuresEmballage: 0, kmEmballage: 0, forfaitTvacEuros: 0,
   });
   const [couts, setCouts] = useState({ mainOeuvreEuros: 0, carburantEuros: 0, materielEuros: 0, diversEuros: 0, peagesEuros: 0 });
@@ -151,10 +151,32 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
               </div>
             )}
 
-            <label style={S.label}>Remise (%)</label>
-            <input style={S.input} type="number" min="0" max="100"
-                   value={faits.remisePct}
-                   onChange={(e) => maj("remisePct", num(e.target.value))} />
+            {/* Réduction : le motif distingue le commercial (promo) du
+                correctif (geste après dégâts) — il s'imprime sur l'offre. */}
+            <label style={S.label}>Réduction</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ width: 96 }}>
+                <input style={S.input} type="number" min="0" max="100"
+                       value={faits.remisePct}
+                       onChange={(e) => maj("remisePct", num(e.target.value))}
+                       placeholder="%" />
+              </div>
+              <select style={{ ...S.input, flex: 1,
+                               opacity: faits.remisePct > 0 ? 1 : 0.5 }}
+                      disabled={!faits.remisePct}
+                      value={faits.remiseMotif}
+                      onChange={(e) => maj("remiseMotif", e.target.value)}>
+                <option value="promo">Promotion (geste commercial)</option>
+                <option value="degats">Dégâts (geste correctif)</option>
+              </select>
+            </div>
+            {scenario.reduction && (
+              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700,
+                color: scenario.reduction.motif === "degats" ? C.rouge : C.ambre }}>
+                Réduction de {scenario.reduction.pct} %
+                {scenario.reduction.motif === "degats" ? " (dégâts)" : " (promotion)"} appliquée
+              </div>
+            )}
           </>
         ) : (
           <>

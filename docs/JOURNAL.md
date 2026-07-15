@@ -974,21 +974,21 @@ livraison (un congé aurait été étiqueté « pris »).
 
 ---
 
-## Session 26 — P1 : matériel d'emballage (E/U/R)
+## Session 27 — P1 : réduction au devis (% + motif)
+
+### Découverte
+Le moteur gérait DÉJÀ la remise, y compris (après un refactor du repo) sur le
+forfait, et exposait reduction:{pct,motif}. Les 2 tests de réduction du domaine
+étaient déjà présents (166/166). C'était PUREMENT de l'écran.
 
 ### Livré
-- Domaine `stocks/emballage.js` : catalogue 7 articles (modèle validé),
-  resumeEmballage (écarts), fournituresOffre (pluriel géré par le catalogue).
-  L'équilibre vient de controleSolde (Module 8) — aucune règle réécrite.
-  5 tests → 169/169.
-- 0024 : affaires.emballage jsonb (v1 assumé ; V2 = stock_mouvements liés
-  mission, MÊME domaine de contrôle).
-- Écran Materiel : grille E/U/R, écart en rouge, carte « Matériel non
-  justifié », aperçu de la ligne d'offre.
-- Contrat : coche « Fourniture du matériel d'emballage (…) » automatique.
-- Dossier : chip 🧰 Matériel.
+- Devis : sélecteur de MOTIF (promo/dégâts) à côté du %, aperçu coloré.
+- composerOffre : porte reduction dans le contenu figé.
+- Contrat : « Réduction (promotion) −X % appliquée » dans le bloc prix — la
+  réduction signée est scellée avec son motif (C-02).
 
-### À trancher par Raphaël
-Prix unitaires du matériel (7 articles) : valoriserConsomme (Module 8) est prêt
-mais exige un RÉFÉRENTIEL validé (C-07). Rien inventé. Dès que les prix
-existent, la valorisation alimente le poste « Matériel » des coûts du devis.
+### Note de vigilance
+Au build, le compte de tests semblait « baisser » (169→166) : fausse alerte.
+Le 169 comptait le module matériel ; après le merge congés (164) + les 2 tests
+de réduction déjà présents = 166. Aucune perte. Vérifié via git diff et
+relance ciblée avant de continuer.

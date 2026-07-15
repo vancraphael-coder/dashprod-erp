@@ -86,11 +86,6 @@ export default function Contrat({ contenu, signature }) {
           <div style={S.legende}>Prestations incluses</div>
           {PRESTATIONS_INCLUSES.map((p) => <Coche key={p}>{p}</Coche>)}
           {contenu.elevateur && <Coche>Mise en œuvre d'un monte-meubles</Coche>}
-          {contenu.fournitures?.length > 0 && (
-            <Coche>
-              Fourniture du matériel d'emballage ({contenu.fournitures.join(", ")})
-            </Coche>
-          )}
         </div>
 
         {/* Démontage (issu du relevé) */}
@@ -109,6 +104,12 @@ export default function Contrat({ contenu, signature }) {
             <>Pour <b>{contenu.heures || "…"} h</b> avec{" "}
               <b>{contenu.nb_demenageurs || "…"} déménageurs</b> :</>
           ) : "Prix forfaitaire :"}
+          {contenu.reduction && (
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#FCD34D", marginTop: 4 }}>
+              Réduction ({contenu.reduction.motif === "degats"
+                ? "geste commercial" : "promotion"}) −{contenu.reduction.pct} % appliquée
+            </div>
+          )}
           <div style={S.montant}>{euros(contenu.tvac_centimes)} TVAC</div>
           <div style={S.montantSous}>dont TVA 21 % : {euros(contenu.tva_centimes)}</div>
         </div>

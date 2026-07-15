@@ -13,7 +13,6 @@ import { resoudreCbd } from "@domaine/documents/modeles.js";
 import { CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
 import { volumeTotal, articlesADemonter } from "@domaine/releve/volumetrie.js";
 import { briefMission } from "@domaine/communication/brief.js";
-import { fournituresOffre } from "@domaine/stocks/emballage.js";
 
 const CLE = "dashprod-demo-v1";
 
@@ -625,10 +624,9 @@ export async function obtenirOrganisation() {
  * base (C-02). Tout ce qui s'imprime sur le contrat vient d'ici.
  */
 export async function composerOffre(affaireId) {
-  const [affaire, contact, inventaire, org, emballage] = await Promise.all([
+  const [affaire, contact, inventaire, org] = await Promise.all([
     obtenirAffaire(affaireId), obtenirContact(affaireId),
     obtenirReleve(affaireId), obtenirOrganisation(),
-    obtenirEmballage(affaireId).catch(() => ({})),
   ]);
   const faits = affaire?.faits || {};
   const tvac = affaire?.tvac_centimes || 0;
@@ -648,8 +646,10 @@ export async function composerOffre(affaireId) {
     remarques: contact?.notes || "",
     volume_m3: volumeTotal(inventaire),
     a_demonter: articlesADemonter(inventaire),
-    fournitures: fournituresOffre(emballage),
     formule: faits.formule || "tarifaire",
+    reduction: faits.remisePct
+      ? { pct: faits.remisePct, motif: faits.remiseMotif || "promo" }
+      : null,
     nb_demenageurs: faits.nbDemenageurs || null,
     heures: faits.heures || null,
     elevateur: !!faits.elevateur,
@@ -850,32 +850,4 @@ export async function definirMetier(utilisateurId, metier) {
   d.metiers = d.metiers || {};
   d.metiers[utilisateurId] = metier;
   ecrireDemo(d);
-}
-
-// ── Matériel d'emballage (E/U/R) ──────────────────────────────────────────────
-
-/** Matériel d'emballage d'un dossier. */
-export async function obtenirEmballage(affaireId) {
-  if (modeDonnees() === "reel") {
-    const { data, error } = await supabase.from("affaires")
-      .select("emballage").eq("id", affaireId).single();
-    if (error) throw error;
-    return data?.emballage || {};
-  }
-  const d = lireDemo();
-  const a = d.affaires.find((x) => x.id === affaireId);
-  return (a && a.emballage) || {};
-}
-
-/** Sauve le matériel d'emballage d'un dossier. */
-export async function sauverEmballage(affaireId, emballage) {
-  if (modeDonnees() === "reel") {
-    const { error } = await supabase.from("affaires")
-      .update({ emballage }).eq("id", affaireId);
-    if (error) throw error;
-    return;
-  }
-  const d = lireDemo();
-  const a = d.affaires.find((x) => x.id === affaireId);
-  if (a) { a.emballage = emballage; ecrireDemo(d); }
 }
