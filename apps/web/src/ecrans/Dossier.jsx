@@ -21,7 +21,7 @@ function adrVide() {
            etage: "", ascenseur: false, monteMeubles: false };
 }
 
-export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail }) {
+export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail, versMateriel }) {
   const [affaire, setAffaire] = useState(null);
   const [contact, setContact] = useState(null);
   const [sauve, setSauve] = useState(false);
@@ -96,6 +96,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       <div style={{ padding: "0 16px", display: "flex", gap: 6, overflowX: "auto", marginBottom: 10 }}>
         {[
           ["📦 Relevé", () => versReleve(affaireId), true],
+          ["🧰 Matériel", () => versMateriel && versMateriel(affaireId), true],
           ["💶 Devis", () => versDevis(affaireId), true],
           ["✍️ Offre", () => versOffre(affaireId), chiffree],
           ["✉️ Mail", () => versMail && versMail(affaireId), chiffree],

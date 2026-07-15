@@ -86,6 +86,11 @@ export default function Contrat({ contenu, signature }) {
           <div style={S.legende}>Prestations incluses</div>
           {PRESTATIONS_INCLUSES.map((p) => <Coche key={p}>{p}</Coche>)}
           {contenu.elevateur && <Coche>Mise en œuvre d'un monte-meubles</Coche>}
+          {contenu.fournitures?.length > 0 && (
+            <Coche>
+              Fourniture du matériel d'emballage ({contenu.fournitures.join(", ")})
+            </Coche>
+          )}
         </div>
 
         {/* Démontage (issu du relevé) */}

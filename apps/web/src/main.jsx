@@ -22,6 +22,7 @@ import Devis from "./ecrans/Devis.jsx";
 import Offre from "./ecrans/Offre.jsx";
 import Facture from "./ecrans/Facture.jsx";
 import Mail from "./ecrans/Mail.jsx";
+import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
@@ -145,6 +146,7 @@ function App() {
     offre: (id) => setRoute({ ecran: "offre", affaireId: id }),
     facture: (id) => setRoute({ ecran: "facture", affaireId: id }),
     mail: (id) => setRoute({ ecran: "mail", affaireId: id }),
+    materiel: (id) => setRoute({ ecran: "materiel", affaireId: id }),
     planning: () => setRoute({ ecran: "planning", affaireId: null }),
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
     compte: () => setRoute({ ecran: "compte", affaireId: null }),
@@ -177,7 +179,8 @@ function App() {
   } else if (route.ecran === "dossier") {
     ecran = <Dossier affaireId={route.affaireId} retour={nav.liste}
                      versReleve={nav.releve} versDevis={nav.devis}
-                     versOffre={nav.offre} versFacture={nav.facture} versMail={nav.mail} />;
+                     versOffre={nav.offre} versFacture={nav.facture} versMail={nav.mail}
+                     versMateriel={nav.materiel} />;
   } else if (route.ecran === "releve") {
     ecran = <Releve affaireId={route.affaireId} retour={retourDossier} versDevis={nav.devis} />;
   } else if (route.ecran === "devis") {
@@ -186,6 +189,8 @@ function App() {
                    peutVoirPrix={peutVoirPrix} />;
   } else if (route.ecran === "offre") {
     ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
+  } else if (route.ecran === "materiel") {
+    ecran = <Materiel affaireId={route.affaireId} retour={retourDossier} />;
   } else if (route.ecran === "mail") {
     ecran = <Mail affaireId={route.affaireId} retour={retourDossier} versOffre={nav.offre} />;
   } else if (route.ecran === "facture") {
