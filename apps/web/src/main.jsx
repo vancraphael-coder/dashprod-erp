@@ -15,7 +15,7 @@ import Connexion from "./ecrans/Connexion.jsx";
 import Diagnostic from "./ecrans/Diagnostic.jsx";
 import NonInvite from "./ecrans/NonInvite.jsx";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
-import NouvelleAffaire from "./ecrans/NouvelleAffaire.jsx";
+import { creerDossierVide } from "./lib/adaptateur.js";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
 import Devis from "./ecrans/Devis.jsx";
@@ -139,7 +139,7 @@ function App() {
   const peutVoirPrix = modeDonnees() === "demo" || capacites.includes("voir_prix");
   const nav = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
-    nouvelle: () => setRoute({ ecran: "nouvelle", affaireId: null }),
+    nouvelle: async () => { const id = await creerDossierVide(); setRoute({ ecran: "dossier", affaireId: id }); },
     dossier: (id) => setRoute({ ecran: "dossier", affaireId: id }),
     releve: (id) => setRoute({ ecran: "releve", affaireId: id }),
     devis: (id) => setRoute({ ecran: "devis", affaireId: id }),
@@ -174,8 +174,6 @@ function App() {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
     ecran = <Planning ouvrirDossier={nav.dossier} />;
-  } else if (route.ecran === "nouvelle") {
-    ecran = <NouvelleAffaire retour={nav.liste} versDevis={nav.dossier} />;
   } else if (route.ecran === "dossier") {
     ecran = <Dossier affaireId={route.affaireId} retour={nav.liste}
                      versReleve={nav.releve} versDevis={nav.devis}

@@ -51,6 +51,9 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
       faits, couts,
       resultat: { tvac_centimes: scenario.tvac_centimes, marge_pct: scenario.marge_pct },
     });
+    // Recharge l'affaire : le montant enregistré est désormais la source de
+    // vérité (en-tête, offre, liste le reliront de la base).
+    obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
     setSauve(true);
   }
 
@@ -59,7 +62,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   return (
     <div style={S.page}>
       <div style={S.entete}>
-        <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
+        <button style={S.boutonLien} onClick={retour}>← Dossier</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div style={S.titre}>Devis — {affaire?.client?.nom || "…"}</div>
           {scenario && (
@@ -68,12 +71,6 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
             </div>
           )}
         </div>
-        {versReleve && (
-          <button style={{ ...S.boutonLien, paddingLeft: 0 }}
-                  onClick={() => versReleve(affaireId)}>
-            📦 Relevé volumétrique →
-          </button>
-        )}
       </div>
 
       {/* Formule */}

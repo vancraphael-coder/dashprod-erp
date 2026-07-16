@@ -10,6 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   obtenirAffaire, lignesFacturePour, emettreFacture, obtenirFacture, enregistrerPaiement,
   obtenirOrganisation, obtenirContact, obtenirFacturePourAffaire,
+  obtenirClientFacturation,
 } from "../lib/adaptateur.js";
 import FactureDoc from "./FactureDoc.jsx";
 import { composerTotal, etatPaiement } from "@domaine/facturation/facture.js";
@@ -32,9 +33,11 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
   const [moyen, setMoyen] = useState("virement");
   const [org, setOrg] = useState(null);
   const [adresses, setAdresses] = useState(null);
+  const [clientFact, setClientFact] = useState(null);
 
   async function recharger() {
     setOrg(await obtenirOrganisation().catch(() => null));
+    setClientFact(await obtenirClientFacturation(affaireId).catch(() => null));
     if (affaireId) {
       const a = await obtenirAffaire(affaireId);
       setAffaire(a);
@@ -151,7 +154,15 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
 
       {/* Le document lui-même — imprimable seul (classe partagée avec le contrat) */}
       <FactureDoc facture={facture} organisation={org}
-                  client={{ nom: facture.client || affaire?.client?.nom }}
+                  client={{
+                    nom: clientFact?.societe || facture.client || affaire?.client?.nom,
+                    tva: clientFact?.tva_num,
+                    adresse_facturation: clientFact?.fact_lignes
+                      ? [clientFact.fact_lignes,
+                         [clientFact.fact_cp, clientFact.fact_ville].filter(Boolean).join(" ")]
+                          .filter(Boolean).join(", ")
+                      : adresses?.decharge,
+                  }}
                   adresses={adresses} />
 
       <div className="no-print" style={{ margin: "0 16px 12px" }}>

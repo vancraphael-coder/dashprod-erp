@@ -992,3 +992,64 @@ Au build, le compte de tests semblait « baisser » (169→166) : fausse alerte.
 Le 169 comptait le module matériel ; après le merge congés (164) + les 2 tests
 de réduction déjà présents = 166. Aucune perte. Vérifié via git diff et
 relance ciblée avant de continuer.
+
+---
+
+## Session 28 — P1 : données de facturation client
+
+### Livré
+- Adaptateur : obtenirClientFacturation / sauverClientFacturation (liste
+  blanche de colonnes). La table clients (0005) portait DÉJÀ societe, tva_num,
+  fact_lignes/cp/ville/pays — encore un cas domaine-en-avance-sur-l'écran.
+- Dossier : bloc « Facturation » dépliable (masqué par défaut, particulier ;
+  ouvert pour une société → société, TVA, adresse de facturation).
+- Facture : le rendu utilise les vraies données (société prime sur nom, TVA
+  affichée, adresse de facturation structurée, repli déchargement).
+
+### Note
+28 modules construits. Prochains petits P1 : coût de trajet (km/durée/prix-km),
+date+heure d'emballage sur le dossier. Puis gros chantiers : mode Terrain, PWA.
+
+---
+
+## Session 29 — P1 : coût de trajet & horaire d'emballage
+
+### Livré
+- 0025 : trajet_km/trajet_duree/trajet_prix_km (versant COÛT, distinct du km
+  facturé au barème) + sécurisation date_emballage/heure_emballage (déjà en
+  0021).
+- Dossier : bloc coût de trajet sous l'itinéraire (Km/Durée/Prix-km + calcul
+  live) ; bloc emballage (jour séparé) sous la date souhaitée — génère la 2e
+  mission à la confirmation via le trigger 0021.
+- obtenirContact/sauverContact étendus pour porter emballage + trajet.
+
+### Petits P1 restants de la cartographie : tous fermés.
+Reste les gros chantiers : mode Terrain (page 11), PWA. Et 4 décisions
+ouvertes + prix du matériel d'emballage à trancher par Raphaël.
+
+---
+
+## Session 30 — Corrections devis/dossier + équipe sur le dossier
+
+### Bug bloquant corrigé : le prix ne se sauvegardait pas
+- obtenirAffaire relisait faits:null en réel (passait par listerAffaires) →
+  requête directe relisant entrees du scénario retenu.
+- enregistrerChiffrage faisait un INSERT → doublons de scénarios retenus →
+  passé en UPSERT.
+- Formule reflétée sur l'affaire ; affaire rechargée après enregistrement
+  (montant/nom cohérents partout).
+
+### Navigation devis
+- « ← Dossiers » → « ← Dossier » (ramenait déjà au dossier, libellé trompeur).
+- Lien Relevé redondant retiré : le dossier est le hub, un seul retour par écran.
+
+### Le « + » ouvre directement le dossier
+- creerDossierVide() + route directe vers Dossier. Écran NouvelleAffaire
+  supprimé. Bloc identité client (nom/tel/email) éditable en tête du dossier.
+
+### Équipe sur le dossier (comme les camions)
+- 0026 : affaires.equipe jsonb, reportée dans mission_affectations à la
+  confirmation par le trigger (symétrie exacte avec les camions).
+- Dossier : bloc Équipe avec chips de membres.
+
+### Prochain : app terrain.

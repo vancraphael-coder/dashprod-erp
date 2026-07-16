@@ -11,6 +11,9 @@ import React, { useEffect, useState } from "react";
 import {
   obtenirAffaire, obtenirContact, sauverContact,
   listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
+  obtenirClientFacturation, sauverClientFacturation,
+  obtenirClientIdentite, sauverClientIdentite,
+  listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -28,11 +31,20 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const [erreur, setErreur] = useState(null);
   const [flotte, setFlotte] = useState([]);
   const [camions, setCamions] = useState([]);
+  const [facturation, setFacturation] = useState(null);
+  const [factOuvert, setFactOuvert] = useState(false);
+  const [identite, setIdentite] = useState(null);
+  const [membres, setMembres] = useState([]);
+  const [equipe, setEquipe] = useState([]);
 
   useEffect(() => {
     obtenirAffaire(affaireId).then(setAffaire);
     listerVehicules().then(setFlotte).catch(() => {});
     obtenirCamionsAffaire(affaireId).then(setCamions).catch(() => {});
+    obtenirClientFacturation(affaireId).then(setFacturation).catch(() => {});
+    obtenirClientIdentite(affaireId).then(setIdentite).catch(() => {});
+    listerMembresSimples().then(setMembres).catch(() => {});
+    obtenirEquipeAffaire(affaireId).then(setEquipe).catch(() => {});
     obtenirContact(affaireId).then((c) => setContact({
       ...c,
       charges: c.charges.length ? c.charges : [adrVide()],
@@ -58,6 +70,8 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     setSauve(false);
   }
   function maj(champ, valeur) { setContact((c) => ({ ...c, [champ]: valeur })); setSauve(false); }
+  function majFact(champ, valeur) { setFacturation((f) => ({ ...f, [champ]: valeur })); setSauve(false); }
+  function majIdentite(champ, valeur) { setIdentite((x) => ({ ...x, [champ]: valeur })); setSauve(false); }
 
   async function basculerCamion(id) {
     const suivant = camions.includes(id)
@@ -65,12 +79,21 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     setCamions(suivant);
     setSauve(false);
   }
+  function basculerMembre(id) {
+    setEquipe((e) => e.includes(id) ? e.filter((x) => x !== id) : [...e, id]);
+    setSauve(false);
+  }
 
   async function enregistrer() {
     setErreur(null);
     try {
+      if (identite) await sauverClientIdentite(affaireId, identite);
       await sauverContact(affaireId, contact);
       await sauverCamionsAffaire(affaireId, camions);
+      await sauverEquipeAffaire(affaireId, equipe);
+      if (facturation) await sauverClientFacturation(affaireId, facturation);
+      // Recharge l'affaire pour refléter le nom mis à jour dans l'en-tête.
+      obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
       setSauve(true);
     } catch (e) { setErreur(e.message); }
   }
@@ -112,6 +135,34 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         ))}
       </div>
 
+      {/* Identité du client — éditable ici (le nom se corrige au même endroit
+          que tout le reste, pas dans un écran séparé). */}
+      {identite && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 4 }}>
+            Client
+          </div>
+          <label style={S.label}>Nom</label>
+          <input style={S.input} value={identite.nom || ""}
+                 onChange={(e) => majIdentite("nom", e.target.value)}
+                 placeholder="Famille Dupont" />
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={S.label}>Téléphone</label>
+              <input style={S.input} value={identite.tel || ""} inputMode="tel"
+                     onChange={(e) => majIdentite("tel", e.target.value)}
+                     placeholder="0470 00 00 00" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={S.label}>Email</label>
+              <input style={S.input} value={identite.email || ""} inputMode="email"
+                     onChange={(e) => majIdentite("email", e.target.value)}
+                     placeholder="client@exemple.be" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Date & heure souhaitées */}
       <div style={S.carte}>
         <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 4 }}>
@@ -127,6 +178,24 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             <label style={S.label}>Heure</label>
             <input style={S.input} type="time" value={contact.heure}
                    onChange={(e) => maj("heure", e.target.value)} />
+          </div>
+        </div>
+
+        {/* Journée d'emballage, distincte : renseignée, elle génère sa propre
+            mission à la confirmation (trigger 0021). */}
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muet, margin: "12px 0 4px" }}>
+          Emballage (jour séparé, optionnel)
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 2 }}>
+            <label style={S.label}>Date d'emballage</label>
+            <input style={S.input} type="date" value={contact.dateEmballage || ""}
+                   onChange={(e) => maj("dateEmballage", e.target.value)} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Heure</label>
+            <input style={S.input} type="time" value={contact.heureEmballage || ""}
+                   onChange={(e) => maj("heureEmballage", e.target.value)} />
           </div>
         </div>
       </div>
@@ -162,6 +231,33 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         </div>
       )}
 
+      {/* Équipe pressentie — sélectionnable comme les camions. Reportée sur la
+          mission à la confirmation (0026). Un membre en congé ce jour-là
+          pourrait être signalé ici à terme (données RH). */}
+      {membres.length > 0 && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
+            Équipe ({equipe.length})
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {membres.map((m) => {
+              const sel = equipe.includes(m.id);
+              return (
+                <button key={m.id} onClick={() => basculerMembre(m.id)} style={{
+                  padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+                  fontSize: 12.5, fontWeight: 600,
+                  border: `1.5px solid ${sel ? C.bleu : C.bord}`,
+                  background: sel ? "#E7EFFC" : C.blanc,
+                  color: sel ? C.bleu : C.encre,
+                }}>
+                  {sel ? "✓ " : "👤 "}{m.nom}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Adresses */}
       <BlocAdresses titre="Chargement" liste={contact.charges}
         onMaj={(id, ch, v) => majAdr("charges", id, ch, v)}
@@ -188,6 +284,87 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </div>
         ) : null;
       })()}
+
+      {/* Coût de trajet : le versant COÛT réel (marge), distinct du km facturé
+          au barème. Maps s'ouvre ci-dessus, on lit distance et durée, on
+          reporte ici (alignement 02 §3). Les péages se saisissent au Devis. */}
+      <div style={S.carte}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 6 }}>
+          Coût de trajet <span style={{ fontWeight: 500, color: C.muet }}>(interne)</span>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Km</label>
+            <input style={S.input} inputMode="decimal" value={contact.trajetKm ?? ""}
+                   onChange={(e) => maj("trajetKm", e.target.value)} placeholder="0" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Durée</label>
+            <input style={S.input} value={contact.trajetDuree || ""}
+                   onChange={(e) => maj("trajetDuree", e.target.value)} placeholder="45 min" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Prix/km (€)</label>
+            <input style={S.input} inputMode="decimal" value={contact.trajetPrixKm ?? ""}
+                   onChange={(e) => maj("trajetPrixKm", e.target.value)} placeholder="0" />
+          </div>
+        </div>
+        {contact.trajetKm > 0 && contact.trajetPrixKm > 0 && (
+          <div style={{ fontSize: 12, color: C.muet, marginTop: 6 }}>
+            Coût trajet ({contact.trajetKm} km × {contact.trajetPrixKm} €) ={" "}
+            <b style={{ color: C.encre }}>
+              {(contact.trajetKm * contact.trajetPrixKm).toLocaleString("fr-BE", {
+                style: "currency", currency: "EUR",
+              })}
+            </b>
+          </div>
+        )}
+      </div>
+
+      {/* Données de facturation — masquées par défaut : la majorité des
+          clients sont des particuliers. Dépliables dès qu'il s'agit d'une
+          société (TVA + adresse de facturation obligatoires sur la facture). */}
+      <div style={S.carte}>
+        <button onClick={() => setFactOuvert(!factOuvert)} style={{
+          ...S.boutonLien, paddingLeft: 0, width: "100%", textAlign: "left",
+          display: "flex", justifyContent: "space-between", fontSize: 13,
+          fontWeight: 700, color: C.encre,
+        }}>
+          <span>Facturation {facturation?.tva_num ? "· société" : "· particulier"}</span>
+          <span style={{ color: C.muet }}>{factOuvert ? "−" : "+"}</span>
+        </button>
+        {factOuvert && facturation && (
+          <div style={{ marginTop: 8 }}>
+            <label style={S.label}>Société</label>
+            <input style={S.input} value={facturation.societe || ""}
+                   onChange={(e) => majFact("societe", e.target.value)}
+                   placeholder="Raison sociale (si professionnel)" />
+            <label style={S.label}>N° TVA</label>
+            <input style={S.input} value={facturation.tva_num || ""}
+                   onChange={(e) => majFact("tva_num", e.target.value)}
+                   placeholder="BE0123.456.789" />
+            <label style={S.label}>Adresse de facturation</label>
+            <input style={S.input} value={facturation.fact_lignes || ""}
+                   onChange={(e) => majFact("fact_lignes", e.target.value)}
+                   placeholder="Rue et numéro" />
+            <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ width: 110 }}>
+                <label style={S.label}>Code postal</label>
+                <input style={S.input} value={facturation.fact_cp || ""}
+                       onChange={(e) => majFact("fact_cp", e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={S.label}>Ville</label>
+                <input style={S.input} value={facturation.fact_ville || ""}
+                       onChange={(e) => majFact("fact_ville", e.target.value)} />
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: C.fantome, marginTop: 6 }}>
+              Sans adresse de facturation, la facture reprend l'adresse de déchargement.
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Remarques */}
       <div style={S.carte}>

@@ -126,8 +126,32 @@ export async function listerAffaires() {
 
 /** Récupère une affaire complète. */
 export async function obtenirAffaire(id) {
-  const liste = await listerAffaires();
-  return liste.find((a) => a.id === id) || null;
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase
+      .from("affaires")
+      .select("id, etat, formule, created_at, date_souhaitee, heure_souhaitee, clients(id, nom, tel, email), scenarios(retenu, entrees, resultats)")
+      .eq("id", id).single();
+    if (error) throw error;
+    // On relit le scénario retenu pour restituer les faits ET les coûts saisis :
+    // sans ça, rouvrir le devis repart de zéro (bug de persistance).
+    const retenu = (data.scenarios || []).find((sc) => sc.retenu) || (data.scenarios || [])[0];
+    const entrees = retenu?.entrees || null;
+    const r = retenu?.resultats || {};
+    const { couts, ...faits } = entrees || {};
+    return {
+      id: data.id, etat: data.etat, formule: data.formule, creeLe: data.created_at,
+      date_souhaitee: data.date_souhaitee || null,
+      client: data.clients,
+      tvac_centimes: r.tvac_centimes ?? null,
+      marge_pct: r.marge_pct ?? null,
+      faits: entrees ? faits : null,
+      couts: couts || null,
+    };
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === id);
+  if (!a) return null;
+  return { ...a, client: d.clients.find((c) => c.id === a.clientId) };
 }
 
 /**
@@ -172,11 +196,26 @@ export async function creerAffaire({ clientId, clientNom, tel, email }) {
  */
 export async function enregistrerChiffrage(affaireId, { faits, couts, resultat }) {
   if (modeDonnees() === "reel") {
-    const { error } = await supabase.from("scenarios").insert({
+    // Upsert du scénario retenu : on met à jour l'existant s'il y en a un,
+    // sinon on en crée un seul. Un INSERT systématique créait des scénarios
+    // 'retenu' en double, et la lecture en prenait un au hasard.
+    const { data: existant, error: eSel } = await supabase.from("scenarios")
+      .select("id").eq("affaire_id", affaireId).eq("retenu", true).maybeSingle();
+    if (eSel) throw eSel;
+
+    const charge = {
       affaire_id: affaireId, nom: "Scénario retenu", retenu: true,
       entrees: { ...faits, couts }, resultats: resultat,
-    });
-    if (error) throw error;
+    };
+    if (existant) {
+      const { error } = await supabase.from("scenarios").update(charge).eq("id", existant.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("scenarios").insert(charge);
+      if (error) throw error;
+    }
+    // La formule choisie au devis pilote le type d'offre : on la reflète sur l'affaire.
+    await supabase.from("affaires").update({ formule: faits.formule }).eq("id", affaireId);
     return;
   }
   const d = lireDemo();
@@ -542,7 +581,7 @@ export async function enregistrerPaiement(factureId, { montant_centimes, moyen, 
 export async function obtenirContact(affaireId) {
   if (modeDonnees() === "reel") {
     const { data: a, error } = await supabase.from("affaires")
-      .select("date_souhaitee, heure_souhaitee, notes_commerciales")
+      .select("date_souhaitee, heure_souhaitee, notes_commerciales, date_emballage, heure_emballage, trajet_km, trajet_duree, trajet_prix_km")
       .eq("id", affaireId).single();
     if (error) throw error;
     const { data: adr, error: e2 } = await supabase.from("affaire_adresses")
@@ -555,23 +594,30 @@ export async function obtenirContact(affaireId) {
     return {
       charges: map("chargement"), decharges: map("dechargement"),
       date: a?.date_souhaitee || "", heure: (a?.heure_souhaitee || "08:00").slice(0, 5),
+      dateEmballage: a?.date_emballage || "", heureEmballage: (a?.heure_emballage || "").slice(0, 5),
+      trajetKm: a?.trajet_km ?? "", trajetDuree: a?.trajet_duree || "",
+      trajetPrixKm: a?.trajet_prix_km ?? "",
       notes: a?.notes_commerciales || "",
     };
   }
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
-  return (a && a.contact) || { charges: [], decharges: [], date: "", heure: "08:00", notes: "" };
+  return (a && a.contact) || { charges: [], decharges: [], date: "", heure: "08:00", dateEmballage: "", heureEmballage: "", trajetKm: "", trajetDuree: "", trajetPrixKm: "", notes: "" };
 }
 
 /**
  * Sauve le volet Contact : remplace les adresses de l'affaire (stratégie
  * simple delete+insert — volumes minuscules), met à jour date/heure/notes.
  */
-export async function sauverContact(affaireId, { charges, decharges, date, heure, notes }) {
+export async function sauverContact(affaireId, { charges, decharges, date, heure, notes, dateEmballage, heureEmballage, trajetKm, trajetDuree, trajetPrixKm }) {
   if (modeDonnees() === "reel") {
+    const nombre = (v) => (v === "" || v == null ? null : Number(v));
     const { error } = await supabase.from("affaires").update({
       date_souhaitee: date || null, heure_souhaitee: heure || null,
       notes_commerciales: notes || null,
+      date_emballage: dateEmballage || null, heure_emballage: heureEmballage || null,
+      trajet_km: nombre(trajetKm), trajet_duree: trajetDuree || null,
+      trajet_prix_km: nombre(trajetPrixKm),
     }).eq("id", affaireId);
     if (error) throw error;
     const { error: eDel } = await supabase.from("affaire_adresses")
@@ -594,7 +640,7 @@ export async function sauverContact(affaireId, { charges, decharges, date, heure
   }
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
-  if (a) { a.contact = { charges, decharges, date, heure, notes }; ecrireDemo(d); }
+  if (a) { a.contact = { charges, decharges, date, heure, notes, dateEmballage, heureEmballage, trajetKm, trajetDuree, trajetPrixKm }; ecrireDemo(d); }
 }
 
 // ── Organisation (paramètres d'en-tête des documents) ─────────────────────────
@@ -878,4 +924,113 @@ export async function sauverEmballage(affaireId, emballage) {
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
   if (a) { a.emballage = emballage; ecrireDemo(d); }
+}
+
+// ── Données de facturation du client (société, TVA, adresse) ──────────────────
+// La table clients porte déjà ces colonnes (0005) ; il ne manquait que l'accès.
+
+/** Données de facturation du client d'une affaire. */
+export async function obtenirClientFacturation(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("affaires")
+      .select("clients(id, nom, tel, email, societe, tva_num, fact_lignes, fact_cp, fact_ville, fact_pays)")
+      .eq("id", affaireId).single();
+    if (error) throw error;
+    return data?.clients || {};
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  return d.clients.find((c) => c.id === a?.clientId) || {};
+}
+
+/** Met à jour les données de facturation du client (édition depuis le dossier). */
+export async function sauverClientFacturation(affaireId, champs) {
+  const permis = ["societe", "tva_num", "fact_lignes", "fact_cp", "fact_ville", "fact_pays"];
+  const propre = {};
+  for (const k of permis) if (champs[k] !== undefined) propre[k] = champs[k] || null;
+
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("affaires")
+      .select("client_id").eq("id", affaireId).single();
+    if (error) throw error;
+    const { error: e2 } = await supabase.from("clients")
+      .update(propre).eq("id", data.client_id);
+    if (e2) throw e2;
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  const c = d.clients.find((x) => x.id === a?.clientId);
+  if (c) { Object.assign(c, propre); ecrireDemo(d); }
+}
+
+// ── Identité client (nom/tel/email) éditable depuis le dossier ────────────────
+
+/** Identité de base du client d'une affaire. */
+export async function obtenirClientIdentite(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("affaires")
+      .select("clients(id, nom, tel, email)").eq("id", affaireId).single();
+    if (error) throw error;
+    return data?.clients || {};
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  return d.clients.find((c) => c.id === a?.clientId) || {};
+}
+
+/** Met à jour le nom / téléphone / email du client depuis le dossier. */
+export async function sauverClientIdentite(affaireId, { nom, tel, email }) {
+  const propre = {};
+  if (nom !== undefined) propre.nom = nom || "Sans nom";
+  if (tel !== undefined) propre.tel = tel || null;
+  if (email !== undefined) propre.email = email || null;
+
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("affaires")
+      .select("client_id").eq("id", affaireId).single();
+    if (error) throw error;
+    const { error: e2 } = await supabase.from("clients").update(propre).eq("id", data.client_id);
+    if (e2) throw e2;
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  const c = d.clients.find((x) => x.id === a?.clientId);
+  if (c) { Object.assign(c, propre); ecrireDemo(d); }
+}
+
+/**
+ * Création rapide d'un dossier vide (client « Nouveau client » à renommer
+ * dans la fiche). Le « + » ne passe plus par un écran intermédiaire.
+ */
+export async function creerDossierVide() {
+  return creerAffaire({ clientNom: "Nouveau client" });
+}
+
+// ── Équipe pressentie du dossier (symétrique aux camions) ─────────────────────
+
+/** Membres pressentis d'une affaire (identifiants). */
+export async function obtenirEquipeAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("affaires")
+      .select("equipe").eq("id", affaireId).single();
+    if (error) throw error;
+    return data?.equipe || [];
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  return (a && a.equipe) || [];
+}
+
+/** Sauve l'équipe pressentie d'une affaire. */
+export async function sauverEquipeAffaire(affaireId, ids) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("affaires").update({ equipe: ids }).eq("id", affaireId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  if (a) { a.equipe = ids; ecrireDemo(d); }
 }
