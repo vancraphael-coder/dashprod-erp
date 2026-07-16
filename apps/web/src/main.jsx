@@ -18,6 +18,7 @@ import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide } from "./lib/adaptateur.js";
 import Terrain from "./ecrans/Terrain.jsx";
 import TerrainOutils from "./ecrans/TerrainOutils.jsx";
+import TerrainProfil from "./ecrans/TerrainProfil.jsx";
 import Configuration from "./ecrans/Configuration.jsx";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
@@ -128,7 +129,8 @@ function AppTerrain({ profil }) {
   const [ecran, setEcran] = useState("chantiers");
   const [route, setRoute] = useState(null); // {ecran, affaireId} pour les écrans dossier
   const caps = profil?.capacites || [];
-  const peutSaisir = caps.includes("valider_intake") || caps.includes("creer_affaire");
+  const peutSaisir = caps.includes("valider_intake") || caps.includes("creer_affaire")
+    || caps.includes("signaler_materiel");
 
   const retourChantiers = () => { setRoute(null); setEcran("chantiers"); };
   const nav = {
@@ -157,14 +159,14 @@ function AppTerrain({ profil }) {
   const items = [
     ["chantiers", "🏗️", "Chantiers"],
     ["outils", "➕", "Outils"],
-    ["compte", "⚙️", "Compte"],
+    ["profil", "👤", "Profil"],
   ];
   return (
     <div>
       {ecran === "chantiers" && <Terrain profil={profil}
         peutSaisir={peutSaisir} versDossier={nav.dossier} />}
       {ecran === "outils" && <TerrainOutils peutSaisir={peutSaisir} versDossier={nav.dossier} />}
-      {ecran === "compte" && <Compte profil={profil} versDiagnostic={() => {}} />}
+      {ecran === "profil" && <TerrainProfil profil={profil} />}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
         display: "flex", background: "#fff", borderTop: `1px solid ${C.bord}`,
@@ -181,6 +183,47 @@ function AppTerrain({ profil }) {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+
+/**
+ * Sous-navigation du DOSSIER : barre fixe en bas, visible dans les sept écrans
+ * du parcours (dossier, relevé, matériel, devis, offre, mail, facture). Fini
+ * les pages isolées : on circule d'une section à l'autre en un tap, comme dans
+ * le modèle validé. Les sections non pertinentes (offre avant chiffrage…)
+ * restent affichées mais atténuées — la géographie de l'app ne bouge jamais.
+ */
+const SECTIONS_DOSSIER = [
+  ["dossier", "📇", "Dossier"],
+  ["releve", "📦", "Relevé"],
+  ["materiel", "🧰", "Matériel"],
+  ["devis", "💶", "Devis"],
+  ["offre", "✍️", "Offre"],
+  ["mail", "✉️", "Mail"],
+  ["facture", "🧾", "Facture"],
+];
+function SousNavDossier({ actif, aller }) {
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+      display: "flex", background: "#fff", borderTop: `1px solid ${C.bord}`,
+      maxWidth: 520, margin: "0 auto", overflowX: "auto",
+      paddingBottom: "env(safe-area-inset-bottom)",
+      boxShadow: "0 -4px 16px -8px rgba(15,23,42,.12)",
+    }}>
+      {SECTIONS_DOSSIER.map(([cle, icone, lib]) => (
+        <button key={cle} onClick={() => aller(cle)} style={{
+          flex: "1 0 62px", padding: "8px 2px 6px", border: "none",
+          background: "none", cursor: "pointer",
+          color: actif === cle ? C.bleu : C.muet,
+          borderTop: actif === cle ? `2px solid ${C.bleu}` : "2px solid transparent",
+        }}>
+          <div style={{ fontSize: 17 }}>{icone}</div>
+          <div style={{ fontSize: 9.5, fontWeight: 700 }}>{lib}</div>
+        </button>
+      ))}
     </div>
   );
 }
@@ -302,6 +345,10 @@ function App() {
       {RACINES.includes(route.ecran) && (
         <BarreNav actif={route.ecran} aller={(cle) => nav[cle]()}
                   peutGererEquipe={peutGererEquipe} />
+      )}
+      {SECTIONS_DOSSIER.some(([cle]) => cle === route.ecran) && route.affaireId && (
+        <SousNavDossier actif={route.ecran}
+          aller={(cle) => setRoute({ ecran: cle, affaireId: route.affaireId })} />
       )}
     </div>
   );

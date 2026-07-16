@@ -14,7 +14,7 @@ import {
   obtenirClientFacturation, sauverClientFacturation,
   obtenirClientIdentite, sauverClientIdentite,
   listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
-  validerDossierTerrain,
+  validerDossierTerrain, obtenirInstance, confirmerAffaire,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -38,6 +38,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const [identite, setIdentite] = useState(null);
   const [membres, setMembres] = useState([]);
   const [equipe, setEquipe] = useState([]);
+  const [instance, setInstance] = useState(null);
 
   useEffect(() => {
     obtenirAffaire(affaireId).then(setAffaire);
@@ -47,6 +48,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     obtenirClientIdentite(affaireId).then(setIdentite).catch(() => {});
     listerMembresSimples().then(setMembres).catch(() => {});
     obtenirEquipeAffaire(affaireId).then(setEquipe).catch(() => {});
+    obtenirInstance(affaireId).then(setInstance).catch(() => {});
     obtenirContact(affaireId).then((c) => setContact({
       ...c,
       charges: c.charges.length ? c.charges : [adrVide()],
@@ -138,6 +140,31 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           }}>{lib}</button>
         ))}
       </div>
+
+      {/* Rattrapage : offre SIGNÉE mais affaire jamais confirmée (affaires
+          antérieures au correctif de chaîne). Confirmer crée la mission au
+          planning et y reporte camions + équipe pressentis. */}
+      {instance?.statut === "signee" && ["devis", "envoye"].includes(affaire.etat) && (
+        <div style={{ margin: "0 16px 10px", padding: "11px 12px", borderRadius: 12,
+          background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#065F46" }}>
+            Offre signée — confirmation en attente
+          </div>
+          <div style={{ fontSize: 11.5, color: "#047857", marginTop: 2, marginBottom: 8 }}>
+            Confirmez pour créer la mission au planning (camions et équipe
+            pressentis y seront reportés).
+          </div>
+          <button onClick={async () => {
+            try {
+              await confirmerAffaire(affaireId);
+              obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
+            } catch (e) { setErreur(e.message); }
+          }} style={{
+            padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+            background: "#059669", color: "#fff", fontSize: 13, fontWeight: 700,
+          }}>Confirmer et planifier</button>
+        </div>
+      )}
 
       {/* Dossier venu du terrain : à valider par le bureau (brouillon → devis). */}
       {affaire.etat === "brouillon" && (

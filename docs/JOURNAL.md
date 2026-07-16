@@ -1116,3 +1116,37 @@ signature déblocée (0027), validation corrigée, config prix, ressources
 (carte carburant/invitation mail/équipement), app terrain (contact/relevé/
 matériel + chrono pause), onglet Heures. Facture "pas encore disponible" +
 comptabilité = chantier futur documenté (non demandé maintenant).
+
+---
+
+## Session 34 — Chaîne planning réparée, nav persistante, profil terrain, design
+
+### BUG RACINE du planning vide : trouvé et corrigé
+envoyerOffre ne faisait JAMAIS passer l'affaire en 'envoye'. Elle restait en
+'devis' ; la signature tentait devis→confirme → « Transition interdite » →
+jamais de mission → planning vide chez tout le monde. Correctif :
+- avancerJusqua(affaireId, cible) : cascade brouillon→devis→envoye, pas à pas,
+  par cmd_transition_affaire (machine + gardes respectées).
+- envoyerOffre avance jusqu'à 'envoye' après le gel ; signerOffre sécurise
+  (avance si besoin) avant confirme.
+- Rattrapage bureau : bandeau vert « Offre signée — confirmation en attente »
+  sur le Dossier (affaires signées avant le correctif) → confirmerAffaire().
+Le report camions+équipe → mission se fait au trigger (0021/0026), donc les
+affectations membres↔missions repartent aussi.
+
+### Navigation persistante du dossier
+SousNavDossier : barre fixe en bas, 7 sections (dossier/relevé/matériel/devis/
+offre/mail/facture), visible dans chacune — fini les pages isolées.
+
+### Terrain
+- TerrainProfil (2 onglets) : Véhicule (état + signalement) / Inventaire
+  personnel avec « Créer mon inventaire standard » (vêtements + outils
+  prédéfinis) et état cyclable au toucher. Déconnexion en bas.
+- Accès contact/relevé/matériel élargi à tous les rôles terrain (via
+  signaler_materiel) ; gating par capacité conservé.
+
+### Design
+theme.jsx aligné sur le modèle validé roovers-mobile : Fira Sans/Fira Code
+(injection Google Fonts), fond #F4F7FE, bordures #E4ECFC, cartes radius 14
+ombrées, labels uppercase monospace, boutons dégradé bleu, entête sticky
+translucide. Tous les écrans en héritent d'un coup.

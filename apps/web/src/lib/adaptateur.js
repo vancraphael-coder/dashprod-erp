@@ -299,6 +299,31 @@ export async function inviterMembre({ email, nom, roleCle }) {
  * démo : utilise le domaine PUR (figerInstance/resoudreCbd) directement — la
  * même garantie d'immuabilité, sans base.
  */
+
+/**
+ * Avance l'état d'une affaire pas à pas jusqu'à la cible (au plus 'envoye').
+ * Idempotent : si l'affaire est déjà au-delà, ne fait rien. Chaque pas passe
+ * par cmd_transition_affaire (machine à états + gardes respectées).
+ */
+async function avancerJusqua(affaireId, cible) {
+  const ORDRE = ["brouillon", "devis", "envoye"];
+  const { data, error } = await supabase.from("affaires")
+    .select("etat").eq("id", affaireId).single();
+  if (error) throw error;
+  let etat = data.etat;
+  // Déjà au niveau ou au-delà (confirme, planifie…) : rien à faire.
+  if (!ORDRE.includes(etat)) return;
+  while (ORDRE.indexOf(etat) < ORDRE.indexOf(cible)) {
+    const suivant = ORDRE[ORDRE.indexOf(etat) + 1];
+    const { error: e } = await supabase.rpc("cmd_transition_affaire", {
+      p_affaire: affaireId, p_cible: suivant,
+      p_contexte: suivant === "devis" ? { aMontant: true } : {},
+    });
+    if (e) throw e;
+    etat = suivant;
+  }
+}
+
 export async function envoyerOffre(affaireId, { type, contenu }) {
   if (modeDonnees() === "reel") {
     const empreinteLocale = empreinte(contenu);
@@ -308,6 +333,11 @@ export async function envoyerOffre(affaireId, { type, contenu }) {
     if (error) throw error;
     const { error: e2 } = await supabase.rpc("cmd_geler_instance", { p_instance: id });
     if (e2) throw e2;
+    // L'envoi fait AVANCER l'affaire jusqu'à 'envoye' — c'était le maillon
+    // manquant : sans lui, l'affaire restait en 'devis' et la confirmation
+    // (envoye→confirme) était refusée par la machine à états → aucune mission,
+    // planning vide. On avance pas à pas selon l'état courant.
+    await avancerJusqua(affaireId, "envoye");
     return { id, empreinte: empreinteLocale };
   }
   // Démo : la C.B.D. est jointe symboliquement (aucun fichier réel en local).
@@ -323,6 +353,8 @@ export async function envoyerOffre(affaireId, { type, contenu }) {
   const d = lireDemo();
   d.instances = d.instances || {};
   d.instances[affaireId] = { ...instance, id: idDemo(), statut: "envoyee" };
+  const aEnv = d.affaires.find((x) => x.id === affaireId);
+  if (aEnv && ["brouillon", "devis"].includes(aEnv.etat)) aEnv.etat = "envoye";
   ecrireDemo(d);
   return { id: d.instances[affaireId].id, empreinte: instance.empreinte };
 }
@@ -355,7 +387,9 @@ export async function signerOffre(instanceId, { affaireId, nom, canal, image }) 
       p_instance: instanceId, p_nom: nom, p_canal: canal || "ecran", p_image: image,
     });
     if (error) throw error;
-    // La signature déverrouille la garde : transition de l'affaire vers 'confirme'.
+    // La signature déverrouille la garde : l'affaire avance jusqu'à 'confirme'
+    // (en passant par 'envoye' si l'offre a été signée sur place sans envoi).
+    await avancerJusqua(affaireId, "envoye");
     const { error: e2 } = await supabase.rpc("cmd_transition_affaire", {
       p_affaire: affaireId, p_cible: "confirme", p_contexte: { instanceSignee: true },
     });
@@ -1379,4 +1413,24 @@ export async function missionsAvecChrono() {
   return (d.missions || []).map((m) => ({
     id: m.id, date: m.date, sessions: m.sessions || [], affectations: m.affectations || [],
   }));
+}
+
+/**
+ * Confirme une affaire dont l'offre est signée (rattrapage bureau) : avance
+ * l'état jusqu'à 'envoye' puis passe 'confirme' — le trigger crée la mission
+ * et y reporte camions + équipe pressentis. Utile pour les affaires signées
+ * avant le correctif de chaîne (restées en devis/envoye).
+ */
+export async function confirmerAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    await avancerJusqua(affaireId, "envoye");
+    const { error } = await supabase.rpc("cmd_transition_affaire", {
+      p_affaire: affaireId, p_cible: "confirme", p_contexte: { instanceSignee: true },
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  if (a) { a.etat = "confirme"; ecrireDemo(d); }
 }

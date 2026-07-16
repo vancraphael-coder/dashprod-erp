@@ -9,10 +9,22 @@ import React from "react";
 
 export const C = {
   encre: "#0F172A", muet: "#64748B", fantome: "#94A3B8",
-  bleu: "#2563EB", bord: "#DCE4F0", fond: "#F1F5FB", blanc: "#FFFFFF",
+  bleu: "#2563EB", bleuFonce: "#1D4ED8", bleuClair: "#EFF6FF",
+  bord: "#E4ECFC", fond: "#F4F7FE", doux: "#F1F5FD", blanc: "#FFFFFF",
   vert: "#059669", ambre: "#D97706", rouge: "#DC2626",
-  violet: "#7C3AED", indigo: "#4F46E5",
+  violet: "#7C3AED", indigo: "#6366F1", navy: "#0F172A",
 };
+
+// Typographie du modèle validé (roovers-mobile) : Fira Sans pour le texte,
+// Fira Code pour les libellés techniques et les montants. Injectées une fois.
+export const FS = "'Fira Sans', system-ui, sans-serif";
+export const FC = "'Fira Code', ui-monospace, monospace";
+if (typeof document !== "undefined" && !document.getElementById("polices-roovers")) {
+  const l = document.createElement("link");
+  l.id = "polices-roovers"; l.rel = "stylesheet";
+  l.href = "https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;600;700;800&family=Fira+Code:wght@500;700&display=swap";
+  document.head.appendChild(l);
+}
 
 /** États d'affaire → libellé + couleur (Réf. 2, annexe F). */
 export const ETATS_UI = {
@@ -55,25 +67,30 @@ export function euros(centimes) {
 
 /** Styles de base réutilisés par tous les écrans. */
 export const S = {
-  page: { minHeight: "100vh", background: C.fond, fontFamily: "system-ui, sans-serif",
-          maxWidth: 520, margin: "0 auto", paddingBottom: 90 },
-  entete: { position: "sticky", top: 0, zIndex: 5, background: C.fond,
-            padding: "16px 16px 10px" },
-  titre: { fontSize: 20, fontWeight: 800, color: C.encre },
+  page: { minHeight: "100vh", background: C.fond, fontFamily: FS,
+          maxWidth: 520, margin: "0 auto", paddingBottom: 96, color: C.encre },
+  entete: { position: "sticky", top: 0, zIndex: 5, background: "rgba(244,247,254,.92)",
+            backdropFilter: "blur(8px)", padding: "16px 16px 10px",
+            borderBottom: `1px solid ${C.bord}` },
+  titre: { fontSize: 19, fontWeight: 800, color: C.encre, fontFamily: FS,
+           letterSpacing: "-.01em" },
   carte: { background: C.blanc, borderRadius: 14, padding: 16, margin: "0 16px 12px",
-           boxShadow: "0 2px 10px rgba(15,23,42,.06)" },
-  label: { display: "block", fontSize: 12, fontWeight: 600, color: C.encre,
+           border: `1px solid ${C.bord}`, boxShadow: "0 1px 3px rgba(15,23,42,.05)" },
+  label: { display: "block", fontSize: 10.5, fontWeight: 700, color: C.muet,
+           textTransform: "uppercase", letterSpacing: ".05em", fontFamily: FC,
            marginTop: 12, marginBottom: 5 },
   input: { width: "100%", boxSizing: "border-box", padding: "11px 12px",
            border: `1.5px solid ${C.bord}`, borderRadius: 10, fontSize: 14,
-           background: C.blanc },
+           minHeight: 46, background: C.blanc, fontFamily: FS, color: C.encre },
   boutonPlein: { width: "100%", padding: "13px", border: "none", borderRadius: 11,
-                 background: C.bleu, color: "#fff", fontSize: 14, fontWeight: 700,
-                 cursor: "pointer" },
+                 background: `linear-gradient(135deg, ${C.bleu}, ${C.bleuFonce})`,
+                 color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer",
+                 fontFamily: FS, boxShadow: "0 4px 14px -4px rgba(37,99,235,.5)" },
   boutonLien: { background: "none", border: "none", color: C.bleu, fontSize: 13,
-                fontWeight: 600, cursor: "pointer", padding: 6 },
-  flottant: { position: "fixed", right: 18, bottom: 18, width: 56, height: 56,
-              borderRadius: "50%", border: "none", background: C.bleu, color: "#fff",
-              fontSize: 26, fontWeight: 700, cursor: "pointer",
-              boxShadow: "0 6px 18px rgba(37,99,235,.4)" },
+                fontWeight: 600, cursor: "pointer", padding: 6, fontFamily: FS },
+  flottant: { position: "fixed", right: 18, bottom: 84, width: 56, height: 56,
+              borderRadius: 16, border: "none",
+              background: `linear-gradient(135deg, ${C.bleu}, ${C.bleuFonce})`,
+              color: "#fff", fontSize: 26, fontWeight: 700, cursor: "pointer",
+              boxShadow: "0 10px 24px -6px rgba(37,99,235,.55)" },
 };
