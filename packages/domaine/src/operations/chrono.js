@@ -24,6 +24,8 @@ export function dureeSecondes(sessions, maintenant = new Date()) {
   let total = 0;
   for (const s of sessions || []) {
     if (!s.debut) continue;
+    // Seules les sessions de travail comptent ; les pauses sont informatives.
+    if (s.type === "pause") continue;
     const debut = new Date(s.debut).getTime();
     const fin = s.fin ? new Date(s.fin).getTime() : ref.getTime();
     if (fin > debut) total += Math.floor((fin - debut) / 1000);
@@ -32,12 +34,35 @@ export function dureeSecondes(sessions, maintenant = new Date()) {
 }
 
 /**
+ * Durée cumulée des pauses (informatif — temps où l'équipe s'est arrêtée).
+ * @param {Session[]} sessions
+ * @param {Date} [maintenant]
+ * @returns {number} secondes
+ */
+export function dureePause(sessions, maintenant = new Date()) {
+  const ref = maintenant instanceof Date ? maintenant : new Date(maintenant);
+  let total = 0;
+  for (const s of sessions || []) {
+    if (!s.debut || s.type !== "pause") continue;
+    const debut = new Date(s.debut).getTime();
+    const fin = s.fin ? new Date(s.fin).getTime() : ref.getTime();
+    if (fin > debut) total += Math.floor((fin - debut) / 1000);
+  }
+  return total;
+}
+
+/** Une pause est-elle en cours ? */
+export function enPause(sessions) {
+  return (sessions || []).some((s) => s.type === "pause" && s.debut && !s.fin);
+}
+
+/**
  * Indique si le chrono tourne (au moins une session ouverte).
  * @param {Session[]} sessions
  * @returns {boolean}
  */
 export function chronoEnCours(sessions) {
-  return (sessions || []).some((s) => s.debut && !s.fin);
+  return (sessions || []).some((s) => s.type !== "pause" && s.debut && !s.fin);
 }
 
 /**
@@ -71,4 +96,48 @@ export function formaterDuree(secondes) {
   const h = Math.floor(secondes / 3600);
   const m = Math.floor((secondes % 3600) / 60);
   return `${h}h${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * Format hh:mm:ss pour l'affichage temps réel du chrono (les secondes défilent).
+ * @param {number} secondes
+ * @returns {string}
+ */
+export function formaterChrono(secondes) {
+  const h = Math.floor(secondes / 3600);
+  const m = Math.floor((secondes % 3600) / 60);
+  const s = Math.floor(secondes % 60);
+  return [h, m, s].map((x) => String(x).padStart(2, "0")).join(":");
+}
+
+/**
+ * Agrège les heures travaillées par membre à partir des missions et de leurs
+ * sessions de chrono. Le temps d'une mission est réparti sur ses membres
+ * affectés (chacun a fait le chantier). Les pauses sont exclues (dureeSecondes).
+ * @param {{sessions: Session[], affectations: {utilisateur_id: string}[]}[]} missions
+ * @returns {Object<string, number>} secondes travaillées par utilisateur_id
+ */
+export function heuresParMembre(missions) {
+  const total = {};
+  for (const m of missions || []) {
+    const sec = dureeSecondes(m.sessions);
+    if (sec <= 0) continue;
+    const membres = (m.affectations || []).map((a) => a.utilisateur_id || a.utilisateurId || a);
+    for (const id of membres) {
+      if (!id) continue;
+      total[id] = (total[id] || 0) + sec;
+    }
+  }
+  return total;
+}
+
+/**
+ * Total global des heures travaillées (toutes missions). Compte le temps
+ * chantier UNE fois (pas multiplié par l'effectif) — c'est le temps réel
+ * mobilisé sur le terrain.
+ * @param {{sessions: Session[]}[]} missions
+ * @returns {number} secondes
+ */
+export function heuresGlobales(missions) {
+  return (missions || []).reduce((s, m) => s + dureeSecondes(m.sessions), 0);
 }

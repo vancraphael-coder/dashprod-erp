@@ -11,6 +11,7 @@ import React, { useEffect, useState } from "react";
 import { listerVehicules, sauverVehicule, supprimerVehicule } from "../lib/adaptateur.js";
 import { alertesVehicule, TYPES_VEHICULE, ETATS_MECANIQUES } from "@domaine/flotte/vehicules.js";
 import Equipe from "./Equipe.jsx";
+import Heures from "./Heures.jsx";
 import { C, S } from "../lib/theme.jsx";
 
 const LIBELLE_TYPE = { fourgon: "Fourgon", porteur: "Porteur", hayon: "Hayon élévateur" };
@@ -24,7 +25,7 @@ export default function Ressources() {
       <div style={S.entete}>
         <div style={S.titre}>Ressources</div>
         <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          {[["camions", "🚛 Camions"], ["membres", "👥 Membres"]].map(([cle, lib]) => (
+          {[["camions", "🚛 Camions"], ["membres", "👥 Membres"], ["heures", "⏱️ Heures"]].map(([cle, lib]) => (
             <button key={cle} onClick={() => setOnglet(cle)} style={{
               flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer",
               border: `1.5px solid ${onglet === cle ? C.bleu : C.bord}`,
@@ -34,7 +35,9 @@ export default function Ressources() {
           ))}
         </div>
       </div>
-      {onglet === "camions" ? <OngletCamions /> : <Equipe integre />}
+      {onglet === "camions" ? <OngletCamions />
+        : onglet === "heures" ? <Heures />
+        : <Equipe integre />}
     </div>
   );
 }
@@ -145,6 +148,10 @@ function OngletCamions() {
                 <input style={S.input} value={v.immatriculation || ""}
                        onChange={(e) => maj(v.id, "immatriculation", e.target.value)}
                        placeholder="1-ABC-123" />
+                <label style={S.label}>Code carte carburant</label>
+                <input style={S.input} value={v.carte_carburant || ""}
+                       onChange={(e) => maj(v.id, "carte_carburant", e.target.value)}
+                       placeholder="Code / n° de carte" />
                 <div style={{ display: "flex", gap: 10 }}>
                   <div style={{ flex: 1 }}>
                     <label style={S.label}>Contrôle technique</label>

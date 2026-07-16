@@ -13,7 +13,7 @@ import {
 } from "../lib/adaptateur.js";
 import { capaciteFlotte, jaugeCapacite } from "@domaine/flotte/vehicules.js";
 import {
-  PIECES, volumeTotal, suggererComposition, grouperParPiece, volumeUnitaire,
+  PIECES, volumeTotal, grouperParPiece, volumeUnitaire,
   articlesADemonter,
 } from "@domaine/releve/volumetrie.js";
 import { C, S } from "../lib/theme.jsx";
@@ -48,7 +48,6 @@ export default function Releve({ affaireId, retour, versDevis }) {
   }, [affaireId]);
 
   const volume = useMemo(() => volumeTotal(inv), [inv]);
-  const compo = useMemo(() => suggererComposition(volume), [volume]);
   const groupes = useMemo(() => grouperParPiece(inv), [inv]);
   const capacite = useMemo(() => capaciteFlotte(camionsSel), [camionsSel]);
   const jauge = useMemo(() => jaugeCapacite(volume, capacite), [volume, capacite]);
@@ -110,15 +109,6 @@ export default function Releve({ affaireId, retour, versDevis }) {
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: C.encre }}>{volume} m³</div>
           </div>
-        </div>
-      </div>
-
-      {/* Suggestion dérivée du volume */}
-      <div style={{ ...S.carte, background: "#EEF4FF", border: `1px solid #C7D9F8` }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.bleu }}>SUGGESTION (indicative)</div>
-        <div style={{ fontSize: 13.5, color: C.encre, marginTop: 4 }}>
-          ~ <b>{compo.demenageurs} déménageurs</b> · <b>{compo.camions} camion{compo.camions > 1 ? "s" : ""}</b>
-          <span style={{ color: C.muet }}> — à confirmer au devis</span>
         </div>
       </div>
 

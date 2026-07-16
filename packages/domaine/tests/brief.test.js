@@ -52,18 +52,25 @@ test("briefMission : les blocs absents ne laissent pas de ligne vide", () => {
   assert.ok(!b.split("\n").some((ligne) => ligne.trim() === ""));
 });
 
-test("urlItineraire : origin/destination/waypoints dans l'ordre des arrêts", () => {
+test("urlItineraire : part du dépôt, passe par les chantiers, revient au dépôt", () => {
   const u = urlItineraire(
     [{ adresse: "A" }, { adresse: "B" }],
     [{ adresse: "C" }]
   );
-  assert.match(u, /origin=A/);
-  assert.match(u, /destination=C/);
-  assert.match(u, /waypoints=B/);
+  // Départ et retour = dépôt Roovers ; A, B, C sont des waypoints ordonnés.
+  assert.match(u, /origin=Rue/);
+  assert.match(u, /destination=Rue/);
+  assert.match(u, /waypoints=A\|B\|C/);
 });
 
-test("urlItineraire : null sous deux adresses (rien à tracer)", () => {
-  assert.equal(urlItineraire([{ adresse: "A" }], []), null);
+test("urlItineraire : compose rue + CP + ville quand les champs séparés existent", () => {
+  const u = urlItineraire(
+    [{ adresse: "Rue X 1", code_postal: "1300", ville: "Wavre" }], []
+  );
+  assert.match(u, /Rue%20X%201%2C%201300%20Wavre/);
+});
+
+test("urlItineraire : null si aucun chantier (rien à router)", () => {
   assert.equal(urlItineraire([], []), null);
 });
 

@@ -22,10 +22,11 @@ import { C, S, Badge, euros } from "../lib/theme.jsx";
 
 function adrVide() {
   return { id: "a" + Math.random().toString(36).slice(2, 8), adresse: "", type: "maison",
-           etage: "", ascenseur: false, monteMeubles: false };
+           codePostal: "", ville: "", etage: "", ascenseur: false, monteMeubles: false,
+           escalier: false };
 }
 
-export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail, versMateriel }) {
+export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail, versMateriel, modeTerrain }) {
   const [affaire, setAffaire] = useState(null);
   const [contact, setContact] = useState(null);
   const [sauve, setSauve] = useState(false);
@@ -116,16 +117,18 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         </div>
       </div>
 
-      {/* Sections du parcours */}
+      {/* Sections du parcours. En mode terrain, seuls contact/relevé/matériel
+          sont exposés — le devis et la suite restent au bureau. */}
       <div style={{ padding: "0 16px", display: "flex", gap: 6, overflowX: "auto", marginBottom: 10 }}>
         {[
-          ["📦 Relevé", () => versReleve(affaireId), true],
-          ["🧰 Matériel", () => versMateriel && versMateriel(affaireId), true],
-          ["💶 Devis", () => versDevis(affaireId), true],
-          ["✍️ Offre", () => versOffre(affaireId), chiffree],
-          ["✉️ Mail", () => versMail && versMail(affaireId), chiffree],
-          ["🧾 Facture", () => versFacture(affaireId), facturable],
-        ].map(([lib, fn, actif]) => (
+          ["📦 Relevé", () => versReleve(affaireId), true, true],
+          ["🧰 Matériel", () => versMateriel && versMateriel(affaireId), true, true],
+          ["💶 Devis", () => versDevis(affaireId), true, false],
+          ["✍️ Offre", () => versOffre(affaireId), chiffree, false],
+          ["✉️ Mail", () => versMail && versMail(affaireId), chiffree, false],
+          ["🧾 Facture", () => versFacture(affaireId), facturable, false],
+        ].filter(([, , , terrainOk]) => !modeTerrain || terrainOk)
+         .map(([lib, fn, actif]) => (
           <button key={lib} onClick={actif ? fn : undefined} style={{
             border: `1.5px solid ${C.bord}`, background: C.blanc,
             color: actif ? C.encre : C.fantome, borderRadius: 999,
@@ -199,6 +202,23 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             <label style={S.label}>Heure</label>
             <input style={S.input} type="time" value={contact.heure}
                    onChange={(e) => maj("heure", e.target.value)} />
+          </div>
+        </div>
+
+        {/* Visite préalable du chantier (le commercial passe estimer). */}
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muet, margin: "12px 0 4px" }}>
+          Visite préalable (optionnel)
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 2 }}>
+            <label style={S.label}>Date de visite</label>
+            <input style={S.input} type="date" value={contact.dateVisite || ""}
+                   onChange={(e) => maj("dateVisite", e.target.value)} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Heure</label>
+            <input style={S.input} type="time" value={contact.heureVisite || ""}
+                   onChange={(e) => maj("heureVisite", e.target.value)} />
           </div>
         </div>
 
@@ -417,7 +437,21 @@ function BlocAdresses({ titre, liste, onMaj, onAjouter, onRetirer }) {
           <label style={S.label}>Adresse {liste.length > 1 ? i + 1 : ""}</label>
           <input style={S.input} value={a.adresse}
                  onChange={(e) => onMaj(a.id, "adresse", e.target.value)}
-                 placeholder="Rue des Tulipes 14, 1300 Wavre" />
+                 placeholder="Rue des Tulipes 14" />
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+            <div style={{ width: 110 }}>
+              <label style={S.label}>Code postal</label>
+              <input style={S.input} value={a.codePostal || ""} inputMode="numeric"
+                     onChange={(e) => onMaj(a.id, "codePostal", e.target.value)}
+                     placeholder="1300" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={S.label}>Ville</label>
+              <input style={S.input} value={a.ville || ""}
+                     onChange={(e) => onMaj(a.id, "ville", e.target.value)}
+                     placeholder="Wavre" />
+            </div>
+          </div>
           <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
             <div style={{ flex: 1 }}>
               <label style={S.label}>Type</label>
@@ -436,11 +470,16 @@ function BlocAdresses({ titre, liste, onMaj, onAjouter, onRetirer }) {
                      placeholder="RDC / 2e" />
             </div>
           </div>
-          <div style={{ display: "flex", gap: 16, marginTop: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 14, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
             <label style={{ fontSize: 12.5, color: C.encre, display: "flex", gap: 6, cursor: "pointer" }}>
               <input type="checkbox" checked={a.ascenseur}
                      onChange={(e) => onMaj(a.id, "ascenseur", e.target.checked)} />
               Ascenseur
+            </label>
+            <label style={{ fontSize: 12.5, color: C.encre, display: "flex", gap: 6, cursor: "pointer" }}>
+              <input type="checkbox" checked={a.escalier}
+                     onChange={(e) => onMaj(a.id, "escalier", e.target.checked)} />
+              Escalier
             </label>
             <label style={{ fontSize: 12.5, color: C.encre, display: "flex", gap: 6, cursor: "pointer" }}>
               <input type="checkbox" checked={a.monteMeubles}

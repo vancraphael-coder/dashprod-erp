@@ -274,7 +274,21 @@ export async function inviterMembre({ email, nom, roleCle }) {
     p_utilisateur: id, p_role_cle: roleCle,
   });
   if (e2) throw e2;
-  return id;
+
+  // Envoi de l'email d'invitation via l'Edge Function (si déployée). En cas
+  // d'échec (fonction absente, clé manquante), l'invitation existe déjà en
+  // base : on renvoie le lien pour un envoi manuel. L'invité se connecte avec
+  // son compte Google pour réclamer l'invitation.
+  const lien = window.location.origin;
+  let envoye = false;
+  try {
+    const { error: e3 } = await supabase.functions.invoke("inviter-membre", {
+      body: { email, nom, lien, organisation: "Déménagements Roovers" },
+    });
+    envoye = !e3;
+  } catch { envoye = false; }
+
+  return { id, envoye, lien };
 }
 
 // ── Offre & Signature (résout C-02, C-26) ─────────────────────────────────────
@@ -581,7 +595,7 @@ export async function enregistrerPaiement(factureId, { montant_centimes, moyen, 
 export async function obtenirContact(affaireId) {
   if (modeDonnees() === "reel") {
     const { data: a, error } = await supabase.from("affaires")
-      .select("date_souhaitee, heure_souhaitee, notes_commerciales, date_emballage, heure_emballage, trajet_km, trajet_duree, trajet_prix_km")
+      .select("date_souhaitee, heure_souhaitee, notes_commerciales, date_emballage, heure_emballage, trajet_km, trajet_duree, trajet_prix_km, date_visite, heure_visite")
       .eq("id", affaireId).single();
     if (error) throw error;
     const { data: adr, error: e2 } = await supabase.from("affaire_adresses")
@@ -589,12 +603,15 @@ export async function obtenirContact(affaireId) {
     if (e2) throw e2;
     const map = (sens) => (adr || []).filter((x) => x.sens === sens).map((x) => ({
       id: x.id, adresse: x.adresse || "", type: x.type_lieu || "maison",
+      codePostal: x.code_postal || "", ville: x.ville || "",
       etage: x.etage || "", ascenseur: !!x.ascenseur, monteMeubles: !!x.monte_meubles,
+      escalier: !!x.escalier,
     }));
     return {
       charges: map("chargement"), decharges: map("dechargement"),
       date: a?.date_souhaitee || "", heure: (a?.heure_souhaitee || "08:00").slice(0, 5),
       dateEmballage: a?.date_emballage || "", heureEmballage: (a?.heure_emballage || "").slice(0, 5),
+      dateVisite: a?.date_visite || "", heureVisite: (a?.heure_visite || "").slice(0, 5),
       trajetKm: a?.trajet_km ?? "", trajetDuree: a?.trajet_duree || "",
       trajetPrixKm: a?.trajet_prix_km ?? "",
       notes: a?.notes_commerciales || "",
@@ -602,20 +619,21 @@ export async function obtenirContact(affaireId) {
   }
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
-  return (a && a.contact) || { charges: [], decharges: [], date: "", heure: "08:00", dateEmballage: "", heureEmballage: "", trajetKm: "", trajetDuree: "", trajetPrixKm: "", notes: "" };
+  return (a && a.contact) || { charges: [], decharges: [], date: "", heure: "08:00", dateEmballage: "", heureEmballage: "", dateVisite: "", heureVisite: "", trajetKm: "", trajetDuree: "", trajetPrixKm: "", notes: "" };
 }
 
 /**
  * Sauve le volet Contact : remplace les adresses de l'affaire (stratégie
  * simple delete+insert — volumes minuscules), met à jour date/heure/notes.
  */
-export async function sauverContact(affaireId, { charges, decharges, date, heure, notes, dateEmballage, heureEmballage, trajetKm, trajetDuree, trajetPrixKm }) {
+export async function sauverContact(affaireId, { charges, decharges, date, heure, notes, dateEmballage, heureEmballage, dateVisite, heureVisite, trajetKm, trajetDuree, trajetPrixKm }) {
   if (modeDonnees() === "reel") {
     const nombre = (v) => (v === "" || v == null ? null : Number(v));
     const { error } = await supabase.from("affaires").update({
       date_souhaitee: date || null, heure_souhaitee: heure || null,
       notes_commerciales: notes || null,
       date_emballage: dateEmballage || null, heure_emballage: heureEmballage || null,
+      date_visite: dateVisite || null, heure_visite: heureVisite || null,
       trajet_km: nombre(trajetKm), trajet_duree: trajetDuree || null,
       trajet_prix_km: nombre(trajetPrixKm),
     }).eq("id", affaireId);
@@ -626,11 +644,15 @@ export async function sauverContact(affaireId, { charges, decharges, date, heure
     const lignes = [];
     (charges || []).forEach((c, i) => lignes.push({
       affaire_id: affaireId, sens: "chargement", ordre: i + 1, adresse: c.adresse,
+      code_postal: c.codePostal || null, ville: c.ville || null,
       type_lieu: c.type, etage: c.etage, ascenseur: c.ascenseur, monte_meubles: c.monteMeubles,
+      escalier: !!c.escalier,
     }));
     (decharges || []).forEach((c, i) => lignes.push({
       affaire_id: affaireId, sens: "dechargement", ordre: i + 1, adresse: c.adresse,
+      code_postal: c.codePostal || null, ville: c.ville || null,
       type_lieu: c.type, etage: c.etage, ascenseur: c.ascenseur, monte_meubles: c.monteMeubles,
+      escalier: !!c.escalier,
     }));
     if (lignes.length) {
       const { error: eIns } = await supabase.from("affaire_adresses").insert(lignes);
@@ -1128,8 +1150,26 @@ export async function chronoArreter(missionId) {
   const d = lireDemo();
   const m = (d.missions || []).find((x) => x.id === missionId);
   if (m) {
-    const ouverte = (m.sessions || []).find((s) => !s.fin);
+    const ouverte = (m.sessions || []).find((s) => !s.fin && s.type !== "pause");
     if (ouverte) ouverte.fin = new Date().toISOString();
+    ecrireDemo(d);
+  }
+}
+
+/** Bascule une pause d'équipe (informatif — le compteur principal continue). */
+export async function chronoPause(missionId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_chrono_pause", { p_mission: missionId });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) {
+    m.sessions = m.sessions || [];
+    const pauseOuverte = m.sessions.find((s) => s.type === "pause" && !s.fin);
+    if (pauseOuverte) pauseOuverte.fin = new Date().toISOString();
+    else m.sessions.push({ debut: new Date().toISOString(), type: "pause" });
     ecrireDemo(d);
   }
 }
@@ -1194,11 +1234,15 @@ export async function creerDossierTerrain({ clientNom, tel, chargement, decharge
   return aid;
 }
 
-/** Valide un dossier terrain : brouillon → devis (capacité valider_intake). */
+/** Valide un dossier terrain : brouillon → devis (capacité valider_intake).
+ *  La garde de transition exige un relevé ou un montant : on passe le contexte. */
 export async function validerDossierTerrain(affaireId) {
   if (modeDonnees() === "reel") {
+    // La garde brouillon→devis demande aReleve OU aMontant. Un dossier terrain
+    // a au moins une prise de contact ; on signale qu'un relevé est amorçable.
     const { error } = await supabase.rpc("cmd_transition_affaire", {
-      p_affaire: affaireId, p_vers: "devis",
+      p_affaire: affaireId, p_cible: "devis",
+      p_contexte: { aReleve: true },
     });
     if (error) throw error;
     return;
@@ -1206,4 +1250,133 @@ export async function validerDossierTerrain(affaireId) {
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
   if (a) { a.etat = "devis"; ecrireDemo(d); }
+}
+
+// ── Taux horaires des membres (pour le coût MO automatique) ───────────────────
+// Protégés par voir_paie en réel. En démo, taux fictifs par membre.
+
+const TAUX_DEMO = { t1: 38, t2: 32, t3: 30, t4: 30 }; // chef plus cher
+
+/** Taux horaire (€/h) par membre. Nécessite voir_paie en réel. */
+export async function tauxMembres() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("donnees_paie")
+      .select("utilisateur_id, taux_horaire");
+    if (error) throw error; // si pas voir_paie, la RLS renvoie 0 ligne (pas d'erreur)
+    const t = {};
+    (data || []).forEach((r) => { t[r.utilisateur_id] = Number(r.taux_horaire) || 0; });
+    return t;
+  }
+  return { ...TAUX_DEMO };
+}
+
+// ── Paramètres de prix (barème client + coûts) — page Configuration ───────────
+
+const PARAMS_PRIX_DEMO = {
+  bareme_horaire: { 2: 85, 3: 130, 4: 170, 5: 215, 6: 255 },
+  tarifs: { elevateur: 150, km_facture: 1, emballage_horaire: 75,
+            emballage_km: 0.75, heure_sup_forfait: 42.5, assurance_htva: 50 },
+  couts: { carburant_km: 0.35, taux_defaut: 32 },
+};
+
+/** Paramètres de prix de l'organisation (barème client + coûts internes). */
+export async function obtenirParametresPrix() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("organisations")
+      .select("parametres_prix").limit(1).maybeSingle();
+    if (error) throw error;
+    return data?.parametres_prix || PARAMS_PRIX_DEMO;
+  }
+  const d = lireDemo();
+  return d.parametresPrix || PARAMS_PRIX_DEMO;
+}
+
+/** Enregistre les paramètres de prix (capacité gerer_referentiels en réel). */
+export async function sauverParametresPrix(params) {
+  if (modeDonnees() === "reel") {
+    const { data: org, error: e1 } = await supabase.from("organisations")
+      .select("id").limit(1).maybeSingle();
+    if (e1) throw e1;
+    const { error } = await supabase.from("organisations")
+      .update({ parametres_prix: params }).eq("id", org.id);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.parametresPrix = params;
+  ecrireDemo(d);
+}
+
+// ── Équipement RH (vêtements / outils) ────────────────────────────────────────
+// Table equipements_rh (0011) : catégorie, article, état, à remplacer.
+// Le bureau voit tout ; le membre modifie l'état de son propre équipement (0030).
+
+const EQUIP_DEMO = {
+  t1: [
+    { id: "e1", categorie: "vetement", article: "Veste", etat: "bon", a_remplacer: false },
+    { id: "e2", categorie: "outil", article: "Diable", etat: "use", a_remplacer: true },
+  ],
+};
+
+/** Équipement d'un membre. */
+export async function listerEquipement(utilisateurId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("equipements_rh")
+      .select("id, categorie, article, etat, a_remplacer")
+      .eq("utilisateur_id", utilisateurId).order("categorie");
+    if (error) throw error;
+    return data || [];
+  }
+  const d = lireDemo();
+  return (d.equipements && d.equipements[utilisateurId]) || EQUIP_DEMO[utilisateurId] || [];
+}
+
+/** Ajoute un article d'équipement à un membre (bureau). */
+export async function ajouterEquipement(utilisateurId, { categorie, article }) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("equipements_rh")
+      .insert({ utilisateur_id: utilisateurId, categorie, article, etat: "bon" });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.equipements = d.equipements || {};
+  d.equipements[utilisateurId] = [...(d.equipements[utilisateurId] || EQUIP_DEMO[utilisateurId] || []),
+    { id: idDemo(), categorie, article, etat: "bon", a_remplacer: false }];
+  ecrireDemo(d);
+}
+
+/** Change l'état d'un article (membre pour le sien, ou bureau). */
+export async function changerEtatEquipement(equipementId, etat, utilisateurId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("equipements_rh")
+      .update({ etat, a_remplacer: etat === "a_remplacer" }).eq("id", equipementId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const liste = d.equipements?.[utilisateurId] || EQUIP_DEMO[utilisateurId] || [];
+  const art = liste.find((x) => x.id === equipementId);
+  if (art) { art.etat = etat; art.a_remplacer = etat === "a_remplacer";
+    d.equipements = d.equipements || {}; d.equipements[utilisateurId] = liste; ecrireDemo(d); }
+}
+
+// ── Heures travaillées (agrégat chrono, par membre et global) ─────────────────
+
+/** Missions avec sessions + affectations, pour agréger les heures. */
+export async function missionsAvecChrono() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("missions")
+      .select("id, date, chrono_sessions(debut, fin, type), mission_affectations(utilisateur_id)");
+    if (error) throw error;
+    return (data || []).map((m) => ({
+      id: m.id, date: m.date,
+      sessions: (m.chrono_sessions || []).map((s) => ({ debut: s.debut, fin: s.fin, type: s.type })),
+      affectations: (m.mission_affectations || []).map((a) => ({ utilisateur_id: a.utilisateur_id })),
+    }));
+  }
+  const d = lireDemo();
+  return (d.missions || []).map((m) => ({
+    id: m.id, date: m.date, sessions: m.sessions || [], affectations: m.affectations || [],
+  }));
 }

@@ -10,9 +10,84 @@ import React, { useEffect, useState } from "react";
 import {
   listerMembres, inviterMembre, listerConges, ajouterConge, supprimerConge,
   definirMetier, listerMembresSimples,
+  listerEquipement, ajouterEquipement, changerEtatEquipement,
 } from "../lib/adaptateur.js";
 import { ROLES } from "@domaine/noyau/permissions.js";
 import { C, S } from "../lib/theme.jsx";
+
+const ETATS_EQUIP = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
+const COULEUR_EQUIP = { neuf: "#059669", bon: "#2563EB", use: "#D97706", a_remplacer: "#DC2626" };
+
+function EquipementMembre({ membreId }) {
+  const [liste, setListe] = React.useState([]);
+  const [categorie, setCategorie] = React.useState("vetement");
+  const [article, setArticle] = React.useState("");
+
+  function recharger() { listerEquipement(membreId).then(setListe).catch(() => {}); }
+  React.useEffect(recharger, [membreId]);
+
+  async function ajouter() {
+    if (!article.trim()) return;
+    await ajouterEquipement(membreId, { categorie, article: article.trim() });
+    setArticle(""); recharger();
+  }
+  async function cycler(art) {
+    // Cycle l'état : bon → usé → à remplacer → neuf → bon.
+    const suite = { bon: "use", use: "a_remplacer", a_remplacer: "neuf", neuf: "bon" };
+    await changerEtatEquipement(art.id, suite[art.etat] || "bon", membreId);
+    recharger();
+  }
+
+  const vetements = liste.filter((x) => x.categorie === "vetement");
+  const outils = liste.filter((x) => x.categorie === "outil");
+
+  const rendre = (arr) => arr.map((art) => (
+    <button key={art.id} onClick={() => cycler(art)} title="Toucher pour changer l'état" style={{
+      display: "inline-flex", alignItems: "center", gap: 6, margin: "0 6px 6px 0",
+      padding: "5px 10px", borderRadius: 999, cursor: "pointer", fontSize: 12,
+      border: `1.5px solid ${COULEUR_EQUIP[art.etat]}`,
+      background: art.etat === "a_remplacer" ? "#FEF2F2" : "#fff",
+      color: COULEUR_EQUIP[art.etat], fontWeight: 600,
+    }}>
+      {art.article}
+      <span style={{ fontSize: 10, opacity: 0.85 }}>· {ETATS_EQUIP[art.etat]}</span>
+    </button>
+  ));
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <label style={S.label}>Équipement</label>
+      {vetements.length > 0 && (
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 10.5, color: C.fantome, marginBottom: 3 }}>Vêtements</div>
+          {rendre(vetements)}
+        </div>
+      )}
+      {outils.length > 0 && (
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 10.5, color: C.fantome, marginBottom: 3 }}>Outils</div>
+          {rendre(outils)}
+        </div>
+      )}
+      {liste.length === 0 && (
+        <div style={{ fontSize: 11.5, color: C.fantome, marginBottom: 6 }}>Aucun équipement.</div>
+      )}
+      <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+        <select style={{ ...S.input, width: 110 }} value={categorie}
+                onChange={(e) => setCategorie(e.target.value)}>
+          <option value="vetement">Vêtement</option>
+          <option value="outil">Outil</option>
+        </select>
+        <input style={{ ...S.input, flex: 1 }} value={article}
+               onChange={(e) => setArticle(e.target.value)}
+               onKeyDown={(e) => e.key === "Enter" && ajouter()}
+               placeholder="Article" />
+        <button style={{ ...S.boutonPlein, width: "auto", padding: "0 14px", marginTop: 0 }}
+                onClick={ajouter}>+</button>
+      </div>
+    </div>
+  );
+}
 
 const LIBELLES_ROLE = {
   direction: "Direction", coordination: "Coordination", commercial: "Commercial",
@@ -60,8 +135,12 @@ export default function Equipe({ retour, integre }) {
   async function inviter() {
     setErreur(null); setSucces(null); setEnCours(true);
     try {
-      await inviterMembre({ email, nom, roleCle: role });
-      setSucces(`${email} invité·e — secteur ${LIBELLES_ROLE[role]}.`);
+      const res = await inviterMembre({ email, nom, roleCle: role });
+      if (res.envoye) {
+        setSucces(`${email} invité·e — email envoyé.`);
+      } else {
+        setSucces(`${email} invité·e — email non envoyé automatiquement. Transmettez ce lien : ${res.lien}`);
+      }
       setEmail(""); setNom("");
       recharger();
     } catch (e) {
@@ -199,6 +278,10 @@ export default function Equipe({ retour, integre }) {
                           disabled={!nouveauConge.debut || !nouveauConge.fin}
                           onClick={() => poserConge(m.id)}>+</button>
                 </div>
+
+                {/* Équipement : vêtements & outils. Le bureau voit l'état ;
+                    le membre le modifie lui-même (RLS 0030). */}
+                <EquipementMembre membreId={m.id} />
               </div>
             )}
           </div>

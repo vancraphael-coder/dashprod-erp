@@ -87,25 +87,35 @@ export function urlWhatsApp(texte) {
   return `https://wa.me/?text=${encodeURIComponent(texte)}`;
 }
 
+/** Dépôt Roovers — point de départ et de retour de tout trajet (siège). */
+export const DEPOT_ROOVERS = "Rue de l'Avenir 9, 1370 Jodoigne";
+
 /**
- * URL Google Maps multi-arrêts : origin = 1er chargement, destination =
- * dernier déchargement, waypoints = tout le reste dans l'ordre. Zéro API
- * payante : Maps s'ouvre, le bureau/chauffeur lit distance et durée.
- * @param {{adresse: string}[]} charges
- * @param {{adresse: string}[]} decharges
- * @returns {string|null} null si moins de deux adresses exploitables
+ * URL Google Maps multi-arrêts. Le trajet part TOUJOURS du dépôt et y revient
+ * (les camions dorment au dépôt) : dépôt → chargements → déchargements → dépôt.
+ * Le kilométrage lu dans Maps est donc le vrai trajet facturable, aller ET
+ * retour compris. Zéro API payante.
+ * @param {{adresse: string, code_postal?: string, ville?: string}[]} charges
+ * @param {{adresse: string, code_postal?: string, ville?: string}[]} decharges
+ * @param {string} [depot] adresse de départ/retour (défaut : dépôt Roovers)
+ * @returns {string|null} null si aucune adresse de chantier
  */
-export function urlItineraire(charges, decharges) {
-  const arrets = [
-    ...(charges || []).map((a) => a.adresse),
-    ...(decharges || []).map((a) => a.adresse),
+export function urlItineraire(charges, decharges, depot = DEPOT_ROOVERS) {
+  // Compose « rue, CP ville » quand les champs séparés existent.
+  const composer = (a) => [a.adresse, [a.code_postal, a.ville].filter(Boolean).join(" ")]
+    .filter(Boolean).join(", ");
+  const chantier = [
+    ...(charges || []).map(composer),
+    ...(decharges || []).map(composer),
   ].filter(Boolean);
-  if (arrets.length < 2) return null;
-  const origin = encodeURIComponent(arrets[0]);
-  const destination = encodeURIComponent(arrets[arrets.length - 1]);
-  const way = arrets.slice(1, -1).map(encodeURIComponent).join("|");
+  if (chantier.length === 0) return null;
+
+  // Départ dépôt, retour dépôt : les arrêts de chantier sont tous des waypoints.
+  const origin = encodeURIComponent(depot);
+  const destination = encodeURIComponent(depot);
+  const way = chantier.map(encodeURIComponent).join("|");
   return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}` +
-         (way ? `&waypoints=${way}` : "") + `&travelmode=driving`;
+         `&waypoints=${way}&travelmode=driving`;
 }
 
 /**

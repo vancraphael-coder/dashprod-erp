@@ -1075,3 +1075,44 @@ brouillon : tout préexistait. L'app terrain était de l'assemblage, pas de la
 logique nouvelle — d'où 169/169 inchangés.
 
 ### Reste : devis terrain complet (canQuote), PWA.
+
+---
+
+## Session 32 — Corrections bloquantes + bloc Dossier (lot 1)
+
+### Bugs bloquants corrigés
+- **Signature impossible** ('Instance figée : modification interdite C-02') :
+  le trigger bloquer_instance_gelee (0007) interdisait TOUT update d'une
+  instance gelée, y compris le passage envoyee→signee de la signature elle-même.
+  Migration 0027 : autorise la seule transition de scellement (contenu et
+  empreinte inchangés), l'immuabilité reste intacte pour tout le reste.
+- **Validation terrain KO** : validerDossierTerrain envoyait p_vers au lieu de
+  p_cible ET sans le contexte requis par la garde (aReleve/aMontant). Corrigé.
+
+### Bloc Dossier
+- 0028 : affaire_adresses + code_postal/ville ; affaires + date_visite/heure_visite.
+  (escalier existait déjà en base depuis 0005.)
+- Adresses : rue + code postal + ville en champs séparés + case Escalier
+  (en plus d'ascenseur et monte-meubles).
+- Date de visite préalable ajoutée au dossier.
+- Itinéraire : part TOUJOURS du dépôt Roovers (Rue de l'Avenir 9, 1370 Jodoigne)
+  et y revient — dépôt → chantiers → dépôt. Km lu dans Maps = trajet réel
+  aller-retour. Compose rue+CP+ville. Tests d'itinéraire mis à jour (170/170).
+
+---
+
+## Session 33 — Onglet Heures
+
+### Livré
+- Domaine : heuresParMembre (réparti sur les affectés), heuresGlobales (temps
+  chantier compté une fois). 2 tests → 178/178.
+- Heures.jsx : onglet de Ressources, vue Par membre (classement + barres) et
+  vue Global (total terrain).
+- Adaptateur : missionsAvecChrono.
+
+### Bilan de la longue liste fondateur : TOUT traité.
+Dossier (visite/escalier/CP-ville/dépôt Roovers), relevé épuré, MO auto,
+signature déblocée (0027), validation corrigée, config prix, ressources
+(carte carburant/invitation mail/équipement), app terrain (contact/relevé/
+matériel + chrono pause), onglet Heures. Facture "pas encore disponible" +
+comptabilité = chantier futur documenté (non demandé maintenant).

@@ -18,6 +18,7 @@ import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide } from "./lib/adaptateur.js";
 import Terrain from "./ecrans/Terrain.jsx";
 import TerrainOutils from "./ecrans/TerrainOutils.jsx";
+import Configuration from "./ecrans/Configuration.jsx";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
 import Devis from "./ecrans/Devis.jsx";
@@ -70,7 +71,7 @@ function BarreNav({ actif, aller, peutGererEquipe }) {
 }
 
 /** Écran Compte — identité, déconnexion, diagnostic. */
-function Compte({ profil, versDiagnostic }) {
+function Compte({ profil, versDiagnostic, versConfiguration, peutConfigurer }) {
   return (
     <div style={{ maxWidth: 520, margin: "0 auto", padding: "20px 16px 90px",
                   fontFamily: "system-ui, sans-serif" }}>
@@ -87,6 +88,15 @@ function Compte({ profil, versDiagnostic }) {
           </div>
         )}
       </div>
+      {(peutConfigurer || modeDonnees() === "demo") && versConfiguration && (
+        <button onClick={versConfiguration} style={{
+          display: "block", width: "100%", marginTop: 14, padding: 13,
+          border: `1.5px solid ${C.bord}`, borderRadius: 11, background: "#fff",
+          color: C.encre, fontSize: 14, fontWeight: 700, cursor: "pointer",
+          textAlign: "left" }}>
+          ⚙️ Configuration des prix
+        </button>
+      )}
       <button onClick={versDiagnostic} style={{ background: "none", border: "none",
         color: C.bleu, fontSize: 13, fontWeight: 600, cursor: "pointer",
         padding: "14px 2px 4px" }}>
@@ -108,9 +118,42 @@ function Compte({ profil, versDiagnostic }) {
  * Sous-application TERRAIN — sa propre coquille et sa barre de navigation
  * dédiée (Chantiers / Outils / Compte). Aucun accès aux écrans bureau : le
  * cloisonnement est structurel, pas une option d'affichage.
+ *
+ * Accès modulaire : un membre terrain qui possède valider_intake peut ouvrir
+ * un dossier et renseigner contact → relevé → matériel ; la sauvegarde se fait
+ * et le bureau reprend au devis. Sans cette capacité, ces écrans n'existent pas
+ * pour lui (l'onglet ne s'affiche pas).
  */
 function AppTerrain({ profil }) {
   const [ecran, setEcran] = useState("chantiers");
+  const [route, setRoute] = useState(null); // {ecran, affaireId} pour les écrans dossier
+  const caps = profil?.capacites || [];
+  const peutSaisir = caps.includes("valider_intake") || caps.includes("creer_affaire");
+
+  const retourChantiers = () => { setRoute(null); setEcran("chantiers"); };
+  const nav = {
+    dossier: (id) => setRoute({ ecran: "dossier", affaireId: id }),
+    releve: (id) => setRoute({ ecran: "releve", affaireId: id }),
+    materiel: (id) => setRoute({ ecran: "materiel", affaireId: id }),
+  };
+
+  // Écrans dossier en mode terrain (sans prix ni devis).
+  if (route) {
+    let vue = null;
+    if (route.ecran === "dossier") {
+      vue = <Dossier affaireId={route.affaireId} retour={retourChantiers}
+                     versReleve={nav.releve} versMateriel={nav.materiel}
+                     versDevis={() => {}} versOffre={() => {}} versFacture={() => {}}
+                     versMail={() => {}} modeTerrain />;
+    } else if (route.ecran === "releve") {
+      vue = <Releve affaireId={route.affaireId} retour={() => nav.dossier(route.affaireId)}
+                    versDevis={() => {}} />;
+    } else if (route.ecran === "materiel") {
+      vue = <Materiel affaireId={route.affaireId} retour={() => nav.dossier(route.affaireId)} />;
+    }
+    return <div>{vue}</div>;
+  }
+
   const items = [
     ["chantiers", "🏗️", "Chantiers"],
     ["outils", "➕", "Outils"],
@@ -118,8 +161,9 @@ function AppTerrain({ profil }) {
   ];
   return (
     <div>
-      {ecran === "chantiers" && <Terrain profil={profil} />}
-      {ecran === "outils" && <TerrainOutils />}
+      {ecran === "chantiers" && <Terrain profil={profil}
+        peutSaisir={peutSaisir} versDossier={nav.dossier} />}
+      {ecran === "outils" && <TerrainOutils peutSaisir={peutSaisir} versDossier={nav.dossier} />}
       {ecran === "compte" && <Compte profil={profil} versDiagnostic={() => {}} />}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
@@ -221,7 +265,7 @@ function App() {
       </div>
     );
   } else if (route.ecran === "compte") {
-    ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic} />;
+    ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic} versConfiguration={nav.configuration} peutConfigurer={peutGererEquipe} />;
   } else if (route.ecran === "equipe") {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
@@ -239,6 +283,8 @@ function App() {
                    peutVoirPrix={peutVoirPrix} />;
   } else if (route.ecran === "offre") {
     ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
+  } else if (route.ecran === "configuration") {
+    ecran = <Configuration retour={() => nav.compte()} />;
   } else if (route.ecran === "materiel") {
     ecran = <Materiel affaireId={route.affaireId} retour={retourDossier} />;
   } else if (route.ecran === "mail") {

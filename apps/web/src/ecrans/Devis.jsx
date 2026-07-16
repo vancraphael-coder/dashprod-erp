@@ -7,7 +7,10 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from "react";
-import { obtenirAffaire, enregistrerChiffrage } from "../lib/adaptateur.js";
+import {
+  obtenirAffaire, enregistrerChiffrage,
+  obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
+} from "../lib/adaptateur.js";
 import { calculerScenario } from "@domaine/chiffrage/moteur.js";
 import { BAREME_HORAIRE, TARIFS } from "@domaine/chiffrage/bareme.js";
 import { C, S, ZONES_MARGE, euros } from "../lib/theme.jsx";
@@ -27,6 +30,8 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   });
   const [couts, setCouts] = useState({ mainOeuvreEuros: 0, carburantEuros: 0, materielEuros: 0, diversEuros: 0, peagesEuros: 0 });
   const [sauve, setSauve] = useState(false);
+  const [equipe, setEquipe] = useState([]);     // membres pressentis {id, nom, taux}
+  const [ref, setRef] = useState(null);          // barème + tarifs configurés
 
   useEffect(() => {
     obtenirAffaire(affaireId).then((a) => {
@@ -34,13 +39,44 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
       if (a?.faits) setFaits((f) => ({ ...f, ...a.faits }));
       if (a?.couts) setCouts((c) => ({ ...c, ...a.couts }));
     });
+    // Coût MO auto : équipe pressentie du dossier × leur taux horaire.
+    Promise.all([obtenirEquipeAffaire(affaireId), listerMembresSimples(), tauxMembres()])
+      .then(([ids, membres, taux]) => {
+        setEquipe(ids.map((id) => {
+          const m = membres.find((x) => x.id === id);
+          return { id, nom: m?.nom || id, taux: taux[id] || 0 };
+        }));
+      }).catch(() => {});
+    // Barème configuré (page Configuration) : le moteur l'accepte via ref.
+    obtenirParametresPrix().then((p) => {
+      if (!p) return;
+      // Les clés numériques du barème peuvent revenir en chaînes (jsonb).
+      const bareme = {};
+      Object.entries(p.bareme_horaire || {}).forEach(([k, v]) => { bareme[Number(k)] = Number(v); });
+      const tarifs = {};
+      Object.entries(p.tarifs || {}).forEach(([k, v]) => { tarifs[k] = Number(v); });
+      setRef({ bareme, tarifs });
+    }).catch(() => {});
   }, [affaireId]);
+
+  // Coût main-d'œuvre PRÉVISIONNEL : somme des taux de l'équipe × heures prévues.
+  // (Le coût réel avec le chrono se calcule sur le dossier confirmé.)
+  const heuresMO = faits.formule === "emballage" ? (faits.heuresEmballage || 0) : (faits.heures || 0);
+  const coutMoAuto = useMemo(() => {
+    const sommeTaux = equipe.reduce((s, m) => s + (m.taux || 0), 0);
+    return Math.round(sommeTaux * heuresMO);
+  }, [equipe, heuresMO]);
+
+  // Injecte le coût MO calculé dans les coûts passés au moteur.
+  const coutsEffectifs = useMemo(
+    () => ({ ...couts, mainOeuvreEuros: coutMoAuto }),
+    [couts, coutMoAuto]);
 
   // Le moteur — recalcul à chaque frappe. L'écran n'additionne rien lui-même.
   const scenario = useMemo(() => {
-    try { return calculerScenario(faits, couts); }
+    try { return calculerScenario(faits, coutsEffectifs, ref || {}); }
     catch { return null; }
-  }, [faits, couts]);
+  }, [faits, coutsEffectifs, ref]);
 
   function maj(champ, valeur) { setFaits((f) => ({ ...f, [champ]: valeur })); setSauve(false); }
   function majCout(champ, valeur) { setCouts((c) => ({ ...c, [champ]: valeur })); setSauve(false); }
@@ -48,7 +84,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
 
   async function enregistrer() {
     await enregistrerChiffrage(affaireId, {
-      faits, couts,
+      faits, couts: coutsEffectifs,
       resultat: { tvac_centimes: scenario.tvac_centimes, marge_pct: scenario.marge_pct },
     });
     // Recharge l'affaire : le montant enregistré est désormais la source de
@@ -196,8 +232,42 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
           <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
             Coûts réels <span style={{ fontWeight: 500, color: C.muet }}>— confidentiel</span>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            {[["mainOeuvreEuros", "Main-d'œuvre"], ["carburantEuros", "Carburant"], ["materielEuros", "Matériel"]]
+          {/* Main-d'œuvre AUTOMATIQUE : taux de chaque homme pressenti × heures.
+              Composez l'équipe dans le dossier ; renseignez leurs taux dans
+              Ressources (Membres). */}
+          <label style={S.label}>Main-d'œuvre (automatique)</label>
+          <div style={{ background: "#F8FAFC", border: `1px solid ${C.bord}`,
+                        borderRadius: 10, padding: "9px 11px" }}>
+            {equipe.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.muet }}>
+                Aucun membre pressenti — sélectionnez l'équipe dans le dossier.
+              </div>
+            ) : (
+              <>
+                {equipe.map((m) => (
+                  <div key={m.id} style={{ display: "flex", justifyContent: "space-between",
+                                           fontSize: 12, padding: "1px 0" }}>
+                    <span style={{ color: C.encre }}>
+                      {m.nom} <span style={{ color: C.fantome }}>
+                        · {m.taux || "?"} €/h × {heuresMO} h</span>
+                    </span>
+                    <span style={{ fontWeight: 600, color: C.encre }}>
+                      {euros(Math.round((m.taux || 0) * heuresMO * 100))}
+                    </span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between",
+                              borderTop: `1px solid ${C.bord}`, marginTop: 5, paddingTop: 5 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: C.encre }}>Total MO</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+                    {euros(coutMoAuto * 100)}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+            {[["carburantEuros", "Carburant"], ["materielEuros", "Matériel"]]
               .map(([cle, lib]) => (
               <div key={cle} style={{ flex: 1 }}>
                 <label style={S.label}>{lib} (€)</label>
