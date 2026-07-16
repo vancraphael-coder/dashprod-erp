@@ -72,7 +72,13 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
             <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
               {a.client?.nom || "Client inconnu"}
             </div>
-            <Badge etat={a.etat} />
+            {a.etat === "brouillon" && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#6D28D9",
+                  background: "#F5F3FF", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                  à valider
+                </span>
+              )}
+              <Badge etat={a.etat} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <div style={{ fontSize: 12.5,

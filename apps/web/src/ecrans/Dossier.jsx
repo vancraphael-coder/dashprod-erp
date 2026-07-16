@@ -14,6 +14,7 @@ import {
   obtenirClientFacturation, sauverClientFacturation,
   obtenirClientIdentite, sauverClientIdentite,
   listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
+  validerDossierTerrain,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -134,6 +135,26 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           }}>{lib}</button>
         ))}
       </div>
+
+      {/* Dossier venu du terrain : à valider par le bureau (brouillon → devis). */}
+      {affaire.etat === "brouillon" && (
+        <div style={{ margin: "0 16px 10px", padding: "11px 12px", borderRadius: 12,
+          background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#5B21B6" }}>
+            Dossier créé sur le terrain — à valider
+          </div>
+          <div style={{ fontSize: 11.5, color: "#6D28D9", marginTop: 2, marginBottom: 8 }}>
+            Complétez le relevé et le prix, puis validez pour lancer le chiffrage.
+          </div>
+          <button onClick={async () => {
+            await validerDossierTerrain(affaireId);
+            obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
+          }} style={{
+            padding: "9px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+            background: "#7C3AED", color: "#fff", fontSize: 13, fontWeight: 700,
+          }}>Valider ce dossier</button>
+        </div>
+      )}
 
       {/* Identité du client — éditable ici (le nom se corrige au même endroit
           que tout le reste, pas dans un écran séparé). */}

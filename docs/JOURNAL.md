@@ -1053,3 +1053,25 @@ ouvertes + prix du matériel d'emballage à trancher par Raphaël.
 - Dossier : bloc Équipe avec chips de membres.
 
 ### Prochain : app terrain.
+
+---
+
+## Session 31 — App terrain
+
+### Livré
+- Adaptateur terrain : mesMissionsTerrain (missions enrichies SANS prix),
+  chronoDemarrer/chronoArreter (cmd_chrono_*), signalerSouci, creerDossierTerrain
+  (→ brouillon), validerDossierTerrain (brouillon → devis).
+- Terrain.jsx : « Mes chantiers » + fiche chantier repliable (chrono sessions
+  serveur, itinéraire, équipe/camions, à démonter, remarques, brief WhatsApp).
+- TerrainOutils.jsx : création rapide + signalement véhicule.
+- main.jsx : routage terrain — un profil sans capacité bureau reçoit AppTerrain
+  (coquille dédiée, barre Chantiers/Outils/Compte), cloisonnement RÉEL (RLS).
+- Dossier + Liste : validation des dossiers terrain (bandeau + badge « à valider »).
+
+### Le domaine était prêt
+chrono.js, missionsDuMembre, cmd_chrono_*, signaler_materiel, machine à états
+brouillon : tout préexistait. L'app terrain était de l'assemblage, pas de la
+logique nouvelle — d'où 169/169 inchangés.
+
+### Reste : devis terrain complet (canQuote), PWA.

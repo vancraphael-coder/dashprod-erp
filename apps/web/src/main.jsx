@@ -16,6 +16,8 @@ import Diagnostic from "./ecrans/Diagnostic.jsx";
 import NonInvite from "./ecrans/NonInvite.jsx";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide } from "./lib/adaptateur.js";
+import Terrain from "./ecrans/Terrain.jsx";
+import TerrainOutils from "./ecrans/TerrainOutils.jsx";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
 import Devis from "./ecrans/Devis.jsx";
@@ -102,6 +104,43 @@ function Compte({ profil, versDiagnostic }) {
   );
 }
 
+/**
+ * Sous-application TERRAIN — sa propre coquille et sa barre de navigation
+ * dédiée (Chantiers / Outils / Compte). Aucun accès aux écrans bureau : le
+ * cloisonnement est structurel, pas une option d'affichage.
+ */
+function AppTerrain({ profil }) {
+  const [ecran, setEcran] = useState("chantiers");
+  const items = [
+    ["chantiers", "🏗️", "Chantiers"],
+    ["outils", "➕", "Outils"],
+    ["compte", "⚙️", "Compte"],
+  ];
+  return (
+    <div>
+      {ecran === "chantiers" && <Terrain profil={profil} />}
+      {ecran === "outils" && <TerrainOutils />}
+      {ecran === "compte" && <Compte profil={profil} versDiagnostic={() => {}} />}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+        display: "flex", background: "#fff", borderTop: `1px solid ${C.bord}`,
+        maxWidth: 520, margin: "0 auto",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}>
+        {items.map(([cle, icone, lib]) => (
+          <button key={cle} onClick={() => setEcran(cle)} style={{
+            flex: 1, padding: "9px 4px 7px", border: "none", background: "none",
+            cursor: "pointer", color: ecran === cle ? C.bleu : C.muet,
+          }}>
+            <div style={{ fontSize: 18 }}>{icone}</div>
+            <div style={{ fontSize: 10.5, fontWeight: 700 }}>{lib}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [profil, setProfil] = useState(null);
@@ -137,6 +176,19 @@ function App() {
   const capacites = profil?.capacites || [];
   const peutGererEquipe = modeDonnees() === "demo" || capacites.includes("gerer_referentiels");
   const peutVoirPrix = modeDonnees() === "demo" || capacites.includes("voir_prix");
+
+  // Routage terrain : un membre qui n'a AUCUNE capacité bureau (ni voir_prix,
+  // ni créer une affaire, ni gérer le planning) est un pur profil terrain — il
+  // ne voit QUE ses chantiers, sans prix. Le cloisonnement est réel (RLS), pas
+  // du CSS. La direction et le bureau gardent l'app complète.
+  const capacitesBureau = ["voir_prix", "creer_affaire", "gerer_planning", "emettre_facture"];
+  const estTerrain = modeDonnees() === "reel"
+    && !capacitesBureau.some((c) => capacites.includes(c));
+
+  if (estTerrain) {
+    return <AppTerrain profil={profil} />;
+  }
+
   const nav = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
     nouvelle: async () => { const id = await creerDossierVide(); setRoute({ ecran: "dossier", affaireId: id }); },

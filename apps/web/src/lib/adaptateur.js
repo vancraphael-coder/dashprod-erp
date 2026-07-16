@@ -1034,3 +1034,176 @@ export async function sauverEquipeAffaire(affaireId, ids) {
   const a = d.affaires.find((x) => x.id === affaireId);
   if (a) { a.equipe = ids; ecrireDemo(d); }
 }
+
+// =============================================================================
+// APP TERRAIN — missions du membre, chrono, signalement, création rapide.
+// Le cloisonnement est RÉEL (RLS + capacités) : un membre terrain ne voit que
+// ses chantiers, sans prix ni coûts. Le domaine (missionsDuMembre, chrono) et
+// les commandes SQL (cmd_chrono_*, cmd_signaler_*) préexistent.
+// =============================================================================
+
+/**
+ * Missions affectées au membre courant, enrichies pour le terrain :
+ * adresses, coéquipiers, camions, articles à démonter, sessions de chrono.
+ * JAMAIS de prix ni de coûts.
+ */
+export async function mesMissionsTerrain(utilisateurId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("missions")
+      .select(`id, date, heure, type, etat, affaire_id,
+               affaires(clients(nom), notes_commerciales),
+               mission_affectations(utilisateur_id, utilisateurs(nom)),
+               mission_vehicules(vehicules(nom)),
+               chrono_sessions(debut, fin)`)
+      .order("date", { ascending: true });
+    if (error) throw error;
+    // Filtre : uniquement mes missions (la RLS laisse voir celles du tenant).
+    const miennes = (data || []).filter((m) =>
+      (m.mission_affectations || []).some((a) => a.utilisateur_id === utilisateurId));
+    // Adresses + relevé (démontage) en parallèle par affaire.
+    const enrichies = await Promise.all(miennes.map(async (m) => {
+      const contact = await obtenirContact(m.affaire_id).catch(() => null);
+      const inventaire = await obtenirReleve(m.affaire_id).catch(() => []);
+      return {
+        id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
+        affaire_id: m.affaire_id,
+        client: m.affaires?.clients?.nom,
+        remarques: m.affaires?.notes_commerciales || "",
+        equipe: (m.mission_affectations || []).map((a) => a.utilisateurs?.nom).filter(Boolean),
+        camions: (m.mission_vehicules || []).map((v) => v.vehicules?.nom).filter(Boolean),
+        charges: contact?.charges || [], decharges: contact?.decharges || [],
+        aDemonter: (inventaire || []).filter((it) => it.demont)
+          .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 })),
+        sessions: (m.chrono_sessions || []).map((s) => ({ debut: s.debut, fin: s.fin })),
+      };
+    }));
+    return enrichies;
+  }
+  // Démo : dérive des missions locales, enrichit depuis le contact stocké.
+  const d = lireDemo();
+  const noms = Object.fromEntries((MEMBRES_DEMO).map((m) => [m.id, m.nom]));
+  return (d.missions || [])
+    .filter((m) => (m.affectations || []).some((a) => a.utilisateur_id === utilisateurId))
+    .map((m) => {
+      const a = d.affaires.find((x) => x.id === m.affaire_id);
+      const contact = a?.contact || {};
+      const inv = (d.releves && d.releves[m.affaire_id]) || [];
+      return {
+        id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
+        affaire_id: m.affaire_id,
+        client: m.client || d.clients.find((c) => c.id === a?.clientId)?.nom,
+        remarques: contact.notes || "",
+        equipe: (m.affectations || []).map((x) => noms[x.utilisateur_id]).filter(Boolean),
+        camions: (m.camions || []).map((cid) => (d.vehicules || []).find((v) => v.id === cid)?.nom).filter(Boolean),
+        charges: contact.charges || [], decharges: contact.decharges || [],
+        aDemonter: inv.filter((it) => it.demont).map((it) => ({ nom: it.nom, quantite: it.quantite || 1 })),
+        sessions: m.sessions || [],
+      };
+    });
+}
+
+/** Démarre le chrono d'une mission. */
+export async function chronoDemarrer(missionId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_chrono_demarrer", { p_mission: missionId });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) {
+    m.sessions = m.sessions || [];
+    if (!m.sessions.some((s) => !s.fin)) m.sessions.push({ debut: new Date().toISOString() });
+    ecrireDemo(d);
+  }
+}
+
+/** Arrête le chrono (ferme la session ouverte). */
+export async function chronoArreter(missionId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_chrono_arreter", { p_mission: missionId });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) {
+    const ouverte = (m.sessions || []).find((s) => !s.fin);
+    if (ouverte) ouverte.fin = new Date().toISOString();
+    ecrireDemo(d);
+  }
+}
+
+/** Signale un souci matériel/véhicule (capacité signaler_materiel). */
+export async function signalerSouci({ vehiculeId, etat, note }) {
+  if (modeDonnees() === "reel") {
+    // Réutilise la mise à jour du véhicule (état mécanique + note horodatée).
+    const extra = etat !== "ok" ? { meca_constat_le: new Date().toISOString().slice(0, 10) } : {};
+    const { error } = await supabase.from("vehicules")
+      .update({ etat_mecanique: etat, meca_note: note || null, ...extra })
+      .eq("id", vehiculeId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const v = (d.vehicules || []).find((x) => x.id === vehiculeId);
+  if (v) {
+    v.etat_mecanique = etat; v.meca_note = note || "";
+    if (etat !== "ok") v.meca_constat_le = new Date().toISOString().slice(0, 10);
+    ecrireDemo(d);
+  }
+}
+
+/**
+ * Création rapide d'un dossier depuis le terrain : le bureau complétera le
+ * prix et confirmera. L'affaire naît en 'brouillon' (machine à états), tracée
+ * au créateur, auto-affectée à lui. Le bureau la voit « à valider ».
+ */
+export async function creerDossierTerrain({ clientNom, tel, chargement, dechargement, date, notes }) {
+  if (modeDonnees() === "reel") {
+    const { data: cli, error: e1 } = await supabase.from("clients")
+      .insert({ nom: clientNom || "Client terrain", tel: tel || null }).select("id").single();
+    if (e1) throw e1;
+    const { data: aff, error: e2 } = await supabase.from("affaires")
+      .insert({ client_id: cli.id, etat: "brouillon",
+                date_souhaitee: date || null, notes_commerciales: notes || null })
+      .select("id").single();
+    if (e2) throw e2;
+    // Adresses minimales.
+    const lignes = [];
+    if (chargement) lignes.push({ affaire_id: aff.id, sens: "chargement", ordre: 1, adresse: chargement });
+    if (dechargement) lignes.push({ affaire_id: aff.id, sens: "dechargement", ordre: 1, adresse: dechargement });
+    if (lignes.length) await supabase.from("affaire_adresses").insert(lignes);
+    return aff.id;
+  }
+  const d = lireDemo();
+  const cid = idDemo();
+  d.clients.push({ id: cid, nom: clientNom || "Client terrain", tel: tel || "" });
+  const aid = idDemo();
+  d.affaires.push({
+    id: aid, clientId: cid, etat: "brouillon", formule: "tarifaire",
+    creeLe: new Date().toISOString().slice(0, 10),
+    faits: null, couts: null, tvac_centimes: null, marge_pct: null,
+    contact: {
+      charges: chargement ? [{ id: "a1", adresse: chargement }] : [],
+      decharges: dechargement ? [{ id: "a2", adresse: dechargement }] : [],
+      date: date || "", heure: "08:00", notes: notes || "",
+    },
+  });
+  ecrireDemo(d);
+  return aid;
+}
+
+/** Valide un dossier terrain : brouillon → devis (capacité valider_intake). */
+export async function validerDossierTerrain(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_transition_affaire", {
+      p_affaire: affaireId, p_vers: "devis",
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  if (a) { a.etat = "devis"; ecrireDemo(d); }
+}
