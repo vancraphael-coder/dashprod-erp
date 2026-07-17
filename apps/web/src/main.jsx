@@ -318,6 +318,7 @@ function App() {
   const [nonInvite, setNonInvite] = useState(null);
   const [charge, setCharge] = useState(false);
   const [route, setRoute] = useState({ ecran: "liste", affaireId: null });
+  const [gardeEnAttente, setGardeEnAttente] = useState(null); // () => void — navigation différée
 
   useEffect(() => {
     sessionCourante().then(async (s) => {
@@ -362,7 +363,6 @@ function App() {
 
   // Garde : navigation en attente tant que l'utilisateur n'a pas tranché
   // (sauvegarder / annuler les modifications).
-  const [gardeEnAttente, setGardeEnAttente] = useState(null); // () => void
   function naviguerAvecGarde(fn) {
     if (gardeModifs.sale) setGardeEnAttente(() => fn);
     else fn();
