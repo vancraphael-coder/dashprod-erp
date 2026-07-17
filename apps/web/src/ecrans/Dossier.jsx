@@ -59,6 +59,14 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     }));
   }, [affaireId]);
 
+  // Garde de modifications — DOIT être avant tout return conditionnel (règle
+  // des hooks). Signale au shell les changements en attente ; la navigation
+  // demandera Sauvegarder / Annuler avant de quitter.
+  useEffect(() => {
+    declarerModifs(modifie, () => enregistrerRef.current && enregistrerRef.current());
+    return () => declarerModifs(false, null);
+  }, [modifie]);
+
   if (!affaire || !contact) return null;
 
   function majAdr(liste, id, champ, valeur) {
@@ -105,13 +113,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     } catch (e) { setErreur(e.message); }
   }
   enregistrerRef.current = enregistrer;
-
-  // Garde : signale au shell qu'il y a des modifications en attente ; toute
-  // navigation demandera Sauvegarder / Annuler avant de quitter la page.
-  useEffect(() => {
-    declarerModifs(modifie, () => enregistrerRef.current && enregistrerRef.current());
-    return () => declarerModifs(false, null);
-  }, [modifie]);
 
   const chiffree = affaire.tvac_centimes != null;
   const facturable = ["confirme", "effectue", "facture", "paye"].includes(affaire.etat);

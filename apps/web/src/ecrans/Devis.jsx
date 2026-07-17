@@ -83,6 +83,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   const num = (v) => (v === "" ? 0 : Number(v));
 
   async function enregistrer() {
+    if (!scenario) return; // pas de chiffrage abouti → rien à enregistrer
     await enregistrerChiffrage(affaireId, {
       faits, couts: coutsEffectifs,
       resultat: { tvac_centimes: scenario.tvac_centimes, marge_pct: scenario.marge_pct },
@@ -108,6 +109,21 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
           )}
         </div>
       </div>
+
+      {/* Chiffrage impossible (barème incomplet, saisie invalide) : on le dit
+          clairement au lieu de laisser des blocs vides. */}
+      {!scenario && (
+        <div style={{ margin: "0 16px 12px", padding: "11px 13px", borderRadius: 12,
+          background: "#FEF2F2", border: "1px solid #FECACA" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#991B1B" }}>
+            Chiffrage indisponible
+          </div>
+          <div style={{ fontSize: 11.5, color: "#B91C1C", marginTop: 2, lineHeight: 1.5 }}>
+            Vérifiez la formule, le nombre de déménageurs et le barème
+            (Configuration). Le calcul reprendra automatiquement.
+          </div>
+        </div>
+      )}
 
       {/* Formule */}
       <div style={S.carte}>
@@ -203,7 +219,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
                 <option value="degats">Dégâts (geste correctif)</option>
               </select>
             </div>
-            {scenario.reduction && (
+            {scenario?.reduction && (
               <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700,
                 color: scenario.reduction.motif === "degats" ? C.rouge : C.ambre }}>
                 Réduction de {scenario.reduction.pct} %
