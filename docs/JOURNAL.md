@@ -1150,3 +1150,41 @@ theme.jsx aligné sur le modèle validé roovers-mobile : Fira Sans/Fira Code
 (injection Google Fonts), fond #F4F7FE, bordures #E4ECFC, cartes radius 14
 ombrées, labels uppercase monospace, boutons dégradé bleu, entête sticky
 translucide. Tous les écrans en héritent d'un coup.
+
+---
+
+## Session 35 — Archivage, garde de modifs, planning 2 clics, refonte terrain
+
+### Archivage avec confirmation (Confirmer/Annuler partout)
+- 0032 : archive_le (affaires, vehicules) + cmd_archiver_utilisateur (gardée)
+  + table vehicule_signalements (historique QUI/QUOI/QUAND, jamais écrasé).
+- Dossier / camion / membre : bouton Archiver → composant Confirmation
+  (deux boutons). Archiver ≠ supprimer : sort des listes, tout est conservé.
+- Signalements véhicule historisés automatiquement + historique dépliable
+  sur la fiche camion (détail, par membre, jour et heure).
+
+### Garde de modifications
+- Registre gardeModifs (theme) + modale dans le shell : Sauvegarder et
+  continuer / Annuler les modifications / Rester. Le Dossier déclare son état
+  (drapeau modifié) — toute navigation de la sous-nav passe par la garde.
+
+### Navigation & design
+- Double barre du haut du Dossier supprimée (la sous-nav du bas suffit).
+- Icônes SVG sobres (trait fin) sur les 3 barres : inactif BLEU, sélection
+  VERTE — plus d'emojis.
+
+### Planning : 2 clics
+- 1er clic sélectionne (membre OU camion, contour vert), 2e confirme
+  (Retirer/Ajouter vs Annuler). Camions ajoutés au panneau d'affectation
+  (basculerVehiculeMission).
+
+### Terrain refondu
+- Brief équipe supprimé (texte + WhatsApp).
+- « Consulter le dossier » (tous) : les VRAIES pages Dossier/Relevé/Matériel
+  du bureau, en lecture seule (interactions gelées, seule la barre de
+  navigation 3 sections reste active). Bandeau « Consultation ».
+- Onglet « Nouveau » (habilités valider_intake/creer_affaire) : parcours de
+  CRÉATION COMPLET dossier → relevé → matériel → devis → offre → mail, avec
+  sa sous-nav 6 sections. TerrainOutils retiré du routage.
+- Chrono : hh:mm:ss + pauses NUMÉROTÉES (Pause 1, Pause 2…) chacune avec sa
+  durée, celle en cours défile en ambre. Domaine listePauses testé (179/179).

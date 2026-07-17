@@ -8,11 +8,11 @@
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
-import { listerVehicules, sauverVehicule, supprimerVehicule } from "../lib/adaptateur.js";
+import { listerVehicules, sauverVehicule, archiverVehicule, listerSignalements } from "../lib/adaptateur.js";
 import { alertesVehicule, TYPES_VEHICULE, ETATS_MECANIQUES } from "@domaine/flotte/vehicules.js";
 import Equipe from "./Equipe.jsx";
 import Heures from "./Heures.jsx";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, Confirmation, FC } from "../lib/theme.jsx";
 
 const LIBELLE_TYPE = { fourgon: "Fourgon", porteur: "Porteur", hayon: "Hayon élévateur" };
 const LIBELLE_MECA = { ok: "OK", surveiller: "À surveiller", urgent: "URGENT" };
@@ -45,6 +45,7 @@ export default function Ressources() {
 function OngletCamions() {
   const [camions, setCamions] = useState([]);
   const [ouvert, setOuvert] = useState(null);
+  const [archivage, setArchivage] = useState(null); // id du camion à archiver
   const [erreur, setErreur] = useState(null);
 
   function recharger() { listerVehicules().then(setCamions).catch((e) => setErreur(e.message)); }
@@ -191,10 +192,23 @@ function OngletCamions() {
                   </>
                 )}
 
-                <button onClick={async () => { await supprimerVehicule(v.id); recharger(); }}
-                        style={{ ...S.boutonLien, color: C.rouge, marginTop: 12 }}>
-                  Retirer ce camion
+                {/* Historique automatique des signalements : détail, par qui, quand. */}
+                <HistoriqueSignalements vehiculeId={v.id} />
+
+                <button onClick={() => setArchivage(v.id)}
+                        style={{ ...S.boutonLien, color: C.muet, marginTop: 12 }}>
+                  🗂 Archiver ce camion
                 </button>
+                {archivage === v.id && (
+                  <Confirmation
+                    question={`Archiver ${v.nom} ? Il disparaîtra des listes (historique conservé).`}
+                    action="Archiver" couleur={C.rouge}
+                    onConfirmer={async () => {
+                      await archiverVehicule(v.id);
+                      setArchivage(null); recharger();
+                    }}
+                    onAnnuler={() => setArchivage(null)} />
+                )}
               </div>
             )}
           </div>
@@ -205,5 +219,46 @@ function OngletCamions() {
         <button style={S.boutonPlein} onClick={ajouter}>+ Ajouter un camion</button>
       </div>
     </>
+  );
+}
+
+
+/** Historique des signalements d'un camion : QUI, QUOI, QUAND — jamais écrasé. */
+function HistoriqueSignalements({ vehiculeId }) {
+  const [liste, setListe] = React.useState(null);
+  const [ouvert, setOuvert] = React.useState(false);
+  React.useEffect(() => {
+    if (ouvert && liste === null)
+      listerSignalements(vehiculeId).then(setListe).catch(() => setListe([]));
+  }, [ouvert, vehiculeId]);
+  const COULEUR = { ok: "#059669", surveiller: "#D97706", urgent: "#DC2626" };
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button onClick={() => setOuvert(!ouvert)}
+              style={{ ...S.boutonLien, paddingLeft: 0, fontSize: 12.5 }}>
+        {ouvert ? "▾" : "▸"} Historique des signalements
+      </button>
+      {ouvert && (
+        <div style={{ marginTop: 4 }}>
+          {(liste || []).length === 0 && (
+            <div style={{ fontSize: 12, color: C.fantome }}>Aucun signalement.</div>
+          )}
+          {(liste || []).map((x) => (
+            <div key={x.id} style={{ padding: "7px 0", borderBottom: `1px solid ${C.bord}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontSize: 12.5, color: C.encre, fontWeight: 600 }}>
+                  <span style={{ color: COULEUR[x.etat] || C.muet }}>●</span> {x.note || x.etat}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: C.fantome, fontFamily: FC }}>
+                par {x.par} · {new Date(x.cree_le).toLocaleString("fr-BE", {
+                  day: "2-digit", month: "2-digit", year: "numeric",
+                  hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

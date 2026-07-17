@@ -12,10 +12,12 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  mesMissionsTerrain, chronoDemarrer, chronoArreter, composerBrief,
+  mesMissionsTerrain, chronoDemarrer, chronoArreter, chronoPause,
 } from "../lib/adaptateur.js";
-import { dureeSecondes, chronoEnCours, formaterDuree } from "@domaine/operations/chrono.js";
-import { urlItineraire, urlWhatsApp } from "@domaine/communication/brief.js";
+import {
+  dureeSecondes, chronoEnCours, formaterChrono, enPause, listePauses,
+} from "@domaine/operations/chrono.js";
+import { urlItineraire } from "@domaine/communication/brief.js";
 import { C, S } from "../lib/theme.jsx";
 
 function aujourdhui() { return new Date().toISOString().slice(0, 10); }
@@ -29,7 +31,7 @@ function dateLongue(iso) {
   } catch { return iso; }
 }
 
-export default function Terrain({ profil, versCreation }) {
+export default function Terrain({ profil, versConsult }) {
   const [missions, setMissions] = useState([]);
   const [ouvert, setOuvert] = useState(null);
   const [chargement, setChargement] = useState(true);
@@ -74,45 +76,42 @@ export default function Terrain({ profil, versCreation }) {
         <Chantier key={m.id} mission={m} profil={profil}
                   ouvert={ouvert === m.id}
                   onToggle={() => setOuvert(ouvert === m.id ? null : m.id)}
-                  onChrono={recharger} />
+                  onChrono={recharger} versConsult={versConsult} />
       ))}
     </div>
   );
 }
 
-function Chantier({ mission, profil, ouvert, onToggle, onChrono }) {
+function Chantier({ mission, profil, ouvert, onToggle, onChrono, versConsult }) {
   const estAujourdhui = mission.date === aujourdhui();
   const [secondes, setSecondes] = useState(dureeSecondes(mission.sessions));
-  const [briefTexte, setBriefTexte] = useState(null);
+  const [pauses, setPauses] = useState(listePauses(mission.sessions));
   const enCours = chronoEnCours(mission.sessions);
+  const pause = enPause(mission.sessions);
   const timer = useRef(null);
 
   // Tic d'affichage quand le chrono tourne.
   useEffect(() => {
-    if (enCours) {
-      timer.current = setInterval(() => setSecondes(dureeSecondes(mission.sessions)), 1000);
+    if (enCours || pause) {
+      timer.current = setInterval(() => {
+        setSecondes(dureeSecondes(mission.sessions));
+        setPauses(listePauses(mission.sessions));
+      }, 1000);
     } else {
       setSecondes(dureeSecondes(mission.sessions));
+      setPauses(listePauses(mission.sessions));
     }
     return () => clearInterval(timer.current);
-  }, [enCours, mission.sessions]);
+  }, [enCours, pause, mission.sessions]);
 
   async function basculerChrono() {
     if (enCours) await chronoArreter(mission.id);
     else await chronoDemarrer(mission.id);
     await onChrono();
   }
-
-  async function preparerBrief() {
-    if (briefTexte) { setBriefTexte(null); return; }
-    const texte = await composerBrief(mission.affaire_id, {
-      date: mission.date, heure: mission.heure, equipeNoms: mission.equipe,
-    });
-    setBriefTexte(texte);
-  }
-  async function copierBrief() {
-    try { await navigator.clipboard.writeText(briefTexte); }
-    catch { window.prompt("Copiez le brief :", briefTexte); }
+  async function basculerPause() {
+    await chronoPause(mission.id);
+    await onChrono();
   }
 
   const itineraire = urlItineraire(mission.charges, mission.decharges);
@@ -148,17 +147,45 @@ function Chantier({ mission, profil, ouvert, onToggle, onChrono }) {
           {/* Chrono — sessions serveur */}
           <div style={{ background: "#0F172A", borderRadius: 12, padding: "14px",
             textAlign: "center", marginBottom: 12 }}>
-            <div style={{ fontSize: 30, fontWeight: 800, color: "#fff",
+            <div style={{ fontSize: 32, fontWeight: 800, color: "#fff",
               fontFamily: "ui-monospace, monospace", letterSpacing: ".04em" }}>
-              {formaterDuree(secondes)}
+              {formaterChrono(secondes)}
             </div>
-            <button onClick={basculerChrono} style={{
-              marginTop: 10, padding: "10px 28px", borderRadius: 999, border: "none",
-              cursor: "pointer", fontSize: 14, fontWeight: 800,
-              background: enCours ? "#DC2626" : "#22C55E", color: "#fff",
-            }}>
-              {enCours ? "⏸ Arrêter" : "▶ Démarrer"}
-            </button>
+            {pauses.length > 0 && (
+              <div style={{ marginTop: 6 }}>
+                {pauses.map((pz) => (
+                  <div key={pz.n} style={{
+                    display: "flex", justifyContent: "space-between",
+                    fontSize: 12, fontFamily: "ui-monospace, monospace",
+                    color: pz.enCours ? "#FBBF24" : "#94A3B8", padding: "1px 8px" }}>
+                    <span>Pause {pz.n}{pz.enCours ? " · en cours" : ""}</span>
+                    <span>{formaterChrono(pz.secondes)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
+              {/* Démarrer / Stop final : pilote le compteur principal. */}
+              <button onClick={basculerChrono} style={{
+                padding: "11px 22px", borderRadius: 999, border: "none",
+                cursor: "pointer", fontSize: 14, fontWeight: 800,
+                background: enCours ? "#DC2626" : "#22C55E", color: "#fff",
+              }}>
+                {enCours ? "⏹ Stop" : "▶ Démarrer"}
+              </button>
+              {/* Pause : marque un arrêt d'équipe, le compteur principal continue. */}
+              {enCours && (
+                <button onClick={basculerPause} style={{
+                  padding: "11px 22px", borderRadius: 999,
+                  border: `1.5px solid ${pause ? "#FBBF24" : "#475569"}`,
+                  cursor: "pointer", fontSize: 14, fontWeight: 800,
+                  background: pause ? "#FBBF24" : "transparent",
+                  color: pause ? "#0F172A" : "#E2E8F0",
+                }}>
+                  {pause ? "Reprendre" : "⏸ Pause"}
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Adresses + itinéraire */}
@@ -203,27 +230,15 @@ function Chantier({ mission, profil, ouvert, onToggle, onChrono }) {
             </div>
           )}
 
-          {/* Brief équipe */}
-          <button onClick={preparerBrief} style={{
-            ...S.boutonLien, width: "100%", textAlign: "center",
-            border: `1.5px solid ${C.bord}`, borderRadius: 10, padding: "9px",
-          }}>{briefTexte ? "Masquer le brief" : "📋 Brief équipe"}</button>
-          {briefTexte && (
-            <div style={{ marginTop: 8 }}>
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit",
-                fontSize: 12, color: C.encre, background: "#F8FAFC", borderRadius: 10,
-                padding: 10, lineHeight: 1.5 }}>{briefTexte}</pre>
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button onClick={copierBrief} style={{
-                  flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer",
-                  border: `1.5px solid ${C.bord}`, background: "#fff",
-                  fontSize: 12.5, fontWeight: 700, color: C.encre }}>Copier</button>
-                <a href={urlWhatsApp(briefTexte)} target="_blank" rel="noreferrer" style={{
-                  flex: 1, padding: "9px", borderRadius: 10, textAlign: "center",
-                  textDecoration: "none", background: "#25D366", color: "#fff",
-                  fontSize: 12.5, fontWeight: 700 }}>WhatsApp</a>
-              </div>
-            </div>
+          {/* Consultation du dossier : les trois pages du bureau (dossier,
+              relevé, matériel) en LECTURE SEULE — la même information, sans
+              risque de modification. */}
+          {versConsult && (
+            <button onClick={() => versConsult(mission.affaire_id)} style={{
+              width: "100%", padding: "11px", borderRadius: 10,
+              border: `1.5px solid ${C.bleu}`, background: C.bleuClair,
+              color: C.bleu, fontSize: 13, fontWeight: 700, cursor: "pointer",
+            }}>📖 Consulter le dossier</button>
           )}
         </div>
       )}

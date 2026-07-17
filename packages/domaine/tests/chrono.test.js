@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   dureeSecondes, chronoEnCours, formaterDuree, formaterChrono, dureePause, enPause,
-  heuresParMembre, heuresGlobales,
+  heuresParMembre, heuresGlobales, listePauses,
 } from "../src/operations/chrono.js";
 
 test("dureeSecondes additionne les sessions de travail fermées", () => {
@@ -69,4 +69,20 @@ test("heuresGlobales compte le temps chantier une seule fois", () => {
       affectations: [{ utilisateur_id: "a" }, { utilisateur_id: "b" }] },
   ];
   assert.equal(heuresGlobales(missions), 4 * 3600); // pas 8h malgré 2 membres
+});
+
+test("listePauses numérote les pauses dans l'ordre avec leur durée", () => {
+  const sessions = [
+    { debut: "2026-07-17T08:00:00Z", fin: null, type: "travail" },
+    { debut: "2026-07-17T12:00:00Z", fin: "2026-07-17T12:30:00Z", type: "pause" },
+    { debut: "2026-07-17T10:00:00Z", fin: "2026-07-17T10:15:00Z", type: "pause" },
+    { debut: "2026-07-17T15:00:00Z", fin: null, type: "pause" },
+  ];
+  const l = listePauses(sessions, new Date("2026-07-17T15:10:00Z"));
+  assert.equal(l.length, 3);
+  assert.deepEqual(l.map((p) => p.n), [1, 2, 3]);      // ordre chronologique
+  assert.equal(l[0].secondes, 15 * 60);                 // 10:00 → 10:15
+  assert.equal(l[1].secondes, 30 * 60);                 // 12:00 → 12:30
+  assert.equal(l[2].secondes, 10 * 60);                 // 15:00 → en cours
+  assert.equal(l[2].enCours, true);
 });

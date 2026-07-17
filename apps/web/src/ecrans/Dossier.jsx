@@ -7,18 +7,18 @@
 // remarques. Les autres sections mènent aux écrans dédiés.
 // =============================================================================
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   obtenirAffaire, obtenirContact, sauverContact,
   listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
   obtenirClientFacturation, sauverClientFacturation,
   obtenirClientIdentite, sauverClientIdentite,
   listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
-  validerDossierTerrain, obtenirInstance, confirmerAffaire,
+  validerDossierTerrain, obtenirInstance, confirmerAffaire, archiverAffaire,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
-import { C, S, Badge, euros } from "../lib/theme.jsx";
+import { C, S, Badge, euros, declarerModifs, Confirmation } from "../lib/theme.jsx";
 
 function adrVide() {
   return { id: "a" + Math.random().toString(36).slice(2, 8), adresse: "", type: "maison",
@@ -39,6 +39,9 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const [membres, setMembres] = useState([]);
   const [equipe, setEquipe] = useState([]);
   const [instance, setInstance] = useState(null);
+  const [modifie, setModifie] = useState(false);
+  const [archivage, setArchivage] = useState(false);
+  const enregistrerRef = useRef(null);
 
   useEffect(() => {
     obtenirAffaire(affaireId).then(setAffaire);
@@ -73,19 +76,19 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     setContact((c) => ({ ...c, [liste]: c[liste].filter((a) => a.id !== id) }));
     setSauve(false);
   }
-  function maj(champ, valeur) { setContact((c) => ({ ...c, [champ]: valeur })); setSauve(false); }
-  function majFact(champ, valeur) { setFacturation((f) => ({ ...f, [champ]: valeur })); setSauve(false); }
-  function majIdentite(champ, valeur) { setIdentite((x) => ({ ...x, [champ]: valeur })); setSauve(false); }
+  function maj(champ, valeur) { setContact((c) => ({ ...c, [champ]: valeur })); setSauve(false); setModifie(true); }
+  function majFact(champ, valeur) { setFacturation((f) => ({ ...f, [champ]: valeur })); setSauve(false); setModifie(true); }
+  function majIdentite(champ, valeur) { setIdentite((x) => ({ ...x, [champ]: valeur })); setSauve(false); setModifie(true); }
 
   async function basculerCamion(id) {
     const suivant = camions.includes(id)
       ? camions.filter((x) => x !== id) : [...camions, id];
     setCamions(suivant);
-    setSauve(false);
+    setSauve(false); setModifie(true);
   }
   function basculerMembre(id) {
     setEquipe((e) => e.includes(id) ? e.filter((x) => x !== id) : [...e, id]);
-    setSauve(false);
+    setSauve(false); setModifie(true);
   }
 
   async function enregistrer() {
@@ -98,9 +101,17 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       if (facturation) await sauverClientFacturation(affaireId, facturation);
       // Recharge l'affaire pour refléter le nom mis à jour dans l'en-tête.
       obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
-      setSauve(true);
+      setSauve(true); setModifie(false);
     } catch (e) { setErreur(e.message); }
   }
+  enregistrerRef.current = enregistrer;
+
+  // Garde : signale au shell qu'il y a des modifications en attente ; toute
+  // navigation demandera Sauvegarder / Annuler avant de quitter la page.
+  useEffect(() => {
+    declarerModifs(modifie, () => enregistrerRef.current && enregistrerRef.current());
+    return () => declarerModifs(false, null);
+  }, [modifie]);
 
   const chiffree = affaire.tvac_centimes != null;
   const facturable = ["confirme", "effectue", "facture", "paye"].includes(affaire.etat);
@@ -119,27 +130,8 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         </div>
       </div>
 
-      {/* Sections du parcours. En mode terrain, seuls contact/relevé/matériel
-          sont exposés — le devis et la suite restent au bureau. */}
-      <div style={{ padding: "0 16px", display: "flex", gap: 6, overflowX: "auto", marginBottom: 10 }}>
-        {[
-          ["📦 Relevé", () => versReleve(affaireId), true, true],
-          ["🧰 Matériel", () => versMateriel && versMateriel(affaireId), true, true],
-          ["💶 Devis", () => versDevis(affaireId), true, false],
-          ["✍️ Offre", () => versOffre(affaireId), chiffree, false],
-          ["✉️ Mail", () => versMail && versMail(affaireId), chiffree, false],
-          ["🧾 Facture", () => versFacture(affaireId), facturable, false],
-        ].filter(([, , , terrainOk]) => !modeTerrain || terrainOk)
-         .map(([lib, fn, actif]) => (
-          <button key={lib} onClick={actif ? fn : undefined} style={{
-            border: `1.5px solid ${C.bord}`, background: C.blanc,
-            color: actif ? C.encre : C.fantome, borderRadius: 999,
-            padding: "7px 13px", fontSize: 12.5, fontWeight: 700,
-            cursor: actif ? "pointer" : "default", whiteSpace: "nowrap",
-            opacity: actif ? 1 : 0.55,
-          }}>{lib}</button>
-        ))}
-      </div>
+      {/* La navigation entre sections vit dans la barre du bas (SousNavDossier)
+          — plus de double barre en haut. */}
 
       {/* Rattrapage : offre SIGNÉE mais affaire jamais confirmée (affaires
           antérieures au correctif de chaîne). Confirmer crée la mission au

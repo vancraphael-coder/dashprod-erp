@@ -98,6 +98,7 @@ export async function listerAffaires() {
     const { data, error } = await supabase
       .from("affaires")
       .select("id, etat, formule, created_at, date_souhaitee, clients(id, nom, tel), scenarios(retenu, resultats)")
+      .is("archive_le", null)
       .order("created_at", { ascending: false });
     if (error) throw error;
     return trier((data || []).map((a) => {
@@ -253,7 +254,8 @@ export async function monProfil() {
 export async function listerMembres() {
   const { data, error } = await supabase
     .from("utilisateurs")
-    .select("id, nom, email, actif, utilisateur_roles(roles(cle, libelle))");
+    .select("id, nom, email, actif, utilisateur_roles(roles(cle, libelle))")
+    .eq("actif", true);
   if (error) throw error;
   return (data || []).map((u) => ({
     id: u.id, nom: u.nom, email: u.email, actif: u.actif,
@@ -453,24 +455,27 @@ export async function listerMembresSimples() {
     return data || [];
   }
   const d = lireDemo();
-  return MEMBRES_DEMO.map((m) => ({ ...m, metier: (d.metiers || {})[m.id] || m.metier }));
+  const archives = d.membresArchives || [];
+  return MEMBRES_DEMO.filter((m) => !archives.includes(m.id))
+    .map((m) => ({ ...m, metier: (d.metiers || {})[m.id] || m.metier }));
 }
 
 /** Liste les missions (avec affectations) — planning bureau. */
 export async function listerMissions() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("missions")
-      .select("id, date, heure, type, etat, affaire_id, affaires(clients(nom)), mission_affectations(utilisateur_id)")
+      .select("id, date, heure, type, etat, affaire_id, affaires(clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
       .order("date", { ascending: true });
     if (error) throw error;
     return (data || []).map((m) => ({
       id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
       client: m.affaires?.clients?.nom,
       affectations: (m.mission_affectations || []).map((a) => ({ utilisateur_id: a.utilisateur_id })),
+      camions: (m.mission_vehicules || []).map((v) => v.vehicule_id),
     }));
   }
   const d = lireDemo();
-  return d.missions || [];
+  return (d.missions || []).map((m) => ({ ...m, camions: m.camions || [] }));
 }
 
 /** Crée une mission pour une affaire (planification). */
@@ -775,7 +780,8 @@ const CAMIONS_DEMO = [
 /** Liste les véhicules de l'organisation. */
 export async function listerVehicules() {
   if (modeDonnees() === "reel") {
-    const { data, error } = await supabase.from("vehicules").select("*").order("nom");
+    const { data, error } = await supabase.from("vehicules").select("*")
+      .is("archive_le", null).order("nom");
     if (error) throw error;
     return data || [];
   }
@@ -1211,7 +1217,14 @@ export async function chronoPause(missionId) {
 /** Signale un souci matériel/véhicule (capacité signaler_materiel). */
 export async function signalerSouci({ vehiculeId, etat, note }) {
   if (modeDonnees() === "reel") {
-    // Réutilise la mise à jour du véhicule (état mécanique + note horodatée).
+    // 1) HISTORIQUE : chaque signalement est archivé automatiquement — détail,
+    //    par qui (profil courant), jour et heure — jamais écrasé.
+    let acteur = null;
+    try { const p = await monProfil(); acteur = p?.utilisateur_id || null; } catch {}
+    const { error: eH } = await supabase.from("vehicule_signalements")
+      .insert({ vehicule_id: vehiculeId, utilisateur_id: acteur, etat, note: note || null });
+    if (eH) throw eH;
+    // 2) ÉTAT COURANT du véhicule (ce que le bureau voit d'un coup d'œil).
     const extra = etat !== "ok" ? { meca_constat_le: new Date().toISOString().slice(0, 10) } : {};
     const { error } = await supabase.from("vehicules")
       .update({ etat_mecanique: etat, meca_note: note || null, ...extra })
@@ -1224,6 +1237,9 @@ export async function signalerSouci({ vehiculeId, etat, note }) {
   if (v) {
     v.etat_mecanique = etat; v.meca_note = note || "";
     if (etat !== "ok") v.meca_constat_le = new Date().toISOString().slice(0, 10);
+    d.signalements = d.signalements || [];
+    d.signalements.push({ id: idDemo(), vehicule_id: vehiculeId,
+      utilisateur_nom: "Vous", etat, note: note || "", cree_le: new Date().toISOString() });
     ecrireDemo(d);
   }
 }
@@ -1433,4 +1449,94 @@ export async function confirmerAffaire(affaireId) {
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === affaireId);
   if (a) { a.etat = "confirme"; ecrireDemo(d); }
+}
+
+
+// ── Archivage (dossiers, camions, membres) ────────────────────────────────────
+// Archiver n'est pas supprimer : la donnée reste, elle sort des listes actives.
+
+export async function archiverAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("affaires")
+      .update({ archive_le: new Date().toISOString() }).eq("id", affaireId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.affaires = d.affaires.filter((x) => x.id !== affaireId);
+  ecrireDemo(d);
+}
+
+export async function archiverVehicule(vehiculeId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("vehicules")
+      .update({ archive_le: new Date().toISOString() }).eq("id", vehiculeId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.vehicules = (d.vehicules || []).filter((x) => x.id !== vehiculeId);
+  ecrireDemo(d);
+}
+
+export async function archiverMembre(utilisateurId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_archiver_utilisateur", {
+      p_utilisateur: utilisateurId,
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.membresArchives = d.membresArchives || [];
+  d.membresArchives.push(utilisateurId);
+  ecrireDemo(d);
+}
+
+/** Historique des signalements d'un véhicule (détail, par qui, quand). */
+export async function listerSignalements(vehiculeId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("vehicule_signalements")
+      .select("id, etat, note, cree_le, utilisateurs(nom)")
+      .eq("vehicule_id", vehiculeId).order("cree_le", { ascending: false }).limit(20);
+    if (error) throw error;
+    return (data || []).map((x) => ({
+      id: x.id, etat: x.etat, note: x.note || "", cree_le: x.cree_le,
+      par: x.utilisateurs?.nom || "—",
+    }));
+  }
+  const d = lireDemo();
+  return (d.signalements || []).filter((x) => x.vehicule_id === vehiculeId)
+    .map((x) => ({ ...x, par: x.utilisateur_nom }))
+    .sort((a, b) => b.cree_le.localeCompare(a.cree_le));
+}
+
+// ── Camions d'une mission (planning) ─────────────────────────────────────────
+
+/** Ajoute/retire un camion d'une mission. */
+export async function basculerVehiculeMission(missionId, vehiculeId) {
+  if (modeDonnees() === "reel") {
+    const { data: existant, error: e1 } = await supabase.from("mission_vehicules")
+      .select("vehicule_id").eq("mission_id", missionId).eq("vehicule_id", vehiculeId)
+      .maybeSingle();
+    if (e1) throw e1;
+    if (existant) {
+      const { error } = await supabase.from("mission_vehicules")
+        .delete().eq("mission_id", missionId).eq("vehicule_id", vehiculeId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("mission_vehicules")
+        .insert({ mission_id: missionId, vehicule_id: vehiculeId });
+      if (error) throw error;
+    }
+    return;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) {
+    m.camions = m.camions || [];
+    m.camions = m.camions.includes(vehiculeId)
+      ? m.camions.filter((x) => x !== vehiculeId) : [...m.camions, vehiculeId];
+    ecrireDemo(d);
+  }
 }

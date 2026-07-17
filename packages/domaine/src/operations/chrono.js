@@ -141,3 +141,23 @@ export function heuresParMembre(missions) {
 export function heuresGlobales(missions) {
   return (missions || []).reduce((s, m) => s + dureeSecondes(m.sessions), 0);
 }
+
+/**
+ * Pauses numérotées d'une mission : Pause 1, Pause 2, … avec la durée de
+ * chacune (celle en cours continue de courir).
+ * @param {Session[]} sessions
+ * @param {Date} [maintenant]
+ * @returns {{n: number, secondes: number, enCours: boolean}[]}
+ */
+export function listePauses(sessions, maintenant = new Date()) {
+  const ref = maintenant instanceof Date ? maintenant : new Date(maintenant);
+  return (sessions || [])
+    .filter((s) => s.type === "pause" && s.debut)
+    .sort((a, b) => new Date(a.debut) - new Date(b.debut))
+    .map((s, i) => {
+      const fin = s.fin ? new Date(s.fin).getTime() : ref.getTime();
+      const debut = new Date(s.debut).getTime();
+      return { n: i + 1, secondes: Math.max(0, Math.floor((fin - debut) / 1000)),
+               enCours: !s.fin };
+    });
+}

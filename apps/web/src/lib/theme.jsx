@@ -94,3 +94,74 @@ export const S = {
               color: "#fff", fontSize: 26, fontWeight: 700, cursor: "pointer",
               boxShadow: "0 10px 24px -6px rgba(37,99,235,.55)" },
 };
+
+// ── Icônes de navigation (SVG sobres — trait fin, bleu, sélection verte) ──────
+const TRACES = {
+  dossiers: "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+  fiche: "M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M9 8h6 M9 12h6 M9 16h4",
+  releve: "M21 8l-9-5-9 5 9 5 9-5z M3 8v8l9 5 9-5V8 M12 13v8",
+  materiel: "M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z M9 21V12h6v9",
+  devis: "M12 2v20 M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+  offre: "M17 3l4 4L8 20H4v-4z M14 6l4 4",
+  mail: "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z M3 7l9 6 9-6",
+  facture: "M6 2h12v20l-3-2-3 2-3-2-3 2z M9 8h6 M9 12h6",
+  planning: "M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z M16 3v4 M8 3v4 M4 11h16",
+  ressources: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M15 3.13a4 4 0 0 1 0 7.75",
+  compte: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0",
+  chantiers: "M2 20h20 M5 20V9l7-5 7 5v11 M9 20v-6h6v6",
+  outils: "M12 5v14 M5 12h14",
+  profil: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0",
+  heures: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3 3",
+};
+
+/** Icône de navigation : trait fin, sobre. */
+export function Icone({ nom, taille = 20, couleur = C.bleu }) {
+  return (
+    <svg width={taille} height={taille} viewBox="0 0 24 24" fill="none"
+         stroke={couleur} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+         style={{ display: "block", margin: "0 auto" }}>
+      {(TRACES[nom] || TRACES.fiche).split(" M").map((d, i) => (
+        <path key={i} d={(i === 0 ? "" : "M") + d} />
+      ))}
+    </svg>
+  );
+}
+
+/**
+ * Confirmation en deux temps, réutilisable partout (archiver, retirer,
+ * modifications non sauvées) : deux boutons côte à côte — action (couleur
+ * forte) / Annuler. Aucun window.confirm : tout reste dans le geste tactile.
+ */
+export function Confirmation({ question, action, couleur = C.rouge, onConfirmer, onAnnuler }) {
+  return (
+    <div style={{ padding: "10px 12px", borderRadius: 11, background: "#fff",
+                  border: `1.5px solid ${couleur}33`, marginTop: 8 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.encre, marginBottom: 8 }}>
+        {question}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={onConfirmer} style={{
+          flex: 1, padding: "10px", borderRadius: 10, border: "none", cursor: "pointer",
+          background: couleur, color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FS,
+        }}>{action}</button>
+        <button onClick={onAnnuler} style={{
+          flex: 1, padding: "10px", borderRadius: 10, cursor: "pointer",
+          border: `1.5px solid ${C.bord}`, background: "#fff",
+          color: C.muet, fontSize: 13, fontWeight: 700, fontFamily: FS,
+        }}>Annuler</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Garde de modifications non sauvées ───────────────────────────────────────
+// Un écran d'édition s'enregistre ici (sale ? comment sauvegarder ?) ; toute
+// navigation passe par demanderAvantDeQuitter : si des modifications sont en
+// attente, l'utilisateur choisit Sauvegarder ou Annuler les modifications
+// avant de partir — plus de perte par inadvertance.
+export const gardeModifs = { sale: false, sauvegarder: null };
+
+export function declarerModifs(sale, sauvegarder) {
+  gardeModifs.sale = sale;
+  gardeModifs.sauvegarder = sauvegarder || null;
+}

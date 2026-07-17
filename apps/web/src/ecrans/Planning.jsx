@@ -9,12 +9,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   listerMissions, listerMembresSimples, basculerAffectation, composerBrief,
-  listerConges,
+  listerConges, listerVehicules, basculerVehiculeMission,
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
 import { conflitsAffectation } from "@domaine/operations/missions.js";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, Confirmation } from "../lib/theme.jsx";
 
 const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
               "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
@@ -34,6 +34,9 @@ export default function Planning({ ouvrirDossier }) {
   const [missions, setMissions] = useState([]);
   const [membres, setMembres] = useState([]);
   const [conges, setConges] = useState([]);
+  const [flotte, setFlotte] = useState([]);
+  // Sélection en attente : 1er clic choisit, 2e confirme (Retirer/Ajouter).
+  const [selection, setSelection] = useState(null); // {missionId, type, id, nom, present}
   const now = new Date();
   const [annee, setAnnee] = useState(now.getFullYear());
   const [mois, setMois] = useState(now.getMonth());
@@ -45,6 +48,7 @@ export default function Planning({ ouvrirDossier }) {
     setMissions(await listerMissions());
     setMembres(await listerMembresSimples());
     setConges(await listerConges().catch(() => []));
+    setFlotte(await listerVehicules().catch(() => []));
   }
   useEffect(() => { recharger(); }, []);
 
@@ -76,8 +80,19 @@ export default function Planning({ ouvrirDossier }) {
     });
   }
 
-  async function basculer(missionId, membreId) {
-    await basculerAffectation(missionId, membreId, "demenageur");
+  function choisir(missionId, type, id, nom, present) {
+    setSelection((s) =>
+      s && s.missionId === missionId && s.type === type && s.id === id
+        ? null : { missionId, type, id, nom, present });
+  }
+  async function confirmerSelection() {
+    if (!selection) return;
+    if (selection.type === "membre") {
+      await basculerAffectation(selection.missionId, selection.id, "demenageur");
+    } else {
+      await basculerVehiculeMission(selection.missionId, selection.id);
+    }
+    setSelection(null);
     await recharger();
   }
 
@@ -238,10 +253,15 @@ export default function Planning({ ouvrirDossier }) {
                     const conflit = verdict?.conflit;
                     const raison = verdict?.enConge ? "congé"
                                  : conflit ? "pris" : null;
+                    const choisi = selection?.missionId === m.id
+                      && selection?.type === "membre" && selection?.id === mem.id;
                     return (
-                      <button key={mem.id} onClick={() => basculer(m.id, mem.id)} style={{
+                      <button key={mem.id}
+                        onClick={() => choisir(m.id, "membre", mem.id, mem.nom, estAffecte)}
+                        style={{
                         padding: "7px 12px", borderRadius: 999, cursor: "pointer",
                         fontSize: 12.5, fontWeight: 600,
+                        outline: choisi ? `2px solid ${C.vert}` : "none",
                         border: `1.5px solid ${estAffecte ? C.bleu : conflit ? "#F3C7C7" : C.bord}`,
                         background: estAffecte ? "#E7EFFC" : conflit ? "#FEF2F2" : C.blanc,
                         color: estAffecte ? C.bleu : conflit ? C.rouge : C.encre,
@@ -252,6 +272,41 @@ export default function Planning({ ouvrirDossier }) {
                     );
                   })}
                 </div>
+
+                {/* Camions de la mission — même mécanique 2 clics. */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                  {flotte.map((v) => {
+                    const present = (m.camions || []).includes(v.id);
+                    const choisi = selection?.missionId === m.id
+                      && selection?.type === "camion" && selection?.id === v.id;
+                    return (
+                      <button key={v.id}
+                        onClick={() => choisir(m.id, "camion", v.id, v.nom, present)}
+                        style={{
+                          padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+                          fontSize: 12.5, fontWeight: 600,
+                          outline: choisi ? `2px solid ${C.vert}` : "none",
+                          border: `1.5px solid ${present ? "#0F766E" : C.bord}`,
+                          background: present ? "#F0FDFA" : C.blanc,
+                          color: present ? "#0F766E" : C.encre,
+                        }}>
+                        {present ? "✓ " : ""}🚛 {v.nom}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Confirmation : 2e clic. */}
+                {selection?.missionId === m.id && (
+                  <Confirmation
+                    question={selection.present
+                      ? `Retirer ${selection.nom} de cette mission ?`
+                      : `Ajouter ${selection.nom} à cette mission ?`}
+                    action={selection.present ? "Retirer" : "Ajouter"}
+                    couleur={selection.present ? C.rouge : C.vert}
+                    onConfirmer={confirmerSelection}
+                    onAnnuler={() => setSelection(null)} />
+                )}
               </div>
             )}
           </div>

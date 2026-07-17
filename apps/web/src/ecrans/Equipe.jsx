@@ -10,10 +10,10 @@ import React, { useEffect, useState } from "react";
 import {
   listerMembres, inviterMembre, listerConges, ajouterConge, supprimerConge,
   definirMetier, listerMembresSimples,
-  listerEquipement, ajouterEquipement, changerEtatEquipement,
+  listerEquipement, ajouterEquipement, changerEtatEquipement, archiverMembre,
 } from "../lib/adaptateur.js";
 import { ROLES } from "@domaine/noyau/permissions.js";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, Confirmation } from "../lib/theme.jsx";
 
 const ETATS_EQUIP = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
 const COULEUR_EQUIP = { neuf: "#059669", bon: "#2563EB", use: "#D97706", a_remplacer: "#DC2626" };
@@ -108,6 +108,7 @@ export default function Equipe({ retour, integre }) {
   const [conges, setConges] = useState([]);
   const [ouvert, setOuvert] = useState(null);   // fiche membre dépliée
   const [nouveauConge, setNouveauConge] = useState({ debut: "", fin: "" });
+  const [archivage, setArchivage] = useState(null); // id du membre à archiver
 
   function recharger() {
     listerMembres().then(setMembres).catch(() => {});
@@ -282,6 +283,21 @@ export default function Equipe({ retour, integre }) {
                 {/* Équipement : vêtements & outils. Le bureau voit l'état ;
                     le membre le modifie lui-même (RLS 0030). */}
                 <EquipementMembre membreId={m.id} />
+
+                <button onClick={() => setArchivage(m.id)}
+                        style={{ ...S.boutonLien, color: C.muet, marginTop: 12 }}>
+                  🗂 Archiver ce membre
+                </button>
+                {archivage === m.id && (
+                  <Confirmation
+                    question={`Archiver ${m.nom || m.email} ? Il n'apparaîtra plus dans les listes ni au planning.`}
+                    action="Archiver" couleur={C.rouge}
+                    onConfirmer={async () => {
+                      try { await archiverMembre(m.id); } catch (e) { setErreur(e.message); }
+                      setArchivage(null); recharger();
+                    }}
+                    onAnnuler={() => setArchivage(null)} />
+                )}
               </div>
             )}
           </div>
