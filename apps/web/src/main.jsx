@@ -18,7 +18,9 @@ import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide } from "./lib/adaptateur.js";
 import Terrain from "./ecrans/Terrain.jsx";
 import TerrainProfil from "./ecrans/TerrainProfil.jsx";
-import Configuration from "./ecrans/Configuration.jsx";
+import Bareme from "./ecrans/Bareme.jsx";
+import Cout from "./ecrans/Cout.jsx";
+import Archivage from "./ecrans/Archivage.jsx";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
 import Devis from "./ecrans/Devis.jsx";
@@ -76,7 +78,17 @@ function BarreNav({ actif, aller, peutGererEquipe }) {
 }
 
 /** Écran Compte — identité, déconnexion, diagnostic. */
-function Compte({ profil, versDiagnostic, versConfiguration, peutConfigurer }) {
+function Compte({ profil, versDiagnostic, versBareme, versCout, versArchivage, peutConfigurer }) {
+  const acces = peutConfigurer || modeDonnees() === "demo";
+  const boutonPage = (onClick, icone, texte) => (
+    <button onClick={onClick} style={{
+      display: "flex", alignItems: "center", gap: 10, width: "100%", marginTop: 10,
+      padding: 14, border: `1.5px solid ${C.bord}`, borderRadius: 12, background: "#fff",
+      color: C.encre, fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
+      <span style={{ fontSize: 18 }}>{icone}</span>{texte}
+      <span style={{ marginLeft: "auto", color: C.fantome }}>›</span>
+    </button>
+  );
   return (
     <div style={{ maxWidth: 520, margin: "0 auto", padding: "20px 16px 90px",
                   fontFamily: "system-ui, sans-serif" }}>
@@ -93,18 +105,20 @@ function Compte({ profil, versDiagnostic, versConfiguration, peutConfigurer }) {
           </div>
         )}
       </div>
-      {(peutConfigurer || modeDonnees() === "demo") && versConfiguration && (
-        <button onClick={versConfiguration} style={{
-          display: "block", width: "100%", marginTop: 14, padding: 13,
-          border: `1.5px solid ${C.bord}`, borderRadius: 11, background: "#fff",
-          color: C.encre, fontSize: 14, fontWeight: 700, cursor: "pointer",
-          textAlign: "left" }}>
-          ⚙️ Configuration des prix
-        </button>
+
+      {acces && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.muet, letterSpacing: ".05em",
+            textTransform: "uppercase", margin: "18px 2px 2px" }}>Réglages</div>
+          {versBareme && boutonPage(versBareme, "🏷️", "Barème (prix client)")}
+          {versCout && boutonPage(versCout, "📉", "Coûts internes")}
+          {versArchivage && boutonPage(versArchivage, "🗂️", "Archivage")}
+        </>
       )}
+
       <button onClick={versDiagnostic} style={{ background: "none", border: "none",
         color: C.bleu, fontSize: 13, fontWeight: 600, cursor: "pointer",
-        padding: "14px 2px 4px" }}>
+        padding: "18px 2px 4px" }}>
         Diagnostic de branchement
       </button>
       {modeDonnees() === "reel" && (
@@ -382,6 +396,9 @@ function App() {
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
     compte: () => setRoute({ ecran: "compte", affaireId: null }),
     diagnostic: () => setRoute({ ecran: "diagnostic", affaireId: null }),
+    bareme: () => setRoute({ ecran: "bareme", affaireId: null }),
+    cout: () => setRoute({ ecran: "cout", affaireId: null }),
+    archivage: () => setRoute({ ecran: "archivage", affaireId: null }),
   };
   const retourDossier = () => nav.dossier(route.affaireId);
 
@@ -400,7 +417,9 @@ function App() {
       </div>
     );
   } else if (route.ecran === "compte") {
-    ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic} versConfiguration={nav.configuration} peutConfigurer={peutGererEquipe} />;
+    ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic}
+      versBareme={nav.bareme} versCout={nav.cout} versArchivage={nav.archivage}
+      peutConfigurer={peutGererEquipe} />;
   } else if (route.ecran === "equipe") {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
@@ -418,8 +437,12 @@ function App() {
                    peutVoirPrix={peutVoirPrix} />;
   } else if (route.ecran === "offre") {
     ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
-  } else if (route.ecran === "configuration") {
-    ecran = <Configuration retour={() => nav.compte()} />;
+  } else if (route.ecran === "bareme") {
+    ecran = <Bareme retour={() => nav.compte()} />;
+  } else if (route.ecran === "cout") {
+    ecran = <Cout retour={() => nav.compte()} />;
+  } else if (route.ecran === "archivage") {
+    ecran = <Archivage retour={() => nav.compte()} />;
   } else if (route.ecran === "materiel") {
     ecran = <Materiel affaireId={route.affaireId} retour={retourDossier} />;
   } else if (route.ecran === "mail") {

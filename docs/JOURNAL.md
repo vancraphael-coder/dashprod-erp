@@ -1188,3 +1188,35 @@ translucide. Tous les écrans en héritent d'un coup.
   sa sous-nav 6 sections. TerrainOutils retiré du routage.
 - Chrono : hh:mm:ss + pauses NUMÉROTÉES (Pause 1, Pause 2…) chacune avec sa
   durée, celle en cours défile en ambre. Domaine listePauses testé (179/179).
+
+---
+
+## Session 36 — Compte en 3 pages + corrections planning/archives/véhicule
+
+### Bugs corrigés
+- **Signalement véhicule** : (1) org_id NOT NULL sans DEFAULT sur
+  vehicule_signalements (0032) → insert toujours rejeté par la RLS ; 0033 pose
+  DEFAULT jwt_org(). (2) Champ note partagé entre tous les camions (un seul
+  useState) → refonte en composant CarteVehicule (brouillon par carte) + erreur
+  visible.
+- **Retrait membre au planning** : cmd_affecter_membre n'affectait que dans un
+  sens. 0033 : cmd_desaffecter_membre ; basculerAffectation teste la présence.
+- **Membre archivé fantôme** (UUID c37d4cc8… « moi2 ») : affectations
+  persistantes affichées en UUID. Résolution des noms via
+  listerMembresSimples(true) → « Nom (archivé) ». La grille du planning inclut
+  désormais les membres archivés ENCORE affectés pour pouvoir les retirer.
+
+### Récupération d'archives
+- 0033 : cmd_desarchiver_utilisateur.
+- Adaptateur : lister/désarchiver pour affaires, véhicules, membres. Archivage
+  démo rendu réversible.
+
+### Compte → 3 pages
+- Bareme.jsx (prix client : tarifs horaires, forfait, CARTONS client, lift,
+  suppléments).
+- Cout.jsx (prix internes : carburant, taux défaut, prix FOURNISSEUR cartons).
+- Archivage.jsx (3 sous-onglets Dossiers/Camions/Membres, restauration avec
+  confirmation).
+- Configuration.jsx supprimé (remplacé par Bareme + Cout).
+- Nouveaux prix cartons/forfait : stockés dans parametres_prix (jsonb, sans
+  migration).

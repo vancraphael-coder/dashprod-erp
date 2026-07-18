@@ -447,17 +447,47 @@ const MEMBRES_DEMO = [
 ];
 
 /** Membres de l'organisation (pour l'affectation). */
-export async function listerMembresSimples() {
+export async function listerMembresSimples(inclureArchives = false) {
   if (modeDonnees() === "reel") {
-    const { data, error } = await supabase.from("utilisateurs")
-      .select("id, nom, metier").eq("actif", true);
+    let req = supabase.from("utilisateurs").select("id, nom, metier, actif");
+    if (!inclureArchives) req = req.eq("actif", true);
+    const { data, error } = await req;
     if (error) throw error;
     return data || [];
   }
   const d = lireDemo();
   const archives = d.membresArchives || [];
-  return MEMBRES_DEMO.filter((m) => !archives.includes(m.id))
-    .map((m) => ({ ...m, metier: (d.metiers || {})[m.id] || m.metier }));
+  return MEMBRES_DEMO
+    .filter((m) => inclureArchives || !archives.includes(m.id))
+    .map((m) => ({ ...m, actif: !archives.includes(m.id),
+                   metier: (d.metiers || {})[m.id] || m.metier }));
+}
+
+/** Membres archivés uniquement (page Archivage + récupération de compte). */
+export async function listerMembresArchives() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("utilisateurs")
+      .select("id, nom, email, metier").eq("actif", false);
+    if (error) throw error;
+    return data || [];
+  }
+  const d = lireDemo();
+  const archives = d.membresArchives || [];
+  return MEMBRES_DEMO.filter((m) => archives.includes(m.id));
+}
+
+/** Réactive un membre archivé (capacité gerer_referentiels en réel). */
+export async function desarchiverMembre(utilisateurId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_desarchiver_utilisateur", {
+      p_utilisateur: utilisateurId,
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.membresArchives = (d.membresArchives || []).filter((x) => x !== utilisateurId);
+  ecrireDemo(d);
 }
 
 /** Liste les missions (avec affectations) — planning bureau. */
@@ -504,12 +534,23 @@ export async function creerMission(affaireId, { date, heure, type }) {
 /** Affecte (ou désaffecte) un membre à une mission — bascule. */
 export async function basculerAffectation(missionId, utilisateurId, roleMission) {
   if (modeDonnees() === "reel") {
-    // En réel, l'affectation est idempotente côté commande ; la désaffectation
-    // serait une commande dédiée (à ajouter). Ici on affecte.
-    const { error } = await supabase.rpc("cmd_affecter_membre", {
-      p_mission: missionId, p_utilisateur: utilisateurId, p_role: roleMission || "demenageur",
-    });
-    if (error) throw error;
+    // Bascule : si le membre est déjà affecté à cette mission, on le retire ;
+    // sinon on l'affecte. Deux commandes gardées (gerer_planning).
+    const { data: existe, error: eSel } = await supabase.from("mission_affectations")
+      .select("utilisateur_id").eq("mission_id", missionId)
+      .eq("utilisateur_id", utilisateurId).maybeSingle();
+    if (eSel) throw eSel;
+    if (existe) {
+      const { error } = await supabase.rpc("cmd_desaffecter_membre", {
+        p_mission: missionId, p_utilisateur: utilisateurId,
+      });
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.rpc("cmd_affecter_membre", {
+        p_mission: missionId, p_utilisateur: utilisateurId, p_role: roleMission || "demenageur",
+      });
+      if (error) throw error;
+    }
     return;
   }
   const d = lireDemo();
@@ -1463,8 +1504,13 @@ export async function archiverAffaire(affaireId) {
     return;
   }
   const d = lireDemo();
-  d.affaires = d.affaires.filter((x) => x.id !== affaireId);
-  ecrireDemo(d);
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  if (a) {
+    a.archive_le = new Date().toISOString();
+    d.affaires = d.affaires.filter((x) => x.id !== affaireId);
+    d.affairesArchivees = d.affairesArchivees || []; d.affairesArchivees.push(a);
+    ecrireDemo(d);
+  }
 }
 
 export async function archiverVehicule(vehiculeId) {
@@ -1475,8 +1521,33 @@ export async function archiverVehicule(vehiculeId) {
     return;
   }
   const d = lireDemo();
-  d.vehicules = (d.vehicules || []).filter((x) => x.id !== vehiculeId);
-  ecrireDemo(d);
+  const v = (d.vehicules || []).find((x) => x.id === vehiculeId);
+  if (v) { v.archive_le = new Date().toISOString(); ecrireDemo(d); }
+}
+
+/** Camions archivés (page Archivage + récupération). */
+export async function listerVehiculesArchives() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("vehicules").select("*")
+      .not("archive_le", "is", null).order("nom");
+    if (error) throw error;
+    return data || [];
+  }
+  const d = lireDemo();
+  return (d.vehicules || []).filter((x) => x.archive_le);
+}
+
+/** Restaure un camion archivé. */
+export async function desarchiverVehicule(vehiculeId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("vehicules")
+      .update({ archive_le: null }).eq("id", vehiculeId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const v = (d.vehicules || []).find((x) => x.id === vehiculeId);
+  if (v) { delete v.archive_le; ecrireDemo(d); }
 }
 
 export async function archiverMembre(utilisateurId) {
@@ -1491,6 +1562,38 @@ export async function archiverMembre(utilisateurId) {
   d.membresArchives = d.membresArchives || [];
   d.membresArchives.push(utilisateurId);
   ecrireDemo(d);
+}
+
+/** Affaires archivées (page Archivage + récupération). */
+export async function listerAffairesArchives() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("affaires")
+      .select("id, etat, date_souhaitee, clients(nom)")
+      .not("archive_le", "is", null).order("archive_le", { ascending: false });
+    if (error) throw error;
+    return (data || []).map((a) => ({
+      id: a.id, etat: a.etat, date: a.date_souhaitee, client: a.clients?.nom || "—",
+    }));
+  }
+  const d = lireDemo();
+  return (d.affairesArchivees || []);
+}
+
+/** Restaure une affaire archivée. */
+export async function desarchiverAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("affaires")
+      .update({ archive_le: null }).eq("id", affaireId);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = (d.affairesArchivees || []).find((x) => x.id === affaireId);
+  if (a) {
+    d.affairesArchivees = d.affairesArchivees.filter((x) => x.id !== affaireId);
+    d.affaires = d.affaires || []; d.affaires.push(a);
+    ecrireDemo(d);
+  }
 }
 
 /** Historique des signalements d'un véhicule (détail, par qui, quand). */

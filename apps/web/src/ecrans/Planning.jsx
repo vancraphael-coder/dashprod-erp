@@ -32,7 +32,8 @@ function dateLongue(iso) {
 
 export default function Planning({ ouvrirDossier }) {
   const [missions, setMissions] = useState([]);
-  const [membres, setMembres] = useState([]);
+  const [membres, setMembres] = useState([]);       // actifs (sélection)
+  const [tousMembres, setTousMembres] = useState([]); // + archivés (affichage)
   const [conges, setConges] = useState([]);
   const [flotte, setFlotte] = useState([]);
   // Sélection en attente : 1er clic choisit, 2e confirme (Retirer/Ajouter).
@@ -47,6 +48,7 @@ export default function Planning({ ouvrirDossier }) {
   async function recharger() {
     setMissions(await listerMissions());
     setMembres(await listerMembresSimples());
+    setTousMembres(await listerMembresSimples(true).catch(() => []));
     setConges(await listerConges().catch(() => []));
     setFlotte(await listerVehicules().catch(() => []));
   }
@@ -213,11 +215,14 @@ export default function Planning({ ouvrirDossier }) {
             {affectes.length > 0 && (
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
                 {affectes.map((id) => {
-                  const mem = membres.find((x) => x.id === id);
+                  const mem = tousMembres.find((x) => x.id === id);
+                  const archive = mem && mem.actif === false;
                   return (
-                    <span key={id} style={{ fontSize: 11.5, fontWeight: 600, color: C.bleu,
-                      background: "#E7EFFC", borderRadius: 999, padding: "3px 9px" }}>
-                      {mem?.nom || id}
+                    <span key={id} style={{ fontSize: 11.5, fontWeight: 600,
+                      color: archive ? C.muet : C.bleu,
+                      background: archive ? "#F1F5F9" : "#E7EFFC",
+                      borderRadius: 999, padding: "3px 9px" }}>
+                      {mem?.nom || "Membre supprimé"}{archive ? " (archivé)" : ""}
                     </span>
                   );
                 })}
@@ -247,12 +252,21 @@ export default function Planning({ ouvrirDossier }) {
                   ce jour-là est signalé en rouge — sans être interdit.
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {membres.map((mem) => {
+                  {(() => {
+                    // Membres proposés : les actifs + tout membre archivé qui est
+                    // ENCORE affecté à cette mission (pour pouvoir le retirer).
+                    const idsActifs = new Set(membres.map((x) => x.id));
+                    const archivesAffectes = affectes
+                      .filter((id) => !idsActifs.has(id))
+                      .map((id) => tousMembres.find((x) => x.id === id) || { id, nom: "Membre archivé", actif: false });
+                    return [...membres, ...archivesAffectes];
+                  })().map((mem) => {
                     const estAffecte = affectes.includes(mem.id);
+                    const estArchive = mem.actif === false;
                     const verdict = estAffecte ? null : conflitPour(mem.id, m);
                     const conflit = verdict?.conflit;
                     const raison = verdict?.enConge ? "congé"
-                                 : conflit ? "pris" : null;
+                                 : conflit ? "pris" : estArchive ? "archivé" : null;
                     const choisi = selection?.missionId === m.id
                       && selection?.type === "membre" && selection?.id === mem.id;
                     return (
@@ -263,8 +277,8 @@ export default function Planning({ ouvrirDossier }) {
                         fontSize: 12.5, fontWeight: 600,
                         outline: choisi ? `2px solid ${C.vert}` : "none",
                         border: `1.5px solid ${estAffecte ? C.bleu : conflit ? "#F3C7C7" : C.bord}`,
-                        background: estAffecte ? "#E7EFFC" : conflit ? "#FEF2F2" : C.blanc,
-                        color: estAffecte ? C.bleu : conflit ? C.rouge : C.encre,
+                        background: estAffecte ? "#E7EFFC" : conflit ? "#FEF2F2" : estArchive ? "#F1F5F9" : C.blanc,
+                        color: estAffecte ? C.bleu : conflit ? C.rouge : estArchive ? C.muet : C.encre,
                       }}>
                         {estAffecte ? "✓ " : conflit ? "⚠ " : ""}{mem.nom}
                         {raison ? ` · ${raison}` : ""}

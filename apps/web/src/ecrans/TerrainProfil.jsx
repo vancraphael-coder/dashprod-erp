@@ -70,72 +70,85 @@ export default function TerrainProfil({ profil }) {
 /** Onglet Véhicule : l'état des camions, signalement rapide d'un souci. */
 function OngletVehicule() {
   const [vehicules, setVehicules] = useState([]);
-  const [selection, setSelection] = useState(null);
-  const [etat, setEtat] = useState("surveiller");
-  const [note, setNote] = useState("");
-  const [envoye, setEnvoye] = useState(false);
+  const [ouvert, setOuvert] = useState(null);
 
   function recharger() { listerVehicules().then(setVehicules).catch(() => {}); }
   useEffect(recharger, []);
 
+  return (
+    <>
+      {vehicules.map((v) => (
+        <CarteVehicule key={v.id} v={v}
+          ouvert={ouvert === v.id}
+          onToggle={() => setOuvert(ouvert === v.id ? null : v.id)}
+          onEnvoye={recharger} />
+      ))}
+    </>
+  );
+}
+
+/** Une carte camion = son PROPRE brouillon (état + note). Plus de champ
+    partagé entre tous les camions. */
+function CarteVehicule({ v, ouvert, onToggle, onEnvoye }) {
+  const [etat, setEtat] = useState("surveiller");
+  const [note, setNote] = useState("");
+  const [envoye, setEnvoye] = useState(false);
+  const [erreur, setErreur] = useState(null);
+
   async function envoyer() {
-    if (!selection) return;
-    await signalerSouci({ vehiculeId: selection, etat, note });
-    setEnvoye(true); setNote("");
-    setTimeout(() => setEnvoye(false), 2500);
-    recharger();
+    setErreur(null);
+    try {
+      await signalerSouci({ vehiculeId: v.id, etat, note });
+      setEnvoye(true); setNote("");
+      setTimeout(() => setEnvoye(false), 2500);
+      onEnvoye();
+    } catch (e) { setErreur(e.message || "Envoi impossible"); }
   }
 
   return (
-    <>
-      {vehicules.map((v) => {
-        const ouvert = selection === v.id;
-        return (
-          <div key={v.id} style={{ ...S.carte, padding: 13 }}>
-            <div onClick={() => setSelection(ouvert ? null : v.id)}
-                 style={{ display: "flex", justifyContent: "space-between",
-                          alignItems: "center", cursor: "pointer" }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.encre }}>🚛 {v.nom}</div>
-                <div style={{ fontSize: 11.5, color: C.muet, fontFamily: FC }}>
-                  {v.immatriculation || "—"}
-                  {v.carte_carburant ? ` · carte ${v.carte_carburant}` : ""}
-                </div>
-              </div>
-              <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 9px",
-                borderRadius: 999, color: "#fff",
-                background: COULEUR_MECA[v.etat_mecanique || "ok"] }}>
-                {LIBELLE_MECA[v.etat_mecanique || "ok"]}
-              </span>
-            </div>
-
-            {ouvert && (
-              <div style={{ marginTop: 10, borderTop: `1px solid ${C.bord}`, paddingTop: 8 }}>
-                <label style={S.label}>Signaler un état</label>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {Object.keys(LIBELLE_MECA).map((e) => (
-                    <button key={e} onClick={() => setEtat(e)} style={{
-                      flex: 1, padding: "8px", borderRadius: 10, cursor: "pointer",
-                      fontSize: 12, fontWeight: 700,
-                      border: `1.5px solid ${etat === e ? COULEUR_MECA[e] : C.bord}`,
-                      background: etat === e ? COULEUR_MECA[e] : "#fff",
-                      color: etat === e ? "#fff" : C.muet,
-                    }}>{LIBELLE_MECA[e]}</button>
-                  ))}
-                </div>
-                <label style={S.label}>Détail</label>
-                <textarea style={{ ...S.input, minHeight: 50 }} value={note}
-                          onChange={(e) => setNote(e.target.value)}
-                          placeholder="Bruit, voyant, dommage…" />
-                <button style={{ ...S.boutonPlein, marginTop: 10 }} onClick={envoyer}>
-                  {envoye ? "✓ Signalé au bureau" : "Signaler au bureau"}
-                </button>
-              </div>
-            )}
+    <div style={{ ...S.carte, padding: 13 }}>
+      <div onClick={onToggle}
+           style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "center", cursor: "pointer" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.encre }}>🚛 {v.nom}</div>
+          <div style={{ fontSize: 11.5, color: C.muet, fontFamily: FC }}>
+            {v.immatriculation || "—"}
+            {v.carte_carburant ? ` · carte ${v.carte_carburant}` : ""}
           </div>
-        );
-      })}
-    </>
+        </div>
+        <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 9px",
+          borderRadius: 999, color: "#fff",
+          background: COULEUR_MECA[v.etat_mecanique || "ok"] }}>
+          {LIBELLE_MECA[v.etat_mecanique || "ok"]}
+        </span>
+      </div>
+
+      {ouvert && (
+        <div style={{ marginTop: 10, borderTop: `1px solid ${C.bord}`, paddingTop: 8 }}>
+          <label style={S.label}>Signaler un état</label>
+          <div style={{ display: "flex", gap: 6 }}>
+            {Object.keys(LIBELLE_MECA).map((e) => (
+              <button key={e} onClick={() => setEtat(e)} style={{
+                flex: 1, padding: "8px", borderRadius: 10, cursor: "pointer",
+                fontSize: 12, fontWeight: 700,
+                border: `1.5px solid ${etat === e ? COULEUR_MECA[e] : C.bord}`,
+                background: etat === e ? COULEUR_MECA[e] : "#fff",
+                color: etat === e ? "#fff" : C.muet,
+              }}>{LIBELLE_MECA[e]}</button>
+            ))}
+          </div>
+          <label style={S.label}>Détail</label>
+          <textarea style={{ ...S.input, minHeight: 50 }} value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Bruit, voyant, dommage…" />
+          {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 6 }}>{erreur}</div>}
+          <button style={{ ...S.boutonPlein, marginTop: 10 }} onClick={envoyer}>
+            {envoye ? "✓ Signalé au bureau" : "Signaler au bureau"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

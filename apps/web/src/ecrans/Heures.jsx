@@ -17,12 +17,12 @@ export default function Heures({ retour }) {
 
   useEffect(() => {
     missionsAvecChrono().then(setMissions).catch(() => {});
-    listerMembresSimples().then(setMembres).catch(() => {});
+    listerMembresSimples(true).then(setMembres).catch(() => {});
   }, []);
 
   const parMembre = useMemo(() => heuresParMembre(missions), [missions]);
   const global = useMemo(() => heuresGlobales(missions), [missions]);
-  const nom = (id) => membres.find((m) => m.id === id)?.nom || id;
+  const nom = (id) => { const m = membres.find((x) => x.id === id); return m ? (m.nom + (m.actif === false ? " (archivé)" : "")) : "Membre supprimé"; };
 
   // Classement décroissant des membres par heures.
   const classement = useMemo(() =>
