@@ -11,9 +11,54 @@ import {
   listerMembres, inviterMembre, listerConges, ajouterConge, supprimerConge,
   definirMetier, listerMembresSimples,
   listerEquipement, ajouterEquipement, changerEtatEquipement, archiverMembre,
+  listerCapacitesMembre, definirCreationComplete, CAPACITES_DEVIS_COMPLET,
 } from "../lib/adaptateur.js";
 import { ROLES } from "@domaine/noyau/permissions.js";
 import { C, S, Confirmation } from "../lib/theme.jsx";
+
+function DroitDevisComplet({ membreId }) {
+  const [actif, setActif] = React.useState(null); // null = chargement
+  const [enCours, setEnCours] = React.useState(false);
+
+  React.useEffect(() => {
+    listerCapacitesMembre(membreId)
+      .then((caps) => setActif(CAPACITES_DEVIS_COMPLET.every((c) => caps.includes(c))))
+      .catch(() => setActif(false));
+  }, [membreId]);
+
+  async function basculer() {
+    if (actif === null || enCours) return;
+    setEnCours(true);
+    try { await definirCreationComplete(membreId, !actif); setActif(!actif); }
+    catch { /* silencieux : l'état visuel ne bouge pas */ }
+    setEnCours(false);
+  }
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <label style={S.label}>Droits</label>
+      <button onClick={basculer} disabled={actif === null} style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        width: "100%", padding: "11px 13px", borderRadius: 11, cursor: "pointer",
+        border: `1.5px solid ${actif ? C.vert : C.bord}`,
+        background: actif ? "#ECFDF5" : "#fff",
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 700,
+                       color: actif ? "#065F46" : C.encre, textAlign: "left" }}>
+          Création de devis complet
+          <span style={{ display: "block", fontSize: 11, fontWeight: 500,
+                         color: actif ? "#047857" : C.fantome }}>
+            Onglet « Nouveau » au terrain : dossier → devis → offre → mail, prix visibles
+          </span>
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 800,
+                       color: actif ? C.vert : C.fantome }}>
+          {actif === null ? "…" : actif ? "ACCORDÉ" : "OFF"}
+        </span>
+      </button>
+    </div>
+  );
+}
 
 const ETATS_EQUIP = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
 const COULEUR_EQUIP = { neuf: "#059669", bon: "#2563EB", use: "#D97706", a_remplacer: "#DC2626" };
@@ -279,6 +324,12 @@ export default function Equipe({ retour, integre }) {
                           disabled={!nouveauConge.debut || !nouveauConge.fin}
                           onClick={() => poserConge(m.id)}>+</button>
                 </div>
+
+                {/* Droit individuel : création de devis complet. Accordé à UN
+                    membre en plus de son rôle — il obtient l'onglet « Nouveau »
+                    de l'app terrain (dossier → relevé → matériel → devis →
+                    offre → mail), prix visibles. */}
+                <DroitDevisComplet membreId={m.id} />
 
                 {/* Équipement : vêtements & outils. Le bureau voit l'état ;
                     le membre le modifie lui-même (RLS 0030). */}

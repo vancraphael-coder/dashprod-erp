@@ -440,6 +440,27 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         <button style={S.boutonPlein} onClick={enregistrer}>
           {sauve ? "✓ Dossier enregistré" : "Enregistrer le dossier"}
         </button>
+
+        {/* Archiver : sort le dossier des listes — rien n'est supprimé, tout
+            se retrouve (et se restaure) dans Compte → Archivage. */}
+        {!modeTerrain && (
+          <button onClick={() => setArchivage(true)}
+                  style={{ ...S.boutonLien, color: C.muet, width: "100%",
+                           textAlign: "center", marginTop: 10 }}>
+            🗂 Archiver ce dossier
+          </button>
+        )}
+        {archivage && (
+          <Confirmation
+            question="Archiver ce dossier ? Il disparaîtra des listes (récupérable dans Compte → Archivage)."
+            action="Archiver" couleur={C.rouge}
+            onConfirmer={async () => {
+              await archiverAffaire(affaireId);
+              declarerModifs(false, null);
+              retour();
+            }}
+            onAnnuler={() => setArchivage(false)} />
+        )}
       </div>
     </div>
   );

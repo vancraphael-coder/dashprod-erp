@@ -1157,7 +1157,7 @@ export async function mesMissionsTerrain(utilisateurId) {
                affaires(clients(nom), notes_commerciales),
                mission_affectations(utilisateur_id, utilisateurs(nom)),
                mission_vehicules(vehicules(nom)),
-               chrono_sessions(debut, fin)`)
+               chrono_sessions(debut, fin, type)`)
       .order("date", { ascending: true });
     if (error) throw error;
     // Filtre : uniquement mes missions (la RLS laisse voir celles du tenant).
@@ -1177,7 +1177,7 @@ export async function mesMissionsTerrain(utilisateurId) {
         charges: contact?.charges || [], decharges: contact?.decharges || [],
         aDemonter: (inventaire || []).filter((it) => it.demont)
           .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 })),
-        sessions: (m.chrono_sessions || []).map((s) => ({ debut: s.debut, fin: s.fin })),
+        sessions: (m.chrono_sessions || []).map((s) => ({ debut: s.debut, fin: s.fin, type: s.type })),
       };
     }));
     return enrichies;
@@ -1642,4 +1642,70 @@ export async function basculerVehiculeMission(missionId, vehiculeId) {
       ? m.camions.filter((x) => x !== vehiculeId) : [...m.camions, vehiculeId];
     ecrireDemo(d);
   }
+}
+
+
+/**
+ * Termine le chantier : ferme toutes les sessions (travail + pauses), passe la
+ * mission en « effectuée », et l'affaire bascule automatiquement en
+ * « effectué » quand toutes ses missions sont finies (côté serveur).
+ */
+export async function terminerChantier(missionId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_terminer_chantier", { p_mission: missionId });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) {
+    (m.sessions || []).forEach((s) => { if (!s.fin) s.fin = new Date().toISOString(); });
+    m.etat = "effectuee";
+    const a = (d.affaires || []).find((x) => x.id === m.affaire_id);
+    const toutesFinies = (d.missions || [])
+      .filter((x) => x.affaire_id === m.affaire_id)
+      .every((x) => !["planifiee", "en_cours"].includes(x.etat));
+    if (a && toutesFinies) a.etat = "effectue";
+    ecrireDemo(d);
+  }
+}
+
+// ── Capacités individuelles (droits par membre, ex. création de devis) ────────
+// Les trois clés du « devis complet » : saisir, chiffrer, voir les prix.
+export const CAPACITES_DEVIS_COMPLET = ["valider_intake", "creer_affaire", "voir_prix"];
+
+/** Capacités individuelles d'un membre (hors rôle). */
+export async function listerCapacitesMembre(utilisateurId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("utilisateur_capacites")
+      .select("capacite_cle").eq("utilisateur_id", utilisateurId);
+    if (error) throw error;
+    return (data || []).map((x) => x.capacite_cle);
+  }
+  const d = lireDemo();
+  return (d.capacitesExtra && d.capacitesExtra[utilisateurId]) || [];
+}
+
+/** Accorde ou retire le droit « création de devis complet » à un membre. */
+export async function definirCreationComplete(utilisateurId, actif) {
+  if (modeDonnees() === "reel") {
+    if (actif) {
+      const lignes = CAPACITES_DEVIS_COMPLET.map((c) => ({
+        utilisateur_id: utilisateurId, capacite_cle: c,
+      }));
+      const { error } = await supabase.from("utilisateur_capacites")
+        .upsert(lignes, { onConflict: "utilisateur_id,capacite_cle" });
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("utilisateur_capacites")
+        .delete().eq("utilisateur_id", utilisateurId)
+        .in("capacite_cle", CAPACITES_DEVIS_COMPLET);
+      if (error) throw error;
+    }
+    return;
+  }
+  const d = lireDemo();
+  d.capacitesExtra = d.capacitesExtra || {};
+  d.capacitesExtra[utilisateurId] = actif ? [...CAPACITES_DEVIS_COMPLET] : [];
+  ecrireDemo(d);
 }

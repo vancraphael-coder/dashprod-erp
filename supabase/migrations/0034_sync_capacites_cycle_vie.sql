@@ -1,0 +1,32 @@
+-- =============================================================================
+-- Migration 0034 — DÉJÀ APPLIQUÉE EN BASE (via MCP, en 4 volets a/b/c/d).
+-- Ce fichier consolide pour la traçabilité du dépôt. Ne pas ré-exécuter telle
+-- quelle sans vérifier (idempotente sauf mention).
+--
+-- 1) SYNC DOSSIER↔PLANNING : l'équipe/les camions du dossier et les
+--    affectations de la mission de déménagement sont les DEUX FACES d'une même
+--    donnée — triggers bidirectionnels avec garde anti-boucle
+--    (pg_trigger_depth). Dossier→mission : remplace les affectations des
+--    missions ouvertes. Mission→dossier : reflète les affectations dans
+--    affaires.equipe / affaires.camions.
+-- 2) CAPACITÉS INDIVIDUELLES : table utilisateur_capacites (droit accordé à UN
+--    membre en plus de son rôle, ex. « création de devis complet » pour un
+--    déménageur). acteur_a_capacite et mon_profil étendus (rôles ∪ individuelles).
+--    Écriture RLS réservée à gerer_referentiels.
+-- 3) CYCLE DE VIE DU CHANTIER (le dossier va enfin jusqu'à « effectué ») :
+--    - transition_interne(p_affaire, p_cible) : mutation SYSTÈME qui respecte
+--      transition_permise ET le verrou S4 (drapeau app.transition_ok). Cascade
+--      tolérante : n'échoue jamais, n'avance que si permis.
+--    - confirme → planifie : AUTO après la confirmation si date+équipe+camions
+--      (trigger trg_z_planifier_apres_confirmation, nommé z_ pour passer après
+--      la création des missions).
+--    - planifie → en_cours : cmd_chrono_demarrer (1er start du chrono) — filtre
+--      désormais type='travail' (une pause ouverte n'empêche pas de démarrer).
+--    - en_cours → effectue : cmd_terminer_chantier(p_mission) — ferme toutes
+--      les sessions (travail + pauses), mission 'effectuee', et l'affaire passe
+--      « effectue » quand TOUTES ses missions sont finies.
+--
+-- Testé en transaction (rollback) : sync A/R, planification auto, chrono →
+-- en_cours, terminer → effectue : 5/5.
+-- =============================================================================
+-- (Voir les définitions exactes dans les migrations MCP 0034a→0034d.)

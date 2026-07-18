@@ -1220,3 +1220,35 @@ translucide. Tous les écrans en héritent d'un coup.
 - Configuration.jsx supprimé (remplacé par Bareme + Cout).
 - Nouveaux prix cartons/forfait : stockés dans parametres_prix (jsonb, sans
   migration).
+
+---
+
+## Session 37 — Sync dossier↔planning, droit devis complet, cycle « effectué »
+
+### 0034 (a→d, APPLIQUÉE EN BASE via MCP, testée 5/5 en transaction rollback)
+- **Sync dossier↔planning** : triggers bidirectionnels (garde pg_trigger_depth).
+  Dossier→missions ouvertes (équipe+camions remplacés) ; mission de
+  déménagement→dossier (affaires.equipe/camions reflètent les affectations).
+  Bug attrapé par le test : org_id manquant sur mission_vehicules (corrigé).
+- **Capacités individuelles** : table utilisateur_capacites, acteur_a_capacite
+  et mon_profil étendus (rôles ∪ individuelles), écriture gerer_referentiels.
+- **Cycle de vie** : transition_interne (respecte la machine + verrou S4 via
+  drapeau app.transition_ok — découvert par le test) ; confirme→planifie AUTO
+  (trigger z après création des missions) ; planifie→en_cours au 1er chrono ;
+  en_cours→effectue via cmd_terminer_chantier (ferme sessions+pauses, mission
+  effectuee, affaire effectue quand toutes missions finies).
+- Fix : cmd_chrono_demarrer filtre type='travail' (une pause ouverte ne bloque
+  plus le redémarrage).
+
+### Front
+- Dossier : bouton « Archiver ce dossier » REMIS (perdu dans un commit
+  fondateur) + Confirmation, mention récupération dans Compte→Archivage.
+- Equipe : toggle « Création de devis complet » par membre (ACCORDÉ/OFF) —
+  accorde valider_intake+creer_affaire+voir_prix individuellement ; le membre
+  obtient l'onglet Nouveau du terrain à sa prochaine connexion.
+- Terrain : cycle chrono complet — Démarrer (dossier passe en cours) / Pause
+  numérotées / Stop (interruption, « Reprendre » si temps déjà couru) /
+  « ✓ Terminer le chantier » (Confirmation) → chrono figé, badge « Chantier
+  terminé », dossier « effectué » au bureau (facture possible).
+- Fix : mesMissionsTerrain remonte le type des sessions (les pauses étaient
+  comptées comme travail au terrain).
