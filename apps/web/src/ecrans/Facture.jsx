@@ -9,12 +9,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   obtenirAffaire, lignesFacturePour, emettreFacture, obtenirFacture, enregistrerPaiement,
+  cloreAffaire,
   obtenirOrganisation, obtenirContact, obtenirFacturePourAffaire,
   obtenirClientFacturation,
 } from "../lib/adaptateur.js";
 import FactureDoc from "./FactureDoc.jsx";
 import { composerTotal, etatPaiement } from "@domaine/facturation/facture.js";
-import { C, S, euros } from "../lib/theme.jsx";
+import { C, S, euros, Confirmation } from "../lib/theme.jsx";
 
 const STATUTS_UI = {
   a_payer: { libelle: "À payer", couleur: C.ambre },
@@ -24,6 +25,8 @@ const STATUTS_UI = {
 
 export default function Facture({ affaireId, factureExistanteId, retour }) {
   const [affaire, setAffaire] = useState(null);
+  const [cloture, setCloture] = useState(false);
+  const [clos, setClos] = useState(false);
   const [facture, setFacture] = useState(null);
   const [lignes, setLignes] = useState([]);
   const [enCours, setEnCours] = useState(false);
@@ -237,6 +240,38 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
           <div style={{ fontSize: 14, fontWeight: 800, color: C.vert, marginTop: 4 }}>
             Facture soldée
           </div>
+
+          {/* Dernière étape du cycle : clore le dossier. Le paiement du solde a
+              déjà fait passer l'affaire en « payé » (côté serveur) ; la clôture
+              est l'acte du bureau qui referme l'affaire. */}
+          {affaire?.etat === "paye" && !clos && (
+            <button onClick={() => setCloture(true)} style={{
+              width: "100%", marginTop: 12, padding: "12px", borderRadius: 11,
+              border: "none", cursor: "pointer", fontSize: 13.5, fontWeight: 800,
+              background: "linear-gradient(135deg, #0F172A, #334155)", color: "#fff",
+            }}>🔒 Clore le dossier</button>
+          )}
+          {cloture && (
+            <div style={{ marginTop: 10, textAlign: "left" }}>
+              <Confirmation
+                question="Clore ce dossier ? Il sera définitivement terminé (consultable, mais plus modifiable)."
+                action="Clore" couleur={C.encre}
+                onConfirmer={async () => {
+                  try {
+                    await cloreAffaire(affaireId);
+                    setClos(true); setCloture(false);
+                    obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
+                  } catch (e) { setErreur(e.message); setCloture(false); }
+                }}
+                onAnnuler={() => setCloture(false)} />
+            </div>
+          )}
+          {(clos || affaire?.etat === "clos") && (
+            <div style={{ marginTop: 12, padding: "9px", borderRadius: 10,
+              background: "#F1F5F9", fontSize: 12.5, fontWeight: 700, color: C.muet }}>
+              Dossier clos
+            </div>
+          )}
         </div>
       )}
     </div>

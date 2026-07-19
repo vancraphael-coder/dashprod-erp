@@ -1252,3 +1252,47 @@ translucide. Tous les écrans en héritent d'un coup.
   terminé », dossier « effectué » au bureau (facture possible).
 - Fix : mesMissionsTerrain remonte le type des sessions (les pauses étaient
   comptées comme travail au terrain).
+
+---
+
+## Session 38 — Audit complet des circuits + finition
+
+Analyse détaillée : `docs/ANALYSE-CIRCUITS.md`.
+
+### Constat : trois maillons rompus dans la colonne vertébrale
+- Chantier → « effectué » : bouton « Terminer » livré en session 37 mais JAMAIS
+  poussé (absent du dépôt). Aucun dossier ne pouvait donc aboutir.
+- Effectué → facturé : 4 bugs cumulés, **0 facture en base depuis l'origine**.
+- Désistement (annuler/reporter) : commandes SQL présentes, aucun bouton.
+
+### Base (0035→0037, appliquées via MCP, testées 10/10 en rollback)
+- 0035 (déjà appliquée avant) : cmd_annuler/reporter_affaire, annulation des
+  missions, sync des DATES dossier→missions, paiement du solde → « payé ».
+- 0036 : reprise après report (missions réactivées → « planifié ») + bucket
+  Storage `documents` pour les conditions C.B.D.
+  BUG ATTRAPÉ AU TEST : `after update OF colonne` se déclenche même sans
+  changement de valeur → un dossier ne pouvait jamais RESTER reporté. D'où la
+  séparation fonction appelable / trigger conditionné à `old.etat='reporte'`.
+- 0037 : facturation. numero et annee NOT NULL sans défaut bloquaient le
+  brouillon ; l'émission n'avançait pas le dossier ; les totaux d'en-tête
+  n'étaient jamais calculés (facture à 0 € → « payé » au premier acompte).
+  Totaux désormais DÉRIVÉS des lignes par trigger.
+
+### Front
+- `Dossier` : zone Désistement (Reporter avec/sans date, Annuler + motif).
+- `Facture` : bouton « Clore le dossier » (payé → clos).
+- `Textes` (NOUVEAU, Compte) : modèles de l'email d'offre + aperçu en direct +
+  dépôt du PDF des conditions C.B.D.
+- `pdfOffre.js` (NOUVEAU) : PDF de l'offre, jsPDF en import DYNAMIQUE (paquet
+  séparé de 390 ko, chargé seulement à la génération).
+- `Mail` : textes personnalisés + carte « Pièces jointes » (offre + C.B.D.).
+  Limite `mailto` (pas de PJ possible) explicitée dans l'interface.
+- `Offre` : bouton « Télécharger le PDF ».
+- `Terrain` : bouton « Terminer le chantier » RÉTABLI.
+- `ListeAffaires` : filtres sur tout le cycle.
+- Domaine `brief.js` : `emailOffre` accepte des modèles (`TEXTES_OFFRE_DEFAUT`),
+  sortie par défaut inchangée (+2 tests).
+
+### Restant assumé
+Envoi serveur avec PJ automatiques ; nouvelle version d'offre ; avoir ;
+durcissement de `cmd_transition_affaire` (aucune vérification de capacité).

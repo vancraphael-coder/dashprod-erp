@@ -137,6 +137,29 @@ export function urlItineraire(charges, decharges, depot = DEPOT_ROOVERS) {
  * @param {number} [p.validiteJours=10]
  * @returns {{a: string, objet: string, corps: string}}
  */
+/**
+ * Modèles par défaut de l'email d'offre. Chaque ligne est surchargeable depuis
+ * Compte → Textes (organisations.parametres_textes) sans toucher au code.
+ * Variables disponibles : {famille} {client} {organisation} {validite}.
+ */
+export const TEXTES_OFFRE_DEFAUT = Object.freeze({
+  objet: "Offre de prix — {organisation} — {client}",
+  salutation: "Bonjour {famille},",
+  intro: "vous trouverez en pièce jointe votre offre de prix détaillée",
+  intro_signee: ", revêtue de votre bon pour accord signé",
+  mention_km: "Kilométrage offert.",
+  validite: "Offre valable {validite} jours ouvrables.",
+  validite_jours: 10,
+  formule_politesse: "Bien à vous,",
+  signataire: "Raphaël Van Cutsem",
+  pied: "",
+});
+
+/** Remplace les {variables} d'un modèle. Une variable inconnue devient vide. */
+function remplir(modele, vars) {
+  return String(modele ?? "").replace(/\{(\w+)\}/g, (_, cle) => vars[cle] ?? "");
+}
+
 export function emailOffre(p) {
   const org = p.organisation || {};
   const euros = (c) => (c / 100).toLocaleString("fr-BE", {
@@ -145,11 +168,18 @@ export function emailOffre(p) {
   // Salutation par nom de famille : dernier mot du nom complet (modèle).
   const famille = String(p.client?.nom || "").trim().split(/\s+/).pop() || "";
 
+  // Textes du bureau (Compte → Textes) par-dessus les modèles par défaut.
+  const T = { ...TEXTES_OFFRE_DEFAUT, ...(p.textes || {}) };
+  const validite = p.validiteJours ?? T.validite_jours ?? 10;
+  const vars = {
+    famille, client: p.client?.nom || "",
+    organisation: org.nom || "Déménagements Roovers", validite,
+  };
+
   const l = [];
-  l.push(`Bonjour ${famille},`);
+  l.push(remplir(T.salutation, vars));
   l.push("");
-  l.push(`vous trouverez en pièce jointe votre offre de prix détaillée${
-    p.signee ? ", revêtue de votre bon pour accord signé" : ""}.`);
+  l.push(`${remplir(T.intro, vars)}${p.signee ? remplir(T.intro_signee, vars) : ""}.`);
   l.push("");
   const charge = (p.charges || []).map((a) => a.adresse).filter(Boolean).join(" | ");
   const decharge = (p.decharges || []).map((a) => a.adresse).filter(Boolean).join(" | ");
@@ -162,7 +192,8 @@ export function emailOffre(p) {
     l.push(`Montant pour ${p.heures || "…"} h avec ${p.nbDemenageurs || "…"} déménageurs : ${
       euros(p.tvacCentimes)} TVAC (TVA 21 %).`);
   }
-  l.push(`Kilométrage offert. Offre valable ${p.validiteJours ?? 10} jours ouvrables.`);
+  l.push([remplir(T.mention_km, vars), remplir(T.validite, vars)]
+    .filter(Boolean).join(" "));
   l.push("");
   if (p.date) {
     const longue = new Date(p.date + "T00:00:00").toLocaleDateString("fr-BE", {
@@ -178,14 +209,15 @@ export function emailOffre(p) {
   }
   if (p.remarques) { l.push(""); l.push(`Remarques : ${p.remarques}`); }
   l.push("");
-  l.push("Bien à vous,");
-  l.push("Raphaël Van Cutsem");
+  l.push(remplir(T.formule_politesse, vars));
+  if (T.signataire) l.push(remplir(T.signataire, vars));
   l.push(org.nom || "");
   l.push([org.tel, org.email].filter(Boolean).join(" · "));
+  if (T.pied) { l.push(""); l.push(remplir(T.pied, vars)); }
 
   return {
     a: p.client?.email || "",
-    objet: `Offre de prix — ${org.nom || "Déménagements Roovers"} — ${p.client?.nom || ""}`,
+    objet: remplir(T.objet, vars),
     corps: l.filter((x, i, arr) => !(x === "" && arr[i - 1] === "")).join("\n"),
   };
 }

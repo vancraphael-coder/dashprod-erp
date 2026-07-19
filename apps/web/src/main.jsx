@@ -21,6 +21,7 @@ import TerrainProfil from "./ecrans/TerrainProfil.jsx";
 import Bareme from "./ecrans/Bareme.jsx";
 import Cout from "./ecrans/Cout.jsx";
 import Archivage from "./ecrans/Archivage.jsx";
+import Textes from "./ecrans/Textes.jsx";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
 import Devis from "./ecrans/Devis.jsx";
@@ -78,7 +79,7 @@ function BarreNav({ actif, aller, peutGererEquipe }) {
 }
 
 /** Écran Compte — identité, déconnexion, diagnostic. */
-function Compte({ profil, versDiagnostic, versBareme, versCout, versArchivage, peutConfigurer }) {
+function Compte({ profil, versDiagnostic, versBareme, versCout, versArchivage, versTextes, peutConfigurer }) {
   const acces = peutConfigurer || modeDonnees() === "demo";
   const boutonPage = (onClick, icone, texte) => (
     <button onClick={onClick} style={{
@@ -112,6 +113,7 @@ function Compte({ profil, versDiagnostic, versBareme, versCout, versArchivage, p
             textTransform: "uppercase", margin: "18px 2px 2px" }}>Réglages</div>
           {versBareme && boutonPage(versBareme, "🏷️", "Barème (prix client)")}
           {versCout && boutonPage(versCout, "📉", "Coûts internes")}
+          {versTextes && boutonPage(versTextes, "✉️", "Textes de l'offre")}
           {versArchivage && boutonPage(versArchivage, "🗂️", "Archivage")}
         </>
       )}
@@ -399,6 +401,7 @@ function App() {
     bareme: () => setRoute({ ecran: "bareme", affaireId: null }),
     cout: () => setRoute({ ecran: "cout", affaireId: null }),
     archivage: () => setRoute({ ecran: "archivage", affaireId: null }),
+    textes: () => setRoute({ ecran: "textes", affaireId: null }),
   };
   const retourDossier = () => nav.dossier(route.affaireId);
 
@@ -419,6 +422,7 @@ function App() {
   } else if (route.ecran === "compte") {
     ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic}
       versBareme={nav.bareme} versCout={nav.cout} versArchivage={nav.archivage}
+      versTextes={nav.textes}
       peutConfigurer={peutGererEquipe} />;
   } else if (route.ecran === "equipe") {
     ecran = <Ressources />;
@@ -443,6 +447,8 @@ function App() {
     ecran = <Cout retour={() => nav.compte()} />;
   } else if (route.ecran === "archivage") {
     ecran = <Archivage retour={() => nav.compte()} />;
+  } else if (route.ecran === "textes") {
+    ecran = <Textes retour={() => nav.compte()} />;
   } else if (route.ecran === "materiel") {
     ecran = <Materiel affaireId={route.affaireId} retour={retourDossier} />;
   } else if (route.ecran === "mail") {

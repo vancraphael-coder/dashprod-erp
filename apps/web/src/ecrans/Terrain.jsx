@@ -12,13 +12,13 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  mesMissionsTerrain, chronoDemarrer, chronoArreter, chronoPause,
+  mesMissionsTerrain, chronoDemarrer, chronoArreter, chronoPause, terminerChantier,
 } from "../lib/adaptateur.js";
 import {
   dureeSecondes, chronoEnCours, formaterChrono, enPause, listePauses,
 } from "@domaine/operations/chrono.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, Confirmation } from "../lib/theme.jsx";
 
 function aujourdhui() { return new Date().toISOString().slice(0, 10); }
 
@@ -114,8 +114,18 @@ function Chantier({ mission, profil, ouvert, onToggle, onChrono, versConsult }) 
     await onChrono();
   }
 
+  const [cloture, setCloture] = useState(false);
   const itineraire = urlItineraire(mission.charges, mission.decharges);
   const enAttente = mission.etat === "brouillon";
+  const termine = mission.etat === "effectuee";
+
+  // Fin du chantier : ferme le chrono ET fait passer le dossier en « effectué »
+  // au bureau (dernier maillon avant la facturation).
+  async function confirmerFin() {
+    await terminerChantier(mission.id);
+    setCloture(false);
+    await onChrono();
+  }
 
   return (
     <div style={{ ...S.carte,
@@ -147,6 +157,12 @@ function Chantier({ mission, profil, ouvert, onToggle, onChrono, versConsult }) 
           {/* Chrono — sessions serveur */}
           <div style={{ background: "#0F172A", borderRadius: 12, padding: "14px",
             textAlign: "center", marginBottom: 12 }}>
+            {termine && (
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#34D399",
+                textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>
+                ✓ Chantier terminé
+              </div>
+            )}
             <div style={{ fontSize: 32, fontWeight: 800, color: "#fff",
               fontFamily: "ui-monospace, monospace", letterSpacing: ".04em" }}>
               {formaterChrono(secondes)}
@@ -164,14 +180,16 @@ function Chantier({ mission, profil, ouvert, onToggle, onChrono, versConsult }) 
                 ))}
               </div>
             )}
+            {!termine && (
             <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
-              {/* Démarrer / Stop final : pilote le compteur principal. */}
+              {/* Démarrer / Stop : Stop est une INTERRUPTION (on peut
+                  reprendre), pas la fin du chantier. */}
               <button onClick={basculerChrono} style={{
                 padding: "11px 22px", borderRadius: 999, border: "none",
                 cursor: "pointer", fontSize: 14, fontWeight: 800,
                 background: enCours ? "#DC2626" : "#22C55E", color: "#fff",
               }}>
-                {enCours ? "⏹ Stop" : "▶ Démarrer"}
+                {enCours ? "⏹ Stop" : secondes > 0 ? "▶ Reprendre" : "▶ Démarrer"}
               </button>
               {/* Pause : marque un arrêt d'équipe, le compteur principal continue. */}
               {enCours && (
@@ -186,7 +204,27 @@ function Chantier({ mission, profil, ouvert, onToggle, onChrono, versConsult }) 
                 </button>
               )}
             </div>
+            )}
           </div>
+
+          {/* TERMINER : la vraie fin. Clôt le chrono et fait passer le dossier
+              en « effectué » au bureau — la facture devient possible. */}
+          {!termine && secondes > 0 && !cloture && (
+            <button onClick={() => setCloture(true)} style={{
+              width: "100%", padding: "12px", borderRadius: 11, marginBottom: 12,
+              border: "none", cursor: "pointer", fontSize: 14, fontWeight: 800,
+              background: "linear-gradient(135deg, #059669, #047857)", color: "#fff",
+            }}>✓ Terminer le chantier</button>
+          )}
+          {cloture && (
+            <div style={{ marginBottom: 12 }}>
+              <Confirmation
+                question="Terminer le chantier ? Le chrono sera clôturé et le bureau verra le dossier comme effectué."
+                action="Terminer" couleur={C.vert}
+                onConfirmer={confirmerFin}
+                onAnnuler={() => setCloture(false)} />
+            </div>
+          )}
 
           {/* Adresses + itinéraire */}
           <Bloc titre="Chargement" liste={mission.charges} couleur={C.bleu} />

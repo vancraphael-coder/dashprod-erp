@@ -11,7 +11,11 @@ import { caSigne } from "@domaine/pilotage/finances.js";
 import { zoneMarge } from "@domaine/chiffrage/moteur.js";
 import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 
-const FILTRES = ["tous", "devis", "confirme", "en_cours", "effectue"];
+// Le cycle ENTIER est filtrable : sans « facturé / payé / clos », la fin de
+// parcours était invisible depuis la liste ; sans « reporté / annulé », les
+// désistements aussi. La barre défile horizontalement sur mobile.
+const FILTRES = ["tous", "devis", "envoye", "confirme", "planifie", "en_cours",
+                 "effectue", "facture", "paye", "clos", "reporte", "annule"];
 
 export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
   const [affaires, setAffaires] = useState([]);

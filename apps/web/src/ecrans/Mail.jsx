@@ -2,15 +2,19 @@
 // Écran — Mail (envoi de l'offre).
 // Alignement page 07 : dix mails par semaine, identiques à 90 % — le template
 // supprime l'oubli (validité, dates) et uniformise le ton. Flux v1 assumé
-// manuel : générer le PDF de l'offre (impression) puis le joindre au mail
-// ouvert par mailto:. L'envoi SMTP réel viendra comme adaptateur au bord (D-1).
-// Le formatage vient du domaine (emailOffre) — une implémentation, testée.
+// manuel : télécharger les deux pièces jointes (offre + conditions C.B.D.) puis
+// les joindre au mail ouvert par mailto:. Le protocole mailto NE PEUT PAS
+// porter de pièce jointe — c'est une limite du standard, pas un raccourci ;
+// l'envoi serveur avec PJ automatiques viendra comme adaptateur au bord (D-1).
+// Les textes viennent de Compte → Textes ; le formatage du domaine (emailOffre).
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
 import {
   obtenirAffaire, obtenirContact, obtenirInstance, obtenirOrganisation,
+  obtenirTextes, composerOffre, urlConditionsCbd,
 } from "../lib/adaptateur.js";
+import { pdfOffre, nomFichierOffre, telecharger } from "../lib/pdfOffre.js";
 import { emailOffre, urlMailto } from "@domaine/communication/brief.js";
 import { C, S } from "../lib/theme.jsx";
 
@@ -19,17 +23,23 @@ export default function Mail({ affaireId, retour, versOffre }) {
   const [instance, setInstance] = useState(null);
   const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState(null);
+  const [cbd, setCbd] = useState(null);        // URL des conditions, ou null
+  const [pdfEnCours, setPdfEnCours] = useState(false);
+  const [pdfFait, setPdfFait] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [affaire, contact, inst, org] = await Promise.all([
+        const [affaire, contact, inst, org, textes, lienCbd] = await Promise.all([
           obtenirAffaire(affaireId),
           obtenirContact(affaireId).catch(() => null),
           obtenirInstance(affaireId).catch(() => null),
           obtenirOrganisation().catch(() => ({})),
+          obtenirTextes().catch(() => ({})),
+          urlConditionsCbd().catch(() => null),
         ]);
         setInstance(inst);
+        setCbd(lienCbd);
         const faits = affaire?.faits || {};
         setMail(emailOffre({
           client: affaire?.client || {},
@@ -41,10 +51,23 @@ export default function Mail({ affaireId, retour, versOffre }) {
           date: contact?.date, heure: contact?.heure,
           remarques: contact?.notes,
           organisation: org,
+          textes,                       // modèles réglés dans Compte → Textes
         }));
       } catch (e) { setErreur(e.message); }
     })();
   }, [affaireId]);
+
+  /** Génère le PDF de l'offre depuis la MÊME source que l'offre à l'écran. */
+  async function telechargerOffre() {
+    setErreur(null); setPdfEnCours(true);
+    try {
+      const contenu = await composerOffre(affaireId);
+      const blob = await pdfOffre(contenu, instance?.numero);
+      telecharger(blob, nomFichierOffre(contenu));
+      setPdfFait(true);
+    } catch (e) { setErreur(e.message || "Génération du PDF impossible"); }
+    setPdfEnCours(false);
+  }
 
   async function copier() {
     const texte = `À : ${mail.a}\nObjet : ${mail.objet}\n\n${mail.corps}`;
@@ -63,28 +86,73 @@ export default function Mail({ affaireId, retour, versOffre }) {
         <div style={S.titre}>Mail — envoi de l'offre</div>
       </div>
 
-      {/* Pièce jointe : l'offre, préparée via l'impression PDF */}
+      {/* Pièces jointes : l'offre (PDF généré) et les conditions C.B.D. */}
       <div style={S.carte}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 10,
+                      textTransform: "uppercase", letterSpacing: ".03em" }}>
+          Pièces jointes
+        </div>
+
+        {/* 1 — Offre de prix */}
+        <div style={{ display: "flex", justifyContent: "space-between",
+                      alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 20 }}>📎</span>
             <div>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: C.encre }}>
                 Offre de prix (PDF)
               </div>
-              <div style={{ fontSize: 11.5, color: C.muet }}>À joindre au mail</div>
+              <div style={{ fontSize: 11.5, color: C.muet }}>
+                {signee ? "Signée par le client" : instance ? "Émise, non signée" : "Pas encore émise"}
+              </div>
             </div>
           </div>
-          <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
-            background: signee ? "#ECFDF5" : instance ? "#FFFBEB" : "#F1F5F9",
-            color: signee ? "#065F46" : instance ? "#92400E" : C.muet }}>
-            {signee ? "Signée" : instance ? "Non signée" : "Pas encore émise"}
-          </span>
+          <button onClick={telechargerOffre} disabled={pdfEnCours} style={{
+            padding: "8px 14px", borderRadius: 10, cursor: "pointer",
+            fontSize: 12.5, fontWeight: 700,
+            border: `1.5px solid ${pdfFait ? C.vert : C.bleu}`,
+            background: pdfFait ? "#ECFDF5" : C.bleuClair,
+            color: pdfFait ? "#065F46" : C.bleu,
+          }}>
+            {pdfEnCours ? "…" : pdfFait ? "✓ Téléchargée" : "Télécharger"}
+          </button>
         </div>
-        <button style={{ ...S.boutonLien, paddingLeft: 0, marginTop: 8 }}
-                onClick={() => versOffre(affaireId)}>
-          {instance ? "Ouvrir l'offre pour l'imprimer en PDF →" : "Préparer l'offre d'abord →"}
-        </button>
+
+        {/* 2 — Conditions générales C.B.D. */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>📄</span>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.encre }}>
+                Conditions générales C.B.D.
+              </div>
+              <div style={{ fontSize: 11.5, color: cbd ? C.muet : C.ambre }}>
+                {cbd ? "Document du bureau" : "Non déposé — Compte → Textes"}
+              </div>
+            </div>
+          </div>
+          {cbd && (
+            <a href={cbd} target="_blank" rel="noreferrer" download style={{
+              padding: "8px 14px", borderRadius: 10, textDecoration: "none",
+              fontSize: 12.5, fontWeight: 700,
+              border: `1.5px solid ${C.bleu}`, background: C.bleuClair, color: C.bleu,
+            }}>Télécharger</a>
+          )}
+        </div>
+
+        <div style={{ marginTop: 10, padding: "9px 11px", borderRadius: 9,
+          background: "#F8FAFC", border: `1px solid ${C.bord}`,
+          fontSize: 11, color: C.muet, lineHeight: 1.5 }}>
+          Téléchargez les pièces, puis joignez-les au message : un lien
+          « ouvrir dans Mail » ne peut pas transporter de fichier.
+        </div>
+
+        {!instance && (
+          <button style={{ ...S.boutonLien, paddingLeft: 0, marginTop: 6 }}
+                  onClick={() => versOffre(affaireId)}>
+            Préparer l'offre d'abord →
+          </button>
+        )}
       </div>
 
       {/* En-tête du mail */}

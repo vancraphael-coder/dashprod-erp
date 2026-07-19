@@ -1709,3 +1709,121 @@ export async function definirCreationComplete(utilisateurId, actif) {
   d.capacitesExtra[utilisateurId] = actif ? [...CAPACITES_DEVIS_COMPLET] : [];
   ecrireDemo(d);
 }
+
+// =============================================================================
+// DÉSISTEMENT CLIENT — annulation et report.
+// Les commandes SQL gardent la machine à états et annulent les missions
+// ouvertes (trigger). Reporter AVEC une date replanifie tout de suite ;
+// reporter SANS date laisse le dossier « reporté », en attente du client.
+// =============================================================================
+
+/** Annulation définitive (désistement). Motif tracé dans le journal. */
+export async function annulerAffaire(affaireId, motif) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_annuler_affaire", {
+      p_affaire: affaireId, p_motif: motif || null,
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  if (a) {
+    a.etat = "annule"; a.motif_annulation = motif || "";
+    (d.missions || []).filter((m) => m.affaire_id === affaireId)
+      .forEach((m) => { if (["planifiee", "en_cours"].includes(m.etat)) m.etat = "annulee"; });
+    ecrireDemo(d);
+  }
+}
+
+/** Report. `nouvelleDate` (AAAA-MM-JJ) facultative : si fournie, replanifie. */
+export async function reporterAffaire(affaireId, nouvelleDate, motif) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_reporter_affaire", {
+      p_affaire: affaireId, p_nouvelle_date: nouvelleDate || null, p_motif: motif || null,
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  if (a) {
+    a.etat = nouvelleDate ? "planifie" : "reporte";
+    if (nouvelleDate) a.date_souhaitee = nouvelleDate;
+    (d.missions || []).filter((m) => m.affaire_id === affaireId).forEach((m) => {
+      if (nouvelleDate) { m.etat = "planifiee"; m.date = nouvelleDate; }
+      else if (["planifiee", "en_cours"].includes(m.etat)) m.etat = "annulee";
+    });
+    ecrireDemo(d);
+  }
+}
+
+/** Clôture du dossier (payé → clos). Dernière étape du cycle. */
+export async function cloreAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_transition_affaire", {
+      p_affaire: affaireId, p_cible: "clos", p_contexte: {},
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  if (a) { a.etat = "clos"; ecrireDemo(d); }
+}
+
+// =============================================================================
+// TEXTES DU BUREAU — modèles de l'email d'offre (Compte → Textes).
+// Stockés dans organisations.parametres_textes (jsonb). Le domaine applique
+// ses valeurs par défaut pour toute clé absente : un réglage partiel suffit.
+// =============================================================================
+
+export async function obtenirTextes() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("organisations")
+      .select("parametres_textes").limit(1).single();
+    if (error) throw error;
+    return data?.parametres_textes || {};
+  }
+  const d = lireDemo();
+  return d.textes || {};
+}
+
+export async function sauverTextes(textes) {
+  if (modeDonnees() === "reel") {
+    const { data, error: e1 } = await supabase.from("organisations")
+      .select("id").limit(1).single();
+    if (e1) throw e1;
+    const { error } = await supabase.from("organisations")
+      .update({ parametres_textes: textes }).eq("id", data.id);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.textes = textes; ecrireDemo(d);
+}
+
+// =============================================================================
+// DOCUMENTS — conditions générales C.B.D. jointes aux offres.
+// Bucket Storage « documents », lecture publique (document contractuel diffusé),
+// écriture réservée au bureau (capacité gerer_referentiels).
+// =============================================================================
+
+export const FICHIER_CBD = "conditions-cbd.pdf";
+
+/** URL publique du PDF des conditions C.B.D., ou null s'il n'est pas déposé. */
+export async function urlConditionsCbd() {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.storage.from("documents")
+    .list("", { search: FICHIER_CBD });
+  if (error || !(data || []).some((f) => f.name === FICHIER_CBD)) return null;
+  return supabase.storage.from("documents").getPublicUrl(FICHIER_CBD).data.publicUrl;
+}
+
+/** Dépose (ou remplace) le PDF des conditions C.B.D. */
+export async function televerserConditionsCbd(fichier) {
+  if (modeDonnees() !== "reel") throw new Error("Dépôt indisponible en démo");
+  const { error } = await supabase.storage.from("documents")
+    .upload(FICHIER_CBD, fichier, { upsert: true, contentType: "application/pdf" });
+  if (error) throw error;
+}

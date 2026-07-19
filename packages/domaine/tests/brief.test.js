@@ -109,3 +109,35 @@ test("urlMailto encode destinataire, objet et corps", () => {
   const u = urlMailto({ a: "a@b.be", objet: "Été", corps: "ligne 1\nligne 2" });
   assert.match(u, /^mailto:a%40b\.be\?subject=%C3%89t%C3%A9&body=ligne%201%0Aligne%202$/);
 });
+
+test("emailOffre : les modèles du bureau remplacent les textes par défaut", () => {
+  const m = emailOffre({
+    client: { nom: "Marie Dupont", email: "m@d.be" },
+    organisation: { nom: "Roovers", tel: "010" },
+    tvacCentimes: 100000, heures: 6, nbDemenageurs: 3,
+    textes: {
+      objet: "Votre déménagement — {organisation}",
+      salutation: "Chère Madame, cher Monsieur {famille},",
+      signataire: "Le bureau",
+      validite: "Valable {validite} jours.",
+      validite_jours: 30,
+      pied: "TVA BE0478363616",
+    },
+  });
+  assert.equal(m.objet, "Votre déménagement — Roovers");
+  assert.ok(m.corps.startsWith("Chère Madame, cher Monsieur Dupont,"));
+  assert.ok(m.corps.includes("Valable 30 jours."));
+  assert.ok(m.corps.includes("Le bureau"));
+  assert.ok(!m.corps.includes("Raphaël Van Cutsem"));
+  assert.ok(m.corps.trimEnd().endsWith("TVA BE0478363616"));
+});
+
+test("emailOffre : un modèle partiel ne casse pas le reste", () => {
+  const m = emailOffre({
+    client: { nom: "X" }, tvacCentimes: 1, formule: "forfait",
+    textes: { salutation: "Salut {famille} !" },
+  });
+  assert.ok(m.corps.startsWith("Salut X !"));
+  assert.ok(m.corps.includes("Bien à vous,"));      // défaut conservé
+  assert.ok(m.corps.includes("Kilométrage offert")); // défaut conservé
+});

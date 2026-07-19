@@ -15,6 +15,7 @@ import {
 import { instanceIntacte } from "@domaine/documents/instances.js";
 import { ACOMPTE_PCT } from "@domaine/documents/cgv.js";
 import Contrat from "./Contrat.jsx";
+import { pdfOffre, nomFichierOffre, telecharger } from "../lib/pdfOffre.js";
 import { C, S, euros } from "../lib/theme.jsx";
 
 const TYPE_PAR_FORMULE = {
@@ -28,6 +29,7 @@ export default function Offre({ affaireId, retour }) {
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
   const [padOuvert, setPadOuvert] = useState(false);
+  const [pdfEnCours, setPdfEnCours] = useState(false);
 
   async function recharger() {
     setAffaire(await obtenirAffaire(affaireId));
@@ -160,11 +162,31 @@ export default function Offre({ affaireId, retour }) {
         )}
 
         {instance && (
-          <button style={{ ...S.boutonLien, width: "100%", textAlign: "center", marginTop: 10,
-                            border: `1.5px solid ${C.bord}`, borderRadius: 11, padding: "11px" }}
-                  onClick={() => window.print()}>
-            🖨️ Imprimer / Enregistrer en PDF
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            {/* Le PDF généré est LA pièce jointe envoyée au client (même
+                contenu que l'écran) ; l'impression reste pour le papier. */}
+            <button disabled={pdfEnCours} onClick={async () => {
+                      setPdfEnCours(true);
+                      try {
+                        const contenu = await composerOffre(affaireId);
+                        telecharger(await pdfOffre(contenu, instance?.numero),
+                                    nomFichierOffre(contenu));
+                      } catch (e) { setErreur(e.message); }
+                      setPdfEnCours(false);
+                    }}
+                    style={{ flex: 1, textAlign: "center", padding: "11px",
+                             borderRadius: 11, cursor: "pointer", fontSize: 13,
+                             fontWeight: 700, border: `1.5px solid ${C.bleu}`,
+                             background: C.bleuClair, color: C.bleu }}>
+              {pdfEnCours ? "Génération…" : "📄 Télécharger le PDF"}
+            </button>
+            <button style={{ ...S.boutonLien, textAlign: "center",
+                             border: `1.5px solid ${C.bord}`, borderRadius: 11,
+                             padding: "11px 14px" }}
+                    onClick={() => window.print()}>
+              🖨️
+            </button>
+          </div>
         )}
       </div>
     </div>

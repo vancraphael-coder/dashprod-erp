@@ -15,6 +15,7 @@ import {
   obtenirClientIdentite, sauverClientIdentite,
   listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
   validerDossierTerrain, obtenirInstance, confirmerAffaire, archiverAffaire,
+  annulerAffaire, reporterAffaire,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -441,6 +442,14 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           {sauve ? "✓ Dossier enregistré" : "Enregistrer le dossier"}
         </button>
 
+        {/* Désistement client : le chantier ne se fera pas, ou pas à cette
+            date. Annuler ou reporter libère automatiquement l'équipe et les
+            camions du planning (les missions ouvertes sont annulées). */}
+        {!modeTerrain && (
+          <ZoneDesistement affaire={affaire} affaireId={affaireId}
+                           onFait={() => { declarerModifs(false, null); retour(); }} />
+        )}
+
         {/* Archiver : sort le dossier des listes — rien n'est supprimé, tout
             se retrouve (et se restaure) dans Compte → Archivage. */}
         {!modeTerrain && (
@@ -462,6 +471,127 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             onAnnuler={() => setArchivage(false)} />
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Désistement client. Deux issues distinctes :
+ *  — REPORTER : le chantier se fera plus tard. Avec une nouvelle date, il est
+ *    replanifié immédiatement ; sans date, le dossier attend en « reporté » et
+ *    repartira tout seul dès qu'une date sera saisie.
+ *  — ANNULER : le chantier ne se fera pas. Définitif (le dossier reste
+ *    consultable et archivable, rien n'est supprimé).
+ * Dans les deux cas, les missions ouvertes sont annulées côté serveur : équipe
+ * et camions se libèrent au planning sans intervention.
+ */
+const ANNULABLE = ["brouillon", "devis", "envoye", "confirme", "planifie", "en_cours", "reporte"];
+const REPORTABLE = ["envoye", "confirme", "planifie"];
+
+function ZoneDesistement({ affaire, affaireId, onFait }) {
+  const [mode, setMode] = useState(null); // null | "reporter" | "annuler"
+  const [motif, setMotif] = useState("");
+  const [nouvelleDate, setNouvelleDate] = useState("");
+  const [erreur, setErreur] = useState(null);
+  const [enCours, setEnCours] = useState(false);
+
+  const peutAnnuler = ANNULABLE.includes(affaire.etat);
+  const peutReporter = REPORTABLE.includes(affaire.etat);
+  if (!peutAnnuler && !peutReporter) return null;
+
+  async function confirmer() {
+    setErreur(null); setEnCours(true);
+    try {
+      if (mode === "annuler") await annulerAffaire(affaireId, motif);
+      else await reporterAffaire(affaireId, nouvelleDate || null, motif);
+      onFait();
+    } catch (e) {
+      setErreur(e.message || "Opération refusée");
+      setEnCours(false);
+    }
+  }
+
+  const bouton = (cle, libelle, couleur) => (
+    <button onClick={() => { setMode(cle); setErreur(null); }} style={{
+      flex: 1, padding: "10px", borderRadius: 10, cursor: "pointer",
+      fontSize: 12.5, fontWeight: 700, background: "#fff",
+      border: `1.5px solid ${C.bord}`, color: couleur,
+    }}>{libelle}</button>
+  );
+
+  return (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.bord}` }}>
+      {affaire.etat === "reporte" && (
+        <div style={{ marginBottom: 10, padding: "9px 11px", borderRadius: 10,
+          background: "#FFFBEB", border: "1px solid #FDE68A",
+          fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+          Dossier reporté, en attente d'une date. Saisissez la nouvelle date du
+          déménagement plus haut : le chantier sera replanifié automatiquement.
+        </div>
+      )}
+
+      {!mode && (
+        <>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.muet,
+            textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 6 }}>
+            Désistement client
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {peutReporter && bouton("reporter", "📅 Reporter", C.ambre)}
+            {peutAnnuler && bouton("annuler", "✕ Annuler", C.rouge)}
+          </div>
+        </>
+      )}
+
+      {mode && (
+        <div style={{ padding: 12, borderRadius: 11,
+          background: mode === "annuler" ? "#FEF2F2" : "#FFFBEB",
+          border: `1px solid ${mode === "annuler" ? "#FECACA" : "#FDE68A"}` }}>
+          <div style={{ fontSize: 13, fontWeight: 800,
+            color: mode === "annuler" ? "#991B1B" : "#92400E", marginBottom: 8 }}>
+            {mode === "annuler" ? "Annuler le dossier" : "Reporter le chantier"}
+          </div>
+
+          {mode === "reporter" && (
+            <>
+              <label style={S.label}>Nouvelle date (laisser vide si inconnue)</label>
+              <input style={S.input} type="date" value={nouvelleDate}
+                     onChange={(e) => setNouvelleDate(e.target.value)} />
+            </>
+          )}
+
+          <label style={S.label}>Motif (tracé dans l'historique)</label>
+          <input style={S.input} value={motif} onChange={(e) => setMotif(e.target.value)}
+                 placeholder={mode === "annuler"
+                   ? "Ex. : client a choisi un concurrent"
+                   : "Ex. : compromis de vente décalé"} />
+
+          <div style={{ fontSize: 11.5, color: C.muet, margin: "8px 0 10px", lineHeight: 1.5 }}>
+            {mode === "annuler"
+              ? "L'équipe et les camions seront libérés au planning. Le dossier reste consultable."
+              : nouvelleDate
+                ? "Le chantier sera replanifié à cette date avec la même équipe."
+                : "Le dossier passera en « reporté » et libèrera le planning jusqu'à une nouvelle date."}
+          </div>
+
+          {erreur && <div style={{ fontSize: 12, color: C.rouge, marginBottom: 8 }}>{erreur}</div>}
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button disabled={enCours} onClick={confirmer} style={{
+              flex: 1, padding: "11px", borderRadius: 10, border: "none",
+              cursor: "pointer", fontSize: 13, fontWeight: 800, color: "#fff",
+              background: mode === "annuler" ? C.rouge : C.ambre,
+            }}>
+              {enCours ? "…" : mode === "annuler" ? "Confirmer l'annulation" : "Confirmer le report"}
+            </button>
+            <button disabled={enCours} onClick={() => { setMode(null); setMotif(""); }} style={{
+              padding: "11px 16px", borderRadius: 10, cursor: "pointer",
+              fontSize: 13, fontWeight: 700, background: "#fff",
+              border: `1.5px solid ${C.bord}`, color: C.muet,
+            }}>Retour</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
