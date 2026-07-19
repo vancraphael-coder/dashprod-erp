@@ -1,0 +1,297 @@
+diff --git a/apps/web/src/ecrans/Textes.jsx b/apps/web/src/ecrans/Textes.jsx
+index a2c89d1..aa8e4f9 100644
+--- a/apps/web/src/ecrans/Textes.jsx
++++ b/apps/web/src/ecrans/Textes.jsx
+@@ -22,7 +22,7 @@ import { C, S } from "../lib/theme.jsx";
+ const EXEMPLE = {
+   client: { nom: "Marie Dupont", email: "marie.dupont@exemple.be" },
+   tvacCentimes: 94380, heures: 6, nbDemenageurs: 3, formule: "tarifaire",
+-  charges: [{ adresse: "Rue de l'Avenir 9, 1370 Jodoigne" }],
++  charges: [{ adresse: "Rue de l'Exemple 1, 1000 Bruxelles" }],
+   decharges: [{ adresse: "Avenue Louise 12, 1050 Bruxelles" }],
+   date: "2026-09-14", heure: "08:00",
+ };
+diff --git a/apps/web/src/lib/adaptateur.js b/apps/web/src/lib/adaptateur.js
+index f9f9585..e171318 100644
+--- a/apps/web/src/lib/adaptateur.js
++++ b/apps/web/src/lib/adaptateur.js
+@@ -284,8 +284,9 @@ export async function inviterMembre({ email, nom, roleCle }) {
+   const lien = window.location.origin;
+   let envoye = false;
+   try {
++    const org = await obtenirOrganisation();
+     const { error: e3 } = await supabase.functions.invoke("inviter-membre", {
+-      body: { email, nom, lien, organisation: "Déménagements Roovers" },
++      body: { email, nom, lien, organisation: org?.nom },
+     });
+     envoye = !e3;
+   } catch { envoye = false; }
+@@ -747,20 +748,27 @@ export async function sauverContact(affaireId, { charges, decharges, date, heure
+ 
+ // ── Organisation (paramètres d'en-tête des documents) ─────────────────────────
+ 
++// Identité NEUTRE. Aucune donnée d'une entreprise réelle ne doit figurer ici :
++// ce bloc sert de repli en mode démo et finirait sinon sur les documents d'un
++// autre tenant (AUDIT_REAL.md §5).
+ const ORG_DEMO = {
+-  nom: "Déménagements Roovers", bce: "BE 0478.363.616", tva: "BE0478363616",
+-  adresse: "Rue de l'Avenir 9", cp: "1370", ville: "Jodoigne",
+-  tel: "0455/17.16.79", email: "raphael.roovers@gmail.com",
+-  iban: "BE73 3101 6268 5860",
++  nom: "Entreprise de démonstration", bce: "BE 0000.000.000", tva: "BE0000000000",
++  adresse: "Rue de la Démonstration 1", cp: "1000", ville: "Bruxelles",
++  tel: "00 000 00 00", email: "demo@exemple.be",
++  iban: "BE00 0000 0000 0000",
+ };
+ 
+ /** Paramètres de l'organisation courante (identité imprimée sur les documents). */
+ export async function obtenirOrganisation() {
+   if (modeDonnees() === "reel") {
++    // .single() : la RLS ne doit renvoyer QUE l'organisation du jeton. Si elle
++    // en renvoie 0 ou plusieurs, c'est une anomalie de sécurité — on veut une
++    // erreur franche, pas un repli silencieux sur une identité arbitraire.
+     const { data, error } = await supabase.from("organisations")
+-      .select("nom, tva, bce, adresse, cp, ville, tel, email, iban").limit(1).maybeSingle();
+-    if (error) throw error;
+-    return data || {};
++      .select("id, nom, tva, bce, adresse, cp, ville, tel, email, iban").single();
++    if (error) throw new Error(
++      "Organisation introuvable pour cette session. Contactez votre administrateur.");
++    return data;
+   }
+   return ORG_DEMO;
+ }
+@@ -1811,19 +1819,38 @@ export async function sauverTextes(textes) {
+ 
+ export const FICHIER_CBD = "conditions-cbd.pdf";
+ 
+-/** URL publique du PDF des conditions C.B.D., ou null s'il n'est pas déposé. */
++/**
++ * Chemin cloisonné par organisation : org/{org_id}/cgv/{fichier}.
++ * Le premier segment porte l'isolation, les policies Storage comparent
++ * (storage.foldername(name))[2] à jwt_org().
++ */
++async function cheminCbd() {
++  const org = await obtenirOrganisation();
++  if (!org?.id) throw new Error("Organisation inconnue : dépôt impossible.");
++  return `org/${org.id}/cgv/${FICHIER_CBD}`;
++}
++
++/**
++ * URL SIGNÉE et temporaire du PDF des conditions C.B.D., ou null.
++ * Le bucket est privé : getPublicUrl produirait une URL permanente et
++ * non révocable sur un document contractuel (DATA_SECURITY.md §3).
++ */
+ export async function urlConditionsCbd() {
+   if (modeDonnees() !== "reel") return null;
+-  const { data, error } = await supabase.storage.from("documents")
+-    .list("", { search: FICHIER_CBD });
+-  if (error || !(data || []).some((f) => f.name === FICHIER_CBD)) return null;
+-  return supabase.storage.from("documents").getPublicUrl(FICHIER_CBD).data.publicUrl;
++  try {
++    const chemin = await cheminCbd();
++    const { data, error } = await supabase.storage.from("documents")
++      .createSignedUrl(chemin, 300);
++    if (error) return null;
++    return data?.signedUrl ?? null;
++  } catch { return null; }
+ }
+ 
+-/** Dépose (ou remplace) le PDF des conditions C.B.D. */
++/** Dépose (ou remplace) le PDF des conditions C.B.D. de l'organisation. */
+ export async function televerserConditionsCbd(fichier) {
+   if (modeDonnees() !== "reel") throw new Error("Dépôt indisponible en démo");
++  const chemin = await cheminCbd();
+   const { error } = await supabase.storage.from("documents")
+-    .upload(FICHIER_CBD, fichier, { upsert: true, contentType: "application/pdf" });
++    .upload(chemin, fichier, { upsert: true, contentType: "application/pdf" });
+   if (error) throw error;
+ }
+diff --git a/apps/web/src/lib/pdfOffre.js b/apps/web/src/lib/pdfOffre.js
+index cd13e4a..5bcdacd 100644
+--- a/apps/web/src/lib/pdfOffre.js
++++ b/apps/web/src/lib/pdfOffre.js
+@@ -53,7 +53,14 @@ export async function pdfOffre(contenu, numero) {
+   };
+ 
+   // ── En-tête : l'entreprise ────────────────────────────────────────────────
+-  ligne(org.nom || "Déménagements Roovers", { taille: 17, gras: true, saut: 6 });
++  // Aucun repli : mieux vaut refuser de produire un devis que d'en envoyer un
++  // à l'en-tête d'une autre entreprise (AUDIT_REAL.md §5.2).
++  if (!org?.nom) {
++    throw new Error(
++      "Identité de l'entreprise incomplète : renseignez le nom dans les " +
++      "paramètres avant de générer un document.");
++  }
++  ligne(org.nom, { taille: 17, gras: true, saut: 6 });
+   const adresse = [org.adresse, [org.cp, org.ville].filter(Boolean).join(" ")]
+     .filter(Boolean).join(" · ");
+   if (adresse) ligne(adresse, { taille: 9, couleur: [100, 116, 139], saut: 4 });
+diff --git a/apps/web/src/lib/supabase.js b/apps/web/src/lib/supabase.js
+index bf7545f..1949ee4 100644
+--- a/apps/web/src/lib/supabase.js
++++ b/apps/web/src/lib/supabase.js
+@@ -11,6 +11,20 @@ import { configPresente as calcConfigPresente, interpreterEtatConnexion } from "
+ const url = import.meta.env.VITE_SUPABASE_URL;
+ const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+ 
++/**
++ * Le mode démo doit être DEMANDÉ, jamais subi. Sans ce drapeau, une
++ * configuration Supabase absente est une erreur fatale : on refuse de servir
++ * une application qui aurait l'air de marcher avec des données localStorage.
++ */
++export const demoAutorisee = import.meta.env.VITE_MODE_DEMO === "1";
++
++if (!calcConfigPresente(url, anon) && !demoAutorisee) {
++  throw new Error(
++    "Configuration Supabase absente (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). " +
++    "Le mode démo doit être demandé explicitement via VITE_MODE_DEMO=1."
++  );
++}
++
+ /** Vrai si les deux variables d'environnement sont fournies. */
+ export const configPresente = calcConfigPresente(url, anon);
+ 
+diff --git a/packages/domaine/src/communication/brief.js b/packages/domaine/src/communication/brief.js
+index 11dd576..e34bace 100644
+--- a/packages/domaine/src/communication/brief.js
++++ b/packages/domaine/src/communication/brief.js
+@@ -39,13 +39,16 @@ function ligneAdresse(a) {
+  * @param {{nom: string, quantite?: number, demont?: boolean}[]} [p.inventaire]
+  * @param {string} [p.remarques]
+  * @param {string} [p.iban]
+- * @param {string} [p.signature]  ex. « Raphaël — 0455/17.16.79 »
++ * @param {string} [p.organisation] nom de l'entreprise (en-tête du brief)
++ * @param {string} [p.signature]  ex. « Prénom — 00 000 00 00 »
+  * @param {number} [p.maxArticles=6]
+  * @returns {string}
+  */
+ export function briefMission(p) {
+   const l = [];
+-  l.push("🚛 *DÉMÉNAGEMENTS ROOVERS*");
++  // Nom de l'entreprise fourni par l'appelant : jamais une constante, sinon
++  // tous les tenants envoient le brief au nom d'une autre société.
++  l.push(`🚛 *${(p.organisation || "").toUpperCase()}*`.replace("**", "*"));
+   l.push(`📅 ${dateLongue(p.date)}${p.heure ? ` — ${p.heure}` : ""}`);
+ 
+   if (p.camions?.length) l.push(`🚚 ${p.camions.map((c) => c.nom).join(", ")}`);
+@@ -87,8 +90,8 @@ export function urlWhatsApp(texte) {
+   return `https://wa.me/?text=${encodeURIComponent(texte)}`;
+ }
+ 
+-/** Dépôt Roovers — point de départ et de retour de tout trajet (siège). */
+-export const DEPOT_ROOVERS = "Rue de l'Avenir 9, 1370 Jodoigne";
++// Le dépôt est propre à chaque entreprise : il vient de organisations.adresse,
++// jamais d'une constante. Aucune valeur par défaut (AUDIT_REAL.md §5).
+ 
+ /**
+  * URL Google Maps multi-arrêts. Le trajet part TOUJOURS du dépôt et y revient
+@@ -97,10 +100,12 @@ export const DEPOT_ROOVERS = "Rue de l'Avenir 9, 1370 Jodoigne";
+  * retour compris. Zéro API payante.
+  * @param {{adresse: string, code_postal?: string, ville?: string}[]} charges
+  * @param {{adresse: string, code_postal?: string, ville?: string}[]} decharges
+- * @param {string} [depot] adresse de départ/retour (défaut : dépôt Roovers)
++ * @param {string} [depot] adresse de départ/retour du tenant. Si absente, le
++ *   trajet ne couvre que les chantiers (le km dépôt→chantier→dépôt n'est alors
++ *   PAS compté : passer l'adresse de l'organisation pour un km facturable juste).
+  * @returns {string|null} null si aucune adresse de chantier
+  */
+-export function urlItineraire(charges, decharges, depot = DEPOT_ROOVERS) {
++export function urlItineraire(charges, decharges, depot = null) {
+   // Compose « rue, CP ville » quand les champs séparés existent.
+   const composer = (a) => [a.adresse, [a.code_postal, a.ville].filter(Boolean).join(" ")]
+     .filter(Boolean).join(", ");
+@@ -173,7 +178,7 @@ export function emailOffre(p) {
+   const validite = p.validiteJours ?? T.validite_jours ?? 10;
+   const vars = {
+     famille, client: p.client?.nom || "",
+-    organisation: org.nom || "Déménagements Roovers", validite,
++    organisation: org.nom || "", validite,
+   };
+ 
+   const l = [];
+diff --git a/packages/domaine/src/documents/cgv.js b/packages/domaine/src/documents/cgv.js
+index 802569a..47b9a68 100644
+--- a/packages/domaine/src/documents/cgv.js
++++ b/packages/domaine/src/documents/cgv.js
+@@ -27,10 +27,18 @@ const CGV_V1 = Object.freeze([
+   "7. Droit applicable. Le présent contrat est régi par le droit belge ; tout litige relève des tribunaux compétents de l'arrondissement du siège. TVA 21 % applicable.",
+ ]);
+ 
+-const VERSIONS = Object.freeze({ 1: CGV_V1 });
++// v2 — identique à la v1, sauf l'article 4 qui nommait une entreprise en dur.
++// La v1 N'EST PAS modifiée : les documents déjà signés gardent leur empreinte
++// (C-02). Toute correction de texte = nouvelle version, jamais un UPDATE.
++const CGV_V2 = Object.freeze(
++  CGV_V1.map((a) => a.startsWith("4.")
++    ? "4. Responsabilité & assurance. L'entreprise est assurée pour les dommages causés par sa faute lors de la manutention. Les objets de valeur, documents, espèces et biens fragiles non signalés restent sous la garde du client."
++    : a));
++
++const VERSIONS = Object.freeze({ 1: CGV_V1, 2: CGV_V2 });
+ 
+ /** Version des CGV appliquée aux NOUVELLES offres. */
+-export const CGV_VERSION_COURANTE = 1;
++export const CGV_VERSION_COURANTE = 2;
+ 
+ /**
+  * Renvoie les articles des CGV d'une version donnée.
+diff --git a/packages/domaine/tests/brief.test.js b/packages/domaine/tests/brief.test.js
+index 325a356..9aaedca 100644
+--- a/packages/domaine/tests/brief.test.js
++++ b/packages/domaine/tests/brief.test.js
+@@ -19,19 +19,21 @@ const BASE = {
+     { nom: "Canapé", quantite: 1 },
+   ],
+   remarques: "Rue étroite",
+-  iban: "BE73 3101 6268 5860",
+-  signature: "Raphaël — 0455/17.16.79",
++  organisation: "Déménagements Test",
++  iban: "BE00 0000 0000 0000",
++  signature: "Prénom — 00 000 00 00",
+ };
+ 
+ test("briefMission : format complet du modèle", () => {
+   const b = briefMission(BASE);
+-  assert.match(b, /DÉMÉNAGEMENTS ROOVERS/);
++  // L'en-tête reprend l'organisation passée en paramètre, jamais une constante.
++  assert.match(b, /DÉMÉNAGEMENTS TEST/);
+   assert.match(b, /vendredi 17 juillet — 08:00/);
+   assert.match(b, /Marco \(chef\), Yassine/);
+   assert.match(b, /Rue A 1, Wavre \(étage 2, ascenseur\)/);
+   assert.match(b, /1× Armoire 3p \(démontage\)/);
+-  assert.match(b, /Virement BE73/);
+-  assert.match(b, /Raphaël — 0455/);
++  assert.match(b, /Virement BE00/);
++  assert.match(b, /Prénom — 00/);
+ });
+ 
+ test("briefMission : adresses multiples numérotées, articles tronqués à 6", () => {
+@@ -53,11 +55,13 @@ test("briefMission : les blocs absents ne laissent pas de ligne vide", () => {
+ });
+ 
+ test("urlItineraire : part du dépôt, passe par les chantiers, revient au dépôt", () => {
++  const DEPOT = "Rue de Test 1, 1000 Bruxelles";
+   const u = urlItineraire(
+     [{ adresse: "A" }, { adresse: "B" }],
+-    [{ adresse: "C" }]
++    [{ adresse: "C" }],
++    DEPOT
+   );
+-  // Départ et retour = dépôt Roovers ; A, B, C sont des waypoints ordonnés.
++  // Départ et retour = dépôt du tenant ; A, B, C sont des waypoints ordonnés.
+   assert.match(u, /origin=Rue/);
+   assert.match(u, /destination=Rue/);
+   assert.match(u, /waypoints=A\|B\|C/);
+@@ -141,3 +145,12 @@ test("emailOffre : un modèle partiel ne casse pas le reste", () => {
+   assert.ok(m.corps.includes("Bien à vous,"));      // défaut conservé
+   assert.ok(m.corps.includes("Kilométrage offert")); // défaut conservé
+ });
++
++test("brief : aucune identité d'entreprise codée en dur", () => {
++  // Garde-fou multi-tenant : sans paramètre organisation, le brief ne doit
++  // nommer AUCUNE entreprise (AUDIT_REAL.md §5).
++  const b = briefMission({ date: "2026-07-17" });
++  assert.doesNotMatch(b, /ROOVERS/i);
++  assert.equal(urlItineraire([{ adresse: "A" }], [{ adresse: "B" }])
++    .includes("Jodoigne"), false);
++});
