@@ -7,7 +7,7 @@
 // Supabase directement : au branchement, rien ne change côté écrans.
 // =============================================================================
 
-import { supabase, configPresente } from "./supabase.js";
+import { supabase, configPresente, demoExplicite } from "./supabase.js";
 import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
 import { CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
@@ -18,7 +18,9 @@ const CLE = "dashprod-demo-v1";
 
 /** Mode courant des données. */
 export function modeDonnees() {
-  return configPresente ? "reel" : "demo";
+  if (configPresente) return "reel";
+  if (demoExplicite) return "demo";
+  return "indisponible";
 }
 
 // ── Magasin de démonstration ──────────────────────────────────────────────────
@@ -53,6 +55,9 @@ const DEMO_INITIAL = {
 };
 
 function lireDemo() {
+  if (modeDonnees() !== "demo") {
+    throw new Error("Supabase non configuré. Activez VITE_DEMO_MODE=1 pour utiliser la démo locale.");
+  }
   try {
     const brut = localStorage.getItem(CLE);
     if (brut) return JSON.parse(brut);
@@ -282,10 +287,11 @@ export async function inviterMembre({ email, nom, roleCle }) {
   // base : on renvoie le lien pour un envoi manuel. L'invité se connecte avec
   // son compte Google pour réclamer l'invitation.
   const lien = window.location.origin;
+  const organisation = (await obtenirOrganisation().catch(() => ({})))?.nom || "votre organisation";
   let envoye = false;
   try {
     const { error: e3 } = await supabase.functions.invoke("inviter-membre", {
-      body: { email, nom, lien, organisation: "Déménagements Roovers" },
+      body: { email, nom, lien, organisation },
     });
     envoye = !e3;
   } catch { envoye = false; }
@@ -748,10 +754,15 @@ export async function sauverContact(affaireId, { charges, decharges, date, heure
 // ── Organisation (paramètres d'en-tête des documents) ─────────────────────────
 
 const ORG_DEMO = {
-  nom: "Déménagements Roovers", bce: "BE 0478.363.616", tva: "BE0478363616",
-  adresse: "Rue de l'Avenir 9", cp: "1370", ville: "Jodoigne",
-  tel: "0455/17.16.79", email: "raphael.roovers@gmail.com",
-  iban: "BE73 3101 6268 5860",
+  nom: "Organisation de démonstration",
+  bce: "BE 0000.000.000",
+  tva: "BE0000000000",
+  adresse: "Rue Exemple 1",
+  cp: "1000",
+  ville: "Bruxelles",
+  tel: "010 00 00 00",
+  email: "demo@dashprod.local",
+  iban: "BE00 0000 0000 0000",
 };
 
 /** Paramètres de l'organisation courante (identité imprimée sur les documents). */
@@ -761,6 +772,9 @@ export async function obtenirOrganisation() {
       .select("nom, tva, bce, adresse, cp, ville, tel, email, iban").limit(1).maybeSingle();
     if (error) throw error;
     return data || {};
+  }
+  if (modeDonnees() !== "demo") {
+    throw new Error("Supabase non configuré. Définissez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY.");
   }
   return ORG_DEMO;
 }
@@ -1805,19 +1819,23 @@ export async function sauverTextes(textes) {
 
 // =============================================================================
 // DOCUMENTS — conditions générales C.B.D. jointes aux offres.
-// Bucket Storage « documents », lecture publique (document contractuel diffusé),
+// Bucket Storage « documents » privé (URL signée à la demande),
 // écriture réservée au bureau (capacité gerer_referentiels).
 // =============================================================================
 
 export const FICHIER_CBD = "conditions-cbd.pdf";
 
-/** URL publique du PDF des conditions C.B.D., ou null s'il n'est pas déposé. */
+/** URL signée du PDF des conditions C.B.D., ou null s'il n'est pas déposé. */
 export async function urlConditionsCbd() {
   if (modeDonnees() !== "reel") return null;
   const { data, error } = await supabase.storage.from("documents")
     .list("", { search: FICHIER_CBD });
   if (error || !(data || []).some((f) => f.name === FICHIER_CBD)) return null;
-  return supabase.storage.from("documents").getPublicUrl(FICHIER_CBD).data.publicUrl;
+  const { data: signee, error: e2 } = await supabase.storage
+    .from("documents")
+    .createSignedUrl(FICHIER_CBD, 60 * 15);
+  if (e2) throw e2;
+  return signee?.signedUrl || null;
 }
 
 /** Dépose (ou remplace) le PDF des conditions C.B.D. */

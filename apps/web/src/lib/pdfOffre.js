@@ -53,7 +53,7 @@ export async function pdfOffre(contenu, numero) {
   };
 
   // ── En-tête : l'entreprise ────────────────────────────────────────────────
-  ligne(org.nom || "Déménagements Roovers", { taille: 17, gras: true, saut: 6 });
+  ligne(org.nom || "Organisation", { taille: 17, gras: true, saut: 6 });
   const adresse = [org.adresse, [org.cp, org.ville].filter(Boolean).join(" ")]
     .filter(Boolean).join(" · ");
   if (adresse) ligne(adresse, { taille: 9, couleur: [100, 116, 139], saut: 4 });

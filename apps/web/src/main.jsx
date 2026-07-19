@@ -1,14 +1,14 @@
 // =============================================================================
 // Point d'entrée — routage des écrans (S9) + barre de navigation.
 // Flux d'accès (T3) : base branchée sans session → Connexion ; session sans
-// invitation → Non invité ; sinon l'app. Base absente → mode démonstration.
+// invitation → Non invité ; sinon l'app. Base absente → mode démo EXPLICITE.
 // Navigation : barre en bas (Dossiers · Planning · Équipe · Compte) sur les
 // écrans racine ; les écrans d'un dossier reviennent au Dossier (hub).
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { sessionCourante, configPresente, deconnecter } from "./lib/supabase.js";
+import { sessionCourante, configPresente, demoExplicite, deconnecter } from "./lib/supabase.js";
 import { modeDonnees, reclamerInvitation, monProfil } from "./lib/adaptateur.js";
 import { C, Icone, gardeModifs, Confirmation } from "./lib/theme.jsx";
 import Connexion from "./ecrans/Connexion.jsx";
@@ -41,6 +41,26 @@ function BandeauDemo({ versDiagnostic }) {
       <button onClick={versDiagnostic} style={{ background: "none", border: "none",
         color: "#fff", textDecoration: "underline", cursor: "pointer",
         fontSize: 12, fontWeight: 700 }}>Diagnostic</button>
+    </div>
+  );
+}
+
+function ConfigManquante() {
+  return (
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "#F1F5FB" }}>
+      <div style={{
+        maxWidth: 520, width: "100%", background: "#fff", borderRadius: 16, padding: 18,
+        border: "1px solid #FECACA", boxShadow: "0 8px 30px rgba(15,23,42,.08)",
+        fontFamily: "system-ui, sans-serif",
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "#991B1B", marginBottom: 8 }}>
+          Configuration Supabase manquante
+        </div>
+        <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.55 }}>
+          Définissez <code>VITE_SUPABASE_URL</code> et <code>VITE_SUPABASE_ANON_KEY</code> sur l’environnement
+          de déploiement. Le mode démonstration n’est activé que si <code>VITE_DEMO_MODE=1</code>.
+        </div>
+      </div>
     </div>
   );
 }
@@ -354,6 +374,9 @@ function App() {
   }, []);
 
   if (!charge) return null;
+  if (!configPresente && !demoExplicite) {
+    return <ConfigManquante />;
+  }
   if (configPresente && !session) {
     return <Connexion onConnecte={() => window.location.reload()} />;
   }

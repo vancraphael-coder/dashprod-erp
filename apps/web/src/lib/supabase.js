@@ -10,9 +10,12 @@ import { configPresente as calcConfigPresente, interpreterEtatConnexion } from "
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const demoMode = String(import.meta.env.VITE_DEMO_MODE || "").toLowerCase();
 
 /** Vrai si les deux variables d'environnement sont fournies. */
 export const configPresente = calcConfigPresente(url, anon);
+/** Vrai si le mode démo est explicitement activé par variable d'environnement. */
+export const demoExplicite = ["1", "true", "yes", "on"].includes(demoMode);
 
 /**
  * Client Supabase, ou null si non configuré. On ne crée le client qu'avec des
