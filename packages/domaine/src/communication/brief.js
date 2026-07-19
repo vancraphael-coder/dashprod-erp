@@ -39,13 +39,16 @@ function ligneAdresse(a) {
  * @param {{nom: string, quantite?: number, demont?: boolean}[]} [p.inventaire]
  * @param {string} [p.remarques]
  * @param {string} [p.iban]
- * @param {string} [p.signature]  ex. « Raphaël — 0455/17.16.79 »
+ * @param {string} [p.organisation] nom de l'entreprise (en-tête du brief)
+ * @param {string} [p.signature]  ex. « Prénom — 00 000 00 00 »
  * @param {number} [p.maxArticles=6]
  * @returns {string}
  */
 export function briefMission(p) {
   const l = [];
-  l.push("🚛 *DÉMÉNAGEMENTS ROOVERS*");
+  // Nom de l'entreprise fourni par l'appelant : jamais une constante, sinon
+  // tous les tenants envoient le brief au nom d'une autre société.
+  l.push(`🚛 *${(p.organisation || "").toUpperCase()}*`.replace("**", "*"));
   l.push(`📅 ${dateLongue(p.date)}${p.heure ? ` — ${p.heure}` : ""}`);
 
   if (p.camions?.length) l.push(`🚚 ${p.camions.map((c) => c.nom).join(", ")}`);
@@ -87,8 +90,8 @@ export function urlWhatsApp(texte) {
   return `https://wa.me/?text=${encodeURIComponent(texte)}`;
 }
 
-/** Dépôt Roovers — point de départ et de retour de tout trajet (siège). */
-export const DEPOT_ROOVERS = "Rue de l'Avenir 9, 1370 Jodoigne";
+// Le dépôt est propre à chaque entreprise : il vient de organisations.adresse,
+// jamais d'une constante. Aucune valeur par défaut (AUDIT_REAL.md §5).
 
 /**
  * URL Google Maps multi-arrêts. Le trajet part TOUJOURS du dépôt et y revient
@@ -97,10 +100,12 @@ export const DEPOT_ROOVERS = "Rue de l'Avenir 9, 1370 Jodoigne";
  * retour compris. Zéro API payante.
  * @param {{adresse: string, code_postal?: string, ville?: string}[]} charges
  * @param {{adresse: string, code_postal?: string, ville?: string}[]} decharges
- * @param {string} [depot] adresse de départ/retour (défaut : dépôt Roovers)
+ * @param {string} [depot] adresse de départ/retour du tenant. Si absente, le
+ *   trajet ne couvre que les chantiers (le km dépôt→chantier→dépôt n'est alors
+ *   PAS compté : passer l'adresse de l'organisation pour un km facturable juste).
  * @returns {string|null} null si aucune adresse de chantier
  */
-export function urlItineraire(charges, decharges, depot = DEPOT_ROOVERS) {
+export function urlItineraire(charges, decharges, depot = null) {
   // Compose « rue, CP ville » quand les champs séparés existent.
   const composer = (a) => [a.adresse, [a.code_postal, a.ville].filter(Boolean).join(" ")]
     .filter(Boolean).join(", ");
@@ -173,7 +178,7 @@ export function emailOffre(p) {
   const validite = p.validiteJours ?? T.validite_jours ?? 10;
   const vars = {
     famille, client: p.client?.nom || "",
-    organisation: org.nom || "Déménagements Roovers", validite,
+    organisation: org.nom || "", validite,
   };
 
   const l = [];

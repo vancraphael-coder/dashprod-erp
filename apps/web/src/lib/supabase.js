@@ -11,6 +11,20 @@ import { configPresente as calcConfigPresente, interpreterEtatConnexion } from "
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anon = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+/**
+ * Le mode démo doit être DEMANDÉ, jamais subi. Sans ce drapeau, une
+ * configuration Supabase absente est une erreur fatale : on refuse de servir
+ * une application qui aurait l'air de marcher avec des données localStorage.
+ */
+export const demoAutorisee = import.meta.env.VITE_MODE_DEMO === "1";
+
+if (!calcConfigPresente(url, anon) && !demoAutorisee) {
+  throw new Error(
+    "Configuration Supabase absente (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). " +
+    "Le mode démo doit être demandé explicitement via VITE_MODE_DEMO=1."
+  );
+}
+
 /** Vrai si les deux variables d'environnement sont fournies. */
 export const configPresente = calcConfigPresente(url, anon);
 

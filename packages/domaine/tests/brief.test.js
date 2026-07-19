@@ -19,19 +19,21 @@ const BASE = {
     { nom: "Canapé", quantite: 1 },
   ],
   remarques: "Rue étroite",
-  iban: "BE73 3101 6268 5860",
-  signature: "Raphaël — 0455/17.16.79",
+  organisation: "Déménagements Test",
+  iban: "BE00 0000 0000 0000",
+  signature: "Prénom — 00 000 00 00",
 };
 
 test("briefMission : format complet du modèle", () => {
   const b = briefMission(BASE);
-  assert.match(b, /DÉMÉNAGEMENTS ROOVERS/);
+  // L'en-tête reprend l'organisation passée en paramètre, jamais une constante.
+  assert.match(b, /DÉMÉNAGEMENTS TEST/);
   assert.match(b, /vendredi 17 juillet — 08:00/);
   assert.match(b, /Marco \(chef\), Yassine/);
   assert.match(b, /Rue A 1, Wavre \(étage 2, ascenseur\)/);
   assert.match(b, /1× Armoire 3p \(démontage\)/);
-  assert.match(b, /Virement BE73/);
-  assert.match(b, /Raphaël — 0455/);
+  assert.match(b, /Virement BE00/);
+  assert.match(b, /Prénom — 00/);
 });
 
 test("briefMission : adresses multiples numérotées, articles tronqués à 6", () => {
@@ -53,11 +55,13 @@ test("briefMission : les blocs absents ne laissent pas de ligne vide", () => {
 });
 
 test("urlItineraire : part du dépôt, passe par les chantiers, revient au dépôt", () => {
+  const DEPOT = "Rue de Test 1, 1000 Bruxelles";
   const u = urlItineraire(
     [{ adresse: "A" }, { adresse: "B" }],
-    [{ adresse: "C" }]
+    [{ adresse: "C" }],
+    DEPOT
   );
-  // Départ et retour = dépôt Roovers ; A, B, C sont des waypoints ordonnés.
+  // Départ et retour = dépôt du tenant ; A, B, C sont des waypoints ordonnés.
   assert.match(u, /origin=Rue/);
   assert.match(u, /destination=Rue/);
   assert.match(u, /waypoints=A\|B\|C/);
@@ -140,4 +144,13 @@ test("emailOffre : un modèle partiel ne casse pas le reste", () => {
   assert.ok(m.corps.startsWith("Salut X !"));
   assert.ok(m.corps.includes("Bien à vous,"));      // défaut conservé
   assert.ok(m.corps.includes("Kilométrage offert")); // défaut conservé
+});
+
+test("brief : aucune identité d'entreprise codée en dur", () => {
+  // Garde-fou multi-tenant : sans paramètre organisation, le brief ne doit
+  // nommer AUCUNE entreprise (AUDIT_REAL.md §5).
+  const b = briefMission({ date: "2026-07-17" });
+  assert.doesNotMatch(b, /ROOVERS/i);
+  assert.equal(urlItineraire([{ adresse: "A" }], [{ adresse: "B" }])
+    .includes("Jodoigne"), false);
 });

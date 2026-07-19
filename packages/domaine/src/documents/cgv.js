@@ -27,10 +27,18 @@ const CGV_V1 = Object.freeze([
   "7. Droit applicable. Le présent contrat est régi par le droit belge ; tout litige relève des tribunaux compétents de l'arrondissement du siège. TVA 21 % applicable.",
 ]);
 
-const VERSIONS = Object.freeze({ 1: CGV_V1 });
+// v2 — identique à la v1, sauf l'article 4 qui nommait une entreprise en dur.
+// La v1 N'EST PAS modifiée : les documents déjà signés gardent leur empreinte
+// (C-02). Toute correction de texte = nouvelle version, jamais un UPDATE.
+const CGV_V2 = Object.freeze(
+  CGV_V1.map((a) => a.startsWith("4.")
+    ? "4. Responsabilité & assurance. L'entreprise est assurée pour les dommages causés par sa faute lors de la manutention. Les objets de valeur, documents, espèces et biens fragiles non signalés restent sous la garde du client."
+    : a));
+
+const VERSIONS = Object.freeze({ 1: CGV_V1, 2: CGV_V2 });
 
 /** Version des CGV appliquée aux NOUVELLES offres. */
-export const CGV_VERSION_COURANTE = 1;
+export const CGV_VERSION_COURANTE = 2;
 
 /**
  * Renvoie les articles des CGV d'une version donnée.

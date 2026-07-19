@@ -53,7 +53,14 @@ export async function pdfOffre(contenu, numero) {
   };
 
   // ── En-tête : l'entreprise ────────────────────────────────────────────────
-  ligne(org.nom || "Déménagements Roovers", { taille: 17, gras: true, saut: 6 });
+  // Aucun repli : mieux vaut refuser de produire un devis que d'en envoyer un
+  // à l'en-tête d'une autre entreprise (AUDIT_REAL.md §5.2).
+  if (!org?.nom) {
+    throw new Error(
+      "Identité de l'entreprise incomplète : renseignez le nom dans les " +
+      "paramètres avant de générer un document.");
+  }
+  ligne(org.nom, { taille: 17, gras: true, saut: 6 });
   const adresse = [org.adresse, [org.cp, org.ville].filter(Boolean).join(" ")]
     .filter(Boolean).join(" · ");
   if (adresse) ligne(adresse, { taille: 9, couleur: [100, 116, 139], saut: 4 });

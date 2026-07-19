@@ -284,8 +284,9 @@ export async function inviterMembre({ email, nom, roleCle }) {
   const lien = window.location.origin;
   let envoye = false;
   try {
+    const org = await obtenirOrganisation();
     const { error: e3 } = await supabase.functions.invoke("inviter-membre", {
-      body: { email, nom, lien, organisation: "Déménagements Roovers" },
+      body: { email, nom, lien, organisation: org?.nom },
     });
     envoye = !e3;
   } catch { envoye = false; }
@@ -747,20 +748,27 @@ export async function sauverContact(affaireId, { charges, decharges, date, heure
 
 // ── Organisation (paramètres d'en-tête des documents) ─────────────────────────
 
+// Identité NEUTRE. Aucune donnée d'une entreprise réelle ne doit figurer ici :
+// ce bloc sert de repli en mode démo et finirait sinon sur les documents d'un
+// autre tenant (AUDIT_REAL.md §5).
 const ORG_DEMO = {
-  nom: "Déménagements Roovers", bce: "BE 0478.363.616", tva: "BE0478363616",
-  adresse: "Rue de l'Avenir 9", cp: "1370", ville: "Jodoigne",
-  tel: "0455/17.16.79", email: "raphael.roovers@gmail.com",
-  iban: "BE73 3101 6268 5860",
+  nom: "Entreprise de démonstration", bce: "BE 0000.000.000", tva: "BE0000000000",
+  adresse: "Rue de la Démonstration 1", cp: "1000", ville: "Bruxelles",
+  tel: "00 000 00 00", email: "demo@exemple.be",
+  iban: "BE00 0000 0000 0000",
 };
 
 /** Paramètres de l'organisation courante (identité imprimée sur les documents). */
 export async function obtenirOrganisation() {
   if (modeDonnees() === "reel") {
+    // .single() : la RLS ne doit renvoyer QUE l'organisation du jeton. Si elle
+    // en renvoie 0 ou plusieurs, c'est une anomalie de sécurité — on veut une
+    // erreur franche, pas un repli silencieux sur une identité arbitraire.
     const { data, error } = await supabase.from("organisations")
-      .select("nom, tva, bce, adresse, cp, ville, tel, email, iban").limit(1).maybeSingle();
-    if (error) throw error;
-    return data || {};
+      .select("id, nom, tva, bce, adresse, cp, ville, tel, email, iban").single();
+    if (error) throw new Error(
+      "Organisation introuvable pour cette session. Contactez votre administrateur.");
+    return data;
   }
   return ORG_DEMO;
 }
@@ -1811,19 +1819,38 @@ export async function sauverTextes(textes) {
 
 export const FICHIER_CBD = "conditions-cbd.pdf";
 
-/** URL publique du PDF des conditions C.B.D., ou null s'il n'est pas déposé. */
-export async function urlConditionsCbd() {
-  if (modeDonnees() !== "reel") return null;
-  const { data, error } = await supabase.storage.from("documents")
-    .list("", { search: FICHIER_CBD });
-  if (error || !(data || []).some((f) => f.name === FICHIER_CBD)) return null;
-  return supabase.storage.from("documents").getPublicUrl(FICHIER_CBD).data.publicUrl;
+/**
+ * Chemin cloisonné par organisation : org/{org_id}/cgv/{fichier}.
+ * Le premier segment porte l'isolation, les policies Storage comparent
+ * (storage.foldername(name))[2] à jwt_org().
+ */
+async function cheminCbd() {
+  const org = await obtenirOrganisation();
+  if (!org?.id) throw new Error("Organisation inconnue : dépôt impossible.");
+  return `org/${org.id}/cgv/${FICHIER_CBD}`;
 }
 
-/** Dépose (ou remplace) le PDF des conditions C.B.D. */
+/**
+ * URL SIGNÉE et temporaire du PDF des conditions C.B.D., ou null.
+ * Le bucket est privé : getPublicUrl produirait une URL permanente et
+ * non révocable sur un document contractuel (DATA_SECURITY.md §3).
+ */
+export async function urlConditionsCbd() {
+  if (modeDonnees() !== "reel") return null;
+  try {
+    const chemin = await cheminCbd();
+    const { data, error } = await supabase.storage.from("documents")
+      .createSignedUrl(chemin, 300);
+    if (error) return null;
+    return data?.signedUrl ?? null;
+  } catch { return null; }
+}
+
+/** Dépose (ou remplace) le PDF des conditions C.B.D. de l'organisation. */
 export async function televerserConditionsCbd(fichier) {
   if (modeDonnees() !== "reel") throw new Error("Dépôt indisponible en démo");
+  const chemin = await cheminCbd();
   const { error } = await supabase.storage.from("documents")
-    .upload(FICHIER_CBD, fichier, { upsert: true, contentType: "application/pdf" });
+    .upload(chemin, fichier, { upsert: true, contentType: "application/pdf" });
   if (error) throw error;
 }

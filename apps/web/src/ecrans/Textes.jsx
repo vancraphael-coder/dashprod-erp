@@ -22,7 +22,7 @@ import { C, S } from "../lib/theme.jsx";
 const EXEMPLE = {
   client: { nom: "Marie Dupont", email: "marie.dupont@exemple.be" },
   tvacCentimes: 94380, heures: 6, nbDemenageurs: 3, formule: "tarifaire",
-  charges: [{ adresse: "Rue de l'Avenir 9, 1370 Jodoigne" }],
+  charges: [{ adresse: "Rue de l'Exemple 1, 1000 Bruxelles" }],
   decharges: [{ adresse: "Avenue Louise 12, 1050 Bruxelles" }],
   date: "2026-09-14", heure: "08:00",
 };
