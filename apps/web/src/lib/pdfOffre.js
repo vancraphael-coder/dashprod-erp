@@ -7,6 +7,9 @@
 // que l'instance gelée : un seul chiffrage, trois rendus.
 // =============================================================================
 
+import { obtenirTextes } from "./adaptateur.js";
+import { TEXTES_PDF_DEFAUT, textesEffectifs } from "@domaine/communication/textes.js";
+
 const A4 = { largeur: 210, hauteur: 297 };
 const MARGE = 16;
 
@@ -28,8 +31,14 @@ function dateLongue(iso) {
  * @param {object} contenu  sortie de composerOffre()
  * @param {string} numero   référence affichée (facultatif)
  */
-export async function pdfOffre(contenu, numero) {
+export async function pdfOffre(contenu, numero, textesPdf) {
   const { jsPDF } = await import("jspdf");
+  let T = TEXTES_PDF_DEFAUT;
+  if (textesPdf) T = { ...TEXTES_PDF_DEFAUT, ...textesPdf };
+  else {
+    try { T = textesEffectifs(await obtenirTextes(), "pdf"); }
+    catch { T = TEXTES_PDF_DEFAUT; }
+  }
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const org = contenu.organisation || {};
   let y = MARGE;
@@ -69,21 +78,21 @@ export async function pdfOffre(contenu, numero) {
   if (org.tva) ligne(`TVA ${org.tva}`, { taille: 9, couleur: [100, 116, 139], saut: 4 });
 
   y += 4;
-  ligne("OFFRE DE PRIX", { taille: 13, gras: true, couleur: [37, 99, 235], saut: 5 });
+  ligne(T.titre, { taille: 13, gras: true, couleur: [37, 99, 235], saut: 5 });
   const emis = contenu.emis_le ? new Date(contenu.emis_le).toLocaleDateString("fr-BE") : "";
   ligne([numero ? `Référence ${numero}` : "", emis ? `Établie le ${emis}` : ""]
     .filter(Boolean).join(" · "), { taille: 9, couleur: [100, 116, 139], saut: 7 });
   filet();
 
   // ── Client ────────────────────────────────────────────────────────────────
-  ligne("CLIENT", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+  ligne(T.bloc_client, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
   ligne(contenu.client?.nom || "—", { taille: 11, gras: true, saut: 5 });
   const cli = [contenu.client?.tel, contenu.client?.email].filter(Boolean).join(" · ");
   if (cli) ligne(cli, { taille: 9, couleur: [100, 116, 139], saut: 5 });
   y += 2;
 
   // ── Prestation ────────────────────────────────────────────────────────────
-  ligne("PRESTATION", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+  ligne(T.bloc_prestation, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
   if (contenu.date_dem) {
     ligne(`Date : ${dateLongue(contenu.date_dem)}${
       contenu.heure_dem ? ` — arrivée ${String(contenu.heure_dem).slice(0, 5)}` : ""}`,
@@ -94,12 +103,12 @@ export async function pdfOffre(contenu, numero) {
   if (adr(contenu.decharges)) ligne(`Déchargement : ${adr(contenu.decharges)}`, { saut: 5 });
   if (contenu.volume_m3) ligne(`Volume estimé : ${contenu.volume_m3} m³`, { saut: 5 });
   if (contenu.formule === "forfait") {
-    ligne("Formule : forfait", { saut: 5 });
+    ligne(T.formule_forfait, { saut: 5 });
   } else if (contenu.nb_demenageurs) {
     ligne(`Équipe : ${contenu.nb_demenageurs} déménageurs${
       contenu.heures ? ` — ${contenu.heures} h estimées` : ""}`, { saut: 5 });
   }
-  if (contenu.elevateur) ligne("Élévateur / lift inclus", { saut: 5 });
+  if (contenu.elevateur) ligne(T.elevateur, { saut: 5 });
   if ((contenu.a_demonter || []).length) {
     ligne(`À démonter : ${contenu.a_demonter.map((x) => x.nom || x).join(", ")}`, { saut: 5 });
   }
@@ -107,7 +116,7 @@ export async function pdfOffre(contenu, numero) {
   filet();
 
   // ── Montants ──────────────────────────────────────────────────────────────
-  ligne("MONTANT", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 6 });
+  ligne(T.bloc_montant, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 6 });
   const montant = (lib, val, gras = false) => {
     doc.setFont("helvetica", gras ? "bold" : "normal");
     doc.setFontSize(gras ? 12 : 10);
@@ -116,18 +125,18 @@ export async function pdfOffre(contenu, numero) {
     droite(val, { taille: gras ? 12 : 10, gras });
     y += gras ? 7 : 5.5;
   };
-  montant("Total HTVA", euros(contenu.htva_centimes));
-  montant("TVA 21 %", euros(contenu.tva_centimes));
+  montant(T.total_htva, euros(contenu.htva_centimes));
+  montant(T.tva, euros(contenu.tva_centimes));
   if (contenu.reduction) {
     montant(`Réduction ${contenu.reduction.pct} % (${
       contenu.reduction.motif === "degats" ? "dégâts" : "promotion"})`, "");
   }
   y += 1;
-  montant("TOTAL TVAC", euros(contenu.tvac_centimes), true);
+  montant(T.total_tvac, euros(contenu.tvac_centimes), true);
 
   if (contenu.remarques) {
     y += 3;
-    ligne("Remarques", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+    ligne(T.bloc_remarques, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
     doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
     const lignes = doc.splitTextToSize(String(contenu.remarques), A4.largeur - 2 * MARGE);
@@ -142,9 +151,8 @@ export async function pdfOffre(contenu, numero) {
   doc.setFont("helvetica", "normal"); doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
   doc.text(
-    "Prestation soumise aux conditions générales de la Chambre Belge des Déménageurs"
-    + (contenu.cgv_version ? ` (version ${contenu.cgv_version})` : "")
-    + ", jointes à cette offre.",
+    T.pied_conditions
+    + (contenu.cgv_version ? ` (version ${contenu.cgv_version})` : ""),
     MARGE, yPied + 5,
   );
   if (org.iban) doc.text(`IBAN ${org.iban}`, MARGE, yPied + 9.5);

@@ -156,7 +156,7 @@ export const TEXTES_OFFRE_DEFAUT = Object.freeze({
   validite: "Offre valable {validite} jours ouvrables.",
   validite_jours: 10,
   formule_politesse: "Bien à vous,",
-  signataire: "Raphaël Van Cutsem",
+  signataire: "{organisation}",
   pied: "",
 });
 

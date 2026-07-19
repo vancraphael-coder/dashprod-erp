@@ -21,7 +21,7 @@ import TerrainProfil from "./ecrans/TerrainProfil.jsx";
 import Bareme from "./ecrans/Bareme.jsx";
 import Cout from "./ecrans/Cout.jsx";
 import Archivage from "./ecrans/Archivage.jsx";
-import Textes from "./ecrans/Textes.jsx";
+import TextesDossiers from "./ecrans/TextesDossiers.jsx";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
 import Devis from "./ecrans/Devis.jsx";
@@ -113,7 +113,7 @@ function Compte({ profil, versDiagnostic, versBareme, versCout, versArchivage, v
             textTransform: "uppercase", margin: "18px 2px 2px" }}>Réglages</div>
           {versBareme && boutonPage(versBareme, "🏷️", "Barème (prix client)")}
           {versCout && boutonPage(versCout, "📉", "Coûts internes")}
-          {versTextes && boutonPage(versTextes, "✉️", "Textes de l'offre")}
+          {versTextes && boutonPage(versTextes, "📝", "Modifications données texte dossiers")}
           {versArchivage && boutonPage(versArchivage, "🗂️", "Archivage")}
         </>
       )}
@@ -448,7 +448,7 @@ function App() {
   } else if (route.ecran === "archivage") {
     ecran = <Archivage retour={() => nav.compte()} />;
   } else if (route.ecran === "textes") {
-    ecran = <Textes retour={() => nav.compte()} />;
+    ecran = <TextesDossiers retour={() => nav.compte()} />;
   } else if (route.ecran === "materiel") {
     ecran = <Materiel affaireId={route.affaireId} retour={retourDossier} />;
   } else if (route.ecran === "mail") {

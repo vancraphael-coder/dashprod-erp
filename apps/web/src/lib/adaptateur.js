@@ -1381,10 +1381,13 @@ const PARAMS_PRIX_DEMO = {
 /** Paramètres de prix de l'organisation (barème client + coûts internes). */
 export async function obtenirParametresPrix() {
   if (modeDonnees() === "reel") {
+    // .single() : la RLS ne doit renvoyer QUE l'organisation du jeton.
+    // Aucun repli sur les prix de démonstration en mode réel — facturer au
+    // mauvais barème coûte plus cher qu'une erreur affichée.
     const { data, error } = await supabase.from("organisations")
-      .select("parametres_prix").limit(1).maybeSingle();
-    if (error) throw error;
-    return data?.parametres_prix || PARAMS_PRIX_DEMO;
+      .select("parametres_prix").single();
+    if (error) throw new Error("Organisation introuvable pour cette session. Contactez votre administrateur.");
+    return data?.parametres_prix || {};
   }
   const d = lireDemo();
   return d.parametresPrix || PARAMS_PRIX_DEMO;
@@ -1394,8 +1397,8 @@ export async function obtenirParametresPrix() {
 export async function sauverParametresPrix(params) {
   if (modeDonnees() === "reel") {
     const { data: org, error: e1 } = await supabase.from("organisations")
-      .select("id").limit(1).maybeSingle();
-    if (e1) throw e1;
+      .select("id").single();
+    if (e1) throw new Error("Organisation introuvable pour cette session.");
     const { error } = await supabase.from("organisations")
       .update({ parametres_prix: params }).eq("id", org.id);
     if (error) throw error;
@@ -1789,7 +1792,7 @@ export async function cloreAffaire(affaireId) {
 export async function obtenirTextes() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("organisations")
-      .select("parametres_textes").limit(1).single();
+      .select("parametres_textes").single();
     if (error) throw error;
     return data?.parametres_textes || {};
   }
@@ -1800,7 +1803,7 @@ export async function obtenirTextes() {
 export async function sauverTextes(textes) {
   if (modeDonnees() === "reel") {
     const { data, error: e1 } = await supabase.from("organisations")
-      .select("id").limit(1).single();
+      .select("id").single();
     if (e1) throw e1;
     const { error } = await supabase.from("organisations")
       .update({ parametres_textes: textes }).eq("id", data.id);
