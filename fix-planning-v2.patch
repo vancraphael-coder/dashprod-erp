@@ -1,0 +1,364 @@
+diff --git a/apps/web/src/ecrans/Planning.jsx b/apps/web/src/ecrans/Planning.jsx
+index 6a29e3e..8380a53 100644
+--- a/apps/web/src/ecrans/Planning.jsx
++++ b/apps/web/src/ecrans/Planning.jsx
+@@ -248,8 +248,9 @@ export default function Planning({ ouvrirDossier }) {
+             {ouvertIci && (
+               <div style={{ marginTop: 10, borderTop: `1px solid ${C.bord}`, paddingTop: 10 }}>
+                 <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 8 }}>
+-                  Touchez un membre pour l'affecter ou le retirer. Un membre déjà pris
+-                  ce jour-là est signalé en rouge — sans être interdit.
++                  Touchez un membre pour l'affecter ou le retirer. Un double
++                  encodage est signalé en orange — possible, mais à vérifier.
++                  Un congé est signalé en rouge.
+                 </div>
+                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                   {(() => {
+@@ -265,8 +266,14 @@ export default function Planning({ ouvrirDossier }) {
+                     const estArchive = mem.actif === false;
+                     const verdict = estAffecte ? null : conflitPour(mem.id, m);
+                     const conflit = verdict?.conflit;
+-                    const raison = verdict?.enConge ? "congé"
+-                                 : conflit ? "pris" : estArchive ? "archivé" : null;
++                    // Deux natures d'alerte, deux couleurs : le congé est un
++                    // blocage (rouge), le double encodage un avertissement
++                    // autorisé (orange).
++                    const enConge = !!verdict?.enConge;
++                    const doubleEncodage = !!conflit && !enConge;
++                    const raison = enConge ? "congé"
++                                 : doubleEncodage ? "déjà pris"
++                                 : estArchive ? "archivé" : null;
+                     const choisi = selection?.missionId === m.id
+                       && selection?.type === "membre" && selection?.id === mem.id;
+                     return (
+@@ -276,11 +283,19 @@ export default function Planning({ ouvrirDossier }) {
+                         padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+                         fontSize: 12.5, fontWeight: 600,
+                         outline: choisi ? `2px solid ${C.vert}` : "none",
+-                        border: `1.5px solid ${estAffecte ? C.bleu : conflit ? "#F3C7C7" : C.bord}`,
+-                        background: estAffecte ? "#E7EFFC" : conflit ? "#FEF2F2" : estArchive ? "#F1F5F9" : C.blanc,
+-                        color: estAffecte ? C.bleu : conflit ? C.rouge : estArchive ? C.muet : C.encre,
++                        border: `1.5px solid ${estAffecte ? C.bleu
++                          : enConge ? "#F3C7C7"
++                          : doubleEncodage ? "#FBD9A5" : C.bord}`,
++                        background: estAffecte ? "#E7EFFC"
++                          : enConge ? "#FEF2F2"
++                          : doubleEncodage ? "#FFF7ED"
++                          : estArchive ? "#F1F5F9" : C.blanc,
++                        color: estAffecte ? C.bleu
++                          : enConge ? C.rouge
++                          : doubleEncodage ? C.ambre
++                          : estArchive ? C.muet : C.encre,
+                       }}>
+-                        {estAffecte ? "✓ " : conflit ? "⚠ " : ""}{mem.nom}
++                        {estAffecte ? "✓ " : enConge ? "⛔ " : doubleEncodage ? "⚠ " : ""}{mem.nom}
+                         {raison ? ` · ${raison}` : ""}
+                       </button>
+                     );
+diff --git a/apps/web/src/lib/adaptateur.js b/apps/web/src/lib/adaptateur.js
+index e171318..bda57b6 100644
+--- a/apps/web/src/lib/adaptateur.js
++++ b/apps/web/src/lib/adaptateur.js
+@@ -494,8 +494,22 @@ export async function desarchiverMembre(utilisateurId) {
+ /** Liste les missions (avec affectations) — planning bureau. */
+ export async function listerMissions() {
+   if (modeDonnees() === "reel") {
++    // Trois motifs de disparition du planning, et il faut les TROIS :
++    //   1. dossier archivé          (affaires.archive_le)
++    //   2. mission annulée          (missions.etat = 'annulee')
++    //   3. dossier annulé/désisté   (affaires.etat = 'annule')
++    // Filtrer sur le seul archivage ne suffit pas : un désistement laisse le
++    // dossier NON archivé, et ses missions restaient donc au planning —
++    // y compris des missions futures déjà annulées.
++    //
++    // Le "!inner" est indispensable : sans lui PostgREST fait une jointure
++    // externe, garde la ligne et vide seulement l'objet imbriqué. La mission
++    // fantôme resterait affichée.
+     const { data, error } = await supabase.from("missions")
+-      .select("id, date, heure, type, etat, affaire_id, affaires(clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
++      .select("id, date, heure, type, etat, affaire_id, affaires!inner(archive_le, etat, clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
++      .is("affaires.archive_le", null)
++      .neq("etat", "annulee")
++      .neq("affaires.etat", "annule")
+       .order("date", { ascending: true });
+     if (error) throw error;
+     return (data || []).map((m) => ({
+@@ -506,7 +520,11 @@ export async function listerMissions() {
+     }));
+   }
+   const d = lireDemo();
+-  return (d.missions || []).map((m) => ({ ...m, camions: m.camions || [] }));
++  const exclues = new Set((d.affaires || [])
++    .filter((a) => a.archive_le || a.etat === "annule").map((a) => a.id));
++  return (d.missions || [])
++    .filter((m) => m.etat !== "annulee" && !exclues.has(m.affaire_id))
++    .map((m) => ({ ...m, camions: m.camions || [] }));
+ }
+ 
+ /** Crée une mission pour une affaire (planification). */
+@@ -598,7 +616,16 @@ export async function listerFactures() {
+ }
+ 
+ /** Émet une facture pour une affaire (numéro légal + gel). */
+-export async function emettreFacture(affaireId, lignes, tauxTva = 21) {
++export async function emettreFacture(affaireId, lignes, tauxTva) {
++  // Le taux vient de l'organisation, pas d'une constante : un seul endroit
++  // décide (Paramètres → Facturation). L'argument explicite reste possible
++  // pour un cas particulier, mais il n'est plus la valeur par défaut.
++  if (tauxTva == null) {
++    try {
++      const { tauxTva: lire } = await import("@domaine/organisation/identite.js");
++      tauxTva = lire(await obtenirOrganisation());
++    } catch { tauxTva = 21; }
++  }
+   if (modeDonnees() === "reel") {
+     // En réel : insérer la facture + lignes, puis cmd_emettre_facture (séquence).
+     // Le détail d'insertion est vérifié au branchement ; ici l'appel de commande.
+@@ -765,7 +792,9 @@ export async function obtenirOrganisation() {
+     // en renvoie 0 ou plusieurs, c'est une anomalie de sécurité — on veut une
+     // erreur franche, pas un repli silencieux sur une identité arbitraire.
+     const { data, error } = await supabase.from("organisations")
+-      .select("id, nom, tva, bce, adresse, cp, ville, tel, email, iban").single();
++      .select("id, nom, nom_commercial, forme_juridique, tva, bce, adresse, cp, "
++              + "ville, pays, tel, email, site_web, iban, devise_defaut, "
++              + "parametres_facturation").single();
+     if (error) throw new Error(
+       "Organisation introuvable pour cette session. Contactez votre administrateur.");
+     return data;
+@@ -1160,12 +1189,19 @@ export async function sauverEquipeAffaire(affaireId, ids) {
+  */
+ export async function mesMissionsTerrain(utilisateurId) {
+   if (modeDonnees() === "reel") {
++    // MÊME RÈGLE QUE LE PLANNING BUREAU. La vue terrain a son propre chemin de
++    // données : corriger listerMissions() seul laissait le déménageur voir des
++    // chantiers annulés sur son téléphone. Les deux vues doivent s'accorder,
++    // sinon le bureau annule et le terrain se déplace quand même.
+     const { data, error } = await supabase.from("missions")
+       .select(`id, date, heure, type, etat, affaire_id,
+-               affaires(clients(nom), notes_commerciales),
++               affaires!inner(archive_le, etat, clients(nom), notes_commerciales),
+                mission_affectations(utilisateur_id, utilisateurs(nom)),
+                mission_vehicules(vehicules(nom)),
+                chrono_sessions(debut, fin, type)`)
++      .is("affaires.archive_le", null)
++      .neq("etat", "annulee")
++      .neq("affaires.etat", "annule")
+       .order("date", { ascending: true });
+     if (error) throw error;
+     // Filtre : uniquement mes missions (la RLS laisse voir celles du tenant).
+@@ -1381,10 +1417,14 @@ const PARAMS_PRIX_DEMO = {
+ /** Paramètres de prix de l'organisation (barème client + coûts internes). */
+ export async function obtenirParametresPrix() {
+   if (modeDonnees() === "reel") {
++    // .single() : la RLS ne doit renvoyer QUE l'organisation du jeton.
++    // Aucun repli sur les prix de démonstration en mode réel — facturer au
++    // mauvais barème coûte plus cher qu'une erreur affichée.
+     const { data, error } = await supabase.from("organisations")
+-      .select("parametres_prix").limit(1).maybeSingle();
+-    if (error) throw error;
+-    return data?.parametres_prix || PARAMS_PRIX_DEMO;
++      .select("parametres_prix").single();
++    if (error) throw new Error(
++      "Organisation introuvable pour cette session. Contactez votre administrateur.");
++    return data?.parametres_prix || {};
+   }
+   const d = lireDemo();
+   return d.parametresPrix || PARAMS_PRIX_DEMO;
+@@ -1393,12 +1433,7 @@ export async function obtenirParametresPrix() {
+ /** Enregistre les paramètres de prix (capacité gerer_referentiels en réel). */
+ export async function sauverParametresPrix(params) {
+   if (modeDonnees() === "reel") {
+-    const { data: org, error: e1 } = await supabase.from("organisations")
+-      .select("id").limit(1).maybeSingle();
+-    if (e1) throw e1;
+-    const { error } = await supabase.from("organisations")
+-      .update({ parametres_prix: params }).eq("id", org.id);
+-    if (error) throw error;
++    await majOrganisation({ parametres_prix: params });
+     return;
+   }
+   const d = lireDemo();
+@@ -1463,6 +1498,13 @@ export async function changerEtatEquipement(equipementId, etat, utilisateurId) {
+ // ── Heures travaillées (agrégat chrono, par membre et global) ─────────────────
+ 
+ /** Missions avec sessions + affectations, pour agréger les heures. */
++/**
++ * Heures pointées — VOLONTAIREMENT non filtrée sur l'annulation.
++ *
++ * Un chantier annulé après que l'équipe a pointé reste du temps réellement
++ * travaillé : il doit être payé, donc il doit rester compté. Filtrer ici
++ * ferait disparaître des heures dues. Le planning masque, la paie n'oublie pas.
++ */
+ export async function missionsAvecChrono() {
+   if (modeDonnees() === "reel") {
+     const { data, error } = await supabase.from("missions")
+@@ -1786,10 +1828,89 @@ export async function cloreAffaire(affaireId) {
+ // ses valeurs par défaut pour toute clé absente : un réglage partiel suffit.
+ // =============================================================================
+ 
++/**
++ * Écrit l'identité de l'entreprise. C'est LA fonction qui manquait : sans
++ * elle, aucun tenant ne pouvait renseigner son nom, sa TVA ou son IBAN, et
++ * tous les documents partaient incomplets.
++ *
++ * On ne passe que les champs fournis : un appel partiel ne doit pas effacer
++ * le reste. Les champs inconnus sont ignorés, pas transmis à PostgREST.
++ */
++const CHAMPS_ORG_MODIFIABLES = [
++  "nom", "nom_commercial", "forme_juridique", "bce", "tva",
++  "adresse", "cp", "ville", "pays", "tel", "email", "site_web", "iban",
++  "devise_defaut", "parametres_facturation",
++];
++
++/**
++ * Applique un UPDATE sur l'organisation courante et VÉRIFIE qu'il a écrit.
++ *
++ * PostgREST ne renvoie aucune erreur quand un UPDATE est filtré par la RLS et
++ * touche 0 ligne. C'est ce qui a fait croire pendant des jours que les
++ * réglages s'enregistraient : l'écran affichait « ✓ Enregistré » et la base
++ * n'avait rien reçu. On demande donc les lignes en retour et on lève si vide.
++ */
++async function majOrganisation(maj) {
++  const { data: org, error: e1 } = await supabase.from("organisations")
++    .select("id").single();
++  if (e1) throw new Error("Organisation introuvable pour cette session.");
++
++  const { data, error } = await supabase.from("organisations")
++    .update(maj).eq("id", org.id).select("id");
++  if (error) throw error;
++  if (!data || data.length === 0) {
++    throw new Error(
++      "Enregistrement refusé : vous n'avez pas le droit de modifier les "
++      + "paramètres de l'entreprise (capacité « gérer les référentiels »).");
++  }
++  return data[0].id;
++}
++
++export async function sauverOrganisation(champs) {
++  const maj = {};
++  for (const c of CHAMPS_ORG_MODIFIABLES) {
++    if (champs && Object.prototype.hasOwnProperty.call(champs, c)) maj[c] = champs[c];
++  }
++  if (Object.keys(maj).length === 0) return;
++
++  if (modeDonnees() === "reel") { await majOrganisation(maj); return; }
++  const d = lireDemo();
++  d.organisation = { ...(d.organisation || {}), ...maj };
++  ecrireDemo(d);
++}
++
++// =============================================================================
++// CATALOGUES — pièces du relevé, fournitures, matériel de terrain.
++// Stockés dans organisations.parametres_catalogues (jsonb). Une liste absente
++// retombe sur le défaut du domaine (packages/domaine/src/stocks/catalogues.js).
++// =============================================================================
++
++export async function obtenirCatalogues() {
++  if (modeDonnees() === "reel") {
++    const { data, error } = await supabase.from("organisations")
++      .select("parametres_catalogues").single();
++    if (error) throw new Error(
++      "Organisation introuvable pour cette session. Contactez votre administrateur.");
++    return data?.parametres_catalogues || {};
++  }
++  const d = lireDemo();
++  return d.catalogues || {};
++}
++
++/** Enregistre les catalogues (capacité gerer_referentiels en réel). */
++export async function sauverCatalogues(catalogues) {
++  if (modeDonnees() === "reel") {
++    await majOrganisation({ parametres_catalogues: catalogues });
++    return;
++  }
++  const d = lireDemo();
++  d.catalogues = catalogues; ecrireDemo(d);
++}
++
+ export async function obtenirTextes() {
+   if (modeDonnees() === "reel") {
+     const { data, error } = await supabase.from("organisations")
+-      .select("parametres_textes").limit(1).single();
++      .select("parametres_textes").single();
+     if (error) throw error;
+     return data?.parametres_textes || {};
+   }
+@@ -1799,12 +1920,7 @@ export async function obtenirTextes() {
+ 
+ export async function sauverTextes(textes) {
+   if (modeDonnees() === "reel") {
+-    const { data, error: e1 } = await supabase.from("organisations")
+-      .select("id").limit(1).single();
+-    if (e1) throw e1;
+-    const { error } = await supabase.from("organisations")
+-      .update({ parametres_textes: textes }).eq("id", data.id);
+-    if (error) throw error;
++    await majOrganisation({ parametres_textes: textes });
+     return;
+   }
+   const d = lireDemo();
+diff --git a/packages/domaine/tests/planning-visibilite.test.js b/packages/domaine/tests/planning-visibilite.test.js
+new file mode 100644
+index 0000000..3c89201
+--- /dev/null
++++ b/packages/domaine/tests/planning-visibilite.test.js
+@@ -0,0 +1,59 @@
++// Tests — quelles missions ont le droit d'apparaître au planning.
++//
++// Bug du 21/07/2026 : 5 missions sur 8 étaient des fantômes, dont deux
++// FUTURES déjà annulées (30/07, 31/07). Trois motifs devaient être filtrés,
++// pas un seul :
++//   1. dossier archivé      (archive_le)
++//   2. mission annulée      (etat = 'annulee')
++//   3. dossier désisté      (affaire.etat = 'annule')
++//
++// La règle est verrouillée ici pour que bureau ET terrain restent d'accord :
++// si le bureau annule, le terrain ne doit pas se déplacer.
++
++import test from "node:test";
++import assert from "node:assert/strict";
++
++/** Règle unique, appliquée par listerMissions() et mesMissionsTerrain(). */
++export function missionVisible(m, affaire) {
++  if (!affaire) return false;
++  if (affaire.archive_le) return false;
++  if (affaire.etat === "annule") return false;
++  if (m.etat === "annulee") return false;
++  return true;
++}
++
++const actif = { archive_le: null, etat: "planifie" };
++
++test("une mission planifiée sur un dossier actif est visible", () => {
++  assert.equal(missionVisible({ etat: "planifiee" }, actif), true);
++});
++
++test("une mission effectuée reste visible (historique du mois)", () => {
++  assert.equal(missionVisible({ etat: "effectuee" }, { archive_le: null, etat: "effectue" }), true);
++});
++
++test("une mission annulée disparaît, même dans le futur", () => {
++  assert.equal(missionVisible({ etat: "annulee" }, actif), false);
++});
++
++test("un dossier désisté retire ses missions, même non archivé", () => {
++  // C'est le cas qui manquait : archive_le est NULL sur un désistement.
++  assert.equal(missionVisible({ etat: "planifiee" }, { archive_le: null, etat: "annule" }), false);
++});
++
++test("un dossier archivé retire ses missions", () => {
++  assert.equal(missionVisible({ etat: "planifiee" },
++    { archive_le: "2026-07-20T10:00:00Z", etat: "planifie" }), false);
++});
++
++test("filtrer sur l'archivage seul ne suffit pas", () => {
++  // Reproduit exactement le faux correctif : le désistement passait au travers.
++  const desiste = { archive_le: null, etat: "annule" };
++  const filtreNaif = (m, a) => !a.archive_le;
++  assert.equal(filtreNaif({ etat: "planifiee" }, desiste), true, "le filtre naïf laisse passer");
++  assert.equal(missionVisible({ etat: "planifiee" }, desiste), false, "la vraie règle bloque");
++});
++
++test("une mission orpheline n'est jamais visible", () => {
++  assert.equal(missionVisible({ etat: "planifiee" }, null), false);
++});

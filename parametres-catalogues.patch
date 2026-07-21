@@ -1,0 +1,2068 @@
+diff --git a/apps/web/src/ecrans/Materiel.jsx b/apps/web/src/ecrans/Materiel.jsx
+index edd44c0..bc9101f 100644
+--- a/apps/web/src/ecrans/Materiel.jsx
++++ b/apps/web/src/ecrans/Materiel.jsx
+@@ -14,6 +14,8 @@ import { obtenirAffaire, obtenirEmballage, sauverEmballage } from "../lib/adapta
+ import {
+   CATALOGUE_EMBALLAGE, resumeEmballage, fournituresOffre,
+ } from "@domaine/stocks/emballage.js";
++import { obtenirCatalogues } from "../lib/adaptateur.js";
++import { catalogue } from "@domaine/stocks/catalogues.js";
+ import { C, S } from "../lib/theme.jsx";
+ 
+ export default function Materiel({ affaireId, retour }) {
+@@ -22,11 +24,24 @@ export default function Materiel({ affaireId, retour }) {
+   const [sauve, setSauve] = useState(false);
+   const [erreur, setErreur] = useState(null);
+ 
++  const [cats, setCats] = useState({});
+   useEffect(() => {
+     obtenirAffaire(affaireId).then(setAffaire);
+     obtenirEmballage(affaireId).then((e) => setEmballage(e || {})).catch(() => {});
++    obtenirCatalogues().then(setCats).catch(() => {});
+   }, [affaireId]);
+ 
++  // Matériel de terrain emporté sur le chantier : diable, planche à roulettes,
++  // bandes à porter… Réglé dans Paramètres → Catalogues, stocké dans le même
++  // jsonb que l'emballage sous la clé "terrain" (aucune migration).
++  const materielTerrain = catalogue(cats, "materiel_terrain");
++  const terrain = emballage.terrain || {};
++  function majTerrain(cle, valeur) {
++    const n = Math.max(0, parseInt(valeur, 10) || 0);
++    setEmballage((e) => ({ ...e, terrain: { ...(e.terrain || {}), [cle]: n } }));
++    setSauve(false);
++  }
++
+   const resume = useMemo(() => resumeEmballage(emballage), [emballage]);
+   const fournitures = useMemo(() => fournituresOffre(emballage), [emballage]);
+ 
+@@ -111,6 +126,35 @@ export default function Materiel({ affaireId, retour }) {
+       </div>
+ 
+       {/* Ce qui partira sur l'offre */}
++      {/* Matériel de terrain — non facturé, mais à charger dans le camion. */}
++      {materielTerrain.length > 0 && (
++        <div style={S.carte}>
++          <label style={{ ...S.label, marginTop: 0 }}>Matériel de terrain</label>
++          {materielTerrain.map((a) => (
++            <div key={a.cle} style={{ display: "flex", alignItems: "center", gap: 10,
++                                      padding: "8px 0", borderTop: `1px solid ${C.doux}` }}>
++              <span style={{ flex: 1, minWidth: 0 }}>
++                <span style={{ display: "block", fontSize: 13.5, fontWeight: 600,
++                               color: C.encre }}>{a.nom}</span>
++                <span style={{ display: "block", fontSize: 11, color: C.fantome,
++                               marginTop: 2 }}>{a.unite}</span>
++              </span>
++              <button onClick={() => majTerrain(a.cle, (terrain[a.cle] || 0) - 1)}
++                      style={boutonQte}>−</button>
++              <input style={{ ...S.input, width: 58, textAlign: "center", padding: "8px 4px" }}
++                     type="number" min="0" value={terrain[a.cle] ?? 0}
++                     onChange={(e) => majTerrain(a.cle, e.target.value)} />
++              <button onClick={() => majTerrain(a.cle, (terrain[a.cle] || 0) + 1)}
++                      style={boutonQte}>+</button>
++            </div>
++          ))}
++          <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
++            Liste réglable dans Paramètres → Catalogues → Matériel de terrain.
++            Le coût de chaque article alimente les coûts internes.
++          </div>
++        </div>
++      )}
++
+       {fournitures.length > 0 && (
+         <div style={{ ...S.carte, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+           <div style={{ fontSize: 11, fontWeight: 700, color: "#1E40AF",
+@@ -133,3 +177,9 @@ export default function Materiel({ affaireId, retour }) {
+     </div>
+   );
+ }
++
++const boutonQte = {
++  width: 32, height: 32, borderRadius: 8, border: `1.5px solid ${C.bord}`,
++  background: C.blanc, color: C.encre, fontSize: 16, fontWeight: 700,
++  cursor: "pointer", lineHeight: 1, flexShrink: 0,
++};
+diff --git a/apps/web/src/ecrans/Parametres.jsx b/apps/web/src/ecrans/Parametres.jsx
+new file mode 100644
+index 0000000..f1c5b81
+--- /dev/null
++++ b/apps/web/src/ecrans/Parametres.jsx
+@@ -0,0 +1,307 @@
++// =============================================================================
++// Écran — Paramètres (Compte → Paramètres).
++//
++// Rassemble TOUS les réglages de l'entreprise, jusqu'ici éparpillés dans le
++// Compte. Le Compte redevient personnel ; ici on règle l'organisation.
++//
++//   Barème (prix client)      → écran Bareme
++//   Coûts internes            → écran Cout
++//   Catalogues                → sous-page interne (pièces, fournitures, matériel)
++//   Textes des dossiers       → écran TextesDossiers
++//   Archivage                 → écran Archivage
++//
++// Les catalogues sont persistés dans organisations.parametres_catalogues et
++// consommés par le Relevé (pièces) et le Matériel (fournitures + terrain).
++// Ajouter un article de matériel le fait apparaître dans les coûts internes,
++// sans double saisie.
++// =============================================================================
++
++import React, { useEffect, useMemo, useState } from "react";
++import { obtenirCatalogues, sauverCatalogues } from "../lib/adaptateur.js";
++import {
++  LISTES_CATALOGUE, CATALOGUES_DEFAUT, catalogue, estPersonnalise,
++  normaliserArticle, coutsMateriel,
++} from "@domaine/stocks/catalogues.js";
++import { C, S } from "../lib/theme.jsx";
++
++const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €";
++
++export default function Parametres({
++  retour, versBareme, versCout, versTextes, versArchivage,
++}) {
++  const [cats, setCats] = useState(null);
++  const [ouvert, setOuvert] = useState(null);
++  const [erreur, setErreur] = useState(null);
++
++  useEffect(() => {
++    obtenirCatalogues()
++      .then((c) => setCats(c || {}))
++      .catch((e) => { setErreur(e.message); setCats({}); });
++  }, []);
++
++  if (cats === null) return null;
++
++  if (ouvert) {
++    const liste = LISTES_CATALOGUE.find((l) => l.cle === ouvert);
++    return (
++      <EditeurListe liste={liste} cats={cats} onCats={setCats}
++                    retour={() => setOuvert(null)} />
++    );
++  }
++
++  const nbCouts = coutsMateriel(cats).length;
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        {retour && <button style={S.boutonLien} onClick={retour}>← Compte</button>}
++        <div style={S.titre}>Paramètres</div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
++          Réglages de l'entreprise. Ils s'appliquent à tous les dossiers.
++        </div>
++      </div>
++
++      <div style={{ padding: "0 16px 8px" }}>
++        <Rubrique>Tarification</Rubrique>
++        <Entree icone="🏷️" titre="Barème (prix client)"
++                resume="Prix horaires par équipe, forfaits, options."
++                onClick={versBareme} />
++        <Entree icone="📉" titre="Coûts internes"
++                resume={`Taux horaire, carburant${nbCouts ? ` · ${nbCouts} articles issus des catalogues` : ""}.`}
++                onClick={versCout} />
++
++        <Rubrique>Catalogues</Rubrique>
++        {LISTES_CATALOGUE.map((l) => (
++          <Entree key={l.cle} icone={l.icone} titre={l.titre} resume={l.resume}
++                  badge={estPersonnalise(cats, l.cle)
++                    ? `${catalogue(cats, l.cle).length} articles`
++                    : "liste par défaut"}
++                  actif={estPersonnalise(cats, l.cle)}
++                  onClick={() => setOuvert(l.cle)} />
++        ))}
++
++        <Rubrique>Documents</Rubrique>
++        <Entree icone="📝" titre="Textes des dossiers"
++                resume="Email d'offre, PDF d'offre, conditions générales."
++                onClick={versTextes} />
++
++        <Rubrique>Données</Rubrique>
++        <Entree icone="🗂️" titre="Archivage"
++                resume="Dossiers, véhicules et membres archivés."
++                onClick={versArchivage} />
++      </div>
++
++      {erreur && (
++        <div style={{ margin: "0 16px 24px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++      <div style={{ height: 40 }} />
++    </div>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function EditeurListe({ liste, cats, onCats, retour }) {
++  const simple = !!liste.texteSimple;
++  const [items, setItems] = useState(() => [...catalogue(cats, liste.cle)]);
++  const [nouveau, setNouveau] = useState(simple ? "" : { nom: "", unite: "pièce", cout: "" });
++  const [sauve, setSauve] = useState(false);
++  const [erreur, setErreur] = useState(null);
++
++  const total = useMemo(
++    () => simple ? 0 : items.reduce((t, a) => t + Number(a?.cout_centimes || 0), 0),
++    [items, simple]);
++
++  function ajouter() {
++    const article = simple
++      ? normaliserArticle(nouveau, true)
++      : normaliserArticle({
++          nom: nouveau.nom, unite: nouveau.unite,
++          cout_centimes: nouveau.cout === "" ? 0 : Math.round(Number(nouveau.cout) * 100),
++        });
++    if (!article) return;
++    const doublon = simple
++      ? items.some((x) => String(x).toLowerCase() === article.toLowerCase())
++      : items.some((x) => x.cle === article.cle);
++    if (doublon) { setErreur("Cet article existe déjà dans la liste."); return; }
++    setErreur(null);
++    setItems((v) => [...v, article]);
++    setNouveau(simple ? "" : { nom: "", unite: "pièce", cout: "" });
++    setSauve(false);
++  }
++
++  function retirer(i) {
++    setItems((v) => v.filter((_, k) => k !== i));
++    setSauve(false);
++  }
++
++  function monter(i) {
++    if (i === 0) return;
++    setItems((v) => { const c = [...v]; [c[i - 1], c[i]] = [c[i], c[i - 1]]; return c; });
++    setSauve(false);
++  }
++
++  async function enregistrer() {
++    setErreur(null);
++    try {
++      await sauverCatalogues({ ...cats, [liste.cle]: items });
++      onCats({ ...cats, [liste.cle]: items });
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  async function reinitialiser() {
++    setErreur(null);
++    try {
++      const suite = { ...cats };
++      delete suite[liste.cle];
++      await sauverCatalogues(suite);
++      onCats(suite);
++      setItems([...CATALOGUES_DEFAUT[liste.cle]]);
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        <button style={S.boutonLien} onClick={retour}>← Paramètres</button>
++        <div style={S.titre}>{liste.titre}</div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>{liste.resume}</div>
++      </div>
++
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>Ajouter un article</label>
++        {simple ? (
++          <div style={{ display: "flex", gap: 8 }}>
++            <input style={{ ...S.input, flex: 1 }} value={nouveau}
++                   placeholder="Nom de la pièce"
++                   onChange={(e) => setNouveau(e.target.value)}
++                   onKeyDown={(e) => e.key === "Enter" && ajouter()} />
++            <button style={boutonAjout} onClick={ajouter}>Ajouter</button>
++          </div>
++        ) : (
++          <>
++            <input style={S.input} value={nouveau.nom} placeholder="Nom de l'article"
++                   onChange={(e) => setNouveau((n) => ({ ...n, nom: e.target.value }))} />
++            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
++              <input style={{ ...S.input, flex: 1 }} value={nouveau.unite} placeholder="Unité"
++                     onChange={(e) => setNouveau((n) => ({ ...n, unite: e.target.value }))} />
++              <input style={{ ...S.input, flex: 1 }} type="number" step="0.01" min="0"
++                     value={nouveau.cout} placeholder="Coût € HTVA"
++                     onChange={(e) => setNouveau((n) => ({ ...n, cout: e.target.value }))} />
++              <button style={boutonAjout} onClick={ajouter}>Ajouter</button>
++            </div>
++            <div style={{ fontSize: 11, color: C.fantome, marginTop: 6, lineHeight: 1.5 }}>
++              Le coût est ce que l'article vous coûte, pas le prix client. Il
++              alimente automatiquement les coûts internes.
++            </div>
++          </>
++        )}
++      </div>
++
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>
++          {items.length} article{items.length > 1 ? "s" : ""}
++          {!simple && total > 0 && (
++            <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
++              · {euros(total)} au total
++            </span>
++          )}
++        </label>
++        {items.length === 0 && (
++          <div style={{ fontSize: 12.5, color: C.muet, padding: "8px 0" }}>
++            Liste vide — le catalogue par défaut sera utilisé.
++          </div>
++        )}
++        {items.map((a, i) => (
++          <div key={simple ? `${a}-${i}` : a.cle || i} style={ligneArticle}>
++            <button onClick={() => monter(i)} disabled={i === 0}
++                    title="Monter"
++                    style={{ ...boutonIcone, opacity: i === 0 ? .25 : 1 }}>↑</button>
++            <span style={{ flex: 1, minWidth: 0 }}>
++              <span style={{ display: "block", fontSize: 13.5, fontWeight: 600,
++                             color: C.encre }}>{simple ? a : a.nom}</span>
++              {!simple && (
++                <span style={{ display: "block", fontSize: 11, color: C.fantome, marginTop: 2 }}>
++                  {euros(a.cout_centimes)} / {a.unite}
++                  {a.consommable === false ? " · non consommable" : " · consommable"}
++                </span>
++              )}
++            </span>
++            <button onClick={() => retirer(i)} title="Retirer"
++                    style={{ ...boutonIcone, color: C.rouge }}>✕</button>
++          </div>
++        ))}
++      </div>
++
++      {erreur && (
++        <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++
++      <div style={{ margin: "0 16px 24px" }}>
++        <button style={S.boutonPlein} onClick={enregistrer}>
++          {sauve ? "✓ Enregistré" : "Enregistrer la liste"}
++        </button>
++        {estPersonnalise(cats, liste.cle) && (
++          <button onClick={reinitialiser}
++                  style={{ ...S.boutonLien, display: "block", width: "100%",
++                           marginTop: 10, fontWeight: 600 }}>
++            Revenir à la liste par défaut
++          </button>
++        )}
++      </div>
++    </div>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function Rubrique({ children }) {
++  return (
++    <div style={{ fontSize: 11, fontWeight: 700, color: C.muet, letterSpacing: ".05em",
++                  textTransform: "uppercase", margin: "18px 2px 2px" }}>{children}</div>
++  );
++}
++
++function Entree({ icone, titre, resume, badge, actif, onClick }) {
++  return (
++    <button onClick={onClick} style={{
++      display: "flex", alignItems: "flex-start", gap: 12, width: "100%",
++      marginTop: 10, padding: 14, border: `1px solid ${C.bord}`, borderRadius: 14,
++      background: C.blanc, boxShadow: "0 1px 3px rgba(15,23,42,.05)",
++      cursor: "pointer", textAlign: "left" }}>
++      <span style={{ fontSize: 19, lineHeight: 1 }}>{icone}</span>
++      <span style={{ flex: 1, minWidth: 0 }}>
++        <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
++          {titre}
++        </span>
++        <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2,
++                       lineHeight: 1.4 }}>{resume}</span>
++        {badge && (
++          <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5,
++                         fontWeight: 700, padding: "2px 7px", borderRadius: 20,
++                         background: actif ? C.bleuClair : C.doux,
++                         color: actif ? C.bleu : C.fantome }}>{badge}</span>
++        )}
++      </span>
++      <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
++    </button>
++  );
++}
++
++const boutonAjout = {
++  padding: "11px 14px", borderRadius: 10, border: "none",
++  background: C.bleu, color: "#fff", fontSize: 13, fontWeight: 700,
++  cursor: "pointer", whiteSpace: "nowrap",
++};
++
++const ligneArticle = {
++  display: "flex", alignItems: "center", gap: 10, padding: "9px 0",
++  borderTop: `1px solid ${C.doux}`,
++};
++
++const boutonIcone = {
++  border: "none", background: "none", cursor: "pointer",
++  fontSize: 15, color: C.fantome, padding: "2px 6px", lineHeight: 1,
++};
+diff --git a/apps/web/src/ecrans/Profil.jsx b/apps/web/src/ecrans/Profil.jsx
+new file mode 100644
+index 0000000..a7381cd
+--- /dev/null
++++ b/apps/web/src/ecrans/Profil.jsx
+@@ -0,0 +1,292 @@
++// =============================================================================
++// Écran — Compte (personnel).
++//
++// Le Compte est PERSONNEL, y compris pour un administrateur : son inventaire,
++// ses vêtements, ses congés. Les réglages de l'entreprise ont quitté cet écran
++// et vivent désormais dans Paramètres, accessible d'ici pour qui en a le droit.
++//
++// L'inventaire s'appuie sur les mêmes fonctions que le profil Terrain :
++// une seule table equipements_rh, deux portes d'entrée.
++// =============================================================================
++
++import React, { useEffect, useState } from "react";
++import {
++  listerEquipement, ajouterEquipement, changerEtatEquipement,
++  listerConges, ajouterConge, supprimerConge, modeDonnees,
++} from "../lib/adaptateur.js";
++import { deconnecter } from "../lib/supabase.js";
++import { C, S } from "../lib/theme.jsx";
++
++const ETATS = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
++const COULEUR = { neuf: C.bleu, bon: C.vert, use: C.ambre, a_remplacer: C.rouge };
++const SUITE = { bon: "use", use: "a_remplacer", a_remplacer: "neuf", neuf: "bon" };
++
++const INVENTAIRE_STANDARD = [
++  { categorie: "vetement", article: "Veste de travail" },
++  { categorie: "vetement", article: "Pantalon de travail" },
++  { categorie: "vetement", article: "T-shirts (x3)" },
++  { categorie: "vetement", article: "Chaussures de sécurité" },
++  { categorie: "vetement", article: "Gants" },
++  { categorie: "outil", article: "Diable" },
++  { categorie: "outil", article: "Sangles (x4)" },
++  { categorie: "outil", article: "Couvertures (x10)" },
++  { categorie: "outil", article: "Boîte à outils" },
++  { categorie: "outil", article: "Cutter" },
++];
++
++const jour = (iso) => {
++  if (!iso) return "";
++  try {
++    return new Date(iso + "T00:00:00").toLocaleDateString("fr-BE",
++      { day: "2-digit", month: "short", year: "numeric" });
++  } catch { return iso; }
++};
++
++export default function Profil({ profil, versParametres, versDiagnostic, peutConfigurer }) {
++  const [onglet, setOnglet] = useState("inventaire");
++
++  return (
++    <div style={{ ...S.page, paddingBottom: 90 }}>
++      <div style={S.entete}>
++        <div style={S.titre}>Compte</div>
++      </div>
++
++      <div style={S.carte}>
++        <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
++          {profil?.nom || "—"}
++        </div>
++        <div style={{ fontSize: 13, color: C.muet }}>{profil?.email || ""}</div>
++        {profil?.capacites && (
++          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
++            {profil.capacites.length} capacités actives
++          </div>
++        )}
++      </div>
++
++      <div style={{ display: "flex", gap: 8, margin: "0 16px 12px" }}>
++        {[["inventaire", "Outils & vêtements"], ["conges", "Mes congés"]].map(([cle, lib]) => (
++          <button key={cle} onClick={() => setOnglet(cle)} style={{
++            flex: 1, padding: "9px 6px", borderRadius: 10, cursor: "pointer",
++            fontSize: 12.5, fontWeight: 700,
++            border: `1.5px solid ${onglet === cle ? C.bleu : C.bord}`,
++            background: onglet === cle ? "#E7EFFC" : C.blanc,
++            color: onglet === cle ? C.bleu : C.muet }}>{lib}</button>
++        ))}
++      </div>
++
++      {onglet === "inventaire" ? <Inventaire profil={profil} /> : <Conges profil={profil} />}
++
++      {peutConfigurer && versParametres && (
++        <div style={{ margin: "18px 16px 0" }}>
++          <button onClick={versParametres} style={{
++            display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
++            border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
++            boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer",
++            textAlign: "left" }}>
++            <span style={{ fontSize: 19 }}>⚙️</span>
++            <span style={{ flex: 1 }}>
++              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
++                Paramètres
++              </span>
++              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
++                Barème, coûts, catalogues, textes, archivage.
++              </span>
++            </span>
++            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
++          </button>
++        </div>
++      )}
++
++      <div style={{ margin: "0 16px" }}>
++        <button onClick={versDiagnostic} style={{ background: "none", border: "none",
++          color: C.bleu, fontSize: 13, fontWeight: 600, cursor: "pointer",
++          padding: "18px 2px 4px" }}>
++          Diagnostic de branchement
++        </button>
++        {modeDonnees() === "reel" && (
++          <button onClick={async () => { await deconnecter(); window.location.reload(); }}
++            style={{ display: "block", width: "100%", marginTop: 8, padding: 13,
++              border: "1.5px solid #FECACA", borderRadius: 11, background: "#FEF2F2",
++              color: "#991B1B", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
++            Se déconnecter
++          </button>
++        )}
++      </div>
++      <div style={{ height: 30 }} />
++    </div>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function Inventaire({ profil }) {
++  const [liste, setListe] = useState([]);
++  const [creation, setCreation] = useState(false);
++  const [ajout, setAjout] = useState({ categorie: "outil", article: "" });
++  const monId = profil?.utilisateur_id;
++
++  function recharger() {
++    if (monId) listerEquipement(monId).then(setListe).catch(() => {});
++  }
++  useEffect(recharger, [monId]);
++
++  async function creerStandard() {
++    setCreation(true);
++    for (const art of INVENTAIRE_STANDARD) await ajouterEquipement(monId, art).catch(() => {});
++    setCreation(false);
++    recharger();
++  }
++  async function ajouterArticle() {
++    const nom = ajout.article.trim();
++    if (!nom || !monId) return;
++    await ajouterEquipement(monId, { categorie: ajout.categorie, article: nom }).catch(() => {});
++    setAjout((a) => ({ ...a, article: "" }));
++    recharger();
++  }
++  async function cycler(art) {
++    await changerEtatEquipement(art.id, SUITE[art.etat] || "bon", monId);
++    recharger();
++  }
++
++  const rendre = (arr) => arr.map((art) => (
++    <button key={art.id} onClick={() => cycler(art)} style={{
++      display: "flex", width: "100%", justifyContent: "space-between",
++      alignItems: "center", padding: "10px 12px", marginBottom: 6,
++      borderRadius: 10, cursor: "pointer", background: "#fff",
++      border: `1.5px solid ${art.etat === "a_remplacer" ? "#FECACA" : C.bord}` }}>
++      <span style={{ fontSize: 13.5, color: C.encre, fontWeight: 600 }}>{art.article}</span>
++      <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
++        color: "#fff", background: COULEUR[art.etat] || C.muet }}>
++        {ETATS[art.etat] || art.etat}
++      </span>
++    </button>
++  ));
++
++  if (liste.length === 0) {
++    return (
++      <div style={{ ...S.carte, textAlign: "center" }}>
++        <div style={{ fontSize: 13, color: C.muet, marginBottom: 12 }}>
++          Aucun inventaire pour le moment.
++        </div>
++        <button style={S.boutonPlein} onClick={creerStandard} disabled={creation}>
++          {creation ? "Création…" : "Créer mon inventaire standard"}
++        </button>
++      </div>
++    );
++  }
++
++  return (
++    <>
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>Vêtements</label>
++        {rendre(liste.filter((x) => x.categorie === "vetement"))}
++        <label style={S.label}>Outils</label>
++        {rendre(liste.filter((x) => x.categorie === "outil"))}
++      </div>
++
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>Ajouter un article</label>
++        <div style={{ display: "flex", gap: 8 }}>
++          <select style={{ ...S.input, width: 118 }} value={ajout.categorie}
++                  onChange={(e) => setAjout((a) => ({ ...a, categorie: e.target.value }))}>
++            <option value="outil">Outil</option>
++            <option value="vetement">Vêtement</option>
++          </select>
++          <input style={{ ...S.input, flex: 1 }} value={ajout.article} placeholder="Nom"
++                 onChange={(e) => setAjout((a) => ({ ...a, article: e.target.value }))}
++                 onKeyDown={(e) => e.key === "Enter" && ajouterArticle()} />
++          <button onClick={ajouterArticle} style={{
++            padding: "11px 14px", borderRadius: 10, border: "none", background: C.bleu,
++            color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+</button>
++        </div>
++        <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
++          Touchez un article pour changer son état (Bon → Usé → À remplacer →
++          Neuf). Le bureau voit l'état en direct dans Ressources.
++        </div>
++      </div>
++    </>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function Conges({ profil }) {
++  const [liste, setListe] = useState([]);
++  const [form, setForm] = useState({ debut: "", fin: "", motif: "" });
++  const [erreur, setErreur] = useState(null);
++  const monId = profil?.utilisateur_id;
++
++  function recharger() {
++    listerConges()
++      .then((c) => setListe((c || []).filter((x) => x.utilisateur_id === monId)))
++      .catch((e) => setErreur(e.message));
++  }
++  useEffect(recharger, [monId]);
++
++  async function ajouter() {
++    setErreur(null);
++    if (!form.debut || !form.fin) { setErreur("Indiquez une date de début et de fin."); return; }
++    if (form.fin < form.debut) { setErreur("La date de fin précède la date de début."); return; }
++    try {
++      await ajouterConge({ utilisateurId: monId, ...form });
++      setForm({ debut: "", fin: "", motif: "" });
++      recharger();
++    } catch (e) { setErreur(e.message); }
++  }
++
++  async function retirer(id) {
++    setErreur(null);
++    try { await supprimerConge(id); recharger(); }
++    catch (e) { setErreur(e.message); }
++  }
++
++  return (
++    <>
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>
++          {liste.length === 0 ? "Aucun congé enregistré" : `${liste.length} congé${liste.length > 1 ? "s" : ""}`}
++        </label>
++        {liste.map((c) => (
++          <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10,
++                                   padding: "9px 0", borderTop: `1px solid ${C.doux}` }}>
++            <span style={{ flex: 1 }}>
++              <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: C.encre }}>
++                {jour(c.debut)} → {jour(c.fin)}
++              </span>
++              {c.motif && (
++                <span style={{ display: "block", fontSize: 11.5, color: C.fantome, marginTop: 2 }}>
++                  {c.motif}
++                </span>
++              )}
++            </span>
++            <button onClick={() => retirer(c.id)} style={{ border: "none", background: "none",
++              cursor: "pointer", fontSize: 15, color: C.rouge, padding: "2px 6px" }}>✕</button>
++          </div>
++        ))}
++      </div>
++
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>Poser un congé</label>
++        <div style={{ display: "flex", gap: 8 }}>
++          <input style={{ ...S.input, flex: 1 }} type="date" value={form.debut}
++                 onChange={(e) => setForm((f) => ({ ...f, debut: e.target.value }))} />
++          <input style={{ ...S.input, flex: 1 }} type="date" value={form.fin}
++                 onChange={(e) => setForm((f) => ({ ...f, fin: e.target.value }))} />
++        </div>
++        <input style={{ ...S.input, marginTop: 8 }} value={form.motif}
++               placeholder="Motif (facultatif)"
++               onChange={(e) => setForm((f) => ({ ...f, motif: e.target.value }))} />
++        {erreur && (
++          <div style={{ fontSize: 12.5, color: C.rouge, marginTop: 8 }}>{erreur}</div>
++        )}
++        <button style={{ ...S.boutonPlein, marginTop: 10 }} onClick={ajouter}>
++          Enregistrer le congé
++        </button>
++        <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
++          Les congés apparaissent dans le planning et bloquent l'affectation aux
++          chantiers sur la période.
++        </div>
++      </div>
++    </>
++  );
++}
+diff --git a/apps/web/src/ecrans/Releve.jsx b/apps/web/src/ecrans/Releve.jsx
+index 4731ddc..22f90d4 100644
+--- a/apps/web/src/ecrans/Releve.jsx
++++ b/apps/web/src/ecrans/Releve.jsx
+@@ -13,9 +13,11 @@ import {
+ } from "../lib/adaptateur.js";
+ import { capaciteFlotte, jaugeCapacite } from "@domaine/flotte/vehicules.js";
+ import {
+-  PIECES, volumeTotal, grouperParPiece, volumeUnitaire,
++  volumeTotal, grouperParPiece, volumeUnitaire,
+   articlesADemonter,
+ } from "@domaine/releve/volumetrie.js";
++import { obtenirCatalogues } from "../lib/adaptateur.js";
++import { catalogue } from "@domaine/stocks/catalogues.js";
+ import { C, S } from "../lib/theme.jsx";
+ 
+ // Catalogue par pièce (roovers-mobile.jsx, CATALOGUE).
+@@ -35,6 +37,33 @@ export default function Releve({ affaireId, retour, versDevis }) {
+   const [affaire, setAffaire] = useState(null);
+   const [inv, setInv] = useState([]);
+   const [piece, setPiece] = useState("Salon");
++  // Pièces réglées dans Paramètres → Catalogues, plus celles ajoutées à la
++  // volée pour ce relevé précis (une cave à vin, un atelier…).
++  const [cats, setCats] = useState({});
++  const [piecesAdHoc, setPiecesAdHoc] = useState([]);
++  const [nouvellePiece, setNouvellePiece] = useState("");
++  useEffect(() => { obtenirCatalogues().then(setCats).catch(() => {}); }, []);
++  const pieces = useMemo(() => {
++    const base = catalogue(cats, "pieces").map(String);
++    return [...base, ...piecesAdHoc.filter((p) => !base.includes(p))];
++  }, [cats, piecesAdHoc]);
++  useEffect(() => {
++    if (pieces.length && !pieces.includes(piece)) setPiece(pieces[0]);
++  }, [pieces, piece]);
++
++  function ajouterPiece() {
++    const nom = nouvellePiece.trim();
++    if (!nom || pieces.includes(nom)) { setNouvellePiece(""); return; }
++    setPiecesAdHoc((v) => [...v, nom]);
++    setPiece(nom);
++    setNouvellePiece("");
++  }
++  /** Retire la pièce courante : ses éléments partent avec elle. */
++  function retirerPiece() {
++    setInv((v) => v.filter((it) => it.piece !== piece));
++    setPiecesAdHoc((v) => v.filter((p) => p !== piece));
++    setSauve(false);
++  }
+   const [libre, setLibre] = useState("");
+   const [camionsSel, setCamionsSel] = useState([]);
+   const [sauve, setSauve] = useState(false);
+@@ -141,7 +170,7 @@ export default function Releve({ affaireId, retour, versDevis }) {
+ 
+       {/* Sélecteur de pièce */}
+       <div style={{ padding: "0 16px", display: "flex", gap: 6, overflowX: "auto", marginBottom: 10 }}>
+-        {PIECES.map((p) => (
++        {pieces.map((p) => (
+           <button key={p} onClick={() => setPiece(p)} style={{
+             border: `1.5px solid ${piece === p ? C.bleu : C.bord}`,
+             background: piece === p ? "#E7EFFC" : C.blanc,
+@@ -150,6 +179,17 @@ export default function Releve({ affaireId, retour, versDevis }) {
+             cursor: "pointer", whiteSpace: "nowrap",
+           }}>{p}</button>
+         ))}
++        <input value={nouvellePiece} placeholder="+ pièce"
++               onChange={(e) => setNouvellePiece(e.target.value)}
++               onKeyDown={(e) => e.key === "Enter" && ajouterPiece()}
++               style={{ border: `1.5px dashed ${C.bord}`, borderRadius: 999,
++                        padding: "6px 12px", fontSize: 12, width: 96,
++                        color: C.encre, background: C.blanc, outline: "none" }} />
++        <button onClick={retirerPiece} title="Retirer cette pièce et ses éléments"
++                style={{ border: `1.5px solid ${C.bord}`, background: C.blanc,
++                         color: C.rouge, borderRadius: 999, padding: "6px 11px",
++                         fontSize: 12, fontWeight: 700, cursor: "pointer",
++                         whiteSpace: "nowrap" }}>✕ pièce</button>
+       </div>
+ 
+       {/* Catalogue de la pièce + article libre */}
+diff --git a/apps/web/src/ecrans/Textes.jsx b/apps/web/src/ecrans/Textes.jsx
+deleted file mode 100644
+index aa8e4f9..0000000
+--- a/apps/web/src/ecrans/Textes.jsx
++++ /dev/null
+@@ -1,198 +0,0 @@
+-// =============================================================================
+-// Écran — Textes (Compte). Ce que le CLIENT reçoit, réglable sans développeur.
+-//
+-// 1) Les modèles de l'email d'offre (objet, salutation, mentions, signature).
+-//    Toute clé laissée vide retombe sur le modèle par défaut du domaine : un
+-//    réglage partiel est valide.
+-// 2) Le PDF des conditions générales C.B.D. joint à chaque offre.
+-//
+-// L'aperçu est calculé par la MÊME fonction que l'envoi réel (emailOffre) :
+-// ce qui est affiché ici est exactement ce que le client recevra.
+-// =============================================================================
+-
+-import React, { useEffect, useMemo, useState } from "react";
+-import {
+-  obtenirTextes, sauverTextes, obtenirOrganisation,
+-  urlConditionsCbd, televerserConditionsCbd, modeDonnees,
+-} from "../lib/adaptateur.js";
+-import { emailOffre, TEXTES_OFFRE_DEFAUT } from "@domaine/communication/brief.js";
+-import { C, S } from "../lib/theme.jsx";
+-
+-// Exemple figé pour l'aperçu — jamais envoyé, sert à visualiser le rendu.
+-const EXEMPLE = {
+-  client: { nom: "Marie Dupont", email: "marie.dupont@exemple.be" },
+-  tvacCentimes: 94380, heures: 6, nbDemenageurs: 3, formule: "tarifaire",
+-  charges: [{ adresse: "Rue de l'Exemple 1, 1000 Bruxelles" }],
+-  decharges: [{ adresse: "Avenue Louise 12, 1050 Bruxelles" }],
+-  date: "2026-09-14", heure: "08:00",
+-};
+-
+-const CHAMPS = [
+-  { cle: "objet", label: "Objet de l'email", aide: "{client} {organisation}" },
+-  { cle: "salutation", label: "Salutation", aide: "{famille} = nom de famille" },
+-  { cle: "intro", label: "Phrase d'introduction", long: true },
+-  { cle: "intro_signee", label: "Ajout si l'offre est signée", long: true },
+-  { cle: "mention_km", label: "Mention kilométrage" },
+-  { cle: "validite", label: "Mention de validité", aide: "{validite} = nombre de jours" },
+-  { cle: "validite_jours", label: "Validité (jours)", nombre: true },
+-  { cle: "formule_politesse", label: "Formule de politesse" },
+-  { cle: "signataire", label: "Signataire" },
+-  { cle: "pied", label: "Pied de page (facultatif)", long: true },
+-];
+-
+-export default function Textes({ retour }) {
+-  const [textes, setTextes] = useState(null);
+-  const [org, setOrg] = useState({});
+-  const [sauve, setSauve] = useState(false);
+-  const [erreur, setErreur] = useState(null);
+-  const [cbd, setCbd] = useState(undefined);   // undefined = en cours, null = absent
+-  const [envoiCbd, setEnvoiCbd] = useState(false);
+-
+-  useEffect(() => {
+-    obtenirTextes().then((t) => setTextes(t || {})).catch((e) => {
+-      setErreur(e.message); setTextes({});
+-    });
+-    obtenirOrganisation().then(setOrg).catch(() => {});
+-    urlConditionsCbd().then(setCbd).catch(() => setCbd(null));
+-  }, []);
+-
+-  // Aperçu : mêmes règles que l'envoi. Les champs vides retombent sur le défaut.
+-  const apercu = useMemo(() => {
+-    if (!textes) return null;
+-    const utiles = Object.fromEntries(
+-      Object.entries(textes).filter(([, v]) => v !== "" && v != null));
+-    try {
+-      return emailOffre({ ...EXEMPLE, organisation: org, textes: utiles });
+-    } catch { return null; }
+-  }, [textes, org]);
+-
+-  function maj(cle, valeur) {
+-    setTextes((t) => ({ ...t, [cle]: valeur }));
+-    setSauve(false);
+-  }
+-
+-  async function enregistrer() {
+-    setErreur(null);
+-    try {
+-      // On ne stocke que ce qui diffère : le domaine complète le reste.
+-      const utiles = Object.fromEntries(
+-        Object.entries(textes).filter(([, v]) => v !== "" && v != null));
+-      await sauverTextes(utiles);
+-      setSauve(true);
+-    } catch (e) { setErreur(e.message); }
+-  }
+-
+-  async function deposerCbd(fichier) {
+-    if (!fichier) return;
+-    setErreur(null); setEnvoiCbd(true);
+-    try {
+-      await televerserConditionsCbd(fichier);
+-      setCbd(await urlConditionsCbd());
+-    } catch (e) { setErreur(e.message || "Dépôt impossible"); }
+-    setEnvoiCbd(false);
+-  }
+-
+-  if (!textes) return null;
+-
+-  return (
+-    <div style={S.page}>
+-      <div style={S.entete}>
+-        {retour && <button style={S.boutonLien} onClick={retour}>← Compte</button>}
+-        <div style={S.titre}>Textes de l'offre</div>
+-        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
+-          Ce que le client reçoit. Un champ vide garde le texte par défaut.
+-        </div>
+-      </div>
+-
+-      <div style={S.carte}>
+-        <div style={SousTitre}>Modèles de l'email</div>
+-        {CHAMPS.map((ch) => (
+-          <div key={ch.cle} style={{ marginBottom: 10 }}>
+-            <label style={S.label}>
+-              {ch.label}
+-              {ch.aide && (
+-                <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
+-                  {ch.aide}
+-                </span>
+-              )}
+-            </label>
+-            {ch.long ? (
+-              <textarea style={{ ...S.input, minHeight: 46 }}
+-                        value={textes[ch.cle] ?? ""}
+-                        placeholder={String(TEXTES_OFFRE_DEFAUT[ch.cle] ?? "")}
+-                        onChange={(e) => maj(ch.cle, e.target.value)} />
+-            ) : (
+-              <input style={S.input}
+-                     type={ch.nombre ? "number" : "text"}
+-                     value={textes[ch.cle] ?? ""}
+-                     placeholder={String(TEXTES_OFFRE_DEFAUT[ch.cle] ?? "")}
+-                     onChange={(e) => maj(ch.cle,
+-                       ch.nombre ? (e.target.value === "" ? "" : Number(e.target.value))
+-                                 : e.target.value)} />
+-            )}
+-          </div>
+-        ))}
+-      </div>
+-
+-      {/* Aperçu réel — même moteur que l'envoi. */}
+-      {apercu && (
+-        <div style={S.carte}>
+-          <div style={SousTitre}>Aperçu (exemple)</div>
+-          <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
+-            Objet : <span style={{ color: C.encre, fontWeight: 700 }}>{apercu.objet}</span>
+-          </div>
+-          <pre style={{
+-            margin: 0, padding: 12, borderRadius: 10, background: "#F8FAFC",
+-            border: `1px solid ${C.bord}`, fontSize: 12, lineHeight: 1.55,
+-            color: C.encre, whiteSpace: "pre-wrap",
+-            fontFamily: "ui-monospace, monospace",
+-          }}>{apercu.corps}</pre>
+-        </div>
+-      )}
+-
+-      {/* Conditions générales C.B.D. — pièce jointe de toute offre. */}
+-      <div style={S.carte}>
+-        <div style={SousTitre}>Conditions générales C.B.D.</div>
+-        <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 8 }}>
+-          PDF joint à chaque offre envoyée au client, à côté de l'offre elle-même.
+-        </div>
+-        {cbd === undefined ? null : cbd ? (
+-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+-                        padding: "10px 12px", borderRadius: 10,
+-                        background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+-            <span style={{ fontSize: 12.5, fontWeight: 700, color: "#065F46" }}>
+-              ✓ Conditions déposées
+-            </span>
+-            <a href={cbd} target="_blank" rel="noreferrer"
+-               style={{ fontSize: 12.5, fontWeight: 700, color: C.bleu }}>Ouvrir</a>
+-          </div>
+-        ) : (
+-          <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFFBEB",
+-                        border: "1px solid #FDE68A", fontSize: 12.5, color: "#92400E" }}>
+-            Aucun document déposé — les offres partiront sans les conditions.
+-          </div>
+-        )}
+-        {modeDonnees() === "reel" && (
+-          <label style={{ ...S.boutonLien, display: "block", marginTop: 10,
+-                          cursor: "pointer", fontWeight: 700 }}>
+-            {envoiCbd ? "Dépôt en cours…" : cbd ? "Remplacer le PDF" : "Déposer le PDF"}
+-            <input type="file" accept="application/pdf" style={{ display: "none" }}
+-                   onChange={(e) => deposerCbd(e.target.files?.[0])} />
+-          </label>
+-        )}
+-      </div>
+-
+-      {erreur && <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
+-      <div style={{ margin: "0 16px 24px" }}>
+-        <button style={S.boutonPlein} onClick={enregistrer}>
+-          {sauve ? "✓ Enregistré" : "Enregistrer les textes"}
+-        </button>
+-      </div>
+-    </div>
+-  );
+-}
+-
+-const SousTitre = {
+-  fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
+-  textTransform: "uppercase", letterSpacing: ".03em",
+-};
+diff --git a/apps/web/src/ecrans/TextesDossiers.jsx b/apps/web/src/ecrans/TextesDossiers.jsx
+new file mode 100644
+index 0000000..ef88c31
+--- /dev/null
++++ b/apps/web/src/ecrans/TextesDossiers.jsx
+@@ -0,0 +1,294 @@
++// =============================================================================
++// Écran — Modifications données texte dossiers (Compte).
++//
++// Page d'entrée + sous-pages. Chaque sous-page règle un jeu de textes que le
++// client finit par lire : l'email d'offre, le PDF d'offre, les conditions
++// générales. La liste des sous-pages vient de GROUPES_TEXTES : ajouter un
++// groupe au catalogue suffit à faire apparaître une sous-page ici.
++//
++// Un champ laissé vide retombe sur le texte par défaut du domaine. Un réglage
++// partiel est donc toujours valide.
++//
++// L'aperçu de l'email est calculé par emailOffre — la MÊME fonction que
++// l'envoi réel : ce qui est affiché est exactement ce que le client recevra.
++// =============================================================================
++
++import React, { useEffect, useMemo, useState } from "react";
++import {
++  obtenirTextes, sauverTextes, obtenirOrganisation,
++  urlConditionsCbd, televerserConditionsCbd, modeDonnees,
++} from "../lib/adaptateur.js";
++import { emailOffre } from "@domaine/communication/brief.js";
++import {
++  GROUPES_TEXTES, DEFAUTS_PAR_GROUPE, lireGroupe, ecrireGroupe,
++} from "@domaine/communication/textes.js";
++import { C, S } from "../lib/theme.jsx";
++
++// Exemple figé pour l'aperçu — jamais envoyé, sert à visualiser le rendu.
++const EXEMPLE = {
++  client: { nom: "Marie Dupont", email: "marie.dupont@exemple.be" },
++  tvacCentimes: 94380, heures: 6, nbDemenageurs: 3, formule: "tarifaire",
++  charges: [{ adresse: "Rue de l'Exemple 1, 1000 Bruxelles" }],
++  decharges: [{ adresse: "Avenue Louise 12, 1050 Bruxelles" }],
++  date: "2026-09-14", heure: "08:00",
++};
++
++export default function TextesDossiers({ retour }) {
++  const [stockes, setStockes] = useState(null);   // jsonb complet
++  const [org, setOrg] = useState({});
++  const [erreur, setErreur] = useState(null);
++  const [ouvert, setOuvert] = useState(null);      // clé du groupe ouvert
++
++  useEffect(() => {
++    obtenirTextes()
++      .then((t) => setStockes(t || {}))
++      .catch((e) => { setErreur(e.message); setStockes({}); });
++    obtenirOrganisation().then(setOrg).catch(() => {});
++  }, []);
++
++  if (stockes === null) return null;
++
++  const groupe = ouvert ? GROUPES_TEXTES.find((g) => g.cle === ouvert) : null;
++
++  if (groupe) {
++    return (
++      <SousPage
++        groupe={groupe} stockes={stockes} org={org}
++        onStockes={setStockes} retour={() => setOuvert(null)}
++      />
++    );
++  }
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        {retour && <button style={S.boutonLien} onClick={retour}>← Compte</button>}
++        <div style={S.titre}>Modifications données texte dossiers</div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
++          Tous les textes qu'un client peut lire. Un champ vide garde le texte
++          par défaut.
++        </div>
++      </div>
++
++      <div style={{ padding: "0 16px 24px" }}>
++        {GROUPES_TEXTES.map((g) => {
++          const perso = Object.keys(lireGroupe(stockes, g)).length;
++          return (
++            <button key={g.cle} onClick={() => setOuvert(g.cle)} style={carteBouton}>
++              <span style={{ fontSize: 20, lineHeight: 1 }}>{g.icone}</span>
++              <span style={{ flex: 1, minWidth: 0 }}>
++                <span style={{ display: "block", fontSize: 14, fontWeight: 700,
++                               color: C.encre }}>{g.titre}</span>
++                <span style={{ display: "block", fontSize: 11.5, color: C.muet,
++                               marginTop: 2, lineHeight: 1.4 }}>{g.resume}</span>
++                {!g.fichier && (
++                  <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5,
++                                 fontWeight: 700, padding: "2px 7px", borderRadius: 20,
++                                 background: perso ? C.bleuClair : C.doux,
++                                 color: perso ? C.bleu : C.fantome }}>
++                    {perso ? `${perso} texte${perso > 1 ? "s" : ""} personnalisé${perso > 1 ? "s" : ""}`
++                           : "textes par défaut"}
++                  </span>
++                )}
++              </span>
++              <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
++            </button>
++          );
++        })}
++      </div>
++
++      {erreur && (
++        <div style={{ margin: "0 16px 24px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++    </div>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function SousPage({ groupe, stockes, org, onStockes, retour }) {
++  const defauts = DEFAUTS_PAR_GROUPE[groupe.cle] || {};
++  // Pré-remplissage avec le texte RÉELLEMENT en vigueur : personnalisation si
++  // elle existe, défaut sinon. Un champ vide avec un simple indice gris ne
++  // permet pas de relire ni de retoucher le texte qui part chez le client.
++  const [valeurs, setValeurs] = useState(
++    () => ({ ...defauts, ...lireGroupe(stockes, groupe) }));
++  const [sauve, setSauve] = useState(false);
++  const [erreur, setErreur] = useState(null);
++  const [cbd, setCbd] = useState(undefined);      // undefined = en cours
++  const [envoiCbd, setEnvoiCbd] = useState(false);
++
++  useEffect(() => {
++    if (groupe.fichier) urlConditionsCbd().then(setCbd).catch(() => setCbd(null));
++  }, [groupe.fichier]);
++
++  // Aperçu : mêmes règles que l'envoi réel.
++  const apercu = useMemo(() => {
++    if (!groupe.apercu) return null;
++    const utiles = Object.fromEntries(
++      Object.entries(valeurs).filter(([, v]) => v !== "" && v != null));
++    try {
++      return emailOffre({ ...EXEMPLE, organisation: org, textes: utiles });
++    } catch { return null; }
++  }, [groupe.apercu, valeurs, org]);
++
++  function maj(cle, valeur) {
++    setValeurs((v) => ({ ...v, [cle]: valeur }));
++    setSauve(false);
++  }
++
++  async function enregistrer() {
++    setErreur(null);
++    try {
++      // On ne stocke que ce qui diffère du défaut : le jour où le défaut
++      // évolue, l'entreprise en bénéficie sans avoir à ressaisir.
++      const differences = Object.fromEntries(
++        Object.entries(valeurs).filter(([k, v]) => String(v ?? "") !== String(defauts[k] ?? "")));
++      const complet = ecrireGroupe(stockes, groupe, differences);
++      await sauverTextes(complet);
++      onStockes(complet);
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  async function reinitialiser() {
++    setErreur(null);
++    try {
++      const complet = ecrireGroupe(stockes, groupe, {});
++      await sauverTextes(complet);
++      onStockes(complet);
++      setValeurs({ ...defauts });
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  async function deposerCbd(fichier) {
++    if (!fichier) return;
++    setErreur(null); setEnvoiCbd(true);
++    try {
++      await televerserConditionsCbd(fichier);
++      setCbd(await urlConditionsCbd());
++    } catch (e) { setErreur(e.message || "Dépôt impossible"); }
++    setEnvoiCbd(false);
++  }
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        <button style={S.boutonLien} onClick={retour}>← Textes dossiers</button>
++        <div style={S.titre}>{groupe.titre}</div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>{groupe.resume}</div>
++      </div>
++
++      {groupe.champs.length > 0 && (
++        <div style={S.carte}>
++          {groupe.champs.map((ch) => (
++            <div key={ch.cle} style={{ marginBottom: 10 }}>
++              <label style={S.label}>
++                {ch.label}
++                {ch.aide && (
++                  <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
++                    {ch.aide}
++                  </span>
++                )}
++              </label>
++              {ch.long ? (
++                <textarea style={{ ...S.input, minHeight: 46 }}
++                          value={valeurs[ch.cle] ?? ""}
++                          placeholder={String(defauts[ch.cle] ?? "")}
++                          onChange={(e) => maj(ch.cle, e.target.value)} />
++              ) : (
++                <input style={S.input}
++                       type={ch.nombre ? "number" : "text"}
++                       value={valeurs[ch.cle] ?? ""}
++                       placeholder={String(defauts[ch.cle] ?? "")}
++                       onChange={(e) => maj(ch.cle,
++                         ch.nombre ? (e.target.value === "" ? "" : Number(e.target.value))
++                                   : e.target.value)} />
++              )}
++            </div>
++          ))}
++        </div>
++      )}
++
++      {apercu && (
++        <div style={S.carte}>
++          <div style={sousTitre}>Aperçu (exemple)</div>
++          <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
++            Objet : <span style={{ color: C.encre, fontWeight: 700 }}>{apercu.objet}</span>
++          </div>
++          <pre style={{
++            margin: 0, padding: 12, borderRadius: 10, background: "#F8FAFC",
++            border: `1px solid ${C.bord}`, fontSize: 12, lineHeight: 1.55,
++            color: C.encre, whiteSpace: "pre-wrap",
++            fontFamily: "ui-monospace, monospace",
++          }}>{apercu.corps}</pre>
++        </div>
++      )}
++
++      {groupe.fichier && (
++        <div style={S.carte}>
++          <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 8 }}>
++            PDF joint à chaque offre envoyée au client, à côté de l'offre elle-même.
++          </div>
++          {cbd === undefined ? null : cbd ? (
++            <div style={{ display: "flex", alignItems: "center",
++                          justifyContent: "space-between", padding: "10px 12px",
++                          borderRadius: 10, background: "#ECFDF5",
++                          border: "1px solid #A7F3D0" }}>
++              <span style={{ fontSize: 12.5, fontWeight: 700, color: "#065F46" }}>
++                ✓ Conditions déposées
++              </span>
++              <a href={cbd} target="_blank" rel="noreferrer"
++                 style={{ fontSize: 12.5, fontWeight: 700, color: C.bleu }}>Ouvrir</a>
++            </div>
++          ) : (
++            <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFFBEB",
++                          border: "1px solid #FDE68A", fontSize: 12.5, color: "#92400E" }}>
++              Aucun document déposé — les offres partiront sans les conditions.
++            </div>
++          )}
++          {modeDonnees() === "reel" && (
++            <label style={{ ...S.boutonLien, display: "block", marginTop: 10,
++                            cursor: "pointer", fontWeight: 700 }}>
++              {envoiCbd ? "Dépôt en cours…" : cbd ? "Remplacer le PDF" : "Déposer le PDF"}
++              <input type="file" accept="application/pdf" style={{ display: "none" }}
++                     onChange={(e) => deposerCbd(e.target.files?.[0])} />
++            </label>
++          )}
++        </div>
++      )}
++
++      {erreur && (
++        <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++
++      {groupe.champs.length > 0 && (
++        <div style={{ margin: "0 16px 24px" }}>
++          <button style={S.boutonPlein} onClick={enregistrer}>
++            {sauve ? "✓ Enregistré" : "Enregistrer"}
++          </button>
++          {Object.keys(lireGroupe(stockes, groupe)).length > 0 && (
++            <button onClick={reinitialiser}
++                    style={{ ...S.boutonLien, display: "block", width: "100%",
++                             marginTop: 10, fontWeight: 600 }}>
++              Revenir aux textes par défaut
++            </button>
++          )}
++        </div>
++      )}
++    </div>
++  );
++}
++
++const carteBouton = {
++  display: "flex", alignItems: "flex-start", gap: 12, width: "100%",
++  marginTop: 10, padding: 14, border: `1px solid ${C.bord}`, borderRadius: 14,
++  background: C.blanc, boxShadow: "0 1px 3px rgba(15,23,42,.05)",
++  cursor: "pointer", textAlign: "left",
++};
++
++const sousTitre = {
++  fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
++  textTransform: "uppercase", letterSpacing: ".03em",
++};
+diff --git a/apps/web/src/lib/adaptateur.js b/apps/web/src/lib/adaptateur.js
+index e171318..a623ae4 100644
+--- a/apps/web/src/lib/adaptateur.js
++++ b/apps/web/src/lib/adaptateur.js
+@@ -1381,10 +1381,14 @@ const PARAMS_PRIX_DEMO = {
+ /** Paramètres de prix de l'organisation (barème client + coûts internes). */
+ export async function obtenirParametresPrix() {
+   if (modeDonnees() === "reel") {
++    // .single() : la RLS ne doit renvoyer QUE l'organisation du jeton.
++    // Aucun repli sur les prix de démonstration en mode réel — facturer au
++    // mauvais barème coûte plus cher qu'une erreur affichée.
+     const { data, error } = await supabase.from("organisations")
+-      .select("parametres_prix").limit(1).maybeSingle();
+-    if (error) throw error;
+-    return data?.parametres_prix || PARAMS_PRIX_DEMO;
++      .select("parametres_prix").single();
++    if (error) throw new Error(
++      "Organisation introuvable pour cette session. Contactez votre administrateur.");
++    return data?.parametres_prix || {};
+   }
+   const d = lireDemo();
+   return d.parametresPrix || PARAMS_PRIX_DEMO;
+@@ -1394,8 +1398,8 @@ export async function obtenirParametresPrix() {
+ export async function sauverParametresPrix(params) {
+   if (modeDonnees() === "reel") {
+     const { data: org, error: e1 } = await supabase.from("organisations")
+-      .select("id").limit(1).maybeSingle();
+-    if (e1) throw e1;
++      .select("id").single();
++    if (e1) throw new Error("Organisation introuvable pour cette session.");
+     const { error } = await supabase.from("organisations")
+       .update({ parametres_prix: params }).eq("id", org.id);
+     if (error) throw error;
+@@ -1786,10 +1790,43 @@ export async function cloreAffaire(affaireId) {
+ // ses valeurs par défaut pour toute clé absente : un réglage partiel suffit.
+ // =============================================================================
+ 
++// =============================================================================
++// CATALOGUES — pièces du relevé, fournitures, matériel de terrain.
++// Stockés dans organisations.parametres_catalogues (jsonb). Une liste absente
++// retombe sur le défaut du domaine (packages/domaine/src/stocks/catalogues.js).
++// =============================================================================
++
++export async function obtenirCatalogues() {
++  if (modeDonnees() === "reel") {
++    const { data, error } = await supabase.from("organisations")
++      .select("parametres_catalogues").single();
++    if (error) throw new Error(
++      "Organisation introuvable pour cette session. Contactez votre administrateur.");
++    return data?.parametres_catalogues || {};
++  }
++  const d = lireDemo();
++  return d.catalogues || {};
++}
++
++/** Enregistre les catalogues (capacité gerer_referentiels en réel). */
++export async function sauverCatalogues(catalogues) {
++  if (modeDonnees() === "reel") {
++    const { data: org, error: e1 } = await supabase.from("organisations")
++      .select("id").single();
++    if (e1) throw new Error("Organisation introuvable pour cette session.");
++    const { error } = await supabase.from("organisations")
++      .update({ parametres_catalogues: catalogues }).eq("id", org.id);
++    if (error) throw error;
++    return;
++  }
++  const d = lireDemo();
++  d.catalogues = catalogues; ecrireDemo(d);
++}
++
+ export async function obtenirTextes() {
+   if (modeDonnees() === "reel") {
+     const { data, error } = await supabase.from("organisations")
+-      .select("parametres_textes").limit(1).single();
++      .select("parametres_textes").single();
+     if (error) throw error;
+     return data?.parametres_textes || {};
+   }
+@@ -1800,7 +1837,7 @@ export async function obtenirTextes() {
+ export async function sauverTextes(textes) {
+   if (modeDonnees() === "reel") {
+     const { data, error: e1 } = await supabase.from("organisations")
+-      .select("id").limit(1).single();
++      .select("id").single();
+     if (e1) throw e1;
+     const { error } = await supabase.from("organisations")
+       .update({ parametres_textes: textes }).eq("id", data.id);
+diff --git a/apps/web/src/lib/pdfOffre.js b/apps/web/src/lib/pdfOffre.js
+index 5bcdacd..dbf16f3 100644
+--- a/apps/web/src/lib/pdfOffre.js
++++ b/apps/web/src/lib/pdfOffre.js
+@@ -7,6 +7,9 @@
+ // que l'instance gelée : un seul chiffrage, trois rendus.
+ // =============================================================================
+ 
++import { obtenirTextes } from "./adaptateur.js";
++import { TEXTES_PDF_DEFAUT, textesEffectifs } from "@domaine/communication/textes.js";
++
+ const A4 = { largeur: 210, hauteur: 297 };
+ const MARGE = 16;
+ 
+@@ -28,8 +31,17 @@ function dateLongue(iso) {
+  * @param {object} contenu  sortie de composerOffre()
+  * @param {string} numero   référence affichée (facultatif)
+  */
+-export async function pdfOffre(contenu, numero) {
++export async function pdfOffre(contenu, numero, textesPdf) {
+   const { jsPDF } = await import("jspdf");
++  // Libellés réglables depuis Compte → Modifications données texte dossiers.
++  // On les lit ici pour n'imposer aucun changement aux appelants ; en cas
++  // d'échec on garde les défauts, un PDF doit toujours pouvoir sortir.
++  let T = TEXTES_PDF_DEFAUT;
++  if (textesPdf) T = { ...TEXTES_PDF_DEFAUT, ...textesPdf };
++  else {
++    try { T = textesEffectifs(await obtenirTextes(), "pdf"); }
++    catch { T = TEXTES_PDF_DEFAUT; }
++  }
+   const doc = new jsPDF({ unit: "mm", format: "a4" });
+   const org = contenu.organisation || {};
+   let y = MARGE;
+@@ -69,21 +81,21 @@ export async function pdfOffre(contenu, numero) {
+   if (org.tva) ligne(`TVA ${org.tva}`, { taille: 9, couleur: [100, 116, 139], saut: 4 });
+ 
+   y += 4;
+-  ligne("OFFRE DE PRIX", { taille: 13, gras: true, couleur: [37, 99, 235], saut: 5 });
++  ligne(T.titre, { taille: 13, gras: true, couleur: [37, 99, 235], saut: 5 });
+   const emis = contenu.emis_le ? new Date(contenu.emis_le).toLocaleDateString("fr-BE") : "";
+   ligne([numero ? `Référence ${numero}` : "", emis ? `Établie le ${emis}` : ""]
+     .filter(Boolean).join(" · "), { taille: 9, couleur: [100, 116, 139], saut: 7 });
+   filet();
+ 
+   // ── Client ────────────────────────────────────────────────────────────────
+-  ligne("CLIENT", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
++  ligne(T.bloc_client, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+   ligne(contenu.client?.nom || "—", { taille: 11, gras: true, saut: 5 });
+   const cli = [contenu.client?.tel, contenu.client?.email].filter(Boolean).join(" · ");
+   if (cli) ligne(cli, { taille: 9, couleur: [100, 116, 139], saut: 5 });
+   y += 2;
+ 
+   // ── Prestation ────────────────────────────────────────────────────────────
+-  ligne("PRESTATION", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
++  ligne(T.bloc_prestation, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+   if (contenu.date_dem) {
+     ligne(`Date : ${dateLongue(contenu.date_dem)}${
+       contenu.heure_dem ? ` — arrivée ${String(contenu.heure_dem).slice(0, 5)}` : ""}`,
+@@ -94,12 +106,12 @@ export async function pdfOffre(contenu, numero) {
+   if (adr(contenu.decharges)) ligne(`Déchargement : ${adr(contenu.decharges)}`, { saut: 5 });
+   if (contenu.volume_m3) ligne(`Volume estimé : ${contenu.volume_m3} m³`, { saut: 5 });
+   if (contenu.formule === "forfait") {
+-    ligne("Formule : forfait", { saut: 5 });
++    ligne(T.formule_forfait, { saut: 5 });
+   } else if (contenu.nb_demenageurs) {
+     ligne(`Équipe : ${contenu.nb_demenageurs} déménageurs${
+       contenu.heures ? ` — ${contenu.heures} h estimées` : ""}`, { saut: 5 });
+   }
+-  if (contenu.elevateur) ligne("Élévateur / lift inclus", { saut: 5 });
++  if (contenu.elevateur) ligne(T.elevateur, { saut: 5 });
+   if ((contenu.a_demonter || []).length) {
+     ligne(`À démonter : ${contenu.a_demonter.map((x) => x.nom || x).join(", ")}`, { saut: 5 });
+   }
+@@ -107,7 +119,7 @@ export async function pdfOffre(contenu, numero) {
+   filet();
+ 
+   // ── Montants ──────────────────────────────────────────────────────────────
+-  ligne("MONTANT", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 6 });
++  ligne(T.bloc_montant, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 6 });
+   const montant = (lib, val, gras = false) => {
+     doc.setFont("helvetica", gras ? "bold" : "normal");
+     doc.setFontSize(gras ? 12 : 10);
+@@ -116,18 +128,18 @@ export async function pdfOffre(contenu, numero) {
+     droite(val, { taille: gras ? 12 : 10, gras });
+     y += gras ? 7 : 5.5;
+   };
+-  montant("Total HTVA", euros(contenu.htva_centimes));
+-  montant("TVA 21 %", euros(contenu.tva_centimes));
++  montant(T.total_htva, euros(contenu.htva_centimes));
++  montant(T.tva, euros(contenu.tva_centimes));
+   if (contenu.reduction) {
+     montant(`Réduction ${contenu.reduction.pct} % (${
+       contenu.reduction.motif === "degats" ? "dégâts" : "promotion"})`, "");
+   }
+   y += 1;
+-  montant("TOTAL TVAC", euros(contenu.tvac_centimes), true);
++  montant(T.total_tvac, euros(contenu.tvac_centimes), true);
+ 
+   if (contenu.remarques) {
+     y += 3;
+-    ligne("Remarques", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
++    ligne(T.bloc_remarques, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+     doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+     doc.setTextColor(15, 23, 42);
+     const lignes = doc.splitTextToSize(String(contenu.remarques), A4.largeur - 2 * MARGE);
+@@ -142,9 +154,8 @@ export async function pdfOffre(contenu, numero) {
+   doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+   doc.setTextColor(100, 116, 139);
+   doc.text(
+-    "Prestation soumise aux conditions générales de la Chambre Belge des Déménageurs"
+-    + (contenu.cgv_version ? ` (version ${contenu.cgv_version})` : "")
+-    + ", jointes à cette offre.",
++    T.pied_conditions
++    + (contenu.cgv_version ? ` (version ${contenu.cgv_version})` : ""),
+     MARGE, yPied + 5,
+   );
+   if (org.iban) doc.text(`IBAN ${org.iban}`, MARGE, yPied + 9.5);
+diff --git a/apps/web/src/main.jsx b/apps/web/src/main.jsx
+index 679f051..2a168f8 100644
+--- a/apps/web/src/main.jsx
++++ b/apps/web/src/main.jsx
+@@ -21,7 +21,9 @@ import TerrainProfil from "./ecrans/TerrainProfil.jsx";
+ import Bareme from "./ecrans/Bareme.jsx";
+ import Cout from "./ecrans/Cout.jsx";
+ import Archivage from "./ecrans/Archivage.jsx";
+-import Textes from "./ecrans/Textes.jsx";
++import TextesDossiers from "./ecrans/TextesDossiers.jsx";
++import Parametres from "./ecrans/Parametres.jsx";
++import Profil from "./ecrans/Profil.jsx";
+ import Dossier from "./ecrans/Dossier.jsx";
+ import Releve from "./ecrans/Releve.jsx";
+ import Devis from "./ecrans/Devis.jsx";
+@@ -79,62 +81,6 @@ function BarreNav({ actif, aller, peutGererEquipe }) {
+ }
+ 
+ /** Écran Compte — identité, déconnexion, diagnostic. */
+-function Compte({ profil, versDiagnostic, versBareme, versCout, versArchivage, versTextes, peutConfigurer }) {
+-  const acces = peutConfigurer || modeDonnees() === "demo";
+-  const boutonPage = (onClick, icone, texte) => (
+-    <button onClick={onClick} style={{
+-      display: "flex", alignItems: "center", gap: 10, width: "100%", marginTop: 10,
+-      padding: 14, border: `1.5px solid ${C.bord}`, borderRadius: 12, background: "#fff",
+-      color: C.encre, fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
+-      <span style={{ fontSize: 18 }}>{icone}</span>{texte}
+-      <span style={{ marginLeft: "auto", color: C.fantome }}>›</span>
+-    </button>
+-  );
+-  return (
+-    <div style={{ maxWidth: 520, margin: "0 auto", padding: "20px 16px 90px",
+-                  fontFamily: "system-ui, sans-serif" }}>
+-      <div style={{ fontSize: 20, fontWeight: 800, color: C.encre, marginBottom: 14 }}>Compte</div>
+-      <div style={{ background: "#fff", borderRadius: 14, padding: 16,
+-                    boxShadow: "0 2px 10px rgba(15,23,42,.06)" }}>
+-        <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
+-          {profil?.nom || "—"}
+-        </div>
+-        <div style={{ fontSize: 13, color: C.muet }}>{profil?.email || ""}</div>
+-        {profil?.capacites && (
+-          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
+-            {profil.capacites.length} capacités actives
+-          </div>
+-        )}
+-      </div>
+-
+-      {acces && (
+-        <>
+-          <div style={{ fontSize: 11, fontWeight: 700, color: C.muet, letterSpacing: ".05em",
+-            textTransform: "uppercase", margin: "18px 2px 2px" }}>Réglages</div>
+-          {versBareme && boutonPage(versBareme, "🏷️", "Barème (prix client)")}
+-          {versCout && boutonPage(versCout, "📉", "Coûts internes")}
+-          {versTextes && boutonPage(versTextes, "✉️", "Textes de l'offre")}
+-          {versArchivage && boutonPage(versArchivage, "🗂️", "Archivage")}
+-        </>
+-      )}
+-
+-      <button onClick={versDiagnostic} style={{ background: "none", border: "none",
+-        color: C.bleu, fontSize: 13, fontWeight: 600, cursor: "pointer",
+-        padding: "18px 2px 4px" }}>
+-        Diagnostic de branchement
+-      </button>
+-      {modeDonnees() === "reel" && (
+-        <button onClick={async () => { await deconnecter(); window.location.reload(); }}
+-          style={{ display: "block", width: "100%", marginTop: 14, padding: 13,
+-            border: "1.5px solid #FECACA", borderRadius: 11, background: "#FEF2F2",
+-            color: "#991B1B", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+-          Se déconnecter
+-        </button>
+-      )}
+-    </div>
+-  );
+-}
+-
+ /**
+  * Sous-application TERRAIN — sa propre coquille et sa barre de navigation
+  * dédiée (Chantiers / Outils / Compte). Aucun accès aux écrans bureau : le
+@@ -402,6 +348,7 @@ function App() {
+     cout: () => setRoute({ ecran: "cout", affaireId: null }),
+     archivage: () => setRoute({ ecran: "archivage", affaireId: null }),
+     textes: () => setRoute({ ecran: "textes", affaireId: null }),
++    parametres: () => setRoute({ ecran: "parametres", affaireId: null }),
+   };
+   const retourDossier = () => nav.dossier(route.affaireId);
+ 
+@@ -420,10 +367,8 @@ function App() {
+       </div>
+     );
+   } else if (route.ecran === "compte") {
+-    ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic}
+-      versBareme={nav.bareme} versCout={nav.cout} versArchivage={nav.archivage}
+-      versTextes={nav.textes}
+-      peutConfigurer={peutGererEquipe} />;
++    ecran = <Profil profil={profil} versDiagnostic={nav.diagnostic}
++      versParametres={nav.parametres} peutConfigurer={peutGererEquipe} />;
+   } else if (route.ecran === "equipe") {
+     ecran = <Ressources />;
+   } else if (route.ecran === "planning") {
+@@ -441,14 +386,18 @@ function App() {
+                    peutVoirPrix={peutVoirPrix} />;
+   } else if (route.ecran === "offre") {
+     ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
++  } else if (route.ecran === "parametres") {
++    ecran = <Parametres retour={() => nav.compte()}
++      versBareme={nav.bareme} versCout={nav.cout}
++      versTextes={nav.textes} versArchivage={nav.archivage} />;
+   } else if (route.ecran === "bareme") {
+-    ecran = <Bareme retour={() => nav.compte()} />;
++    ecran = <Bareme retour={() => nav.parametres()} />;
+   } else if (route.ecran === "cout") {
+-    ecran = <Cout retour={() => nav.compte()} />;
++    ecran = <Cout retour={() => nav.parametres()} />;
+   } else if (route.ecran === "archivage") {
+-    ecran = <Archivage retour={() => nav.compte()} />;
++    ecran = <Archivage retour={() => nav.parametres()} />;
+   } else if (route.ecran === "textes") {
+-    ecran = <Textes retour={() => nav.compte()} />;
++    ecran = <TextesDossiers retour={() => nav.parametres()} />;
+   } else if (route.ecran === "materiel") {
+     ecran = <Materiel affaireId={route.affaireId} retour={retourDossier} />;
+   } else if (route.ecran === "mail") {
+diff --git a/packages/domaine/src/communication/brief.js b/packages/domaine/src/communication/brief.js
+index e34bace..12a22b8 100644
+--- a/packages/domaine/src/communication/brief.js
++++ b/packages/domaine/src/communication/brief.js
+@@ -156,7 +156,7 @@ export const TEXTES_OFFRE_DEFAUT = Object.freeze({
+   validite: "Offre valable {validite} jours ouvrables.",
+   validite_jours: 10,
+   formule_politesse: "Bien à vous,",
+-  signataire: "Raphaël Van Cutsem",
++  signataire: "{organisation}",
+   pied: "",
+ });
+ 
+diff --git a/packages/domaine/src/communication/textes.js b/packages/domaine/src/communication/textes.js
+new file mode 100644
+index 0000000..9365f67
+--- /dev/null
++++ b/packages/domaine/src/communication/textes.js
+@@ -0,0 +1,152 @@
++// =============================================================================
++// Catalogue des textes réglables — source unique de vérité.
++//
++// Tout texte que le CLIENT peut lire est décrit ici : son libellé dans
++// l'interface, sa valeur par défaut, et l'espace de stockage où l'entreprise
++// range sa version personnalisée.
++//
++// Stockage : organisations.parametres_textes (jsonb).
++//   - groupe "offre" → clés à la RACINE (compatibilité avec l'existant)
++//   - autres groupes → sous-objet nommé (ex. { pdf: { titre: "..." } })
++//
++// Règle : une clé absente ou vide retombe sur le défaut. Un réglage partiel
++// est donc toujours valide, et une entreprise nouvelle démarre avec des
++// textes corrects sans rien saisir.
++//
++// AUCUN nom d'entreprise ni de personne réelle ne doit figurer dans les
++// valeurs par défaut (AUDIT_REAL.md §5).
++// =============================================================================
++
++import { TEXTES_OFFRE_DEFAUT } from "./brief.js";
++
++/** Libellés du PDF d'offre remis au client. */
++export const TEXTES_PDF_DEFAUT = Object.freeze({
++  titre: "OFFRE DE PRIX",
++  bloc_client: "CLIENT",
++  bloc_prestation: "PRESTATION",
++  bloc_montant: "MONTANT",
++  bloc_remarques: "Remarques",
++  formule_forfait: "Formule : forfait",
++  elevateur: "Élévateur / lift inclus",
++  total_htva: "Total HTVA",
++  tva: "TVA 21 %",
++  total_tvac: "TOTAL TVAC",
++  pied_conditions:
++    "Prestation soumise aux conditions générales de la Chambre Belge des "
++    + "Déménageurs, jointes à cette offre.",
++});
++
++/** Valeurs par défaut, par clé de groupe. */
++export const DEFAUTS_PAR_GROUPE = Object.freeze({
++  offre: TEXTES_OFFRE_DEFAUT,
++  pdf: TEXTES_PDF_DEFAUT,
++});
++
++/**
++ * Description des sous-pages de « Modifications données texte dossiers ».
++ * L'interface se construit à partir de cette liste : ajouter un groupe ici
++ * suffit à faire apparaître une nouvelle sous-page.
++ *
++ * espace = null  → clés stockées à la racine de parametres_textes
++ * espace = "pdf" → clés stockées dans parametres_textes.pdf
++ * fichier = true → la sous-page gère un document, pas des champs texte
++ */
++export const GROUPES_TEXTES = Object.freeze([
++  {
++    cle: "offre",
++    espace: null,
++    icone: "✉️",
++    titre: "Texte de l'offre",
++    resume: "L'email qui accompagne l'offre de prix envoyée au client.",
++    apercu: true,
++    champs: [
++      { cle: "objet", label: "Objet de l'email", aide: "{client} {organisation}" },
++      { cle: "salutation", label: "Salutation", aide: "{famille} = nom de famille" },
++      { cle: "intro", label: "Phrase d'introduction", long: true },
++      { cle: "intro_signee", label: "Ajout si l'offre est signée", long: true },
++      { cle: "mention_km", label: "Mention kilométrage" },
++      { cle: "validite", label: "Mention de validité", aide: "{validite} = jours" },
++      { cle: "validite_jours", label: "Validité (jours)", nombre: true },
++      { cle: "formule_politesse", label: "Formule de politesse" },
++      { cle: "signataire", label: "Signataire", aide: "nom affiché en bas de l'email" },
++      { cle: "pied", label: "Pied de page (facultatif)", long: true },
++    ],
++  },
++  {
++    cle: "pdf",
++    espace: "pdf",
++    icone: "📄",
++    titre: "Document PDF de l'offre",
++    resume: "Les intitulés imprimés sur le PDF joint à l'offre.",
++    champs: [
++      { cle: "titre", label: "Titre du document" },
++      { cle: "bloc_client", label: "Titre du bloc client" },
++      { cle: "bloc_prestation", label: "Titre du bloc prestation" },
++      { cle: "bloc_montant", label: "Titre du bloc montant" },
++      { cle: "bloc_remarques", label: "Titre du bloc remarques" },
++      { cle: "formule_forfait", label: "Mention « forfait »" },
++      { cle: "elevateur", label: "Mention élévateur" },
++      { cle: "total_htva", label: "Libellé total hors TVA" },
++      { cle: "tva", label: "Libellé TVA" },
++      { cle: "total_tvac", label: "Libellé total TVA comprise" },
++      { cle: "pied_conditions", label: "Mention des conditions générales", long: true },
++    ],
++  },
++  {
++    cle: "cbd",
++    icone: "📎",
++    titre: "Conditions générales C.B.D.",
++    resume: "Le PDF joint à chaque offre, à côté de l'offre elle-même.",
++    fichier: true,
++    champs: [],
++  },
++]);
++
++/** Retrouve un groupe par sa clé. */
++export function groupeTextes(cle) {
++  return GROUPES_TEXTES.find((g) => g.cle === cle) || null;
++}
++
++/**
++ * Extrait du jsonb stocké les valeurs personnalisées d'un groupe.
++ * Renvoie toujours un objet, jamais null.
++ */
++export function lireGroupe(stockes, groupe) {
++  if (!groupe) return {};
++  const source = groupe.espace ? (stockes || {})[groupe.espace] : stockes;
++  if (!source || typeof source !== "object") return {};
++  if (groupe.espace) return { ...source };
++  // Groupe racine : on ne retient que les clés qui lui appartiennent, pour ne
++  // pas ramasser les sous-objets des autres groupes.
++  const miennes = new Set(groupe.champs.map((c) => c.cle));
++  return Object.fromEntries(
++    Object.entries(source).filter(([k]) => miennes.has(k)));
++}
++
++/**
++ * Réintègre les valeurs d'un groupe dans le jsonb complet, sans toucher aux
++ * autres groupes. Les valeurs vides sont retirées : le défaut reprend la main.
++ */
++export function ecrireGroupe(stockes, groupe, valeurs) {
++  const base = { ...(stockes || {}) };
++  const utiles = Object.fromEntries(
++    Object.entries(valeurs || {}).filter(([, v]) => v !== "" && v != null));
++
++  if (groupe.espace) {
++    if (Object.keys(utiles).length === 0) delete base[groupe.espace];
++    else base[groupe.espace] = utiles;
++    return base;
++  }
++  for (const champ of groupe.champs) delete base[champ.cle];
++  return { ...base, ...utiles };
++}
++
++/**
++ * Textes effectifs d'un groupe : défauts complétés par la personnalisation.
++ * C'est cette fonction que le rendu (PDF, email) doit appeler.
++ */
++export function textesEffectifs(stockes, cleGroupe) {
++  const groupe = groupeTextes(cleGroupe);
++  if (!groupe) return {};
++  return { ...(DEFAUTS_PAR_GROUPE[cleGroupe] || {}), ...lireGroupe(stockes, groupe) };
++}
+diff --git a/packages/domaine/src/stocks/catalogues.js b/packages/domaine/src/stocks/catalogues.js
+new file mode 100644
+index 0000000..1cefddc
+--- /dev/null
++++ b/packages/domaine/src/stocks/catalogues.js
+@@ -0,0 +1,141 @@
++// =============================================================================
++// Catalogues réglables par entreprise.
++//
++// Trois listes que chaque entreprise adapte à sa façon de travailler :
++//   - pieces           : les pièces proposées dans le relevé
++//   - fournitures      : le matériel d'emballage facturable au client
++//   - materiel_terrain : l'équipement de manutention (diable, planche…)
++//
++// Stockage : organisations.parametres_catalogues (jsonb).
++// Une liste absente ou vide retombe sur le défaut : une entreprise nouvelle
++// démarre avec un catalogue utilisable sans rien saisir.
++//
++// Le coût interne de chaque ligne alimente « Coûts internes » : ce que
++// l'entreprise paie pour l'article, distinct du prix facturé au client.
++// =============================================================================
++
++/** Pièces proposées au relevé, dans l'ordre d'affichage. */
++export const PIECES_DEFAUT = Object.freeze([
++  "Salon", "Salle à manger", "Cuisine", "Chambre", "Chambre 2",
++  "Bureau", "Salle de bain", "Cave", "Grenier", "Garage", "Jardin",
++]);
++
++/**
++ * Fournitures d'emballage. cout_centimes = ce que l'article coûte à
++ * l'entreprise, consommable = déduit du stock à chaque chantier.
++ */
++export const FOURNITURES_DEFAUT = Object.freeze([
++  { cle: "carton_standard", nom: "Carton standard", unite: "pièce", cout_centimes: 150, consommable: true },
++  { cle: "carton_livre", nom: "Carton livres", unite: "pièce", cout_centimes: 180, consommable: true },
++  { cle: "carton_penderie", nom: "Carton penderie", unite: "pièce", cout_centimes: 900, consommable: true },
++  { cle: "papier_bulle", nom: "Papier bulle (rouleau)", unite: "rouleau", cout_centimes: 1200, consommable: true },
++  { cle: "papier_soie", nom: "Papier de soie (paquet)", unite: "paquet", cout_centimes: 800, consommable: true },
++  { cle: "adhesif", nom: "Rouleau adhésif", unite: "rouleau", cout_centimes: 200, consommable: true },
++  { cle: "housse_matelas", nom: "Housse matelas", unite: "pièce", cout_centimes: 400, consommable: true },
++  { cle: "housse_canape", nom: "Housse canapé", unite: "pièce", cout_centimes: 600, consommable: true },
++  { cle: "film_etirable", nom: "Film étirable", unite: "rouleau", cout_centimes: 1000, consommable: true },
++]);
++
++/**
++ * Matériel de terrain — non consommable, il revient au dépôt.
++ * cout_centimes sert à l'amortissement et au remplacement.
++ */
++export const MATERIEL_TERRAIN_DEFAUT = Object.freeze([
++  { cle: "diable", nom: "Diable", unite: "pièce", cout_centimes: 12000, consommable: false },
++  { cle: "planche_roulettes", nom: "Planche à roulettes", unite: "pièce", cout_centimes: 6500, consommable: false },
++  { cle: "bandes_porter", nom: "Bandes à porter", unite: "paire", cout_centimes: 4500, consommable: false },
++  { cle: "sangles", nom: "Sangles d'arrimage", unite: "pièce", cout_centimes: 1500, consommable: false },
++  { cle: "couverture", nom: "Couverture de déménagement", unite: "pièce", cout_centimes: 1200, consommable: false },
++  { cle: "chariot", nom: "Chariot plateau", unite: "pièce", cout_centimes: 9000, consommable: false },
++  { cle: "monte_meuble", nom: "Monte-meuble / élévateur", unite: "journée", cout_centimes: 0, consommable: false },
++  { cle: "protection_sol", nom: "Protection de sol", unite: "rouleau", cout_centimes: 2500, consommable: true },
++  { cle: "boite_outils", nom: "Boîte à outils", unite: "pièce", cout_centimes: 5000, consommable: false },
++]);
++
++export const CATALOGUES_DEFAUT = Object.freeze({
++  pieces: PIECES_DEFAUT,
++  fournitures: FOURNITURES_DEFAUT,
++  materiel_terrain: MATERIEL_TERRAIN_DEFAUT,
++});
++
++/** Description des listes, pour construire l'écran de réglage. */
++export const LISTES_CATALOGUE = Object.freeze([
++  {
++    cle: "pieces", titre: "Pièces du relevé", icone: "🏠",
++    resume: "Les pièces proposées lors du relevé chez le client.",
++    texteSimple: true,
++  },
++  {
++    cle: "fournitures", titre: "Fournitures d'emballage", icone: "📦",
++    resume: "Cartons, papier, housses — facturables au client.",
++  },
++  {
++    cle: "materiel_terrain", titre: "Matériel de terrain", icone: "🛠️",
++    resume: "Diable, planche à roulettes, bandes à porter, sangles…",
++  },
++]);
++
++/** Liste effective : le réglage de l'entreprise, sinon le défaut. */
++export function catalogue(stockes, cle) {
++  const perso = (stockes || {})[cle];
++  if (Array.isArray(perso) && perso.length > 0) return perso;
++  return CATALOGUES_DEFAUT[cle] || [];
++}
++
++/** Vrai si l'entreprise a personnalisé cette liste. */
++export function estPersonnalise(stockes, cle) {
++  const perso = (stockes || {})[cle];
++  return Array.isArray(perso) && perso.length > 0;
++}
++
++/** Normalise une saisie en article exploitable. Renvoie null si inutilisable. */
++export function normaliserArticle(brut, simple = false) {
++  if (simple) {
++    const nom = String(brut ?? "").trim();
++    return nom || null;
++  }
++  const nom = String(brut?.nom ?? "").trim();
++  if (!nom) return null;
++  const cle = String(brut?.cle ?? "").trim()
++    || nom.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
++          .replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
++  const cout = Number(brut?.cout_centimes);
++  return {
++    cle,
++    nom,
++    unite: String(brut?.unite ?? "pièce").trim() || "pièce",
++    cout_centimes: Number.isFinite(cout) && cout >= 0 ? Math.round(cout) : 0,
++    consommable: brut?.consommable !== false,
++  };
++}
++
++/**
++ * Coûts internes dérivés des catalogues : une ligne par article ayant un coût.
++ * C'est ce qui alimente automatiquement l'écran « Coûts internes » — ajouter
++ * un article au matériel le fait apparaître dans les coûts, sans double saisie.
++ */
++export function coutsMateriel(stockes) {
++  const lignes = [];
++  for (const cle of ["fournitures", "materiel_terrain"]) {
++    for (const a of catalogue(stockes, cle)) {
++      if (!a || typeof a !== "object") continue;
++      if (!(a.cout_centimes > 0)) continue;
++      lignes.push({
++        source: cle,
++        cle: a.cle,
++        nom: a.nom,
++        unite: a.unite || "pièce",
++        cout_centimes: a.cout_centimes,
++        consommable: a.consommable !== false,
++      });
++    }
++  }
++  return lignes;
++}
++
++/** Total du coût unitaire de tout le matériel non consommable (parc). */
++export function valeurParcMateriel(stockes) {
++  return coutsMateriel(stockes)
++    .filter((l) => !l.consommable)
++    .reduce((t, l) => t + l.cout_centimes, 0);
++}
+diff --git a/packages/domaine/tests/catalogues.test.js b/packages/domaine/tests/catalogues.test.js
+new file mode 100644
+index 0000000..3b5c155
+--- /dev/null
++++ b/packages/domaine/tests/catalogues.test.js
+@@ -0,0 +1,66 @@
++// Tests — catalogues réglables par entreprise.
++import test from "node:test";
++import assert from "node:assert/strict";
++import {
++  CATALOGUES_DEFAUT, LISTES_CATALOGUE, catalogue, estPersonnalise,
++  normaliserArticle, coutsMateriel, valeurParcMateriel,
++} from "../src/stocks/catalogues.js";
++
++test("catalogue : repli sur le défaut si rien n'est réglé", () => {
++  assert.deepEqual(catalogue({}, "pieces"), CATALOGUES_DEFAUT.pieces);
++  assert.deepEqual(catalogue(null, "pieces"), CATALOGUES_DEFAUT.pieces);
++  assert.deepEqual(catalogue({ pieces: [] }, "pieces"), CATALOGUES_DEFAUT.pieces);
++});
++
++test("catalogue : la liste de l'entreprise prime", () => {
++  assert.deepEqual(catalogue({ pieces: ["Loft"] }, "pieces"), ["Loft"]);
++  assert.equal(estPersonnalise({ pieces: ["Loft"] }, "pieces"), true);
++  assert.equal(estPersonnalise({ pieces: [] }, "pieces"), false);
++});
++
++test("normaliserArticle : clé dérivée du nom, accents retirés", () => {
++  const a = normaliserArticle({ nom: "Planche à roulettes", cout_centimes: 6500 });
++  assert.equal(a.cle, "planche_a_roulettes");
++  assert.equal(a.unite, "pièce");
++  assert.equal(a.cout_centimes, 6500);
++});
++
++test("normaliserArticle : refuse un nom vide, borne un coût aberrant", () => {
++  assert.equal(normaliserArticle({ nom: "  " }), null);
++  assert.equal(normaliserArticle("", true), null);
++  assert.equal(normaliserArticle({ nom: "X", cout_centimes: -5 }).cout_centimes, 0);
++  assert.equal(normaliserArticle({ nom: "X", cout_centimes: "abc" }).cout_centimes, 0);
++});
++
++test("le matériel de terrain attendu figure dans les défauts", () => {
++  const cles = CATALOGUES_DEFAUT.materiel_terrain.map((a) => a.cle);
++  for (const attendu of ["diable", "planche_roulettes", "bandes_porter"]) {
++    assert.ok(cles.includes(attendu), `${attendu} absent du matériel de terrain`);
++  }
++});
++
++test("coutsMateriel : une ligne par article facturé, sans les gratuits", () => {
++  // Les fournitures non réglées retombent sur le défaut : on isole la source
++  // testée pour ne mesurer que le comportement du filtre de coût.
++  const lignes = coutsMateriel({ materiel_terrain: [
++    { cle: "a", nom: "A", unite: "pièce", cout_centimes: 100, consommable: false },
++    { cle: "b", nom: "B", unite: "pièce", cout_centimes: 0 },
++  ] }).filter((l) => l.source === "materiel_terrain");
++  assert.equal(lignes.length, 1);
++  assert.equal(lignes[0].cle, "a");
++});
++
++test("valeurParcMateriel : ne compte que le non consommable", () => {
++  const v = valeurParcMateriel({ materiel_terrain: [
++    { cle: "a", nom: "A", cout_centimes: 1000, consommable: false },
++    { cle: "b", nom: "B", cout_centimes: 500, consommable: true },
++  ] });
++  assert.equal(v, 1000);
++});
++
++test("chaque liste réglable a des défauts", () => {
++  for (const l of LISTES_CATALOGUE) {
++    assert.ok(Array.isArray(CATALOGUES_DEFAUT[l.cle]), `défauts manquants : ${l.cle}`);
++    assert.ok(CATALOGUES_DEFAUT[l.cle].length > 0, `liste vide : ${l.cle}`);
++  }
++});
+diff --git a/packages/domaine/tests/textes.test.js b/packages/domaine/tests/textes.test.js
+new file mode 100644
+index 0000000..85e80a8
+--- /dev/null
++++ b/packages/domaine/tests/textes.test.js
+@@ -0,0 +1,69 @@
++// Tests — catalogue des textes réglables.
++// Vérifie l'isolation des groupes dans le jsonb, le repli sur les défauts,
++// et l'absence de toute identité réelle dans les valeurs par défaut.
++
++import test from "node:test";
++import assert from "node:assert/strict";
++import {
++  GROUPES_TEXTES, DEFAUTS_PAR_GROUPE, groupeTextes,
++  lireGroupe, ecrireGroupe, textesEffectifs, TEXTES_PDF_DEFAUT,
++} from "../src/communication/textes.js";
++
++const OFFRE = groupeTextes("offre");
++const PDF = groupeTextes("pdf");
++
++test("lireGroupe : le groupe racine ne ramasse pas les sous-objets", () => {
++  const stockes = { objet: "Mon objet", pdf: { titre: "MON TITRE" } };
++  assert.deepEqual(lireGroupe(stockes, OFFRE), { objet: "Mon objet" });
++  assert.deepEqual(lireGroupe(stockes, PDF), { titre: "MON TITRE" });
++});
++
++test("ecrireGroupe : modifier un groupe ne touche pas les autres", () => {
++  const avant = { objet: "Mon objet", pdf: { titre: "MON TITRE" } };
++  const apres = ecrireGroupe(avant, PDF, { titre: "AUTRE", tva: "TVA 6 %" });
++  assert.equal(apres.objet, "Mon objet");
++  assert.deepEqual(apres.pdf, { titre: "AUTRE", tva: "TVA 6 %" });
++});
++
++test("ecrireGroupe : une valeur vide retire la personnalisation", () => {
++  const apres = ecrireGroupe({ objet: "X" }, OFFRE, { objet: "", salutation: "Salut," });
++  assert.equal(apres.objet, undefined);
++  assert.equal(apres.salutation, "Salut,");
++});
++
++test("ecrireGroupe : vider un groupe nommé supprime son espace", () => {
++  const apres = ecrireGroupe({ pdf: { titre: "X" } }, PDF, {});
++  assert.equal("pdf" in apres, false);
++});
++
++test("textesEffectifs : le défaut complète le réglage partiel", () => {
++  const t = textesEffectifs({ pdf: { titre: "DEVIS" } }, "pdf");
++  assert.equal(t.titre, "DEVIS");
++  assert.equal(t.total_tvac, TEXTES_PDF_DEFAUT.total_tvac);
++});
++
++test("textesEffectifs : sans rien de stocké, tout vient du défaut", () => {
++  assert.deepEqual(textesEffectifs({}, "pdf"), { ...TEXTES_PDF_DEFAUT });
++  assert.deepEqual(textesEffectifs(null, "pdf"), { ...TEXTES_PDF_DEFAUT });
++});
++
++test("chaque groupe déclare des champs connus et un défaut par champ", () => {
++  for (const g of GROUPES_TEXTES) {
++    if (g.fichier) continue;
++    const defauts = DEFAUTS_PAR_GROUPE[g.cle];
++    assert.ok(defauts, `défauts manquants pour le groupe ${g.cle}`);
++    for (const ch of g.champs) {
++      assert.ok(ch.cle in defauts,
++        `le champ ${g.cle}.${ch.cle} n'a pas de valeur par défaut`);
++    }
++  }
++});
++
++test("garde-fou multi-tenant : aucune identité réelle dans les défauts", () => {
++  const tout = JSON.stringify(DEFAUTS_PAR_GROUPE);
++  for (const interdit of [/roovers/i, /van\s*cutsem/i, /BE\s*73/i, /jodoigne/i,
++                          /0478\.363/, /raphael/i]) {
++    assert.doesNotMatch(tout, interdit,
++      `une donnée d'entreprise réelle traîne dans les textes par défaut : ${interdit}`);
++  }
++});
