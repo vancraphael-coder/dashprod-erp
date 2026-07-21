@@ -22,6 +22,12 @@ import Bareme from "./ecrans/Bareme.jsx";
 import Cout from "./ecrans/Cout.jsx";
 import Archivage from "./ecrans/Archivage.jsx";
 import TextesDossiers from "./ecrans/TextesDossiers.jsx";
+import Parametres from "./ecrans/Parametres.jsx";
+import Profil from "./ecrans/Profil.jsx";
+import Landing from "./ecrans/Landing.jsx";
+import Bienvenue from "./ecrans/Bienvenue.jsx";
+import { obtenirOrganisation } from "./lib/adaptateur.js";
+import { identiteComplete } from "@domaine/organisation/identite.js";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
 import Devis from "./ecrans/Devis.jsx";
@@ -79,62 +85,6 @@ function BarreNav({ actif, aller, peutGererEquipe }) {
 }
 
 /** Écran Compte — identité, déconnexion, diagnostic. */
-function Compte({ profil, versDiagnostic, versBareme, versCout, versArchivage, versTextes, peutConfigurer }) {
-  const acces = peutConfigurer || modeDonnees() === "demo";
-  const boutonPage = (onClick, icone, texte) => (
-    <button onClick={onClick} style={{
-      display: "flex", alignItems: "center", gap: 10, width: "100%", marginTop: 10,
-      padding: 14, border: `1.5px solid ${C.bord}`, borderRadius: 12, background: "#fff",
-      color: C.encre, fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
-      <span style={{ fontSize: 18 }}>{icone}</span>{texte}
-      <span style={{ marginLeft: "auto", color: C.fantome }}>›</span>
-    </button>
-  );
-  return (
-    <div style={{ maxWidth: 520, margin: "0 auto", padding: "20px 16px 90px",
-                  fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: C.encre, marginBottom: 14 }}>Compte</div>
-      <div style={{ background: "#fff", borderRadius: 14, padding: 16,
-                    boxShadow: "0 2px 10px rgba(15,23,42,.06)" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
-          {profil?.nom || "—"}
-        </div>
-        <div style={{ fontSize: 13, color: C.muet }}>{profil?.email || ""}</div>
-        {profil?.capacites && (
-          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
-            {profil.capacites.length} capacités actives
-          </div>
-        )}
-      </div>
-
-      {acces && (
-        <>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.muet, letterSpacing: ".05em",
-            textTransform: "uppercase", margin: "18px 2px 2px" }}>Réglages</div>
-          {versBareme && boutonPage(versBareme, "🏷️", "Barème (prix client)")}
-          {versCout && boutonPage(versCout, "📉", "Coûts internes")}
-          {versTextes && boutonPage(versTextes, "📝", "Modifications données texte dossiers")}
-          {versArchivage && boutonPage(versArchivage, "🗂️", "Archivage")}
-        </>
-      )}
-
-      <button onClick={versDiagnostic} style={{ background: "none", border: "none",
-        color: C.bleu, fontSize: 13, fontWeight: 600, cursor: "pointer",
-        padding: "18px 2px 4px" }}>
-        Diagnostic de branchement
-      </button>
-      {modeDonnees() === "reel" && (
-        <button onClick={async () => { await deconnecter(); window.location.reload(); }}
-          style={{ display: "block", width: "100%", marginTop: 14, padding: 13,
-            border: "1.5px solid #FECACA", borderRadius: 11, background: "#FEF2F2",
-            color: "#991B1B", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-          Se déconnecter
-        </button>
-      )}
-    </div>
-  );
-}
-
 /**
  * Sous-application TERRAIN — sa propre coquille et sa barre de navigation
  * dédiée (Chantiers / Outils / Compte). Aucun accès aux écrans bureau : le
@@ -330,6 +280,12 @@ function SousNavDossier({ actif, aller }) {
 
 function App() {
   const [session, setSession] = useState(null);
+  const [org, setOrg] = useState(null);
+  // Landing publique tant que l'utilisateur n'a pas cliqué "se connecter".
+  const [veutEntrer, setVeutEntrer] = useState(() => {
+    try { return sessionStorage.getItem("dashprod-entrer") === "1"; } catch { return false; }
+  });
+  const [accueilVu, setAccueilVu] = useState(false);
   const [profil, setProfil] = useState(null);
   const [nonInvite, setNonInvite] = useState(null);
   const [charge, setCharge] = useState(false);
@@ -344,7 +300,10 @@ function App() {
           await reclamerInvitation();
           const p = await monProfil();
           if (!p) setNonInvite(s.user?.email || "cet email");
-          else setProfil(p);
+          else {
+            setProfil(p);
+            setOrg(await obtenirOrganisation().catch(() => ({})));
+          }
         } catch (e) {
           setNonInvite(s.user?.email || "cet email");
         }
@@ -355,6 +314,12 @@ function App() {
 
   if (!charge) return null;
   if (configPresente && !session) {
+    if (!veutEntrer) {
+      return <Landing onConnexion={() => {
+        try { sessionStorage.setItem("dashprod-entrer", "1"); } catch {}
+        setVeutEntrer(true);
+      }} />;
+    }
     return <Connexion onConnecte={() => window.location.reload()} />;
   }
   if (configPresente && nonInvite) {
@@ -375,6 +340,15 @@ function App() {
 
   if (estTerrain) {
     return <AppTerrain profil={profil} />;
+  }
+
+  // Accueil d'onboarding : organisation neuve dont l'identité n'est pas encore
+  // prête à produire des documents. Affiché tant que l'admin ne l'a pas passé.
+  const orgPrete = identiteComplete(org || {}).pretDocuments;
+  if (modeDonnees() === "reel" && peutGererEquipe && org && !orgPrete && !accueilVu) {
+    return <Bienvenue profil={profil}
+      versIdentite={() => { setAccueilVu(true); setRoute({ ecran: "parametres", affaireId: null }); }}
+      versApp={() => setAccueilVu(true)} />;
   }
 
   // Garde : navigation en attente tant que l'utilisateur n'a pas tranché
@@ -402,6 +376,7 @@ function App() {
     cout: () => setRoute({ ecran: "cout", affaireId: null }),
     archivage: () => setRoute({ ecran: "archivage", affaireId: null }),
     textes: () => setRoute({ ecran: "textes", affaireId: null }),
+    parametres: () => setRoute({ ecran: "parametres", affaireId: null }),
   };
   const retourDossier = () => nav.dossier(route.affaireId);
 
@@ -420,10 +395,8 @@ function App() {
       </div>
     );
   } else if (route.ecran === "compte") {
-    ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic}
-      versBareme={nav.bareme} versCout={nav.cout} versArchivage={nav.archivage}
-      versTextes={nav.textes}
-      peutConfigurer={peutGererEquipe} />;
+    ecran = <Profil profil={profil} versDiagnostic={nav.diagnostic}
+      versParametres={nav.parametres} peutConfigurer={peutGererEquipe} />;
   } else if (route.ecran === "equipe") {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
@@ -441,14 +414,18 @@ function App() {
                    peutVoirPrix={peutVoirPrix} />;
   } else if (route.ecran === "offre") {
     ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
+  } else if (route.ecran === "parametres") {
+    ecran = <Parametres retour={() => nav.compte()}
+      versBareme={nav.bareme} versCout={nav.cout}
+      versTextes={nav.textes} versArchivage={nav.archivage} />;
   } else if (route.ecran === "bareme") {
-    ecran = <Bareme retour={() => nav.compte()} />;
+    ecran = <Bareme retour={() => nav.parametres()} />;
   } else if (route.ecran === "cout") {
-    ecran = <Cout retour={() => nav.compte()} />;
+    ecran = <Cout retour={() => nav.parametres()} />;
   } else if (route.ecran === "archivage") {
-    ecran = <Archivage retour={() => nav.compte()} />;
+    ecran = <Archivage retour={() => nav.parametres()} />;
   } else if (route.ecran === "textes") {
-    ecran = <TextesDossiers retour={() => nav.compte()} />;
+    ecran = <TextesDossiers retour={() => nav.parametres()} />;
   } else if (route.ecran === "materiel") {
     ecran = <Materiel affaireId={route.affaireId} retour={retourDossier} />;
   } else if (route.ecran === "mail") {

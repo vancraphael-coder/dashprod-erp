@@ -495,7 +495,18 @@ export async function desarchiverMembre(utilisateurId) {
 export async function listerMissions() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("missions")
-      .select("id, date, heure, type, etat, affaire_id, affaires(clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
+      // Trois motifs de disparition du planning, et il faut les TROIS :
+      //   1. dossier archivé        (affaires.archive_le)
+      //   2. mission annulée        (missions.etat = 'annulee')
+      //   3. dossier désisté        (affaires.etat = 'annule')
+      // Un désistement laisse archive_le à NULL : filtrer sur le seul
+      // archivage laissait des missions futures déjà annulées au planning.
+      // Le "!inner" est indispensable — sans lui PostgREST fait une jointure
+      // externe, garde la ligne et vide l'objet imbriqué : le fantôme reste.
+      .select("id, date, heure, type, etat, affaire_id, affaires!inner(archive_le, etat, clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
+      .is("affaires.archive_le", null)
+      .neq("etat", "annulee")
+      .neq("affaires.etat", "annule")
       .order("date", { ascending: true });
     if (error) throw error;
     return (data || []).map((m) => ({
@@ -506,7 +517,11 @@ export async function listerMissions() {
     }));
   }
   const d = lireDemo();
-  return (d.missions || []).map((m) => ({ ...m, camions: m.camions || [] }));
+  const exclues = new Set((d.affaires || [])
+    .filter((a) => a.archive_le || a.etat === "annule").map((a) => a.id));
+  return (d.missions || [])
+    .filter((m) => m.etat !== "annulee" && !exclues.has(m.affaire_id))
+    .map((m) => ({ ...m, camions: m.camions || [] }));
 }
 
 /** Crée une mission pour une affaire (planification). */
@@ -765,7 +780,9 @@ export async function obtenirOrganisation() {
     // en renvoie 0 ou plusieurs, c'est une anomalie de sécurité — on veut une
     // erreur franche, pas un repli silencieux sur une identité arbitraire.
     const { data, error } = await supabase.from("organisations")
-      .select("id, nom, tva, bce, adresse, cp, ville, tel, email, iban").single();
+      .select("id, nom, nom_commercial, forme_juridique, tva, bce, adresse, cp, "
+              + "ville, pays, tel, email, site_web, iban, devise_defaut, "
+              + "parametres_facturation").single();
     if (error) throw new Error(
       "Organisation introuvable pour cette session. Contactez votre administrateur.");
     return data;
@@ -1162,10 +1179,15 @@ export async function mesMissionsTerrain(utilisateurId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("missions")
       .select(`id, date, heure, type, etat, affaire_id,
-               affaires(clients(nom), notes_commerciales),
+               affaires!inner(archive_le, etat, clients(nom), notes_commerciales),
                mission_affectations(utilisateur_id, utilisateurs(nom)),
                mission_vehicules(vehicules(nom)),
                chrono_sessions(debut, fin, type)`)
+      // MÊME RÈGLE QUE LE PLANNING BUREAU. La vue terrain a son propre chemin
+      // de données : sans ça le bureau annule et le terrain se déplace quand même.
+      .is("affaires.archive_le", null)
+      .neq("etat", "annulee")
+      .neq("affaires.etat", "annule")
       .order("date", { ascending: true });
     if (error) throw error;
     // Filtre : uniquement mes missions (la RLS laisse voir celles du tenant).
@@ -1396,12 +1418,7 @@ export async function obtenirParametresPrix() {
 /** Enregistre les paramètres de prix (capacité gerer_referentiels en réel). */
 export async function sauverParametresPrix(params) {
   if (modeDonnees() === "reel") {
-    const { data: org, error: e1 } = await supabase.from("organisations")
-      .select("id").single();
-    if (e1) throw new Error("Organisation introuvable pour cette session.");
-    const { error } = await supabase.from("organisations")
-      .update({ parametres_prix: params }).eq("id", org.id);
-    if (error) throw error;
+    await majOrganisation({ parametres_prix: params });
     return;
   }
   const d = lireDemo();
@@ -1789,6 +1806,72 @@ export async function cloreAffaire(affaireId) {
 // ses valeurs par défaut pour toute clé absente : un réglage partiel suffit.
 // =============================================================================
 
+/**
+ * Applique un UPDATE sur l'organisation courante et VÉRIFIE qu'il a écrit.
+ *
+ * PostgREST ne renvoie aucune erreur quand un UPDATE est filtré par la RLS et
+ * touche 0 ligne. C'est ce qui a fait croire pendant des jours que les réglages
+ * s'enregistraient : l'écran affichait « ✓ Enregistré » et la base n'avait rien
+ * reçu. On demande donc les lignes en retour et on lève si c'est vide.
+ * (Cause racine corrigée en base par la migration 0043.)
+ */
+async function majOrganisation(maj) {
+  const { data: org, error: e1 } = await supabase.from("organisations")
+    .select("id").single();
+  if (e1) throw new Error("Organisation introuvable pour cette session.");
+  const { data, error } = await supabase.from("organisations")
+    .update(maj).eq("id", org.id).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(
+      "Enregistrement refusé : vous n'avez pas le droit de modifier les "
+      + "paramètres de l'entreprise (capacité « gérer les référentiels »).");
+  }
+  return data[0].id;
+}
+
+/**
+ * Écrit l'identité de l'entreprise — la fonction qui manquait. Sans elle,
+ * aucun tenant ne pouvait renseigner son nom, sa TVA ou son IBAN.
+ * Écriture partielle sûre : seuls les champs fournis sont transmis.
+ */
+const CHAMPS_ORG_MODIFIABLES = [
+  "nom", "nom_commercial", "forme_juridique", "bce", "tva",
+  "adresse", "cp", "ville", "pays", "tel", "email", "site_web", "iban",
+  "devise_defaut", "parametres_facturation",
+];
+
+export async function sauverOrganisation(champs) {
+  const maj = {};
+  for (const c of CHAMPS_ORG_MODIFIABLES) {
+    if (champs && Object.prototype.hasOwnProperty.call(champs, c)) maj[c] = champs[c];
+  }
+  if (Object.keys(maj).length === 0) return;
+  if (modeDonnees() === "reel") { await majOrganisation(maj); return; }
+  const d = lireDemo();
+  d.organisation = { ...(d.organisation || {}), ...maj };
+  ecrireDemo(d);
+}
+
+/** Catalogues réglables : pièces du relevé, fournitures, matériel de terrain. */
+export async function obtenirCatalogues() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("organisations")
+      .select("parametres_catalogues").single();
+    if (error) throw new Error("Organisation introuvable pour cette session.");
+    return data?.parametres_catalogues || {};
+  }
+  return lireDemo().catalogues || {};
+}
+
+export async function sauverCatalogues(catalogues) {
+  if (modeDonnees() === "reel") {
+    await majOrganisation({ parametres_catalogues: catalogues });
+    return;
+  }
+  const d = lireDemo(); d.catalogues = catalogues; ecrireDemo(d);
+}
+
 export async function obtenirTextes() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("organisations")
@@ -1802,12 +1885,7 @@ export async function obtenirTextes() {
 
 export async function sauverTextes(textes) {
   if (modeDonnees() === "reel") {
-    const { data, error: e1 } = await supabase.from("organisations")
-      .select("id").single();
-    if (e1) throw e1;
-    const { error } = await supabase.from("organisations")
-      .update({ parametres_textes: textes }).eq("id", data.id);
-    if (error) throw error;
+    await majOrganisation({ parametres_textes: textes });
     return;
   }
   const d = lireDemo();

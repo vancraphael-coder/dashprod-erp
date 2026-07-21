@@ -22,6 +22,8 @@ function dateFR(iso) {
   try { return new Date(iso).toLocaleDateString("fr-BE"); } catch { return iso; }
 }
 
+import { libelleTva } from "@domaine/organisation/identite.js";
+
 export default function FactureDoc({ facture, organisation, client, adresses }) {
   if (!facture) return null;
   const o = organisation || {};
@@ -98,7 +100,7 @@ export default function FactureDoc({ facture, organisation, client, adresses }) 
         {/* Totaux */}
         <div style={{ marginTop: 10 }}>
           <Ligne l="Total HTVA" v={euros(facture.htva_centimes)} />
-          <Ligne l="TVA 21 %" v={euros(facture.tva_centimes)} />
+          <Ligne l={libelleTva(o)} v={euros(facture.tva_centimes)} />
           <Ligne l="Total TVAC" v={euros(facture.tvac_centimes)} gras />
           {paye > 0 && (
             <>

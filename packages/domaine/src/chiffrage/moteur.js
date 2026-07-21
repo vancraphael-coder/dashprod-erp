@@ -39,10 +39,10 @@ import { BAREME_HORAIRE, TARIFS, TVA_PCT, MARGE_CIBLE, REPORT, ANNULATION } from
  *  - horaire : heures × taux(effectif) + élévateur + km×1×camions [+ emballage régie] − remise
  *  - forfait : HTVA déduit du prix TVAC ferme
  */
-function recetteHtvaCentimes(f, bareme = BAREME_HORAIRE, tarifs = TARIFS) {
+function recetteHtvaCentimes(f, bareme = BAREME_HORAIRE, tarifs = TARIFS, tvaPct = TVA_PCT) {
   if (f.formule === "forfait") {
     const tvac = versCentimes(f.forfaitTvacEuros || 0);
-    return htvaDepuisTvac(tvac, TVA_PCT);
+    return htvaDepuisTvac(tvac, tvaPct);
   }
   const taux = bareme[f.nbDemenageurs];
   if (taux == null) {
@@ -84,8 +84,12 @@ export function calculerScenario(faits, couts = {}, ref = {}) {
   const bareme = ref.bareme || BAREME_HORAIRE;
   const tarifs = ref.tarifs || TARIFS;
 
-  const htva = recetteHtvaCentimes(faits, bareme, tarifs);
-  const tvaC = tva(htva, TVA_PCT);
+  // Le taux de TVA vient de l'organisation (ref.tvaPct), pas d'une constante.
+  // TVA_PCT ne reste que comme repli si l'appelant ne fournit rien.
+  const tvaPct = Number.isFinite(ref.tvaPct) ? ref.tvaPct : TVA_PCT;
+
+  const htva = recetteHtvaCentimes(faits, bareme, tarifs, tvaPct);
+  const tvaC = tva(htva, tvaPct);
   const tvac = htva + tvaC;
 
   const coutC = coutsTotalCentimes(couts);

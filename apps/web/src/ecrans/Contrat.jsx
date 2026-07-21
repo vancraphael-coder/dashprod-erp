@@ -37,6 +37,16 @@ function ligneAdresse(a) {
   return bouts.join(" · ");
 }
 
+/** Taux TVA figé, déduit des montants du document signé — jamais de l'organisation
+ *  courante : un contrat signé ne doit pas changer d'affichage si le taux évolue. */
+function libelleTvaFige(c) {
+  const htva = Number(c?.htva_centimes || 0);
+  const tva = Number(c?.tva_centimes || 0);
+  if (htva <= 0) return "TVA";
+  const pct = Math.round((tva / htva) * 1000) / 10;
+  return `TVA ${String(pct).replace(".", ",")} %`;
+}
+
 export default function Contrat({ contenu, signature }) {
   if (!contenu) return null;
   const o = contenu.organisation || {};
@@ -111,7 +121,7 @@ export default function Contrat({ contenu, signature }) {
             </div>
           )}
           <div style={S.montant}>{euros(contenu.tvac_centimes)} TVAC</div>
-          <div style={S.montantSous}>dont TVA 21 % : {euros(contenu.tva_centimes)}</div>
+          <div style={S.montantSous}>dont {libelleTvaFige(contenu)} : {euros(contenu.tva_centimes)}</div>
         </div>
 
         {/* Planning */}

@@ -15,6 +15,7 @@ import {
 } from "../lib/adaptateur.js";
 import FactureDoc from "./FactureDoc.jsx";
 import { composerTotal, etatPaiement } from "@domaine/facturation/facture.js";
+import { libelleTva } from "@domaine/organisation/identite.js";
 import { C, S, euros, Confirmation } from "../lib/theme.jsx";
 
 const STATUTS_UI = {
@@ -120,7 +121,7 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
           {lignes.length > 0 && (
             <div style={{ borderTop: `1px solid ${C.bord}`, marginTop: 8, paddingTop: 8 }}>
               <Ligne l="Total HTVA" v={euros(totalPropose.htva_centimes)} />
-              <Ligne l="TVA 21 %" v={euros(totalPropose.tva_centimes)} />
+              <Ligne l={libelleTva(org)} v={euros(totalPropose.tva_centimes)} />
               <Ligne l="Total TVAC" v={euros(totalPropose.tvac_centimes)} gras />
             </div>
           )}

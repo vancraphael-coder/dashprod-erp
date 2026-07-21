@@ -10,9 +10,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   obtenirAffaire, enregistrerChiffrage,
   obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
+  obtenirOrganisation,
 } from "../lib/adaptateur.js";
 import { calculerScenario } from "@domaine/chiffrage/moteur.js";
 import { BAREME_HORAIRE, TARIFS } from "@domaine/chiffrage/bareme.js";
+import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
 import { C, S, ZONES_MARGE, euros } from "../lib/theme.jsx";
 
 const FORMULES = [
@@ -23,6 +25,7 @@ const FORMULES = [
 
 export default function Devis({ affaireId, retour, versOffre, versReleve, peutVoirPrix = true }) {
   const [affaire, setAffaire] = useState(null);
+  const [org, setOrg] = useState(null);
   const [faits, setFaits] = useState({
     formule: "tarifaire", nbDemenageurs: 3, heures: 6, nbCamions: 1,
     km: 0, elevateur: false, remisePct: 0, remiseMotif: "promo",
@@ -34,6 +37,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   const [ref, setRef] = useState(null);          // barème + tarifs configurés
 
   useEffect(() => {
+    obtenirOrganisation().then(setOrg).catch(() => {});
     obtenirAffaire(affaireId).then((a) => {
       setAffaire(a);
       if (a?.faits) setFaits((f) => ({ ...f, ...a.faits }));
@@ -74,7 +78,10 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
 
   // Le moteur — recalcul à chaque frappe. L'écran n'additionne rien lui-même.
   const scenario = useMemo(() => {
-    try { return calculerScenario(faits, coutsEffectifs, ref || {}); }
+    try {
+      const tvaPct = tauxTva(org || {});
+      return calculerScenario(faits, coutsEffectifs, { ...(ref || {}), tvaPct });
+    }
     catch { return null; }
   }, [faits, coutsEffectifs, ref]);
 
@@ -311,7 +318,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
       {scenario && (
         <div style={S.carte}>
           <Ligne l="Total HTVA" v={euros(scenario.htva_centimes)} />
-          <Ligne l="TVA 21 %" v={euros(scenario.tva_centimes)} />
+          <Ligne l={libelleTva(org)} v={euros(scenario.tva_centimes)} />
           <Ligne l="Total TVAC" v={euros(scenario.tvac_centimes)} gras />
           {peutVoirPrix && (
             <>
