@@ -1,0 +1,3375 @@
+diff --git a/apps/web/src/ecrans/Bienvenue.jsx b/apps/web/src/ecrans/Bienvenue.jsx
+new file mode 100644
+index 0000000..e3818c5
+--- /dev/null
++++ b/apps/web/src/ecrans/Bienvenue.jsx
+@@ -0,0 +1,87 @@
++// =============================================================================
++// Écran d'accueil d'une organisation neuve.
++//
++// S'affiche quand l'entreprise n'est pas encore prête à produire des documents
++// (identiteComplete(org).pretDocuments == false). Il guide l'admin vers la
++// configuration UNE fois, dans l'ordre, puis s'efface définitivement.
++//
++// C'est la pièce qui matérialise le critère de fin : configurer une seule fois,
++// puis produire — sans reconfiguration ailleurs.
++// =============================================================================
++
++import React, { useEffect, useMemo, useState } from "react";
++import { obtenirOrganisation } from "../lib/adaptateur.js";
++import { identiteComplete } from "@domaine/organisation/identite.js";
++import { C, S } from "../lib/theme.jsx";
++
++export default function Bienvenue({ profil, versIdentite, versApp }) {
++  const [org, setOrg] = useState(null);
++
++  useEffect(() => { obtenirOrganisation().then(setOrg).catch(() => setOrg({})); }, []);
++  const etat = useMemo(() => identiteComplete(org || {}), [org]);
++
++  if (org === null) return null;
++
++  const etapes = [
++    { fait: etat.pretDocuments, titre: "Compléter l'identité de l'entreprise",
++      detail: "Nom, TVA, adresse, IBAN — repris automatiquement sur tous vos documents.",
++      action: versIdentite, cta: "Compléter" },
++    { fait: false, titre: "Vérifier votre barème et vos coûts",
++      detail: "Prix client et coûts internes. Réglés une fois, appliqués à chaque devis.",
++      action: versIdentite, cta: null },
++    { fait: false, titre: "Créer votre premier client",
++      detail: "Puis un devis : il héritera de tout, sans rien redemander.",
++      action: versApp, cta: null },
++  ];
++
++  return (
++    <div style={{ ...S.page, paddingTop: 8 }}>
++      <div style={{ padding: "28px 20px 10px", maxWidth: 560, margin: "0 auto" }}>
++        <div style={{ fontSize: 13, fontWeight: 700, color: C.bleu }}>Bienvenue</div>
++        <h1 style={{ fontSize: 26, fontWeight: 800, margin: "6px 0 8px",
++                     letterSpacing: "-.02em" }}>
++          {profil?.nom ? `${profil.nom}, ` : ""}mettons votre entreprise en route.
++        </h1>
++        <p style={{ fontSize: 14.5, color: C.muet, lineHeight: 1.55, margin: 0 }}>
++          Une seule configuration à faire. Ensuite, vos devis et factures reprennent
++          ces informations tout seuls.
++        </p>
++      </div>
++
++      <div style={{ maxWidth: 560, margin: "0 auto", padding: "12px 16px 30px" }}>
++        {etapes.map((e, i) => (
++          <div key={i} style={{ display: "flex", gap: 14, padding: 16, marginTop: 12,
++                                borderRadius: 14, background: C.blanc,
++                                border: `1px solid ${e.fait ? "#A7F3D0" : C.bord}`,
++                                boxShadow: "0 1px 3px rgba(15,23,42,.05)" }}>
++            <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
++                          display: "grid", placeItems: "center", fontSize: 14,
++                          fontWeight: 800, color: "#fff",
++                          background: e.fait ? "#10B981" : C.bleu }}>
++              {e.fait ? "✓" : i + 1}
++            </div>
++            <div style={{ flex: 1 }}>
++              <div style={{ fontSize: 15, fontWeight: 700,
++                            color: e.fait ? C.fantome : C.encre,
++                            textDecoration: e.fait ? "line-through" : "none" }}>
++                {e.titre}
++              </div>
++              <div style={{ fontSize: 12.5, color: C.muet, marginTop: 3, lineHeight: 1.5 }}>
++                {e.detail}
++              </div>
++              {e.cta && !e.fait && (
++                <button onClick={e.action} style={{ ...S.boutonPlein, marginTop: 10,
++                  width: "auto", padding: "9px 18px" }}>{e.cta}</button>
++              )}
++            </div>
++          </div>
++        ))}
++
++        <button onClick={versApp} style={{ ...S.boutonLien, display: "block",
++          width: "100%", marginTop: 18, fontWeight: 600 }}>
++          {etat.pretDocuments ? "Entrer dans Dashprod →" : "Explorer d'abord, configurer plus tard"}
++        </button>
++      </div>
++    </div>
++  );
++}
+diff --git a/apps/web/src/ecrans/Contrat.jsx b/apps/web/src/ecrans/Contrat.jsx
+index d677e31..09ff02a 100644
+--- a/apps/web/src/ecrans/Contrat.jsx
++++ b/apps/web/src/ecrans/Contrat.jsx
+@@ -37,6 +37,15 @@ function ligneAdresse(a) {
+   return bouts.join(" · ");
+ }
+ 
++/** Taux TVA figé, déduit des montants du document signé (jamais de l'org courante). */
++function libelleTvaFige(c) {
++  const htva = Number(c?.htva_centimes || 0);
++  const tva = Number(c?.tva_centimes || 0);
++  if (htva <= 0) return "TVA";
++  const pct = Math.round((tva / htva) * 1000) / 10;
++  return `TVA ${String(pct).replace(".", ",")} %`;
++}
++
+ export default function Contrat({ contenu, signature }) {
+   if (!contenu) return null;
+   const o = contenu.organisation || {};
+@@ -111,7 +120,7 @@ export default function Contrat({ contenu, signature }) {
+             </div>
+           )}
+           <div style={S.montant}>{euros(contenu.tvac_centimes)} TVAC</div>
+-          <div style={S.montantSous}>dont TVA 21 % : {euros(contenu.tva_centimes)}</div>
++          <div style={S.montantSous}>dont {libelleTvaFige(contenu)} : {euros(contenu.tva_centimes)}</div>
+         </div>
+ 
+         {/* Planning */}
+diff --git a/apps/web/src/ecrans/Devis.jsx b/apps/web/src/ecrans/Devis.jsx
+index 06b4cc1..587cd53 100644
+--- a/apps/web/src/ecrans/Devis.jsx
++++ b/apps/web/src/ecrans/Devis.jsx
+@@ -10,9 +10,11 @@ import React, { useEffect, useMemo, useState } from "react";
+ import {
+   obtenirAffaire, enregistrerChiffrage,
+   obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
++  obtenirOrganisation,
+ } from "../lib/adaptateur.js";
+ import { calculerScenario } from "@domaine/chiffrage/moteur.js";
+ import { BAREME_HORAIRE, TARIFS } from "@domaine/chiffrage/bareme.js";
++import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
+ import { C, S, ZONES_MARGE, euros } from "../lib/theme.jsx";
+ 
+ const FORMULES = [
+@@ -23,6 +25,7 @@ const FORMULES = [
+ 
+ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVoirPrix = true }) {
+   const [affaire, setAffaire] = useState(null);
++  const [org, setOrg] = useState(null);
+   const [faits, setFaits] = useState({
+     formule: "tarifaire", nbDemenageurs: 3, heures: 6, nbCamions: 1,
+     km: 0, elevateur: false, remisePct: 0, remiseMotif: "promo",
+@@ -34,6 +37,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
+   const [ref, setRef] = useState(null);          // barème + tarifs configurés
+ 
+   useEffect(() => {
++    obtenirOrganisation().then(setOrg).catch(() => {});
+     obtenirAffaire(affaireId).then((a) => {
+       setAffaire(a);
+       if (a?.faits) setFaits((f) => ({ ...f, ...a.faits }));
+@@ -74,7 +78,10 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
+ 
+   // Le moteur — recalcul à chaque frappe. L'écran n'additionne rien lui-même.
+   const scenario = useMemo(() => {
+-    try { return calculerScenario(faits, coutsEffectifs, ref || {}); }
++    try {
++      const tvaPct = tauxTva(org || {});
++      return calculerScenario(faits, coutsEffectifs, { ...(ref || {}), tvaPct });
++    }
+     catch { return null; }
+   }, [faits, coutsEffectifs, ref]);
+ 
+@@ -90,7 +97,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
+     });
+     // Recharge l'affaire : le montant enregistré est désormais la source de
+     // vérité (en-tête, offre, liste le reliront de la base).
+-    obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
++    obtenirAffaire(affaireId).then(setAffaire);
+     setSauve(true);
+   }
+ 
+@@ -311,7 +318,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
+       {scenario && (
+         <div style={S.carte}>
+           <Ligne l="Total HTVA" v={euros(scenario.htva_centimes)} />
+-          <Ligne l="TVA 21 %" v={euros(scenario.tva_centimes)} />
++          <Ligne l={libelleTva(org)} v={euros(scenario.tva_centimes)} />
+           <Ligne l="Total TVAC" v={euros(scenario.tvac_centimes)} gras />
+           {peutVoirPrix && (
+             <>
+diff --git a/apps/web/src/ecrans/Facture.jsx b/apps/web/src/ecrans/Facture.jsx
+index 0c5c2fa..02730d7 100644
+--- a/apps/web/src/ecrans/Facture.jsx
++++ b/apps/web/src/ecrans/Facture.jsx
+@@ -120,7 +120,7 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
+           {lignes.length > 0 && (
+             <div style={{ borderTop: `1px solid ${C.bord}`, marginTop: 8, paddingTop: 8 }}>
+               <Ligne l="Total HTVA" v={euros(totalPropose.htva_centimes)} />
+-              <Ligne l="TVA 21 %" v={euros(totalPropose.tva_centimes)} />
++              <Ligne l={libelleTva(org)} v={euros(totalPropose.tva_centimes)} />
+               <Ligne l="Total TVAC" v={euros(totalPropose.tvac_centimes)} gras />
+             </div>
+           )}
+diff --git a/apps/web/src/ecrans/FactureDoc.jsx b/apps/web/src/ecrans/FactureDoc.jsx
+index de85843..4813df6 100644
+--- a/apps/web/src/ecrans/FactureDoc.jsx
++++ b/apps/web/src/ecrans/FactureDoc.jsx
+@@ -22,6 +22,8 @@ function dateFR(iso) {
+   try { return new Date(iso).toLocaleDateString("fr-BE"); } catch { return iso; }
+ }
+ 
++import { libelleTva } from "@domaine/organisation/identite.js";
++
+ export default function FactureDoc({ facture, organisation, client, adresses }) {
+   if (!facture) return null;
+   const o = organisation || {};
+@@ -98,7 +100,7 @@ export default function FactureDoc({ facture, organisation, client, adresses })
+         {/* Totaux */}
+         <div style={{ marginTop: 10 }}>
+           <Ligne l="Total HTVA" v={euros(facture.htva_centimes)} />
+-          <Ligne l="TVA 21 %" v={euros(facture.tva_centimes)} />
++          <Ligne l={libelleTva(o)} v={euros(facture.tva_centimes)} />
+           <Ligne l="Total TVAC" v={euros(facture.tvac_centimes)} gras />
+           {paye > 0 && (
+             <>
+diff --git a/apps/web/src/ecrans/Identite.jsx b/apps/web/src/ecrans/Identite.jsx
+new file mode 100644
+index 0000000..6dbb1ef
+--- /dev/null
++++ b/apps/web/src/ecrans/Identite.jsx
+@@ -0,0 +1,211 @@
++// =============================================================================
++// Écran — Identité de l'entreprise (Paramètres).
++//
++// La source de vérité. Ce qui est saisi ici alimente les devis, les PDF, les
++// emails, les factures et, plus tard, Peppol. Aucun autre écran ne redemande
++// ni ne redéfinit une de ces informations.
++//
++// Deux sous-pages :
++//   identite    — nom légal, BCE, TVA, adresse, contact, IBAN
++//   facturation — taux de TVA, échéance, préfixe de numéro, mention légale
++//
++// L'écran affiche en permanence l'état de complétion : tant qu'un champ
++// bloquant manque, il le dit, plutôt que de laisser partir un devis à en-tête
++// incomplet chez un client.
++// =============================================================================
++
++import React, { useEffect, useMemo, useState } from "react";
++import { obtenirOrganisation, sauverOrganisation } from "../lib/adaptateur.js";
++import {
++  CHAMPS_IDENTITE, FACTURATION_DEFAUT, identiteComplete, facturation,
++  tvaBelgeValide, ibanValide, lignesEntete, nomAffiche,
++} from "@domaine/organisation/identite.js";
++import { C, S } from "../lib/theme.jsx";
++
++export default function Identite({ retour, page = "identite" }) {
++  const [org, setOrg] = useState(null);
++  const [valeurs, setValeurs] = useState({});
++  const [sauve, setSauve] = useState(false);
++  const [erreur, setErreur] = useState(null);
++
++  useEffect(() => {
++    obtenirOrganisation()
++      .then((o) => { setOrg(o || {}); setValeurs(o || {}); })
++      .catch((e) => { setErreur(e.message); setOrg({}); });
++  }, []);
++
++  const etat = useMemo(() => identiteComplete(valeurs), [valeurs]);
++  const fact = useMemo(() => facturation(valeurs), [valeurs]);
++
++  if (org === null) return null;
++
++  function maj(cle, v) { setValeurs((x) => ({ ...x, [cle]: v })); setSauve(false); }
++  function majFact(cle, v) {
++    setValeurs((x) => ({
++      ...x,
++      parametres_facturation: { ...facturation(x), [cle]: v },
++    }));
++    setSauve(false);
++  }
++
++  async function enregistrer() {
++    setErreur(null);
++    try {
++      await sauverOrganisation(valeurs);
++      setOrg(valeurs);
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  const estFacturation = page === "facturation";
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        <button style={S.boutonLien} onClick={retour}>← Paramètres</button>
++        <div style={S.titre}>
++          {estFacturation ? "Facturation" : "Identité de l'entreprise"}
++        </div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
++          {estFacturation
++            ? "Réglages hérités par tous les devis et toutes les factures."
++            : "Ces informations alimentent devis, PDF, emails et factures."}
++        </div>
++      </div>
++
++      {!estFacturation && <Etat etat={etat} />}
++
++      {estFacturation ? (
++        <div style={S.carte}>
++          <label style={{ ...S.label, marginTop: 0 }}>
++            Taux de TVA (%)
++            <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
++              défaut belge : {FACTURATION_DEFAUT.tva_taux} %
++            </span>
++          </label>
++          <input style={S.input} type="number" min="0" max="100" step="0.1"
++                 value={fact.tva_taux}
++                 onChange={(e) => majFact("tva_taux", Number(e.target.value))} />
++
++          <label style={S.label}>Échéance de paiement (jours)</label>
++          <input style={S.input} type="number" min="0" step="1"
++                 value={fact.echeance_jours}
++                 onChange={(e) => majFact("echeance_jours", Number(e.target.value))} />
++
++          <label style={S.label}>
++            Préfixe de numérotation
++            <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
++              facultatif — ex. « FA »
++            </span>
++          </label>
++          <input style={S.input} value={fact.prefixe_numero ?? ""}
++                 placeholder="aucun"
++                 onChange={(e) => majFact("prefixe_numero", e.target.value)} />
++
++          <label style={S.label}>Mention légale en pied de facture</label>
++          <textarea style={{ ...S.input, minHeight: 54 }}
++                    value={fact.mention_legale ?? ""}
++                    placeholder="Ex. : intérêts de retard applicables à partir de l'échéance."
++                    onChange={(e) => majFact("mention_legale", e.target.value)} />
++
++          <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 10, lineHeight: 1.5 }}>
++            Le taux saisi ici remplace le 21 % appliqué par défaut, partout :
++            devis, PDF, factures. Un seul endroit décide.
++          </div>
++        </div>
++      ) : (
++        <div style={S.carte}>
++          {CHAMPS_IDENTITE.map((ch) => {
++            const val = valeurs[ch.cle] ?? "";
++            const manque = ch.requis && String(val).trim() === "";
++            const invalide =
++              (ch.cle === "tva" && !tvaBelgeValide(val))
++              || (ch.cle === "iban" && !ibanValide(val));
++            return (
++              <div key={ch.cle} style={{ marginBottom: 10 }}>
++                <label style={S.label}>
++                  {ch.label}
++                  {ch.requis && <span style={{ color: C.rouge, marginLeft: 3 }}>*</span>}
++                  {ch.aide && (
++                    <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
++                      {ch.aide}
++                    </span>
++                  )}
++                </label>
++                <input
++                  style={{ ...S.input,
++                    borderColor: invalide ? C.rouge : manque ? "#FDE68A" : undefined }}
++                  value={val} onChange={(e) => maj(ch.cle, e.target.value)} />
++                {invalide && (
++                  <div style={{ fontSize: 11.5, color: C.rouge, marginTop: 3 }}>
++                    {ch.cle === "tva"
++                      ? "Format attendu : BE suivi de 10 chiffres."
++                      : "IBAN invalide — la clé de contrôle ne correspond pas."}
++                  </div>
++                )}
++              </div>
++            );
++          })}
++        </div>
++      )}
++
++      {!estFacturation && (
++        <div style={S.carte}>
++          <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
++                        textTransform: "uppercase", letterSpacing: ".03em" }}>
++            Aperçu de l'en-tête
++          </div>
++          <div style={{ padding: 12, borderRadius: 10, background: "#F8FAFC",
++                        border: `1px solid ${C.bord}` }}>
++            <div style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
++              {nomAffiche(valeurs) || <span style={{ color: C.rouge }}>Nom manquant</span>}
++            </div>
++            {lignesEntete(valeurs).map((l, i) => (
++              <div key={i} style={{ fontSize: 11.5, color: C.muet, marginTop: 2 }}>{l}</div>
++            ))}
++          </div>
++          <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
++            C'est exactement ce qui figurera en tête de vos devis et factures.
++          </div>
++        </div>
++      )}
++
++      {erreur && (
++        <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++
++      <div style={{ margin: "0 16px 30px" }}>
++        <button style={S.boutonPlein} onClick={enregistrer}>
++          {sauve ? "✓ Enregistré" : "Enregistrer"}
++        </button>
++      </div>
++    </div>
++  );
++}
++
++function Etat({ etat }) {
++  if (etat.complete) {
++    return (
++      <div style={{ ...bandeau, background: "#ECFDF5", borderColor: "#A7F3D0",
++                    color: "#065F46" }}>
++        ✓ Identité complète — vos documents peuvent partir.
++      </div>
++    );
++  }
++  const n = etat.bloquants.length;
++  return (
++    <div style={{ ...bandeau,
++      background: etat.invalides.length ? "#FEF2F2" : "#FFFBEB",
++      borderColor: etat.invalides.length ? "#FECACA" : "#FDE68A",
++      color: etat.invalides.length ? "#991B1B" : "#92400E" }}>
++      {etat.invalides.length > 0
++        ? "Un champ est mal formé — corrigez-le avant d'envoyer un document."
++        : `${n} champ${n > 1 ? "s" : ""} manquant${n > 1 ? "s" : ""} : un devis partirait avec un en-tête incomplet.`}
++    </div>
++  );
++}
++
++const bandeau = {
++  margin: "0 16px 12px", padding: "11px 13px", borderRadius: 11,
++  border: "1px solid", fontSize: 12.5, fontWeight: 600, lineHeight: 1.45,
++};
+diff --git a/apps/web/src/ecrans/Landing.jsx b/apps/web/src/ecrans/Landing.jsx
+new file mode 100644
+index 0000000..c278183
+--- /dev/null
++++ b/apps/web/src/ecrans/Landing.jsx
+@@ -0,0 +1,98 @@
++// =============================================================================
++// Landing publique — Dashprod.
++//
++// Vue avant connexion : présente le produit et propose une demande d'accès.
++// Un déménageur qui reçoit le lien voit d'abord ceci, puis se connecte.
++//
++// Volontairement sans dépendance : couleurs et rythme viennent du thème.
++// Aucune donnée d'entreprise réelle, aucun tarif en dur — c'est du marketing,
++// pas de la config.
++// =============================================================================
++
++import React from "react";
++import { C } from "../lib/theme.jsx";
++
++const POINTS = [
++  { t: "Devis en minutes", d: "Relevé pièce par pièce, chiffrage automatique, offre PDF et email prêts à partir." },
++  { t: "Planning sans conflit", d: "Équipes et véhicules affectés, congés et disponibilités pris en compte." },
++  { t: "Du chantier à la facture", d: "Heures, photos et signature du terrain remontent jusqu'à la facturation." },
++  { t: "Vos données, isolées", d: "Chaque entreprise sur sa base, cloisonnée. Vos clients ne sortent pas de chez vous." },
++];
++
++export default function Landing({ onConnexion }) {
++  return (
++    <div style={{ minHeight: "100vh", background: C.fond || "#F6F8FB",
++                  color: C.encre, display: "flex", flexDirection: "column" }}>
++      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
++                       padding: "18px 20px", maxWidth: 960, width: "100%", margin: "0 auto" }}>
++        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
++          <div style={{ width: 34, height: 34, borderRadius: 9, background: C.bleu,
++                        color: "#fff", display: "grid", placeItems: "center",
++                        fontSize: 18, fontWeight: 800 }}>D</div>
++          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-.01em" }}>
++            Dashprod
++          </span>
++        </div>
++        <button onClick={onConnexion} style={{
++          padding: "9px 16px", borderRadius: 10, border: `1.5px solid ${C.bord}`,
++          background: C.blanc, color: C.encre, fontSize: 13.5, fontWeight: 700,
++          cursor: "pointer" }}>Se connecter</button>
++      </header>
++
++      <main style={{ flex: 1, maxWidth: 960, width: "100%", margin: "0 auto",
++                     padding: "16px 20px 48px" }}>
++        <section style={{ padding: "42px 0 30px", maxWidth: 620 }}>
++          <div style={{ display: "inline-block", fontSize: 12, fontWeight: 700,
++                        color: C.bleu, background: C.bleuClair || "#E7EFFC",
++                        padding: "5px 11px", borderRadius: 20, marginBottom: 18 }}>
++            L'ERP des déménageurs belges
++          </div>
++          <h1 style={{ fontSize: 34, lineHeight: 1.15, fontWeight: 800, margin: 0,
++                       letterSpacing: "-.02em" }}>
++            Du premier appel client à la facture payée, au même endroit.
++          </h1>
++          <p style={{ fontSize: 16, lineHeight: 1.55, color: C.muet, marginTop: 16 }}>
++            Devis, planning, chantier, facturation. Une seule saisie de vos
++            informations d'entreprise, reprise partout. Pensé pour le déménagement,
++            pas adapté à la va-vite.
++          </p>
++          <div style={{ display: "flex", gap: 12, marginTop: 26, flexWrap: "wrap" }}>
++            <a href="mailto:contact@dashprod.be?subject=Demande%20d'acc%C3%A8s%20Dashprod&body=Bonjour,%0A%0AJe%20souhaite%20un%20acc%C3%A8s%20%C3%A0%20Dashprod%20pour%20mon%20entreprise%20de%20d%C3%A9m%C3%A9nagement.%0A%0ANom%20de%20l'entreprise%20:%20%0ANum%C3%A9ro%20d'entreprise%20(BCE)%20:%20%0AEmail%20administrateur%20:%20%0AT%C3%A9l%C3%A9phone%20:%20"
++               style={{ padding: "13px 22px", borderRadius: 12, background: C.bleu,
++                        color: "#fff", fontSize: 15, fontWeight: 700,
++                        textDecoration: "none" }}>
++              Demander un accès
++            </a>
++            <button onClick={onConnexion} style={{
++              padding: "13px 22px", borderRadius: 12, border: `1.5px solid ${C.bord}`,
++              background: C.blanc, color: C.encre, fontSize: 15, fontWeight: 700,
++              cursor: "pointer" }}>J'ai déjà un compte</button>
++          </div>
++        </section>
++
++        <section style={{ display: "grid", gap: 14, marginTop: 20,
++                          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
++          {POINTS.map((p) => (
++            <div key={p.t} style={{ padding: 18, borderRadius: 14, background: C.blanc,
++                                    border: `1px solid ${C.bord}`,
++                                    boxShadow: "0 1px 3px rgba(15,23,42,.05)" }}>
++              <div style={{ fontSize: 15, fontWeight: 800 }}>{p.t}</div>
++              <div style={{ fontSize: 13, color: C.muet, marginTop: 6, lineHeight: 1.5 }}>
++                {p.d}
++              </div>
++            </div>
++          ))}
++        </section>
++      </main>
++
++      <footer style={{ borderTop: `1px solid ${C.bord}`, padding: "18px 20px" }}>
++        <div style={{ maxWidth: 960, margin: "0 auto", fontSize: 12, color: C.fantome,
++                      display: "flex", justifyContent: "space-between", flexWrap: "wrap",
++                      gap: 8 }}>
++          <span>Dashprod — logiciel de gestion pour entreprises de déménagement.</span>
++          <span>Hébergement et données en Europe.</span>
++        </div>
++      </footer>
++    </div>
++  );
++}
+diff --git a/apps/web/src/ecrans/Materiel.jsx b/apps/web/src/ecrans/Materiel.jsx
+index edd44c0..bc9101f 100644
+--- a/apps/web/src/ecrans/Materiel.jsx
++++ b/apps/web/src/ecrans/Materiel.jsx
+@@ -14,6 +14,8 @@ import { obtenirAffaire, obtenirEmballage, sauverEmballage } from "../lib/adapta
+ import {
+   CATALOGUE_EMBALLAGE, resumeEmballage, fournituresOffre,
+ } from "@domaine/stocks/emballage.js";
++import { obtenirCatalogues } from "../lib/adaptateur.js";
++import { catalogue } from "@domaine/stocks/catalogues.js";
+ import { C, S } from "../lib/theme.jsx";
+ 
+ export default function Materiel({ affaireId, retour }) {
+@@ -22,11 +24,24 @@ export default function Materiel({ affaireId, retour }) {
+   const [sauve, setSauve] = useState(false);
+   const [erreur, setErreur] = useState(null);
+ 
++  const [cats, setCats] = useState({});
+   useEffect(() => {
+     obtenirAffaire(affaireId).then(setAffaire);
+     obtenirEmballage(affaireId).then((e) => setEmballage(e || {})).catch(() => {});
++    obtenirCatalogues().then(setCats).catch(() => {});
+   }, [affaireId]);
+ 
++  // Matériel de terrain emporté sur le chantier : diable, planche à roulettes,
++  // bandes à porter… Réglé dans Paramètres → Catalogues, stocké dans le même
++  // jsonb que l'emballage sous la clé "terrain" (aucune migration).
++  const materielTerrain = catalogue(cats, "materiel_terrain");
++  const terrain = emballage.terrain || {};
++  function majTerrain(cle, valeur) {
++    const n = Math.max(0, parseInt(valeur, 10) || 0);
++    setEmballage((e) => ({ ...e, terrain: { ...(e.terrain || {}), [cle]: n } }));
++    setSauve(false);
++  }
++
+   const resume = useMemo(() => resumeEmballage(emballage), [emballage]);
+   const fournitures = useMemo(() => fournituresOffre(emballage), [emballage]);
+ 
+@@ -111,6 +126,35 @@ export default function Materiel({ affaireId, retour }) {
+       </div>
+ 
+       {/* Ce qui partira sur l'offre */}
++      {/* Matériel de terrain — non facturé, mais à charger dans le camion. */}
++      {materielTerrain.length > 0 && (
++        <div style={S.carte}>
++          <label style={{ ...S.label, marginTop: 0 }}>Matériel de terrain</label>
++          {materielTerrain.map((a) => (
++            <div key={a.cle} style={{ display: "flex", alignItems: "center", gap: 10,
++                                      padding: "8px 0", borderTop: `1px solid ${C.doux}` }}>
++              <span style={{ flex: 1, minWidth: 0 }}>
++                <span style={{ display: "block", fontSize: 13.5, fontWeight: 600,
++                               color: C.encre }}>{a.nom}</span>
++                <span style={{ display: "block", fontSize: 11, color: C.fantome,
++                               marginTop: 2 }}>{a.unite}</span>
++              </span>
++              <button onClick={() => majTerrain(a.cle, (terrain[a.cle] || 0) - 1)}
++                      style={boutonQte}>−</button>
++              <input style={{ ...S.input, width: 58, textAlign: "center", padding: "8px 4px" }}
++                     type="number" min="0" value={terrain[a.cle] ?? 0}
++                     onChange={(e) => majTerrain(a.cle, e.target.value)} />
++              <button onClick={() => majTerrain(a.cle, (terrain[a.cle] || 0) + 1)}
++                      style={boutonQte}>+</button>
++            </div>
++          ))}
++          <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
++            Liste réglable dans Paramètres → Catalogues → Matériel de terrain.
++            Le coût de chaque article alimente les coûts internes.
++          </div>
++        </div>
++      )}
++
+       {fournitures.length > 0 && (
+         <div style={{ ...S.carte, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+           <div style={{ fontSize: 11, fontWeight: 700, color: "#1E40AF",
+@@ -133,3 +177,9 @@ export default function Materiel({ affaireId, retour }) {
+     </div>
+   );
+ }
++
++const boutonQte = {
++  width: 32, height: 32, borderRadius: 8, border: `1.5px solid ${C.bord}`,
++  background: C.blanc, color: C.encre, fontSize: 16, fontWeight: 700,
++  cursor: "pointer", lineHeight: 1, flexShrink: 0,
++};
+diff --git a/apps/web/src/ecrans/Parametres.jsx b/apps/web/src/ecrans/Parametres.jsx
+new file mode 100644
+index 0000000..2105bf3
+--- /dev/null
++++ b/apps/web/src/ecrans/Parametres.jsx
+@@ -0,0 +1,330 @@
++// =============================================================================
++// Écran — Paramètres (Compte → Paramètres).
++//
++// Rassemble TOUS les réglages de l'entreprise, jusqu'ici éparpillés dans le
++// Compte. Le Compte redevient personnel ; ici on règle l'organisation.
++//
++//   Barème (prix client)      → écran Bareme
++//   Coûts internes            → écran Cout
++//   Catalogues                → sous-page interne (pièces, fournitures, matériel)
++//   Textes des dossiers       → écran TextesDossiers
++//   Archivage                 → écran Archivage
++//
++// Les catalogues sont persistés dans organisations.parametres_catalogues et
++// consommés par le Relevé (pièces) et le Matériel (fournitures + terrain).
++// Ajouter un article de matériel le fait apparaître dans les coûts internes,
++// sans double saisie.
++// =============================================================================
++
++import React, { useEffect, useMemo, useState } from "react";
++import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation } from "../lib/adaptateur.js";
++import { identiteComplete, tauxTva } from "@domaine/organisation/identite.js";
++import Identite from "./Identite.jsx";
++import {
++  LISTES_CATALOGUE, CATALOGUES_DEFAUT, catalogue, estPersonnalise,
++  normaliserArticle, coutsMateriel,
++} from "@domaine/stocks/catalogues.js";
++import { C, S } from "../lib/theme.jsx";
++
++const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €";
++
++export default function Parametres({
++  retour, versBareme, versCout, versTextes, versArchivage,
++}) {
++  const [cats, setCats] = useState(null);
++  const [ouvert, setOuvert] = useState(null);
++  const [org, setOrg] = useState({});
++  const [erreur, setErreur] = useState(null);
++
++  useEffect(() => {
++    obtenirCatalogues()
++      .then((c) => setCats(c || {}))
++      .catch((e) => { setErreur(e.message); setCats({}); });
++    obtenirOrganisation().then(setOrg).catch(() => {});
++  }, [ouvert]);
++
++  if (cats === null) return null;
++
++  if (ouvert === "identite" || ouvert === "facturation") {
++    return <Identite page={ouvert} retour={() => setOuvert(null)} />;
++  }
++
++  if (ouvert) {
++    const liste = LISTES_CATALOGUE.find((l) => l.cle === ouvert);
++    return (
++      <EditeurListe liste={liste} cats={cats} onCats={setCats}
++                    retour={() => setOuvert(null)} />
++    );
++  }
++
++  const nbCouts = coutsMateriel(cats).length;
++  const etatIdentite = identiteComplete(org);
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        {retour && <button style={S.boutonLien} onClick={retour}>← Compte</button>}
++        <div style={S.titre}>Paramètres</div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
++          Réglages de l'entreprise. Ils s'appliquent à tous les dossiers.
++        </div>
++      </div>
++
++      <div style={{ padding: "0 16px 8px" }}>
++        <Rubrique>Entreprise</Rubrique>
++        <Entree icone="🏢" titre="Identité de l'entreprise"
++                resume="Nom, BCE, TVA, adresse, IBAN. Source de vérité de tous les documents."
++                badge={etatIdentite.complete
++                  ? "complète"
++                  : etatIdentite.invalides.length
++                    ? "champ invalide"
++                    : `${etatIdentite.bloquants.length} champ${etatIdentite.bloquants.length > 1 ? "s" : ""} manquant${etatIdentite.bloquants.length > 1 ? "s" : ""}`}
++                actif={!etatIdentite.complete}
++                onClick={() => setOuvert("identite")} />
++        <Entree icone="🧾" titre="Facturation"
++                resume={`TVA ${tauxTva(org)} %, échéance, numérotation, mention légale.`}
++                onClick={() => setOuvert("facturation")} />
++
++        <Rubrique>Tarification</Rubrique>
++        <Entree icone="🏷️" titre="Barème (prix client)"
++                resume="Prix horaires par équipe, forfaits, options."
++                onClick={versBareme} />
++        <Entree icone="📉" titre="Coûts internes"
++                resume={`Taux horaire, carburant${nbCouts ? ` · ${nbCouts} articles issus des catalogues` : ""}.`}
++                onClick={versCout} />
++
++        <Rubrique>Catalogues</Rubrique>
++        {LISTES_CATALOGUE.map((l) => (
++          <Entree key={l.cle} icone={l.icone} titre={l.titre} resume={l.resume}
++                  badge={estPersonnalise(cats, l.cle)
++                    ? `${catalogue(cats, l.cle).length} articles`
++                    : "liste par défaut"}
++                  actif={estPersonnalise(cats, l.cle)}
++                  onClick={() => setOuvert(l.cle)} />
++        ))}
++
++        <Rubrique>Documents</Rubrique>
++        <Entree icone="📝" titre="Textes des dossiers"
++                resume="Email d'offre, PDF d'offre, conditions générales."
++                onClick={versTextes} />
++
++        <Rubrique>Données</Rubrique>
++        <Entree icone="🗂️" titre="Archivage"
++                resume="Dossiers, véhicules et membres archivés."
++                onClick={versArchivage} />
++      </div>
++
++      {erreur && (
++        <div style={{ margin: "0 16px 24px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++      <div style={{ height: 40 }} />
++    </div>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function EditeurListe({ liste, cats, onCats, retour }) {
++  const simple = !!liste.texteSimple;
++  const [items, setItems] = useState(() => [...catalogue(cats, liste.cle)]);
++  const [nouveau, setNouveau] = useState(simple ? "" : { nom: "", unite: "pièce", cout: "" });
++  const [sauve, setSauve] = useState(false);
++  const [erreur, setErreur] = useState(null);
++
++  const total = useMemo(
++    () => simple ? 0 : items.reduce((t, a) => t + Number(a?.cout_centimes || 0), 0),
++    [items, simple]);
++
++  function ajouter() {
++    const article = simple
++      ? normaliserArticle(nouveau, true)
++      : normaliserArticle({
++          nom: nouveau.nom, unite: nouveau.unite,
++          cout_centimes: nouveau.cout === "" ? 0 : Math.round(Number(nouveau.cout) * 100),
++        });
++    if (!article) return;
++    const doublon = simple
++      ? items.some((x) => String(x).toLowerCase() === article.toLowerCase())
++      : items.some((x) => x.cle === article.cle);
++    if (doublon) { setErreur("Cet article existe déjà dans la liste."); return; }
++    setErreur(null);
++    setItems((v) => [...v, article]);
++    setNouveau(simple ? "" : { nom: "", unite: "pièce", cout: "" });
++    setSauve(false);
++  }
++
++  function retirer(i) {
++    setItems((v) => v.filter((_, k) => k !== i));
++    setSauve(false);
++  }
++
++  function monter(i) {
++    if (i === 0) return;
++    setItems((v) => { const c = [...v]; [c[i - 1], c[i]] = [c[i], c[i - 1]]; return c; });
++    setSauve(false);
++  }
++
++  async function enregistrer() {
++    setErreur(null);
++    try {
++      await sauverCatalogues({ ...cats, [liste.cle]: items });
++      onCats({ ...cats, [liste.cle]: items });
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  async function reinitialiser() {
++    setErreur(null);
++    try {
++      const suite = { ...cats };
++      delete suite[liste.cle];
++      await sauverCatalogues(suite);
++      onCats(suite);
++      setItems([...CATALOGUES_DEFAUT[liste.cle]]);
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        <button style={S.boutonLien} onClick={retour}>← Paramètres</button>
++        <div style={S.titre}>{liste.titre}</div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>{liste.resume}</div>
++      </div>
++
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>Ajouter un article</label>
++        {simple ? (
++          <div style={{ display: "flex", gap: 8 }}>
++            <input style={{ ...S.input, flex: 1 }} value={nouveau}
++                   placeholder="Nom de la pièce"
++                   onChange={(e) => setNouveau(e.target.value)}
++                   onKeyDown={(e) => e.key === "Enter" && ajouter()} />
++            <button style={boutonAjout} onClick={ajouter}>Ajouter</button>
++          </div>
++        ) : (
++          <>
++            <input style={S.input} value={nouveau.nom} placeholder="Nom de l'article"
++                   onChange={(e) => setNouveau((n) => ({ ...n, nom: e.target.value }))} />
++            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
++              <input style={{ ...S.input, flex: 1 }} value={nouveau.unite} placeholder="Unité"
++                     onChange={(e) => setNouveau((n) => ({ ...n, unite: e.target.value }))} />
++              <input style={{ ...S.input, flex: 1 }} type="number" step="0.01" min="0"
++                     value={nouveau.cout} placeholder="Coût € HTVA"
++                     onChange={(e) => setNouveau((n) => ({ ...n, cout: e.target.value }))} />
++              <button style={boutonAjout} onClick={ajouter}>Ajouter</button>
++            </div>
++            <div style={{ fontSize: 11, color: C.fantome, marginTop: 6, lineHeight: 1.5 }}>
++              Le coût est ce que l'article vous coûte, pas le prix client. Il
++              alimente automatiquement les coûts internes.
++            </div>
++          </>
++        )}
++      </div>
++
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>
++          {items.length} article{items.length > 1 ? "s" : ""}
++          {!simple && total > 0 && (
++            <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
++              · {euros(total)} au total
++            </span>
++          )}
++        </label>
++        {items.length === 0 && (
++          <div style={{ fontSize: 12.5, color: C.muet, padding: "8px 0" }}>
++            Liste vide — le catalogue par défaut sera utilisé.
++          </div>
++        )}
++        {items.map((a, i) => (
++          <div key={simple ? `${a}-${i}` : a.cle || i} style={ligneArticle}>
++            <button onClick={() => monter(i)} disabled={i === 0}
++                    title="Monter"
++                    style={{ ...boutonIcone, opacity: i === 0 ? .25 : 1 }}>↑</button>
++            <span style={{ flex: 1, minWidth: 0 }}>
++              <span style={{ display: "block", fontSize: 13.5, fontWeight: 600,
++                             color: C.encre }}>{simple ? a : a.nom}</span>
++              {!simple && (
++                <span style={{ display: "block", fontSize: 11, color: C.fantome, marginTop: 2 }}>
++                  {euros(a.cout_centimes)} / {a.unite}
++                  {a.consommable === false ? " · non consommable" : " · consommable"}
++                </span>
++              )}
++            </span>
++            <button onClick={() => retirer(i)} title="Retirer"
++                    style={{ ...boutonIcone, color: C.rouge }}>✕</button>
++          </div>
++        ))}
++      </div>
++
++      {erreur && (
++        <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++
++      <div style={{ margin: "0 16px 24px" }}>
++        <button style={S.boutonPlein} onClick={enregistrer}>
++          {sauve ? "✓ Enregistré" : "Enregistrer la liste"}
++        </button>
++        {estPersonnalise(cats, liste.cle) && (
++          <button onClick={reinitialiser}
++                  style={{ ...S.boutonLien, display: "block", width: "100%",
++                           marginTop: 10, fontWeight: 600 }}>
++            Revenir à la liste par défaut
++          </button>
++        )}
++      </div>
++    </div>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function Rubrique({ children }) {
++  return (
++    <div style={{ fontSize: 11, fontWeight: 700, color: C.muet, letterSpacing: ".05em",
++                  textTransform: "uppercase", margin: "18px 2px 2px" }}>{children}</div>
++  );
++}
++
++function Entree({ icone, titre, resume, badge, actif, onClick }) {
++  return (
++    <button onClick={onClick} style={{
++      display: "flex", alignItems: "flex-start", gap: 12, width: "100%",
++      marginTop: 10, padding: 14, border: `1px solid ${C.bord}`, borderRadius: 14,
++      background: C.blanc, boxShadow: "0 1px 3px rgba(15,23,42,.05)",
++      cursor: "pointer", textAlign: "left" }}>
++      <span style={{ fontSize: 19, lineHeight: 1 }}>{icone}</span>
++      <span style={{ flex: 1, minWidth: 0 }}>
++        <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
++          {titre}
++        </span>
++        <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2,
++                       lineHeight: 1.4 }}>{resume}</span>
++        {badge && (
++          <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5,
++                         fontWeight: 700, padding: "2px 7px", borderRadius: 20,
++                         background: actif ? C.bleuClair : C.doux,
++                         color: actif ? C.bleu : C.fantome }}>{badge}</span>
++        )}
++      </span>
++      <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
++    </button>
++  );
++}
++
++const boutonAjout = {
++  padding: "11px 14px", borderRadius: 10, border: "none",
++  background: C.bleu, color: "#fff", fontSize: 13, fontWeight: 700,
++  cursor: "pointer", whiteSpace: "nowrap",
++};
++
++const ligneArticle = {
++  display: "flex", alignItems: "center", gap: 10, padding: "9px 0",
++  borderTop: `1px solid ${C.doux}`,
++};
++
++const boutonIcone = {
++  border: "none", background: "none", cursor: "pointer",
++  fontSize: 15, color: C.fantome, padding: "2px 6px", lineHeight: 1,
++};
+diff --git a/apps/web/src/ecrans/Profil.jsx b/apps/web/src/ecrans/Profil.jsx
+new file mode 100644
+index 0000000..a7381cd
+--- /dev/null
++++ b/apps/web/src/ecrans/Profil.jsx
+@@ -0,0 +1,292 @@
++// =============================================================================
++// Écran — Compte (personnel).
++//
++// Le Compte est PERSONNEL, y compris pour un administrateur : son inventaire,
++// ses vêtements, ses congés. Les réglages de l'entreprise ont quitté cet écran
++// et vivent désormais dans Paramètres, accessible d'ici pour qui en a le droit.
++//
++// L'inventaire s'appuie sur les mêmes fonctions que le profil Terrain :
++// une seule table equipements_rh, deux portes d'entrée.
++// =============================================================================
++
++import React, { useEffect, useState } from "react";
++import {
++  listerEquipement, ajouterEquipement, changerEtatEquipement,
++  listerConges, ajouterConge, supprimerConge, modeDonnees,
++} from "../lib/adaptateur.js";
++import { deconnecter } from "../lib/supabase.js";
++import { C, S } from "../lib/theme.jsx";
++
++const ETATS = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
++const COULEUR = { neuf: C.bleu, bon: C.vert, use: C.ambre, a_remplacer: C.rouge };
++const SUITE = { bon: "use", use: "a_remplacer", a_remplacer: "neuf", neuf: "bon" };
++
++const INVENTAIRE_STANDARD = [
++  { categorie: "vetement", article: "Veste de travail" },
++  { categorie: "vetement", article: "Pantalon de travail" },
++  { categorie: "vetement", article: "T-shirts (x3)" },
++  { categorie: "vetement", article: "Chaussures de sécurité" },
++  { categorie: "vetement", article: "Gants" },
++  { categorie: "outil", article: "Diable" },
++  { categorie: "outil", article: "Sangles (x4)" },
++  { categorie: "outil", article: "Couvertures (x10)" },
++  { categorie: "outil", article: "Boîte à outils" },
++  { categorie: "outil", article: "Cutter" },
++];
++
++const jour = (iso) => {
++  if (!iso) return "";
++  try {
++    return new Date(iso + "T00:00:00").toLocaleDateString("fr-BE",
++      { day: "2-digit", month: "short", year: "numeric" });
++  } catch { return iso; }
++};
++
++export default function Profil({ profil, versParametres, versDiagnostic, peutConfigurer }) {
++  const [onglet, setOnglet] = useState("inventaire");
++
++  return (
++    <div style={{ ...S.page, paddingBottom: 90 }}>
++      <div style={S.entete}>
++        <div style={S.titre}>Compte</div>
++      </div>
++
++      <div style={S.carte}>
++        <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
++          {profil?.nom || "—"}
++        </div>
++        <div style={{ fontSize: 13, color: C.muet }}>{profil?.email || ""}</div>
++        {profil?.capacites && (
++          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
++            {profil.capacites.length} capacités actives
++          </div>
++        )}
++      </div>
++
++      <div style={{ display: "flex", gap: 8, margin: "0 16px 12px" }}>
++        {[["inventaire", "Outils & vêtements"], ["conges", "Mes congés"]].map(([cle, lib]) => (
++          <button key={cle} onClick={() => setOnglet(cle)} style={{
++            flex: 1, padding: "9px 6px", borderRadius: 10, cursor: "pointer",
++            fontSize: 12.5, fontWeight: 700,
++            border: `1.5px solid ${onglet === cle ? C.bleu : C.bord}`,
++            background: onglet === cle ? "#E7EFFC" : C.blanc,
++            color: onglet === cle ? C.bleu : C.muet }}>{lib}</button>
++        ))}
++      </div>
++
++      {onglet === "inventaire" ? <Inventaire profil={profil} /> : <Conges profil={profil} />}
++
++      {peutConfigurer && versParametres && (
++        <div style={{ margin: "18px 16px 0" }}>
++          <button onClick={versParametres} style={{
++            display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
++            border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
++            boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer",
++            textAlign: "left" }}>
++            <span style={{ fontSize: 19 }}>⚙️</span>
++            <span style={{ flex: 1 }}>
++              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
++                Paramètres
++              </span>
++              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
++                Barème, coûts, catalogues, textes, archivage.
++              </span>
++            </span>
++            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
++          </button>
++        </div>
++      )}
++
++      <div style={{ margin: "0 16px" }}>
++        <button onClick={versDiagnostic} style={{ background: "none", border: "none",
++          color: C.bleu, fontSize: 13, fontWeight: 600, cursor: "pointer",
++          padding: "18px 2px 4px" }}>
++          Diagnostic de branchement
++        </button>
++        {modeDonnees() === "reel" && (
++          <button onClick={async () => { await deconnecter(); window.location.reload(); }}
++            style={{ display: "block", width: "100%", marginTop: 8, padding: 13,
++              border: "1.5px solid #FECACA", borderRadius: 11, background: "#FEF2F2",
++              color: "#991B1B", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
++            Se déconnecter
++          </button>
++        )}
++      </div>
++      <div style={{ height: 30 }} />
++    </div>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function Inventaire({ profil }) {
++  const [liste, setListe] = useState([]);
++  const [creation, setCreation] = useState(false);
++  const [ajout, setAjout] = useState({ categorie: "outil", article: "" });
++  const monId = profil?.utilisateur_id;
++
++  function recharger() {
++    if (monId) listerEquipement(monId).then(setListe).catch(() => {});
++  }
++  useEffect(recharger, [monId]);
++
++  async function creerStandard() {
++    setCreation(true);
++    for (const art of INVENTAIRE_STANDARD) await ajouterEquipement(monId, art).catch(() => {});
++    setCreation(false);
++    recharger();
++  }
++  async function ajouterArticle() {
++    const nom = ajout.article.trim();
++    if (!nom || !monId) return;
++    await ajouterEquipement(monId, { categorie: ajout.categorie, article: nom }).catch(() => {});
++    setAjout((a) => ({ ...a, article: "" }));
++    recharger();
++  }
++  async function cycler(art) {
++    await changerEtatEquipement(art.id, SUITE[art.etat] || "bon", monId);
++    recharger();
++  }
++
++  const rendre = (arr) => arr.map((art) => (
++    <button key={art.id} onClick={() => cycler(art)} style={{
++      display: "flex", width: "100%", justifyContent: "space-between",
++      alignItems: "center", padding: "10px 12px", marginBottom: 6,
++      borderRadius: 10, cursor: "pointer", background: "#fff",
++      border: `1.5px solid ${art.etat === "a_remplacer" ? "#FECACA" : C.bord}` }}>
++      <span style={{ fontSize: 13.5, color: C.encre, fontWeight: 600 }}>{art.article}</span>
++      <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
++        color: "#fff", background: COULEUR[art.etat] || C.muet }}>
++        {ETATS[art.etat] || art.etat}
++      </span>
++    </button>
++  ));
++
++  if (liste.length === 0) {
++    return (
++      <div style={{ ...S.carte, textAlign: "center" }}>
++        <div style={{ fontSize: 13, color: C.muet, marginBottom: 12 }}>
++          Aucun inventaire pour le moment.
++        </div>
++        <button style={S.boutonPlein} onClick={creerStandard} disabled={creation}>
++          {creation ? "Création…" : "Créer mon inventaire standard"}
++        </button>
++      </div>
++    );
++  }
++
++  return (
++    <>
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>Vêtements</label>
++        {rendre(liste.filter((x) => x.categorie === "vetement"))}
++        <label style={S.label}>Outils</label>
++        {rendre(liste.filter((x) => x.categorie === "outil"))}
++      </div>
++
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>Ajouter un article</label>
++        <div style={{ display: "flex", gap: 8 }}>
++          <select style={{ ...S.input, width: 118 }} value={ajout.categorie}
++                  onChange={(e) => setAjout((a) => ({ ...a, categorie: e.target.value }))}>
++            <option value="outil">Outil</option>
++            <option value="vetement">Vêtement</option>
++          </select>
++          <input style={{ ...S.input, flex: 1 }} value={ajout.article} placeholder="Nom"
++                 onChange={(e) => setAjout((a) => ({ ...a, article: e.target.value }))}
++                 onKeyDown={(e) => e.key === "Enter" && ajouterArticle()} />
++          <button onClick={ajouterArticle} style={{
++            padding: "11px 14px", borderRadius: 10, border: "none", background: C.bleu,
++            color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+</button>
++        </div>
++        <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
++          Touchez un article pour changer son état (Bon → Usé → À remplacer →
++          Neuf). Le bureau voit l'état en direct dans Ressources.
++        </div>
++      </div>
++    </>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function Conges({ profil }) {
++  const [liste, setListe] = useState([]);
++  const [form, setForm] = useState({ debut: "", fin: "", motif: "" });
++  const [erreur, setErreur] = useState(null);
++  const monId = profil?.utilisateur_id;
++
++  function recharger() {
++    listerConges()
++      .then((c) => setListe((c || []).filter((x) => x.utilisateur_id === monId)))
++      .catch((e) => setErreur(e.message));
++  }
++  useEffect(recharger, [monId]);
++
++  async function ajouter() {
++    setErreur(null);
++    if (!form.debut || !form.fin) { setErreur("Indiquez une date de début et de fin."); return; }
++    if (form.fin < form.debut) { setErreur("La date de fin précède la date de début."); return; }
++    try {
++      await ajouterConge({ utilisateurId: monId, ...form });
++      setForm({ debut: "", fin: "", motif: "" });
++      recharger();
++    } catch (e) { setErreur(e.message); }
++  }
++
++  async function retirer(id) {
++    setErreur(null);
++    try { await supprimerConge(id); recharger(); }
++    catch (e) { setErreur(e.message); }
++  }
++
++  return (
++    <>
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>
++          {liste.length === 0 ? "Aucun congé enregistré" : `${liste.length} congé${liste.length > 1 ? "s" : ""}`}
++        </label>
++        {liste.map((c) => (
++          <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10,
++                                   padding: "9px 0", borderTop: `1px solid ${C.doux}` }}>
++            <span style={{ flex: 1 }}>
++              <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: C.encre }}>
++                {jour(c.debut)} → {jour(c.fin)}
++              </span>
++              {c.motif && (
++                <span style={{ display: "block", fontSize: 11.5, color: C.fantome, marginTop: 2 }}>
++                  {c.motif}
++                </span>
++              )}
++            </span>
++            <button onClick={() => retirer(c.id)} style={{ border: "none", background: "none",
++              cursor: "pointer", fontSize: 15, color: C.rouge, padding: "2px 6px" }}>✕</button>
++          </div>
++        ))}
++      </div>
++
++      <div style={S.carte}>
++        <label style={{ ...S.label, marginTop: 0 }}>Poser un congé</label>
++        <div style={{ display: "flex", gap: 8 }}>
++          <input style={{ ...S.input, flex: 1 }} type="date" value={form.debut}
++                 onChange={(e) => setForm((f) => ({ ...f, debut: e.target.value }))} />
++          <input style={{ ...S.input, flex: 1 }} type="date" value={form.fin}
++                 onChange={(e) => setForm((f) => ({ ...f, fin: e.target.value }))} />
++        </div>
++        <input style={{ ...S.input, marginTop: 8 }} value={form.motif}
++               placeholder="Motif (facultatif)"
++               onChange={(e) => setForm((f) => ({ ...f, motif: e.target.value }))} />
++        {erreur && (
++          <div style={{ fontSize: 12.5, color: C.rouge, marginTop: 8 }}>{erreur}</div>
++        )}
++        <button style={{ ...S.boutonPlein, marginTop: 10 }} onClick={ajouter}>
++          Enregistrer le congé
++        </button>
++        <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
++          Les congés apparaissent dans le planning et bloquent l'affectation aux
++          chantiers sur la période.
++        </div>
++      </div>
++    </>
++  );
++}
+diff --git a/apps/web/src/ecrans/Releve.jsx b/apps/web/src/ecrans/Releve.jsx
+index 4731ddc..22f90d4 100644
+--- a/apps/web/src/ecrans/Releve.jsx
++++ b/apps/web/src/ecrans/Releve.jsx
+@@ -13,9 +13,11 @@ import {
+ } from "../lib/adaptateur.js";
+ import { capaciteFlotte, jaugeCapacite } from "@domaine/flotte/vehicules.js";
+ import {
+-  PIECES, volumeTotal, grouperParPiece, volumeUnitaire,
++  volumeTotal, grouperParPiece, volumeUnitaire,
+   articlesADemonter,
+ } from "@domaine/releve/volumetrie.js";
++import { obtenirCatalogues } from "../lib/adaptateur.js";
++import { catalogue } from "@domaine/stocks/catalogues.js";
+ import { C, S } from "../lib/theme.jsx";
+ 
+ // Catalogue par pièce (roovers-mobile.jsx, CATALOGUE).
+@@ -35,6 +37,33 @@ export default function Releve({ affaireId, retour, versDevis }) {
+   const [affaire, setAffaire] = useState(null);
+   const [inv, setInv] = useState([]);
+   const [piece, setPiece] = useState("Salon");
++  // Pièces réglées dans Paramètres → Catalogues, plus celles ajoutées à la
++  // volée pour ce relevé précis (une cave à vin, un atelier…).
++  const [cats, setCats] = useState({});
++  const [piecesAdHoc, setPiecesAdHoc] = useState([]);
++  const [nouvellePiece, setNouvellePiece] = useState("");
++  useEffect(() => { obtenirCatalogues().then(setCats).catch(() => {}); }, []);
++  const pieces = useMemo(() => {
++    const base = catalogue(cats, "pieces").map(String);
++    return [...base, ...piecesAdHoc.filter((p) => !base.includes(p))];
++  }, [cats, piecesAdHoc]);
++  useEffect(() => {
++    if (pieces.length && !pieces.includes(piece)) setPiece(pieces[0]);
++  }, [pieces, piece]);
++
++  function ajouterPiece() {
++    const nom = nouvellePiece.trim();
++    if (!nom || pieces.includes(nom)) { setNouvellePiece(""); return; }
++    setPiecesAdHoc((v) => [...v, nom]);
++    setPiece(nom);
++    setNouvellePiece("");
++  }
++  /** Retire la pièce courante : ses éléments partent avec elle. */
++  function retirerPiece() {
++    setInv((v) => v.filter((it) => it.piece !== piece));
++    setPiecesAdHoc((v) => v.filter((p) => p !== piece));
++    setSauve(false);
++  }
+   const [libre, setLibre] = useState("");
+   const [camionsSel, setCamionsSel] = useState([]);
+   const [sauve, setSauve] = useState(false);
+@@ -141,7 +170,7 @@ export default function Releve({ affaireId, retour, versDevis }) {
+ 
+       {/* Sélecteur de pièce */}
+       <div style={{ padding: "0 16px", display: "flex", gap: 6, overflowX: "auto", marginBottom: 10 }}>
+-        {PIECES.map((p) => (
++        {pieces.map((p) => (
+           <button key={p} onClick={() => setPiece(p)} style={{
+             border: `1.5px solid ${piece === p ? C.bleu : C.bord}`,
+             background: piece === p ? "#E7EFFC" : C.blanc,
+@@ -150,6 +179,17 @@ export default function Releve({ affaireId, retour, versDevis }) {
+             cursor: "pointer", whiteSpace: "nowrap",
+           }}>{p}</button>
+         ))}
++        <input value={nouvellePiece} placeholder="+ pièce"
++               onChange={(e) => setNouvellePiece(e.target.value)}
++               onKeyDown={(e) => e.key === "Enter" && ajouterPiece()}
++               style={{ border: `1.5px dashed ${C.bord}`, borderRadius: 999,
++                        padding: "6px 12px", fontSize: 12, width: 96,
++                        color: C.encre, background: C.blanc, outline: "none" }} />
++        <button onClick={retirerPiece} title="Retirer cette pièce et ses éléments"
++                style={{ border: `1.5px solid ${C.bord}`, background: C.blanc,
++                         color: C.rouge, borderRadius: 999, padding: "6px 11px",
++                         fontSize: 12, fontWeight: 700, cursor: "pointer",
++                         whiteSpace: "nowrap" }}>✕ pièce</button>
+       </div>
+ 
+       {/* Catalogue de la pièce + article libre */}
+diff --git a/apps/web/src/ecrans/Textes.jsx b/apps/web/src/ecrans/Textes.jsx
+deleted file mode 100644
+index aa8e4f9..0000000
+--- a/apps/web/src/ecrans/Textes.jsx
++++ /dev/null
+@@ -1,198 +0,0 @@
+-// =============================================================================
+-// Écran — Textes (Compte). Ce que le CLIENT reçoit, réglable sans développeur.
+-//
+-// 1) Les modèles de l'email d'offre (objet, salutation, mentions, signature).
+-//    Toute clé laissée vide retombe sur le modèle par défaut du domaine : un
+-//    réglage partiel est valide.
+-// 2) Le PDF des conditions générales C.B.D. joint à chaque offre.
+-//
+-// L'aperçu est calculé par la MÊME fonction que l'envoi réel (emailOffre) :
+-// ce qui est affiché ici est exactement ce que le client recevra.
+-// =============================================================================
+-
+-import React, { useEffect, useMemo, useState } from "react";
+-import {
+-  obtenirTextes, sauverTextes, obtenirOrganisation,
+-  urlConditionsCbd, televerserConditionsCbd, modeDonnees,
+-} from "../lib/adaptateur.js";
+-import { emailOffre, TEXTES_OFFRE_DEFAUT } from "@domaine/communication/brief.js";
+-import { C, S } from "../lib/theme.jsx";
+-
+-// Exemple figé pour l'aperçu — jamais envoyé, sert à visualiser le rendu.
+-const EXEMPLE = {
+-  client: { nom: "Marie Dupont", email: "marie.dupont@exemple.be" },
+-  tvacCentimes: 94380, heures: 6, nbDemenageurs: 3, formule: "tarifaire",
+-  charges: [{ adresse: "Rue de l'Exemple 1, 1000 Bruxelles" }],
+-  decharges: [{ adresse: "Avenue Louise 12, 1050 Bruxelles" }],
+-  date: "2026-09-14", heure: "08:00",
+-};
+-
+-const CHAMPS = [
+-  { cle: "objet", label: "Objet de l'email", aide: "{client} {organisation}" },
+-  { cle: "salutation", label: "Salutation", aide: "{famille} = nom de famille" },
+-  { cle: "intro", label: "Phrase d'introduction", long: true },
+-  { cle: "intro_signee", label: "Ajout si l'offre est signée", long: true },
+-  { cle: "mention_km", label: "Mention kilométrage" },
+-  { cle: "validite", label: "Mention de validité", aide: "{validite} = nombre de jours" },
+-  { cle: "validite_jours", label: "Validité (jours)", nombre: true },
+-  { cle: "formule_politesse", label: "Formule de politesse" },
+-  { cle: "signataire", label: "Signataire" },
+-  { cle: "pied", label: "Pied de page (facultatif)", long: true },
+-];
+-
+-export default function Textes({ retour }) {
+-  const [textes, setTextes] = useState(null);
+-  const [org, setOrg] = useState({});
+-  const [sauve, setSauve] = useState(false);
+-  const [erreur, setErreur] = useState(null);
+-  const [cbd, setCbd] = useState(undefined);   // undefined = en cours, null = absent
+-  const [envoiCbd, setEnvoiCbd] = useState(false);
+-
+-  useEffect(() => {
+-    obtenirTextes().then((t) => setTextes(t || {})).catch((e) => {
+-      setErreur(e.message); setTextes({});
+-    });
+-    obtenirOrganisation().then(setOrg).catch(() => {});
+-    urlConditionsCbd().then(setCbd).catch(() => setCbd(null));
+-  }, []);
+-
+-  // Aperçu : mêmes règles que l'envoi. Les champs vides retombent sur le défaut.
+-  const apercu = useMemo(() => {
+-    if (!textes) return null;
+-    const utiles = Object.fromEntries(
+-      Object.entries(textes).filter(([, v]) => v !== "" && v != null));
+-    try {
+-      return emailOffre({ ...EXEMPLE, organisation: org, textes: utiles });
+-    } catch { return null; }
+-  }, [textes, org]);
+-
+-  function maj(cle, valeur) {
+-    setTextes((t) => ({ ...t, [cle]: valeur }));
+-    setSauve(false);
+-  }
+-
+-  async function enregistrer() {
+-    setErreur(null);
+-    try {
+-      // On ne stocke que ce qui diffère : le domaine complète le reste.
+-      const utiles = Object.fromEntries(
+-        Object.entries(textes).filter(([, v]) => v !== "" && v != null));
+-      await sauverTextes(utiles);
+-      setSauve(true);
+-    } catch (e) { setErreur(e.message); }
+-  }
+-
+-  async function deposerCbd(fichier) {
+-    if (!fichier) return;
+-    setErreur(null); setEnvoiCbd(true);
+-    try {
+-      await televerserConditionsCbd(fichier);
+-      setCbd(await urlConditionsCbd());
+-    } catch (e) { setErreur(e.message || "Dépôt impossible"); }
+-    setEnvoiCbd(false);
+-  }
+-
+-  if (!textes) return null;
+-
+-  return (
+-    <div style={S.page}>
+-      <div style={S.entete}>
+-        {retour && <button style={S.boutonLien} onClick={retour}>← Compte</button>}
+-        <div style={S.titre}>Textes de l'offre</div>
+-        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
+-          Ce que le client reçoit. Un champ vide garde le texte par défaut.
+-        </div>
+-      </div>
+-
+-      <div style={S.carte}>
+-        <div style={SousTitre}>Modèles de l'email</div>
+-        {CHAMPS.map((ch) => (
+-          <div key={ch.cle} style={{ marginBottom: 10 }}>
+-            <label style={S.label}>
+-              {ch.label}
+-              {ch.aide && (
+-                <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
+-                  {ch.aide}
+-                </span>
+-              )}
+-            </label>
+-            {ch.long ? (
+-              <textarea style={{ ...S.input, minHeight: 46 }}
+-                        value={textes[ch.cle] ?? ""}
+-                        placeholder={String(TEXTES_OFFRE_DEFAUT[ch.cle] ?? "")}
+-                        onChange={(e) => maj(ch.cle, e.target.value)} />
+-            ) : (
+-              <input style={S.input}
+-                     type={ch.nombre ? "number" : "text"}
+-                     value={textes[ch.cle] ?? ""}
+-                     placeholder={String(TEXTES_OFFRE_DEFAUT[ch.cle] ?? "")}
+-                     onChange={(e) => maj(ch.cle,
+-                       ch.nombre ? (e.target.value === "" ? "" : Number(e.target.value))
+-                                 : e.target.value)} />
+-            )}
+-          </div>
+-        ))}
+-      </div>
+-
+-      {/* Aperçu réel — même moteur que l'envoi. */}
+-      {apercu && (
+-        <div style={S.carte}>
+-          <div style={SousTitre}>Aperçu (exemple)</div>
+-          <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
+-            Objet : <span style={{ color: C.encre, fontWeight: 700 }}>{apercu.objet}</span>
+-          </div>
+-          <pre style={{
+-            margin: 0, padding: 12, borderRadius: 10, background: "#F8FAFC",
+-            border: `1px solid ${C.bord}`, fontSize: 12, lineHeight: 1.55,
+-            color: C.encre, whiteSpace: "pre-wrap",
+-            fontFamily: "ui-monospace, monospace",
+-          }}>{apercu.corps}</pre>
+-        </div>
+-      )}
+-
+-      {/* Conditions générales C.B.D. — pièce jointe de toute offre. */}
+-      <div style={S.carte}>
+-        <div style={SousTitre}>Conditions générales C.B.D.</div>
+-        <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 8 }}>
+-          PDF joint à chaque offre envoyée au client, à côté de l'offre elle-même.
+-        </div>
+-        {cbd === undefined ? null : cbd ? (
+-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+-                        padding: "10px 12px", borderRadius: 10,
+-                        background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+-            <span style={{ fontSize: 12.5, fontWeight: 700, color: "#065F46" }}>
+-              ✓ Conditions déposées
+-            </span>
+-            <a href={cbd} target="_blank" rel="noreferrer"
+-               style={{ fontSize: 12.5, fontWeight: 700, color: C.bleu }}>Ouvrir</a>
+-          </div>
+-        ) : (
+-          <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFFBEB",
+-                        border: "1px solid #FDE68A", fontSize: 12.5, color: "#92400E" }}>
+-            Aucun document déposé — les offres partiront sans les conditions.
+-          </div>
+-        )}
+-        {modeDonnees() === "reel" && (
+-          <label style={{ ...S.boutonLien, display: "block", marginTop: 10,
+-                          cursor: "pointer", fontWeight: 700 }}>
+-            {envoiCbd ? "Dépôt en cours…" : cbd ? "Remplacer le PDF" : "Déposer le PDF"}
+-            <input type="file" accept="application/pdf" style={{ display: "none" }}
+-                   onChange={(e) => deposerCbd(e.target.files?.[0])} />
+-          </label>
+-        )}
+-      </div>
+-
+-      {erreur && <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
+-      <div style={{ margin: "0 16px 24px" }}>
+-        <button style={S.boutonPlein} onClick={enregistrer}>
+-          {sauve ? "✓ Enregistré" : "Enregistrer les textes"}
+-        </button>
+-      </div>
+-    </div>
+-  );
+-}
+-
+-const SousTitre = {
+-  fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
+-  textTransform: "uppercase", letterSpacing: ".03em",
+-};
+diff --git a/apps/web/src/ecrans/TextesDossiers.jsx b/apps/web/src/ecrans/TextesDossiers.jsx
+new file mode 100644
+index 0000000..ef88c31
+--- /dev/null
++++ b/apps/web/src/ecrans/TextesDossiers.jsx
+@@ -0,0 +1,294 @@
++// =============================================================================
++// Écran — Modifications données texte dossiers (Compte).
++//
++// Page d'entrée + sous-pages. Chaque sous-page règle un jeu de textes que le
++// client finit par lire : l'email d'offre, le PDF d'offre, les conditions
++// générales. La liste des sous-pages vient de GROUPES_TEXTES : ajouter un
++// groupe au catalogue suffit à faire apparaître une sous-page ici.
++//
++// Un champ laissé vide retombe sur le texte par défaut du domaine. Un réglage
++// partiel est donc toujours valide.
++//
++// L'aperçu de l'email est calculé par emailOffre — la MÊME fonction que
++// l'envoi réel : ce qui est affiché est exactement ce que le client recevra.
++// =============================================================================
++
++import React, { useEffect, useMemo, useState } from "react";
++import {
++  obtenirTextes, sauverTextes, obtenirOrganisation,
++  urlConditionsCbd, televerserConditionsCbd, modeDonnees,
++} from "../lib/adaptateur.js";
++import { emailOffre } from "@domaine/communication/brief.js";
++import {
++  GROUPES_TEXTES, DEFAUTS_PAR_GROUPE, lireGroupe, ecrireGroupe,
++} from "@domaine/communication/textes.js";
++import { C, S } from "../lib/theme.jsx";
++
++// Exemple figé pour l'aperçu — jamais envoyé, sert à visualiser le rendu.
++const EXEMPLE = {
++  client: { nom: "Marie Dupont", email: "marie.dupont@exemple.be" },
++  tvacCentimes: 94380, heures: 6, nbDemenageurs: 3, formule: "tarifaire",
++  charges: [{ adresse: "Rue de l'Exemple 1, 1000 Bruxelles" }],
++  decharges: [{ adresse: "Avenue Louise 12, 1050 Bruxelles" }],
++  date: "2026-09-14", heure: "08:00",
++};
++
++export default function TextesDossiers({ retour }) {
++  const [stockes, setStockes] = useState(null);   // jsonb complet
++  const [org, setOrg] = useState({});
++  const [erreur, setErreur] = useState(null);
++  const [ouvert, setOuvert] = useState(null);      // clé du groupe ouvert
++
++  useEffect(() => {
++    obtenirTextes()
++      .then((t) => setStockes(t || {}))
++      .catch((e) => { setErreur(e.message); setStockes({}); });
++    obtenirOrganisation().then(setOrg).catch(() => {});
++  }, []);
++
++  if (stockes === null) return null;
++
++  const groupe = ouvert ? GROUPES_TEXTES.find((g) => g.cle === ouvert) : null;
++
++  if (groupe) {
++    return (
++      <SousPage
++        groupe={groupe} stockes={stockes} org={org}
++        onStockes={setStockes} retour={() => setOuvert(null)}
++      />
++    );
++  }
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        {retour && <button style={S.boutonLien} onClick={retour}>← Compte</button>}
++        <div style={S.titre}>Modifications données texte dossiers</div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
++          Tous les textes qu'un client peut lire. Un champ vide garde le texte
++          par défaut.
++        </div>
++      </div>
++
++      <div style={{ padding: "0 16px 24px" }}>
++        {GROUPES_TEXTES.map((g) => {
++          const perso = Object.keys(lireGroupe(stockes, g)).length;
++          return (
++            <button key={g.cle} onClick={() => setOuvert(g.cle)} style={carteBouton}>
++              <span style={{ fontSize: 20, lineHeight: 1 }}>{g.icone}</span>
++              <span style={{ flex: 1, minWidth: 0 }}>
++                <span style={{ display: "block", fontSize: 14, fontWeight: 700,
++                               color: C.encre }}>{g.titre}</span>
++                <span style={{ display: "block", fontSize: 11.5, color: C.muet,
++                               marginTop: 2, lineHeight: 1.4 }}>{g.resume}</span>
++                {!g.fichier && (
++                  <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5,
++                                 fontWeight: 700, padding: "2px 7px", borderRadius: 20,
++                                 background: perso ? C.bleuClair : C.doux,
++                                 color: perso ? C.bleu : C.fantome }}>
++                    {perso ? `${perso} texte${perso > 1 ? "s" : ""} personnalisé${perso > 1 ? "s" : ""}`
++                           : "textes par défaut"}
++                  </span>
++                )}
++              </span>
++              <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
++            </button>
++          );
++        })}
++      </div>
++
++      {erreur && (
++        <div style={{ margin: "0 16px 24px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++    </div>
++  );
++}
++
++// ─────────────────────────────────────────────────────────────────────────────
++
++function SousPage({ groupe, stockes, org, onStockes, retour }) {
++  const defauts = DEFAUTS_PAR_GROUPE[groupe.cle] || {};
++  // Pré-remplissage avec le texte RÉELLEMENT en vigueur : personnalisation si
++  // elle existe, défaut sinon. Un champ vide avec un simple indice gris ne
++  // permet pas de relire ni de retoucher le texte qui part chez le client.
++  const [valeurs, setValeurs] = useState(
++    () => ({ ...defauts, ...lireGroupe(stockes, groupe) }));
++  const [sauve, setSauve] = useState(false);
++  const [erreur, setErreur] = useState(null);
++  const [cbd, setCbd] = useState(undefined);      // undefined = en cours
++  const [envoiCbd, setEnvoiCbd] = useState(false);
++
++  useEffect(() => {
++    if (groupe.fichier) urlConditionsCbd().then(setCbd).catch(() => setCbd(null));
++  }, [groupe.fichier]);
++
++  // Aperçu : mêmes règles que l'envoi réel.
++  const apercu = useMemo(() => {
++    if (!groupe.apercu) return null;
++    const utiles = Object.fromEntries(
++      Object.entries(valeurs).filter(([, v]) => v !== "" && v != null));
++    try {
++      return emailOffre({ ...EXEMPLE, organisation: org, textes: utiles });
++    } catch { return null; }
++  }, [groupe.apercu, valeurs, org]);
++
++  function maj(cle, valeur) {
++    setValeurs((v) => ({ ...v, [cle]: valeur }));
++    setSauve(false);
++  }
++
++  async function enregistrer() {
++    setErreur(null);
++    try {
++      // On ne stocke que ce qui diffère du défaut : le jour où le défaut
++      // évolue, l'entreprise en bénéficie sans avoir à ressaisir.
++      const differences = Object.fromEntries(
++        Object.entries(valeurs).filter(([k, v]) => String(v ?? "") !== String(defauts[k] ?? "")));
++      const complet = ecrireGroupe(stockes, groupe, differences);
++      await sauverTextes(complet);
++      onStockes(complet);
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  async function reinitialiser() {
++    setErreur(null);
++    try {
++      const complet = ecrireGroupe(stockes, groupe, {});
++      await sauverTextes(complet);
++      onStockes(complet);
++      setValeurs({ ...defauts });
++      setSauve(true);
++    } catch (e) { setErreur(e.message); }
++  }
++
++  async function deposerCbd(fichier) {
++    if (!fichier) return;
++    setErreur(null); setEnvoiCbd(true);
++    try {
++      await televerserConditionsCbd(fichier);
++      setCbd(await urlConditionsCbd());
++    } catch (e) { setErreur(e.message || "Dépôt impossible"); }
++    setEnvoiCbd(false);
++  }
++
++  return (
++    <div style={S.page}>
++      <div style={S.entete}>
++        <button style={S.boutonLien} onClick={retour}>← Textes dossiers</button>
++        <div style={S.titre}>{groupe.titre}</div>
++        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>{groupe.resume}</div>
++      </div>
++
++      {groupe.champs.length > 0 && (
++        <div style={S.carte}>
++          {groupe.champs.map((ch) => (
++            <div key={ch.cle} style={{ marginBottom: 10 }}>
++              <label style={S.label}>
++                {ch.label}
++                {ch.aide && (
++                  <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
++                    {ch.aide}
++                  </span>
++                )}
++              </label>
++              {ch.long ? (
++                <textarea style={{ ...S.input, minHeight: 46 }}
++                          value={valeurs[ch.cle] ?? ""}
++                          placeholder={String(defauts[ch.cle] ?? "")}
++                          onChange={(e) => maj(ch.cle, e.target.value)} />
++              ) : (
++                <input style={S.input}
++                       type={ch.nombre ? "number" : "text"}
++                       value={valeurs[ch.cle] ?? ""}
++                       placeholder={String(defauts[ch.cle] ?? "")}
++                       onChange={(e) => maj(ch.cle,
++                         ch.nombre ? (e.target.value === "" ? "" : Number(e.target.value))
++                                   : e.target.value)} />
++              )}
++            </div>
++          ))}
++        </div>
++      )}
++
++      {apercu && (
++        <div style={S.carte}>
++          <div style={sousTitre}>Aperçu (exemple)</div>
++          <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
++            Objet : <span style={{ color: C.encre, fontWeight: 700 }}>{apercu.objet}</span>
++          </div>
++          <pre style={{
++            margin: 0, padding: 12, borderRadius: 10, background: "#F8FAFC",
++            border: `1px solid ${C.bord}`, fontSize: 12, lineHeight: 1.55,
++            color: C.encre, whiteSpace: "pre-wrap",
++            fontFamily: "ui-monospace, monospace",
++          }}>{apercu.corps}</pre>
++        </div>
++      )}
++
++      {groupe.fichier && (
++        <div style={S.carte}>
++          <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 8 }}>
++            PDF joint à chaque offre envoyée au client, à côté de l'offre elle-même.
++          </div>
++          {cbd === undefined ? null : cbd ? (
++            <div style={{ display: "flex", alignItems: "center",
++                          justifyContent: "space-between", padding: "10px 12px",
++                          borderRadius: 10, background: "#ECFDF5",
++                          border: "1px solid #A7F3D0" }}>
++              <span style={{ fontSize: 12.5, fontWeight: 700, color: "#065F46" }}>
++                ✓ Conditions déposées
++              </span>
++              <a href={cbd} target="_blank" rel="noreferrer"
++                 style={{ fontSize: 12.5, fontWeight: 700, color: C.bleu }}>Ouvrir</a>
++            </div>
++          ) : (
++            <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFFBEB",
++                          border: "1px solid #FDE68A", fontSize: 12.5, color: "#92400E" }}>
++              Aucun document déposé — les offres partiront sans les conditions.
++            </div>
++          )}
++          {modeDonnees() === "reel" && (
++            <label style={{ ...S.boutonLien, display: "block", marginTop: 10,
++                            cursor: "pointer", fontWeight: 700 }}>
++              {envoiCbd ? "Dépôt en cours…" : cbd ? "Remplacer le PDF" : "Déposer le PDF"}
++              <input type="file" accept="application/pdf" style={{ display: "none" }}
++                     onChange={(e) => deposerCbd(e.target.files?.[0])} />
++            </label>
++          )}
++        </div>
++      )}
++
++      {erreur && (
++        <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
++      )}
++
++      {groupe.champs.length > 0 && (
++        <div style={{ margin: "0 16px 24px" }}>
++          <button style={S.boutonPlein} onClick={enregistrer}>
++            {sauve ? "✓ Enregistré" : "Enregistrer"}
++          </button>
++          {Object.keys(lireGroupe(stockes, groupe)).length > 0 && (
++            <button onClick={reinitialiser}
++                    style={{ ...S.boutonLien, display: "block", width: "100%",
++                             marginTop: 10, fontWeight: 600 }}>
++              Revenir aux textes par défaut
++            </button>
++          )}
++        </div>
++      )}
++    </div>
++  );
++}
++
++const carteBouton = {
++  display: "flex", alignItems: "flex-start", gap: 12, width: "100%",
++  marginTop: 10, padding: 14, border: `1px solid ${C.bord}`, borderRadius: 14,
++  background: C.blanc, boxShadow: "0 1px 3px rgba(15,23,42,.05)",
++  cursor: "pointer", textAlign: "left",
++};
++
++const sousTitre = {
++  fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
++  textTransform: "uppercase", letterSpacing: ".03em",
++};
+diff --git a/apps/web/src/lib/adaptateur.js b/apps/web/src/lib/adaptateur.js
+index e171318..bb710d5 100644
+--- a/apps/web/src/lib/adaptateur.js
++++ b/apps/web/src/lib/adaptateur.js
+@@ -598,7 +598,16 @@ export async function listerFactures() {
+ }
+ 
+ /** Émet une facture pour une affaire (numéro légal + gel). */
+-export async function emettreFacture(affaireId, lignes, tauxTva = 21) {
++export async function emettreFacture(affaireId, lignes, tauxTva) {
++  // Le taux vient de l'organisation, pas d'une constante : un seul endroit
++  // décide (Paramètres → Facturation). L'argument explicite reste possible
++  // pour un cas particulier, mais il n'est plus la valeur par défaut.
++  if (tauxTva == null) {
++    try {
++      const { tauxTva: lire } = await import("@domaine/organisation/identite.js");
++      tauxTva = lire(await obtenirOrganisation());
++    } catch { tauxTva = 21; }
++  }
+   if (modeDonnees() === "reel") {
+     // En réel : insérer la facture + lignes, puis cmd_emettre_facture (séquence).
+     // Le détail d'insertion est vérifié au branchement ; ici l'appel de commande.
+@@ -765,7 +774,9 @@ export async function obtenirOrganisation() {
+     // en renvoie 0 ou plusieurs, c'est une anomalie de sécurité — on veut une
+     // erreur franche, pas un repli silencieux sur une identité arbitraire.
+     const { data, error } = await supabase.from("organisations")
+-      .select("id, nom, tva, bce, adresse, cp, ville, tel, email, iban").single();
++      .select("id, nom, nom_commercial, forme_juridique, tva, bce, adresse, cp, "
++              + "ville, pays, tel, email, site_web, iban, devise_defaut, "
++              + "parametres_facturation").single();
+     if (error) throw new Error(
+       "Organisation introuvable pour cette session. Contactez votre administrateur.");
+     return data;
+@@ -1381,10 +1392,14 @@ const PARAMS_PRIX_DEMO = {
+ /** Paramètres de prix de l'organisation (barème client + coûts internes). */
+ export async function obtenirParametresPrix() {
+   if (modeDonnees() === "reel") {
++    // .single() : la RLS ne doit renvoyer QUE l'organisation du jeton.
++    // Aucun repli sur les prix de démonstration en mode réel — facturer au
++    // mauvais barème coûte plus cher qu'une erreur affichée.
+     const { data, error } = await supabase.from("organisations")
+-      .select("parametres_prix").limit(1).maybeSingle();
+-    if (error) throw error;
+-    return data?.parametres_prix || PARAMS_PRIX_DEMO;
++      .select("parametres_prix").single();
++    if (error) throw new Error(
++      "Organisation introuvable pour cette session. Contactez votre administrateur.");
++    return data?.parametres_prix || {};
+   }
+   const d = lireDemo();
+   return d.parametresPrix || PARAMS_PRIX_DEMO;
+@@ -1393,12 +1408,7 @@ export async function obtenirParametresPrix() {
+ /** Enregistre les paramètres de prix (capacité gerer_referentiels en réel). */
+ export async function sauverParametresPrix(params) {
+   if (modeDonnees() === "reel") {
+-    const { data: org, error: e1 } = await supabase.from("organisations")
+-      .select("id").limit(1).maybeSingle();
+-    if (e1) throw e1;
+-    const { error } = await supabase.from("organisations")
+-      .update({ parametres_prix: params }).eq("id", org.id);
+-    if (error) throw error;
++    await majOrganisation({ parametres_prix: params });
+     return;
+   }
+   const d = lireDemo();
+@@ -1786,10 +1796,89 @@ export async function cloreAffaire(affaireId) {
+ // ses valeurs par défaut pour toute clé absente : un réglage partiel suffit.
+ // =============================================================================
+ 
++/**
++ * Écrit l'identité de l'entreprise. C'est LA fonction qui manquait : sans
++ * elle, aucun tenant ne pouvait renseigner son nom, sa TVA ou son IBAN, et
++ * tous les documents partaient incomplets.
++ *
++ * On ne passe que les champs fournis : un appel partiel ne doit pas effacer
++ * le reste. Les champs inconnus sont ignorés, pas transmis à PostgREST.
++ */
++const CHAMPS_ORG_MODIFIABLES = [
++  "nom", "nom_commercial", "forme_juridique", "bce", "tva",
++  "adresse", "cp", "ville", "pays", "tel", "email", "site_web", "iban",
++  "devise_defaut", "parametres_facturation",
++];
++
++/**
++ * Applique un UPDATE sur l'organisation courante et VÉRIFIE qu'il a écrit.
++ *
++ * PostgREST ne renvoie aucune erreur quand un UPDATE est filtré par la RLS et
++ * touche 0 ligne. C'est ce qui a fait croire pendant des jours que les
++ * réglages s'enregistraient : l'écran affichait « ✓ Enregistré » et la base
++ * n'avait rien reçu. On demande donc les lignes en retour et on lève si vide.
++ */
++async function majOrganisation(maj) {
++  const { data: org, error: e1 } = await supabase.from("organisations")
++    .select("id").single();
++  if (e1) throw new Error("Organisation introuvable pour cette session.");
++
++  const { data, error } = await supabase.from("organisations")
++    .update(maj).eq("id", org.id).select("id");
++  if (error) throw error;
++  if (!data || data.length === 0) {
++    throw new Error(
++      "Enregistrement refusé : vous n'avez pas le droit de modifier les "
++      + "paramètres de l'entreprise (capacité « gérer les référentiels »).");
++  }
++  return data[0].id;
++}
++
++export async function sauverOrganisation(champs) {
++  const maj = {};
++  for (const c of CHAMPS_ORG_MODIFIABLES) {
++    if (champs && Object.prototype.hasOwnProperty.call(champs, c)) maj[c] = champs[c];
++  }
++  if (Object.keys(maj).length === 0) return;
++
++  if (modeDonnees() === "reel") { await majOrganisation(maj); return; }
++  const d = lireDemo();
++  d.organisation = { ...(d.organisation || {}), ...maj };
++  ecrireDemo(d);
++}
++
++// =============================================================================
++// CATALOGUES — pièces du relevé, fournitures, matériel de terrain.
++// Stockés dans organisations.parametres_catalogues (jsonb). Une liste absente
++// retombe sur le défaut du domaine (packages/domaine/src/stocks/catalogues.js).
++// =============================================================================
++
++export async function obtenirCatalogues() {
++  if (modeDonnees() === "reel") {
++    const { data, error } = await supabase.from("organisations")
++      .select("parametres_catalogues").single();
++    if (error) throw new Error(
++      "Organisation introuvable pour cette session. Contactez votre administrateur.");
++    return data?.parametres_catalogues || {};
++  }
++  const d = lireDemo();
++  return d.catalogues || {};
++}
++
++/** Enregistre les catalogues (capacité gerer_referentiels en réel). */
++export async function sauverCatalogues(catalogues) {
++  if (modeDonnees() === "reel") {
++    await majOrganisation({ parametres_catalogues: catalogues });
++    return;
++  }
++  const d = lireDemo();
++  d.catalogues = catalogues; ecrireDemo(d);
++}
++
+ export async function obtenirTextes() {
+   if (modeDonnees() === "reel") {
+     const { data, error } = await supabase.from("organisations")
+-      .select("parametres_textes").limit(1).single();
++      .select("parametres_textes").single();
+     if (error) throw error;
+     return data?.parametres_textes || {};
+   }
+@@ -1799,12 +1888,7 @@ export async function obtenirTextes() {
+ 
+ export async function sauverTextes(textes) {
+   if (modeDonnees() === "reel") {
+-    const { data, error: e1 } = await supabase.from("organisations")
+-      .select("id").limit(1).single();
+-    if (e1) throw e1;
+-    const { error } = await supabase.from("organisations")
+-      .update({ parametres_textes: textes }).eq("id", data.id);
+-    if (error) throw error;
++    await majOrganisation({ parametres_textes: textes });
+     return;
+   }
+   const d = lireDemo();
+diff --git a/apps/web/src/lib/pdfOffre.js b/apps/web/src/lib/pdfOffre.js
+index 5bcdacd..dbf16f3 100644
+--- a/apps/web/src/lib/pdfOffre.js
++++ b/apps/web/src/lib/pdfOffre.js
+@@ -7,6 +7,9 @@
+ // que l'instance gelée : un seul chiffrage, trois rendus.
+ // =============================================================================
+ 
++import { obtenirTextes } from "./adaptateur.js";
++import { TEXTES_PDF_DEFAUT, textesEffectifs } from "@domaine/communication/textes.js";
++
+ const A4 = { largeur: 210, hauteur: 297 };
+ const MARGE = 16;
+ 
+@@ -28,8 +31,17 @@ function dateLongue(iso) {
+  * @param {object} contenu  sortie de composerOffre()
+  * @param {string} numero   référence affichée (facultatif)
+  */
+-export async function pdfOffre(contenu, numero) {
++export async function pdfOffre(contenu, numero, textesPdf) {
+   const { jsPDF } = await import("jspdf");
++  // Libellés réglables depuis Compte → Modifications données texte dossiers.
++  // On les lit ici pour n'imposer aucun changement aux appelants ; en cas
++  // d'échec on garde les défauts, un PDF doit toujours pouvoir sortir.
++  let T = TEXTES_PDF_DEFAUT;
++  if (textesPdf) T = { ...TEXTES_PDF_DEFAUT, ...textesPdf };
++  else {
++    try { T = textesEffectifs(await obtenirTextes(), "pdf"); }
++    catch { T = TEXTES_PDF_DEFAUT; }
++  }
+   const doc = new jsPDF({ unit: "mm", format: "a4" });
+   const org = contenu.organisation || {};
+   let y = MARGE;
+@@ -69,21 +81,21 @@ export async function pdfOffre(contenu, numero) {
+   if (org.tva) ligne(`TVA ${org.tva}`, { taille: 9, couleur: [100, 116, 139], saut: 4 });
+ 
+   y += 4;
+-  ligne("OFFRE DE PRIX", { taille: 13, gras: true, couleur: [37, 99, 235], saut: 5 });
++  ligne(T.titre, { taille: 13, gras: true, couleur: [37, 99, 235], saut: 5 });
+   const emis = contenu.emis_le ? new Date(contenu.emis_le).toLocaleDateString("fr-BE") : "";
+   ligne([numero ? `Référence ${numero}` : "", emis ? `Établie le ${emis}` : ""]
+     .filter(Boolean).join(" · "), { taille: 9, couleur: [100, 116, 139], saut: 7 });
+   filet();
+ 
+   // ── Client ────────────────────────────────────────────────────────────────
+-  ligne("CLIENT", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
++  ligne(T.bloc_client, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+   ligne(contenu.client?.nom || "—", { taille: 11, gras: true, saut: 5 });
+   const cli = [contenu.client?.tel, contenu.client?.email].filter(Boolean).join(" · ");
+   if (cli) ligne(cli, { taille: 9, couleur: [100, 116, 139], saut: 5 });
+   y += 2;
+ 
+   // ── Prestation ────────────────────────────────────────────────────────────
+-  ligne("PRESTATION", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
++  ligne(T.bloc_prestation, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+   if (contenu.date_dem) {
+     ligne(`Date : ${dateLongue(contenu.date_dem)}${
+       contenu.heure_dem ? ` — arrivée ${String(contenu.heure_dem).slice(0, 5)}` : ""}`,
+@@ -94,12 +106,12 @@ export async function pdfOffre(contenu, numero) {
+   if (adr(contenu.decharges)) ligne(`Déchargement : ${adr(contenu.decharges)}`, { saut: 5 });
+   if (contenu.volume_m3) ligne(`Volume estimé : ${contenu.volume_m3} m³`, { saut: 5 });
+   if (contenu.formule === "forfait") {
+-    ligne("Formule : forfait", { saut: 5 });
++    ligne(T.formule_forfait, { saut: 5 });
+   } else if (contenu.nb_demenageurs) {
+     ligne(`Équipe : ${contenu.nb_demenageurs} déménageurs${
+       contenu.heures ? ` — ${contenu.heures} h estimées` : ""}`, { saut: 5 });
+   }
+-  if (contenu.elevateur) ligne("Élévateur / lift inclus", { saut: 5 });
++  if (contenu.elevateur) ligne(T.elevateur, { saut: 5 });
+   if ((contenu.a_demonter || []).length) {
+     ligne(`À démonter : ${contenu.a_demonter.map((x) => x.nom || x).join(", ")}`, { saut: 5 });
+   }
+@@ -107,7 +119,7 @@ export async function pdfOffre(contenu, numero) {
+   filet();
+ 
+   // ── Montants ──────────────────────────────────────────────────────────────
+-  ligne("MONTANT", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 6 });
++  ligne(T.bloc_montant, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 6 });
+   const montant = (lib, val, gras = false) => {
+     doc.setFont("helvetica", gras ? "bold" : "normal");
+     doc.setFontSize(gras ? 12 : 10);
+@@ -116,18 +128,18 @@ export async function pdfOffre(contenu, numero) {
+     droite(val, { taille: gras ? 12 : 10, gras });
+     y += gras ? 7 : 5.5;
+   };
+-  montant("Total HTVA", euros(contenu.htva_centimes));
+-  montant("TVA 21 %", euros(contenu.tva_centimes));
++  montant(T.total_htva, euros(contenu.htva_centimes));
++  montant(T.tva, euros(contenu.tva_centimes));
+   if (contenu.reduction) {
+     montant(`Réduction ${contenu.reduction.pct} % (${
+       contenu.reduction.motif === "degats" ? "dégâts" : "promotion"})`, "");
+   }
+   y += 1;
+-  montant("TOTAL TVAC", euros(contenu.tvac_centimes), true);
++  montant(T.total_tvac, euros(contenu.tvac_centimes), true);
+ 
+   if (contenu.remarques) {
+     y += 3;
+-    ligne("Remarques", { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
++    ligne(T.bloc_remarques, { taille: 8, gras: true, couleur: [100, 116, 139], saut: 5 });
+     doc.setFont("helvetica", "normal"); doc.setFontSize(9.5);
+     doc.setTextColor(15, 23, 42);
+     const lignes = doc.splitTextToSize(String(contenu.remarques), A4.largeur - 2 * MARGE);
+@@ -142,9 +154,8 @@ export async function pdfOffre(contenu, numero) {
+   doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+   doc.setTextColor(100, 116, 139);
+   doc.text(
+-    "Prestation soumise aux conditions générales de la Chambre Belge des Déménageurs"
+-    + (contenu.cgv_version ? ` (version ${contenu.cgv_version})` : "")
+-    + ", jointes à cette offre.",
++    T.pied_conditions
++    + (contenu.cgv_version ? ` (version ${contenu.cgv_version})` : ""),
+     MARGE, yPied + 5,
+   );
+   if (org.iban) doc.text(`IBAN ${org.iban}`, MARGE, yPied + 9.5);
+diff --git a/apps/web/src/main.jsx b/apps/web/src/main.jsx
+index 679f051..ed817f4 100644
+--- a/apps/web/src/main.jsx
++++ b/apps/web/src/main.jsx
+@@ -14,6 +14,10 @@ import { C, Icone, gardeModifs, Confirmation } from "./lib/theme.jsx";
+ import Connexion from "./ecrans/Connexion.jsx";
+ import Diagnostic from "./ecrans/Diagnostic.jsx";
+ import NonInvite from "./ecrans/NonInvite.jsx";
++import Landing from "./ecrans/Landing.jsx";
++import Bienvenue from "./ecrans/Bienvenue.jsx";
++import { obtenirOrganisation } from "./lib/adaptateur.js";
++import { identiteComplete } from "@domaine/organisation/identite.js";
+ import ListeAffaires from "./ecrans/ListeAffaires.jsx";
+ import { creerDossierVide } from "./lib/adaptateur.js";
+ import Terrain from "./ecrans/Terrain.jsx";
+@@ -21,7 +25,9 @@ import TerrainProfil from "./ecrans/TerrainProfil.jsx";
+ import Bareme from "./ecrans/Bareme.jsx";
+ import Cout from "./ecrans/Cout.jsx";
+ import Archivage from "./ecrans/Archivage.jsx";
+-import Textes from "./ecrans/Textes.jsx";
++import TextesDossiers from "./ecrans/TextesDossiers.jsx";
++import Parametres from "./ecrans/Parametres.jsx";
++import Profil from "./ecrans/Profil.jsx";
+ import Dossier from "./ecrans/Dossier.jsx";
+ import Releve from "./ecrans/Releve.jsx";
+ import Devis from "./ecrans/Devis.jsx";
+@@ -79,62 +85,6 @@ function BarreNav({ actif, aller, peutGererEquipe }) {
+ }
+ 
+ /** Écran Compte — identité, déconnexion, diagnostic. */
+-function Compte({ profil, versDiagnostic, versBareme, versCout, versArchivage, versTextes, peutConfigurer }) {
+-  const acces = peutConfigurer || modeDonnees() === "demo";
+-  const boutonPage = (onClick, icone, texte) => (
+-    <button onClick={onClick} style={{
+-      display: "flex", alignItems: "center", gap: 10, width: "100%", marginTop: 10,
+-      padding: 14, border: `1.5px solid ${C.bord}`, borderRadius: 12, background: "#fff",
+-      color: C.encre, fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left" }}>
+-      <span style={{ fontSize: 18 }}>{icone}</span>{texte}
+-      <span style={{ marginLeft: "auto", color: C.fantome }}>›</span>
+-    </button>
+-  );
+-  return (
+-    <div style={{ maxWidth: 520, margin: "0 auto", padding: "20px 16px 90px",
+-                  fontFamily: "system-ui, sans-serif" }}>
+-      <div style={{ fontSize: 20, fontWeight: 800, color: C.encre, marginBottom: 14 }}>Compte</div>
+-      <div style={{ background: "#fff", borderRadius: 14, padding: 16,
+-                    boxShadow: "0 2px 10px rgba(15,23,42,.06)" }}>
+-        <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
+-          {profil?.nom || "—"}
+-        </div>
+-        <div style={{ fontSize: 13, color: C.muet }}>{profil?.email || ""}</div>
+-        {profil?.capacites && (
+-          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
+-            {profil.capacites.length} capacités actives
+-          </div>
+-        )}
+-      </div>
+-
+-      {acces && (
+-        <>
+-          <div style={{ fontSize: 11, fontWeight: 700, color: C.muet, letterSpacing: ".05em",
+-            textTransform: "uppercase", margin: "18px 2px 2px" }}>Réglages</div>
+-          {versBareme && boutonPage(versBareme, "🏷️", "Barème (prix client)")}
+-          {versCout && boutonPage(versCout, "📉", "Coûts internes")}
+-          {versTextes && boutonPage(versTextes, "✉️", "Textes de l'offre")}
+-          {versArchivage && boutonPage(versArchivage, "🗂️", "Archivage")}
+-        </>
+-      )}
+-
+-      <button onClick={versDiagnostic} style={{ background: "none", border: "none",
+-        color: C.bleu, fontSize: 13, fontWeight: 600, cursor: "pointer",
+-        padding: "18px 2px 4px" }}>
+-        Diagnostic de branchement
+-      </button>
+-      {modeDonnees() === "reel" && (
+-        <button onClick={async () => { await deconnecter(); window.location.reload(); }}
+-          style={{ display: "block", width: "100%", marginTop: 14, padding: 13,
+-            border: "1.5px solid #FECACA", borderRadius: 11, background: "#FEF2F2",
+-            color: "#991B1B", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+-          Se déconnecter
+-        </button>
+-      )}
+-    </div>
+-  );
+-}
+-
+ /**
+  * Sous-application TERRAIN — sa propre coquille et sa barre de navigation
+  * dédiée (Chantiers / Outils / Compte). Aucun accès aux écrans bureau : le
+@@ -332,6 +282,14 @@ function App() {
+   const [session, setSession] = useState(null);
+   const [profil, setProfil] = useState(null);
+   const [nonInvite, setNonInvite] = useState(null);
++  const [org, setOrg] = useState(null);
++  // Landing publique tant que l'utilisateur n'a pas cliqué "se connecter".
++  const [veutEntrer, setVeutEntrer] = useState(() => {
++    try { return sessionStorage.getItem("dashprod-entrer") === "1"; } catch { return false; }
++  });
++  // Accueil d'onboarding : affiché une fois par session tant que l'org n'est
++  // pas prête, puis l'utilisateur peut le passer.
++  const [accueilVu, setAccueilVu] = useState(false);
+   const [charge, setCharge] = useState(false);
+   const [route, setRoute] = useState({ ecran: "liste", affaireId: null });
+   const [gardeEnAttente, setGardeEnAttente] = useState(null); // () => void — navigation différée
+@@ -344,7 +302,7 @@ function App() {
+           await reclamerInvitation();
+           const p = await monProfil();
+           if (!p) setNonInvite(s.user?.email || "cet email");
+-          else setProfil(p);
++          else { setProfil(p); setOrg(await obtenirOrganisation().catch(() => ({}))); }
+         } catch (e) {
+           setNonInvite(s.user?.email || "cet email");
+         }
+@@ -355,6 +313,12 @@ function App() {
+ 
+   if (!charge) return null;
+   if (configPresente && !session) {
++    if (!veutEntrer) {
++      return <Landing onConnexion={() => {
++        try { sessionStorage.setItem("dashprod-entrer", "1"); } catch {}
++        setVeutEntrer(true);
++      }} />;
++    }
+     return <Connexion onConnecte={() => window.location.reload()} />;
+   }
+   if (configPresente && nonInvite) {
+@@ -377,6 +341,15 @@ function App() {
+     return <AppTerrain profil={profil} />;
+   }
+ 
++  // Accueil d'onboarding : une organisation neuve dont l'identité n'est pas
++  // prête à produire des documents. Affiché tant que l'admin ne l'a pas passé.
++  const orgPrete = identiteComplete(org || {}).pretDocuments;
++  if (modeDonnees() === "reel" && peutGererEquipe && !orgPrete && !accueilVu) {
++    return <Bienvenue profil={profil}
++      versIdentite={() => { setAccueilVu(true); setRoute({ ecran: "parametres", affaireId: null }); }}
++      versApp={() => setAccueilVu(true)} />;
++  }
++
+   // Garde : navigation en attente tant que l'utilisateur n'a pas tranché
+   // (sauvegarder / annuler les modifications).
+   function naviguerAvecGarde(fn) {
+@@ -402,6 +375,7 @@ function App() {
+     cout: () => setRoute({ ecran: "cout", affaireId: null }),
+     archivage: () => setRoute({ ecran: "archivage", affaireId: null }),
+     textes: () => setRoute({ ecran: "textes", affaireId: null }),
++    parametres: () => setRoute({ ecran: "parametres", affaireId: null }),
+   };
+   const retourDossier = () => nav.dossier(route.affaireId);
+ 
+@@ -420,10 +394,8 @@ function App() {
+       </div>
+     );
+   } else if (route.ecran === "compte") {
+-    ecran = <Compte profil={profil} versDiagnostic={nav.diagnostic}
+-      versBareme={nav.bareme} versCout={nav.cout} versArchivage={nav.archivage}
+-      versTextes={nav.textes}
+-      peutConfigurer={peutGererEquipe} />;
++    ecran = <Profil profil={profil} versDiagnostic={nav.diagnostic}
++      versParametres={nav.parametres} peutConfigurer={peutGererEquipe} />;
+   } else if (route.ecran === "equipe") {
+     ecran = <Ressources />;
+   } else if (route.ecran === "planning") {
+@@ -441,14 +413,18 @@ function App() {
+                    peutVoirPrix={peutVoirPrix} />;
+   } else if (route.ecran === "offre") {
+     ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
++  } else if (route.ecran === "parametres") {
++    ecran = <Parametres retour={() => nav.compte()}
++      versBareme={nav.bareme} versCout={nav.cout}
++      versTextes={nav.textes} versArchivage={nav.archivage} />;
+   } else if (route.ecran === "bareme") {
+-    ecran = <Bareme retour={() => nav.compte()} />;
++    ecran = <Bareme retour={() => nav.parametres()} />;
+   } else if (route.ecran === "cout") {
+-    ecran = <Cout retour={() => nav.compte()} />;
++    ecran = <Cout retour={() => nav.parametres()} />;
+   } else if (route.ecran === "archivage") {
+-    ecran = <Archivage retour={() => nav.compte()} />;
++    ecran = <Archivage retour={() => nav.parametres()} />;
+   } else if (route.ecran === "textes") {
+-    ecran = <Textes retour={() => nav.compte()} />;
++    ecran = <TextesDossiers retour={() => nav.parametres()} />;
+   } else if (route.ecran === "materiel") {
+     ecran = <Materiel affaireId={route.affaireId} retour={retourDossier} />;
+   } else if (route.ecran === "mail") {
+diff --git a/docs/DIRECTIVES_BUILD.md b/docs/DIRECTIVES_BUILD.md
+new file mode 100644
+index 0000000..cfa7970
+--- /dev/null
++++ b/docs/DIRECTIVES_BUILD.md
+@@ -0,0 +1,255 @@
++# DIRECTIVES DE BUILD — Dashprod ERP
++**À lire avant chaque session de construction.**
++Dernière révision : 21 juillet 2026 · commit de référence `770553e`
++
++Ce document existe pour une seule raison : **ne jamais build à l'aveugle, et ne
++jamais oublier une règle qui a déjà coûté un problème.** C'est le contrat de
++travail entre toi (Raphaël, décision et push) et moi (Claude, build/test/preuve).
++
++---
++
++## 0. Qui fait quoi
++
++| | Toi | Moi (Claude) |
++|---|---|---|
++| Décision produit, priorités | ✅ | — |
++| Écriture du code, tests, migrations | copilote | ✅ |
++| Application des migrations Supabase | — | ✅ (via connecteur) |
++| Push GitHub | ✅ (Codespaces) | — je n'ai pas d'accès en écriture au repo |
++| Déploiement Vercel | ✅ (auto au push) | — |
++| Réglages dashboard (Auth, secrets, visibilité repo) | ✅ | — hors de ma portée |
++| Preuve que ça marche | exige-la | ✅ je la fournis |
++
++Je ne suis **pas** dans Claude Code : pas de navigateur, pas d'accès à l'app
++déployée. Je peux cloner le repo public, lire/écrire Supabase en direct, tester
++la logique et la base. Je **ne peux pas** cliquer dans l'app, uploader un fichier,
++ni faire un test E2E navigateur. Ces vérifications-là te reviennent.
++
++---
++
++## 1. Règles absolues (déjà payées en problèmes réels)
++
++1. **Toujours repartir d'un clone frais du vrai repo GitHub.** Une divergence
++   locale a déjà cassé un build Vercel. Je ne travaille jamais sur un état supposé.
++
++2. **Ne jamais déclarer « fonctionnel » sans preuve.** Toute opération non testée
++   en réel est `NOT_VERIFIED`. Ça vaut pour moi aussi. Les 200 tests verts ne
++   prouvent que la logique du domaine, rien de la RLS, du navigateur ni du PDF.
++
++3. **Pousser un fichier n'exécute rien.** Une migration sur GitHub n'est pas une
++   migration appliquée. Vercel ne construit que le frontend, jamais la base.
++   Quand j'écris « APPLIQUÉE en production » dans l'en-tête d'un `.sql`, c'est que
++   je l'ai déjà exécutée via le connecteur : tu la ranges, tu ne la rejoues pas.
++   Si je veux que tu l'exécutes, je le dis explicitement.
++
++4. **Un fichier `.sql` de migration ne se colle jamais dans l'éditeur SQL tel
++   quel** s'il commence par des commentaires `--` : le copier-coller peut manger
++   les tirets. Les migrations que je livre sont pour le dépôt, elles sont déjà
++   appliquées.
++
++5. **Format de livraison — MD interdit pour les emplacements.** Pour tout fichier
++   destiné au repo : je donne le **nom exact et le chemin précis** dans la
++   conversation, en clair. Jamais enfoui dans un `.md`.
++
++6. **Si je sais faire le travail, je le fais.** Je ne te renvoie pas une tâche
++   que je peux exécuter moi-même.
++
++7. **Sécurité d'abord, toujours.** Aucune table métier sans `org_id NOT NULL` +
++   policy. Aucune vue ni fonction `SECURITY DEFINER` sans contrôle de `jwt_org()`.
++   Aucun secret en préfixe `VITE_`. Aucun succès affiché sans confirmation base.
++
++---
++
++## 2. Le workflow, étape par étape
++
++À chaque session de build :
++
++1. `git clone --depth … repo` frais, `git reset --hard origin/main`.
++2. `npm install` — le `node_modules` versionné est **périmé** (il manque `jspdf`),
++   il faut réinstaller sinon le build échoue.
++3. Lire le SKILL/le code réel avant d'écrire. Ne jamais présumer d'une signature.
++4. Écrire par patch Python idempotent (`s.count(old)==1`), pas à la main.
++5. `npm test` — doit rester vert, et j'ajoute des tests pour tout nouveau domaine.
++6. `npx vite build` avec des variables factices — doit passer.
++7. Migrations : je les applique moi-même sur Supabase, puis je **vérifie l'effet**
++   par une requête, jamais le `success:true` seul.
++8. `git diff` → un seul patch → `present_files` → **tableau d'emplacements en clair**.
++
++### Ce que je te livre à chaque fois
++- Un `.patch` unique à appliquer à la racine (`git apply`, puis `rm`).
++- Les `.sql` déjà appliqués, à ranger dans `supabase/migrations/`.
++- Le tableau nom → chemin, en clair dans la conversation.
++
++### Ce que tu fais
++```bash
++cd ~/dashprod-erp && git pull
++git apply <le>.patch
++npm test
++rm <le>.patch
++git add -A && git commit -m "…" && git push
++```
++
++---
++
++## 3. Vérité architecturale (pour ne pas me tromper)
++
++- **Stack réelle : Vite + React, JavaScript, SPA pure.** Pas de Next.js, pas de
++  TypeScript, **aucun backend applicatif**. Le navigateur parle directement à
++  Supabase avec la clé `anon`.
++- **Toute la sécurité est dans PostgreSQL** (RLS + fonctions `cmd_*`). Il n'existe
++  aucune autre couche où filtrer une donnée.
++- **Monorepo npm workspaces** : `packages/domaine` (logique pure, `node:test`,
++  alias `@domaine`), `apps/web` (Vite React), `supabase/migrations`.
++- **Chemin de données unique** : écran `.jsx` → `apps/web/src/lib/adaptateur.js`
++  (87 fonctions) → `supabase-js` → PostgREST → table + RLS. Aucun écran ne parle
++  à Supabase directement, sauf auth/diagnostic.
++- **Tenancy** : 1 utilisateur = 1 organisation. `org_id` injecté serveur par
++  `hook_ajouter_claims`. Ne pas réintroduire de multi-appartenance sans raison.
++- **Nomenclature** : `organisations` / `org_id` (pas `organizations`). Ne jamais
++  « corriger » vers l'anglais — migration destructive pour rien.
++
++### Modules du domaine déjà présents (ne pas réinventer)
++`chiffrage/moteur.js` (accepte `ref.bareme`/`ref.tarifs`), `facturation/peppol.js`
++(`versUBL`), `facturation/ogm.js` (`genererOGM` — **déjà branché** dans FactureDoc),
++`organisation/identite.js` (source de vérité, nouveau), `communication/textes.js`
++(catalogue de textes), `stocks/catalogues.js` (pièces/fournitures/matériel),
++`documents/cgv.js` (versionné, empreintes figées — **ne jamais éditer une version
++signée**, créer une v+1).
++
++---
++
++## 4. État de production (au 21/07/2026)
++
++### Verrouillé et prouvé
++- Isolation inter-tenant : organisation fictive → 0 ligne partout (tables + vues).
++- Storage privé, chemins `org/{org_id}/…`.
++- 0 fonction `SECURITY DEFINER` ouverte à `anon`.
++- `creer_organisation()` : crée une base vierge, testée (0 client/affaire/facture).
++- Facturation exercée en réel : `2026-000001`, TVA 21 % exacte, numérotation OK.
++- Identité d'entreprise éditable + héritée (nouveau).
++
++### Migrations appliquées au-delà du repo d'origine
++`0038`, `0038b`, `0038c` (sécurité), `0039` (creer_organisation),
++`0040` (fermeture helpers invoker), `0041` (catalogues), `0042` (identité).
++Toutes appliquées en base ; à ranger dans `supabase/migrations/`.
++
++### Trous connus, par priorité
++| Priorité | Trou | Note |
++|---|---|---|
++| **P0** | Dépôt GitHub **public** | Expose l'IBAN. Un clic : Settings → Danger Zone → Private. |
++| **P0** | Landing d'onboarding absente | `creer_organisation()` existe, aucun écran ne l'appelle. Voir §6. |
++| P1 | Libellé « TVA 21 % » en dur dans Devis, Facture, FactureDoc | `libelleTva(org)` existe. À brancher. |
++| P1 | `TVA_PCT = 21` dans `bareme.js` | Le moteur l'utilise ; à faire dériver de l'organisation. |
++| P1 | Email d'invitation | Edge Function `inviter-membre` non déployée, source non versionnée. |
++| P2 | Logo d'entreprise | Champ absent, à ajouter à l'identité + Storage. |
++| P2 | Mollie (paiement) | Absent partout. Non bloquant tant que facturation manuelle. |
++| P2 | `node_modules` versionné (2787 fichiers) | `git rm -r --cached node_modules`. |
++| P3 | Protection mots de passe compromis | Dashboard Auth, à activer. |
++
++---
++
++## 5. Fonctions « âge de pierre » — politique
++
++Quand je croise une fonction fragile, je la durcis au passage plutôt que de la
++laisser. Déjà traité :
++- `obtenirOrganisation`, `obtenirParametresPrix`, `obtenirTextes` : `.limit(1)
++  .maybeSingle()` avec repli silencieux → `.single()` avec erreur franche.
++- `pdfOffre` : repli `|| "Déménagements Roovers"` → refus de générer si nom absent.
++- Mode démo : bascule sur variable absente → drapeau explicite `VITE_MODE_DEMO`.
++
++Restent légitimes (ne pas « corriger ») : les deux `limit(1).maybeSingle()` de
++`adaptateur.js:370` et `:922` sont des « dernier document par date »
++(`order + limit`), c'est le bon pattern.
++
++Règle : un repli silencieux sur une valeur par défaut est presque toujours un bug
++en multi-tenant. Préférer une erreur visible à un faux succès.
++
++---
++
++## 6. LA LANDING D'ONBOARDING — spécification
++
++C'est le morceau qui ferme le circuit décrit dans ton diagnostic du 21/07.
++Objectif : **créer une organisation → premier admin → configurer une fois →
++produire**, sans reconfiguration ailleurs.
++
++### 6.1 Ce qui existe déjà côté base
++- `creer_organisation(p_nom, p_email_admin, p_nom_admin, …)` → crée org + rôles
++  standards + admin (rôle `direction`) + compteur de facture. Retourne
++  `{org_id, admin_id, statut: "PRET_A_CONFIGURER"}`. **Réservée à l'éditeur**
++  (aucun GRANT à `authenticated`).
++- `cmd_reclamer_invitation()` → rattache le compte Google de l'admin à sa ligne
++  `utilisateurs` lors de sa première connexion.
++- `identiteComplete(org)` → dit si l'entreprise peut produire des documents.
++
++### 6.2 Le problème d'accès à résoudre
++`creer_organisation()` ne doit **pas** être appelable par un utilisateur anonyme
++depuis le navigateur (sinon n'importe qui crée des tenants). Deux options :
++
++- **Option A — Edge Function `creer-organisation` en `service_role`.** La landing
++  publique appelle l'Edge Function, qui valide puis appelle la fonction SQL.
++  C'est la voie propre. Nécessite de déployer une Edge Function (source à
++  versionner dans `supabase/functions/`).
++- **Option B — création manuelle par l'éditeur (toi), landing = simple formulaire
++  de demande** qui t'envoie un email. Plus lent, zéro risque, bon pour les 10
++  premiers clients.
++
++Recommandation : **Option B pour démarrer** (tu contrôles chaque tenant créé),
++Option A quand le volume le justifie. Ne pas ouvrir la création de tenant au
++public tant que ce n'est pas nécessaire.
++
++### 6.3 Parcours cible (une fois l'org créée)
++```
++Connexion Google de l'admin
++   ↓
++cmd_reclamer_invitation()  → claim org_id injecté
++   ↓
++Écran d'accueil "Bienvenue" SI identiteComplete(org).pretDocuments == false
++   ↓
++Paramètres → Identité de l'entreprise  (remplir une fois)
++   ↓
++Paramètres → Facturation, Barème, Catalogues  (régler une fois)
++   ↓
++Premier client → premier devis  (hérite tout, ne redemande rien)
++```
++
++### 6.4 Ce que je construirai
++1. Une **page publique de présentation** (landing marketing simple : ce qu'est
++   Dashprod, un CTA « Demander un accès »).
++2. Un **écran d'accueil post-connexion** qui détecte une organisation incomplète
++   (`identiteComplete`) et guide vers Identité avant de laisser produire un devis.
++3. Option A si tu la choisis : l'Edge Function `creer-organisation` + son source
++   versionné + le formulaire de création.
++
++### 6.5 Critère de fin (le tien, verbatim)
++> Créer une organisation → un utilisateur → un rôle → configurer l'entreprise une
++> seule fois → un client → un devis → planifier → exécuter → facturer → recevoir
++> le paiement, **sans jamais reconfigurer la même information dans un autre module.**
++
++Test d'acceptation : créer ORG_B vierge, se connecter en admin, remplir l'identité
++UNE fois, produire un devis dont l'en-tête, la TVA et l'IBAN sont corrects **sans
++avoir rien saisi ailleurs**. Tant que ce test n'est pas passé en réel, la landing
++est `NOT_VERIFIED`.
++
++---
++
++## 7. Constantes belges (référentiel, ne pas coder en dur ailleurs)
++- TVA par défaut : 21 % — **désormais dans `parametres_facturation`, plus une
++  constante.** `bareme.js` reste à migrer.
++- Numérotation : `<annee>-000001`, compteur par `(org_id, type, annee)`.
++- Peppol ID Roovers : `0208:0478363616` (donnée Roovers — jamais en dur ailleurs).
++- Structured communication (OGM/VCS) : `genererOGM` dans le domaine.
++
++Ces valeurs appartiennent à l'organisation, pas au code. Roovers est une
++organisation comme une autre.
++
++---
++
++## 8. Definition of Done (à cocher avant de dire « prêt »)
++- [ ] `npm test` vert, tests ajoutés pour tout nouveau domaine.
++- [ ] `npx vite build` passe.
++- [ ] Migration appliquée ET vérifiée par requête (pas seulement `success`).
++- [ ] Isolation retestée si la RLS ou une policy a bougé (org fictive → 0).
++- [ ] Non-régression Roovers (16 clients, 16 affaires, 8 véhicules toujours vus).
++- [ ] Aucune donnée réelle en dur introduite (grep roovers/iban/van cutsem = 0).
++- [ ] Patch unique + tableau d'emplacements en clair.
++- [ ] Ce qui n'a pas pu être prouvé est marqué `NOT_VERIFIED`, pas « fonctionnel ».
+diff --git a/packages/domaine/src/chiffrage/moteur.js b/packages/domaine/src/chiffrage/moteur.js
+index 059fddc..e8b687c 100644
+--- a/packages/domaine/src/chiffrage/moteur.js
++++ b/packages/domaine/src/chiffrage/moteur.js
+@@ -39,10 +39,10 @@ import { BAREME_HORAIRE, TARIFS, TVA_PCT, MARGE_CIBLE, REPORT, ANNULATION } from
+  *  - horaire : heures × taux(effectif) + élévateur + km×1×camions [+ emballage régie] − remise
+  *  - forfait : HTVA déduit du prix TVAC ferme
+  */
+-function recetteHtvaCentimes(f, bareme = BAREME_HORAIRE, tarifs = TARIFS) {
++function recetteHtvaCentimes(f, bareme = BAREME_HORAIRE, tarifs = TARIFS, tvaPct = TVA_PCT) {
+   if (f.formule === "forfait") {
+     const tvac = versCentimes(f.forfaitTvacEuros || 0);
+-    return htvaDepuisTvac(tvac, TVA_PCT);
++    return htvaDepuisTvac(tvac, tvaPct);
+   }
+   const taux = bareme[f.nbDemenageurs];
+   if (taux == null) {
+@@ -83,9 +83,12 @@ export function zoneMarge(margePct) {
+ export function calculerScenario(faits, couts = {}, ref = {}) {
+   const bareme = ref.bareme || BAREME_HORAIRE;
+   const tarifs = ref.tarifs || TARIFS;
++  // Le taux de TVA vient de l'organisation (ref.tvaPct), pas d'une constante.
++  // TVA_PCT ne reste que comme repli si l'appelant ne fournit rien.
++  const tvaPct = Number.isFinite(ref.tvaPct) ? ref.tvaPct : TVA_PCT;
+ 
+-  const htva = recetteHtvaCentimes(faits, bareme, tarifs);
+-  const tvaC = tva(htva, TVA_PCT);
++  const htva = recetteHtvaCentimes(faits, bareme, tarifs, tvaPct);
++  const tvaC = tva(htva, tvaPct);
+   const tvac = htva + tvaC;
+ 
+   const coutC = coutsTotalCentimes(couts);
+diff --git a/packages/domaine/src/communication/brief.js b/packages/domaine/src/communication/brief.js
+index e34bace..12a22b8 100644
+--- a/packages/domaine/src/communication/brief.js
++++ b/packages/domaine/src/communication/brief.js
+@@ -156,7 +156,7 @@ export const TEXTES_OFFRE_DEFAUT = Object.freeze({
+   validite: "Offre valable {validite} jours ouvrables.",
+   validite_jours: 10,
+   formule_politesse: "Bien à vous,",
+-  signataire: "Raphaël Van Cutsem",
++  signataire: "{organisation}",
+   pied: "",
+ });
+ 
+diff --git a/packages/domaine/src/communication/textes.js b/packages/domaine/src/communication/textes.js
+new file mode 100644
+index 0000000..9365f67
+--- /dev/null
++++ b/packages/domaine/src/communication/textes.js
+@@ -0,0 +1,152 @@
++// =============================================================================
++// Catalogue des textes réglables — source unique de vérité.
++//
++// Tout texte que le CLIENT peut lire est décrit ici : son libellé dans
++// l'interface, sa valeur par défaut, et l'espace de stockage où l'entreprise
++// range sa version personnalisée.
++//
++// Stockage : organisations.parametres_textes (jsonb).
++//   - groupe "offre" → clés à la RACINE (compatibilité avec l'existant)
++//   - autres groupes → sous-objet nommé (ex. { pdf: { titre: "..." } })
++//
++// Règle : une clé absente ou vide retombe sur le défaut. Un réglage partiel
++// est donc toujours valide, et une entreprise nouvelle démarre avec des
++// textes corrects sans rien saisir.
++//
++// AUCUN nom d'entreprise ni de personne réelle ne doit figurer dans les
++// valeurs par défaut (AUDIT_REAL.md §5).
++// =============================================================================
++
++import { TEXTES_OFFRE_DEFAUT } from "./brief.js";
++
++/** Libellés du PDF d'offre remis au client. */
++export const TEXTES_PDF_DEFAUT = Object.freeze({
++  titre: "OFFRE DE PRIX",
++  bloc_client: "CLIENT",
++  bloc_prestation: "PRESTATION",
++  bloc_montant: "MONTANT",
++  bloc_remarques: "Remarques",
++  formule_forfait: "Formule : forfait",
++  elevateur: "Élévateur / lift inclus",
++  total_htva: "Total HTVA",
++  tva: "TVA 21 %",
++  total_tvac: "TOTAL TVAC",
++  pied_conditions:
++    "Prestation soumise aux conditions générales de la Chambre Belge des "
++    + "Déménageurs, jointes à cette offre.",
++});
++
++/** Valeurs par défaut, par clé de groupe. */
++export const DEFAUTS_PAR_GROUPE = Object.freeze({
++  offre: TEXTES_OFFRE_DEFAUT,
++  pdf: TEXTES_PDF_DEFAUT,
++});
++
++/**
++ * Description des sous-pages de « Modifications données texte dossiers ».
++ * L'interface se construit à partir de cette liste : ajouter un groupe ici
++ * suffit à faire apparaître une nouvelle sous-page.
++ *
++ * espace = null  → clés stockées à la racine de parametres_textes
++ * espace = "pdf" → clés stockées dans parametres_textes.pdf
++ * fichier = true → la sous-page gère un document, pas des champs texte
++ */
++export const GROUPES_TEXTES = Object.freeze([
++  {
++    cle: "offre",
++    espace: null,
++    icone: "✉️",
++    titre: "Texte de l'offre",
++    resume: "L'email qui accompagne l'offre de prix envoyée au client.",
++    apercu: true,
++    champs: [
++      { cle: "objet", label: "Objet de l'email", aide: "{client} {organisation}" },
++      { cle: "salutation", label: "Salutation", aide: "{famille} = nom de famille" },
++      { cle: "intro", label: "Phrase d'introduction", long: true },
++      { cle: "intro_signee", label: "Ajout si l'offre est signée", long: true },
++      { cle: "mention_km", label: "Mention kilométrage" },
++      { cle: "validite", label: "Mention de validité", aide: "{validite} = jours" },
++      { cle: "validite_jours", label: "Validité (jours)", nombre: true },
++      { cle: "formule_politesse", label: "Formule de politesse" },
++      { cle: "signataire", label: "Signataire", aide: "nom affiché en bas de l'email" },
++      { cle: "pied", label: "Pied de page (facultatif)", long: true },
++    ],
++  },
++  {
++    cle: "pdf",
++    espace: "pdf",
++    icone: "📄",
++    titre: "Document PDF de l'offre",
++    resume: "Les intitulés imprimés sur le PDF joint à l'offre.",
++    champs: [
++      { cle: "titre", label: "Titre du document" },
++      { cle: "bloc_client", label: "Titre du bloc client" },
++      { cle: "bloc_prestation", label: "Titre du bloc prestation" },
++      { cle: "bloc_montant", label: "Titre du bloc montant" },
++      { cle: "bloc_remarques", label: "Titre du bloc remarques" },
++      { cle: "formule_forfait", label: "Mention « forfait »" },
++      { cle: "elevateur", label: "Mention élévateur" },
++      { cle: "total_htva", label: "Libellé total hors TVA" },
++      { cle: "tva", label: "Libellé TVA" },
++      { cle: "total_tvac", label: "Libellé total TVA comprise" },
++      { cle: "pied_conditions", label: "Mention des conditions générales", long: true },
++    ],
++  },
++  {
++    cle: "cbd",
++    icone: "📎",
++    titre: "Conditions générales C.B.D.",
++    resume: "Le PDF joint à chaque offre, à côté de l'offre elle-même.",
++    fichier: true,
++    champs: [],
++  },
++]);
++
++/** Retrouve un groupe par sa clé. */
++export function groupeTextes(cle) {
++  return GROUPES_TEXTES.find((g) => g.cle === cle) || null;
++}
++
++/**
++ * Extrait du jsonb stocké les valeurs personnalisées d'un groupe.
++ * Renvoie toujours un objet, jamais null.
++ */
++export function lireGroupe(stockes, groupe) {
++  if (!groupe) return {};
++  const source = groupe.espace ? (stockes || {})[groupe.espace] : stockes;
++  if (!source || typeof source !== "object") return {};
++  if (groupe.espace) return { ...source };
++  // Groupe racine : on ne retient que les clés qui lui appartiennent, pour ne
++  // pas ramasser les sous-objets des autres groupes.
++  const miennes = new Set(groupe.champs.map((c) => c.cle));
++  return Object.fromEntries(
++    Object.entries(source).filter(([k]) => miennes.has(k)));
++}
++
++/**
++ * Réintègre les valeurs d'un groupe dans le jsonb complet, sans toucher aux
++ * autres groupes. Les valeurs vides sont retirées : le défaut reprend la main.
++ */
++export function ecrireGroupe(stockes, groupe, valeurs) {
++  const base = { ...(stockes || {}) };
++  const utiles = Object.fromEntries(
++    Object.entries(valeurs || {}).filter(([, v]) => v !== "" && v != null));
++
++  if (groupe.espace) {
++    if (Object.keys(utiles).length === 0) delete base[groupe.espace];
++    else base[groupe.espace] = utiles;
++    return base;
++  }
++  for (const champ of groupe.champs) delete base[champ.cle];
++  return { ...base, ...utiles };
++}
++
++/**
++ * Textes effectifs d'un groupe : défauts complétés par la personnalisation.
++ * C'est cette fonction que le rendu (PDF, email) doit appeler.
++ */
++export function textesEffectifs(stockes, cleGroupe) {
++  const groupe = groupeTextes(cleGroupe);
++  if (!groupe) return {};
++  return { ...(DEFAUTS_PAR_GROUPE[cleGroupe] || {}), ...lireGroupe(stockes, groupe) };
++}
+diff --git a/packages/domaine/src/organisation/identite.js b/packages/domaine/src/organisation/identite.js
+new file mode 100644
+index 0000000..ed0a7e1
+--- /dev/null
++++ b/packages/domaine/src/organisation/identite.js
+@@ -0,0 +1,140 @@
++// =============================================================================
++// Identité de l'organisation — source de vérité unique.
++//
++// Tout ce qu'un module doit savoir de l'entreprise passe par ici : devis, PDF,
++// email, facture, Peppol. Aucun module ne redemande, ne redéfinit ni ne code
++// en dur une information d'entreprise.
++//
++// Deux règles :
++//   1. Un champ manquant se voit (identiteComplete) au lieu de se deviner.
++//      Un devis ne doit pas partir avec un en-tête vide ou approximatif.
++//   2. Un réglage absent retombe sur un défaut belge explicite, jamais sur
++//      une valeur d'une autre entreprise.
++// =============================================================================
++
++/** Réglages de facturation hérités par tous les documents. */
++export const FACTURATION_DEFAUT = Object.freeze({
++  tva_taux: 21,
++  echeance_jours: 30,
++  prefixe_numero: "",
++  mention_legale: "",
++  communication_structuree: false,
++});
++
++/** Champs d'identité, dans l'ordre d'affichage. */
++export const CHAMPS_IDENTITE = Object.freeze([
++  { cle: "nom", label: "Nom légal", requis: true,
++    aide: "Tel qu'il figure à la Banque-Carrefour des Entreprises." },
++  { cle: "nom_commercial", label: "Nom commercial",
++    aide: "Enseigne, si différente du nom légal." },
++  { cle: "forme_juridique", label: "Forme juridique", aide: "SRL, SA, indépendant…" },
++  { cle: "bce", label: "Numéro d'entreprise (BCE)", requis: true, aide: "BE 0123.456.789" },
++  { cle: "tva", label: "Numéro de TVA", requis: true, aide: "BE0123456789" },
++  { cle: "adresse", label: "Adresse", requis: true },
++  { cle: "cp", label: "Code postal", requis: true },
++  { cle: "ville", label: "Ville", requis: true },
++  { cle: "pays", label: "Pays" },
++  { cle: "tel", label: "Téléphone", requis: true },
++  { cle: "email", label: "Email général", requis: true },
++  { cle: "site_web", label: "Site internet" },
++  { cle: "iban", label: "IBAN", requis: true, aide: "Compte sur lequel les clients paient." },
++]);
++
++/** Champs sans lesquels aucun document ne devrait partir chez un client. */
++export const CHAMPS_DOCUMENT = Object.freeze(
++  ["nom", "bce", "tva", "adresse", "cp", "ville", "tel", "email", "iban"]);
++
++const vide = (v) => v == null || String(v).trim() === "";
++
++/** Normalise un numéro BE : majuscules, sans espaces ni points. */
++export function normaliserNumero(v) {
++  return String(v ?? "").toUpperCase().replace(/[\s.\-/]/g, "");
++}
++
++/** Vrai si le numéro de TVA a la forme belge attendue. Vide = non jugé. */
++export function tvaBelgeValide(v) {
++  if (vide(v)) return true;
++  return /^BE0\d{9}$/.test(normaliserNumero(v));
++}
++
++/** Vrai si l'IBAN belge est bien formé ET passe le contrôle modulo 97. */
++export function ibanValide(v) {
++  if (vide(v)) return true;
++  const n = normaliserNumero(v);
++  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(n)) return false;
++  const reordonne = n.slice(4) + n.slice(0, 4);
++  const numerique = reordonne.replace(/[A-Z]/g, (c) => c.charCodeAt(0) - 55);
++  let reste = 0;
++  for (const chiffre of numerique) reste = (reste * 10 + Number(chiffre)) % 97;
++  return reste === 1;
++}
++
++/**
++ * État de complétion de l'identité.
++ * manquants  : champs requis absents — bloquent l'envoi de documents
++ * invalides  : champs présents mais mal formés
++ * pretDocuments : vrai si un devis ou une facture peut partir
++ */
++export function identiteComplete(org) {
++  const o = org || {};
++  const manquants = CHAMPS_IDENTITE
++    .filter((c) => c.requis && vide(o[c.cle]))
++    .map((c) => c.cle);
++
++  const invalides = [];
++  if (!tvaBelgeValide(o.tva)) invalides.push("tva");
++  if (!ibanValide(o.iban)) invalides.push("iban");
++
++  const bloquants = CHAMPS_DOCUMENT.filter((c) => vide(o[c]));
++  return {
++    manquants,
++    invalides,
++    complete: manquants.length === 0 && invalides.length === 0,
++    pretDocuments: bloquants.length === 0 && invalides.length === 0,
++    bloquants,
++  };
++}
++
++/** Réglages de facturation effectifs : défauts complétés par l'organisation. */
++export function facturation(org) {
++  const perso = (org || {}).parametres_facturation;
++  if (!perso || typeof perso !== "object") return { ...FACTURATION_DEFAUT };
++  const f = { ...FACTURATION_DEFAUT, ...perso };
++  const taux = Number(f.tva_taux);
++  f.tva_taux = Number.isFinite(taux) && taux >= 0 && taux <= 100
++    ? taux : FACTURATION_DEFAUT.tva_taux;
++  const jours = Number(f.echeance_jours);
++  f.echeance_jours = Number.isFinite(jours) && jours >= 0
++    ? Math.round(jours) : FACTURATION_DEFAUT.echeance_jours;
++  return f;
++}
++
++/** Taux de TVA de l'entreprise. Un seul endroit décide. */
++export function tauxTva(org) {
++  return facturation(org).tva_taux;
++}
++
++/** Libellé « TVA 21 % » calculé, jamais écrit en dur dans un écran. */
++export function libelleTva(org) {
++  const t = tauxTva(org);
++  return `TVA ${String(t).replace(".", ",")} %`;
++}
++
++/** Nom à imprimer sur les documents : l'enseigne si elle existe. */
++export function nomAffiche(org) {
++  const o = org || {};
++  return (!vide(o.nom_commercial) ? o.nom_commercial : o.nom) || "";
++}
++
++/** Bloc d'adresse prêt à imprimer, lignes vides retirées. */
++export function lignesEntete(org) {
++  const o = org || {};
++  const ligneVille = [o.cp, o.ville].filter((x) => !vide(x)).join(" ");
++  const contact = [o.tel, o.email].filter((x) => !vide(x)).join(" · ");
++  const legal = [
++    !vide(o.bce) ? `BCE ${o.bce}` : null,
++    !vide(o.tva) ? `TVA ${o.tva}` : null,
++  ].filter(Boolean).join(" · ");
++  return [o.adresse, ligneVille, contact, legal, o.site_web]
++    .filter((l) => !vide(l)).map(String);
++}
+diff --git a/packages/domaine/src/stocks/catalogues.js b/packages/domaine/src/stocks/catalogues.js
+new file mode 100644
+index 0000000..1cefddc
+--- /dev/null
++++ b/packages/domaine/src/stocks/catalogues.js
+@@ -0,0 +1,141 @@
++// =============================================================================
++// Catalogues réglables par entreprise.
++//
++// Trois listes que chaque entreprise adapte à sa façon de travailler :
++//   - pieces           : les pièces proposées dans le relevé
++//   - fournitures      : le matériel d'emballage facturable au client
++//   - materiel_terrain : l'équipement de manutention (diable, planche…)
++//
++// Stockage : organisations.parametres_catalogues (jsonb).
++// Une liste absente ou vide retombe sur le défaut : une entreprise nouvelle
++// démarre avec un catalogue utilisable sans rien saisir.
++//
++// Le coût interne de chaque ligne alimente « Coûts internes » : ce que
++// l'entreprise paie pour l'article, distinct du prix facturé au client.
++// =============================================================================
++
++/** Pièces proposées au relevé, dans l'ordre d'affichage. */
++export const PIECES_DEFAUT = Object.freeze([
++  "Salon", "Salle à manger", "Cuisine", "Chambre", "Chambre 2",
++  "Bureau", "Salle de bain", "Cave", "Grenier", "Garage", "Jardin",
++]);
++
++/**
++ * Fournitures d'emballage. cout_centimes = ce que l'article coûte à
++ * l'entreprise, consommable = déduit du stock à chaque chantier.
++ */
++export const FOURNITURES_DEFAUT = Object.freeze([
++  { cle: "carton_standard", nom: "Carton standard", unite: "pièce", cout_centimes: 150, consommable: true },
++  { cle: "carton_livre", nom: "Carton livres", unite: "pièce", cout_centimes: 180, consommable: true },
++  { cle: "carton_penderie", nom: "Carton penderie", unite: "pièce", cout_centimes: 900, consommable: true },
++  { cle: "papier_bulle", nom: "Papier bulle (rouleau)", unite: "rouleau", cout_centimes: 1200, consommable: true },
++  { cle: "papier_soie", nom: "Papier de soie (paquet)", unite: "paquet", cout_centimes: 800, consommable: true },
++  { cle: "adhesif", nom: "Rouleau adhésif", unite: "rouleau", cout_centimes: 200, consommable: true },
++  { cle: "housse_matelas", nom: "Housse matelas", unite: "pièce", cout_centimes: 400, consommable: true },
++  { cle: "housse_canape", nom: "Housse canapé", unite: "pièce", cout_centimes: 600, consommable: true },
++  { cle: "film_etirable", nom: "Film étirable", unite: "rouleau", cout_centimes: 1000, consommable: true },
++]);
++
++/**
++ * Matériel de terrain — non consommable, il revient au dépôt.
++ * cout_centimes sert à l'amortissement et au remplacement.
++ */
++export const MATERIEL_TERRAIN_DEFAUT = Object.freeze([
++  { cle: "diable", nom: "Diable", unite: "pièce", cout_centimes: 12000, consommable: false },
++  { cle: "planche_roulettes", nom: "Planche à roulettes", unite: "pièce", cout_centimes: 6500, consommable: false },
++  { cle: "bandes_porter", nom: "Bandes à porter", unite: "paire", cout_centimes: 4500, consommable: false },
++  { cle: "sangles", nom: "Sangles d'arrimage", unite: "pièce", cout_centimes: 1500, consommable: false },
++  { cle: "couverture", nom: "Couverture de déménagement", unite: "pièce", cout_centimes: 1200, consommable: false },
++  { cle: "chariot", nom: "Chariot plateau", unite: "pièce", cout_centimes: 9000, consommable: false },
++  { cle: "monte_meuble", nom: "Monte-meuble / élévateur", unite: "journée", cout_centimes: 0, consommable: false },
++  { cle: "protection_sol", nom: "Protection de sol", unite: "rouleau", cout_centimes: 2500, consommable: true },
++  { cle: "boite_outils", nom: "Boîte à outils", unite: "pièce", cout_centimes: 5000, consommable: false },
++]);
++
++export const CATALOGUES_DEFAUT = Object.freeze({
++  pieces: PIECES_DEFAUT,
++  fournitures: FOURNITURES_DEFAUT,
++  materiel_terrain: MATERIEL_TERRAIN_DEFAUT,
++});
++
++/** Description des listes, pour construire l'écran de réglage. */
++export const LISTES_CATALOGUE = Object.freeze([
++  {
++    cle: "pieces", titre: "Pièces du relevé", icone: "🏠",
++    resume: "Les pièces proposées lors du relevé chez le client.",
++    texteSimple: true,
++  },
++  {
++    cle: "fournitures", titre: "Fournitures d'emballage", icone: "📦",
++    resume: "Cartons, papier, housses — facturables au client.",
++  },
++  {
++    cle: "materiel_terrain", titre: "Matériel de terrain", icone: "🛠️",
++    resume: "Diable, planche à roulettes, bandes à porter, sangles…",
++  },
++]);
++
++/** Liste effective : le réglage de l'entreprise, sinon le défaut. */
++export function catalogue(stockes, cle) {
++  const perso = (stockes || {})[cle];
++  if (Array.isArray(perso) && perso.length > 0) return perso;
++  return CATALOGUES_DEFAUT[cle] || [];
++}
++
++/** Vrai si l'entreprise a personnalisé cette liste. */
++export function estPersonnalise(stockes, cle) {
++  const perso = (stockes || {})[cle];
++  return Array.isArray(perso) && perso.length > 0;
++}
++
++/** Normalise une saisie en article exploitable. Renvoie null si inutilisable. */
++export function normaliserArticle(brut, simple = false) {
++  if (simple) {
++    const nom = String(brut ?? "").trim();
++    return nom || null;
++  }
++  const nom = String(brut?.nom ?? "").trim();
++  if (!nom) return null;
++  const cle = String(brut?.cle ?? "").trim()
++    || nom.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
++          .replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
++  const cout = Number(brut?.cout_centimes);
++  return {
++    cle,
++    nom,
++    unite: String(brut?.unite ?? "pièce").trim() || "pièce",
++    cout_centimes: Number.isFinite(cout) && cout >= 0 ? Math.round(cout) : 0,
++    consommable: brut?.consommable !== false,
++  };
++}
++
++/**
++ * Coûts internes dérivés des catalogues : une ligne par article ayant un coût.
++ * C'est ce qui alimente automatiquement l'écran « Coûts internes » — ajouter
++ * un article au matériel le fait apparaître dans les coûts, sans double saisie.
++ */
++export function coutsMateriel(stockes) {
++  const lignes = [];
++  for (const cle of ["fournitures", "materiel_terrain"]) {
++    for (const a of catalogue(stockes, cle)) {
++      if (!a || typeof a !== "object") continue;
++      if (!(a.cout_centimes > 0)) continue;
++      lignes.push({
++        source: cle,
++        cle: a.cle,
++        nom: a.nom,
++        unite: a.unite || "pièce",
++        cout_centimes: a.cout_centimes,
++        consommable: a.consommable !== false,
++      });
++    }
++  }
++  return lignes;
++}
++
++/** Total du coût unitaire de tout le matériel non consommable (parc). */
++export function valeurParcMateriel(stockes) {
++  return coutsMateriel(stockes)
++    .filter((l) => !l.consommable)
++    .reduce((t, l) => t + l.cout_centimes, 0);
++}
+diff --git a/packages/domaine/tests/catalogues.test.js b/packages/domaine/tests/catalogues.test.js
+new file mode 100644
+index 0000000..3b5c155
+--- /dev/null
++++ b/packages/domaine/tests/catalogues.test.js
+@@ -0,0 +1,66 @@
++// Tests — catalogues réglables par entreprise.
++import test from "node:test";
++import assert from "node:assert/strict";
++import {
++  CATALOGUES_DEFAUT, LISTES_CATALOGUE, catalogue, estPersonnalise,
++  normaliserArticle, coutsMateriel, valeurParcMateriel,
++} from "../src/stocks/catalogues.js";
++
++test("catalogue : repli sur le défaut si rien n'est réglé", () => {
++  assert.deepEqual(catalogue({}, "pieces"), CATALOGUES_DEFAUT.pieces);
++  assert.deepEqual(catalogue(null, "pieces"), CATALOGUES_DEFAUT.pieces);
++  assert.deepEqual(catalogue({ pieces: [] }, "pieces"), CATALOGUES_DEFAUT.pieces);
++});
++
++test("catalogue : la liste de l'entreprise prime", () => {
++  assert.deepEqual(catalogue({ pieces: ["Loft"] }, "pieces"), ["Loft"]);
++  assert.equal(estPersonnalise({ pieces: ["Loft"] }, "pieces"), true);
++  assert.equal(estPersonnalise({ pieces: [] }, "pieces"), false);
++});
++
++test("normaliserArticle : clé dérivée du nom, accents retirés", () => {
++  const a = normaliserArticle({ nom: "Planche à roulettes", cout_centimes: 6500 });
++  assert.equal(a.cle, "planche_a_roulettes");
++  assert.equal(a.unite, "pièce");
++  assert.equal(a.cout_centimes, 6500);
++});
++
++test("normaliserArticle : refuse un nom vide, borne un coût aberrant", () => {
++  assert.equal(normaliserArticle({ nom: "  " }), null);
++  assert.equal(normaliserArticle("", true), null);
++  assert.equal(normaliserArticle({ nom: "X", cout_centimes: -5 }).cout_centimes, 0);
++  assert.equal(normaliserArticle({ nom: "X", cout_centimes: "abc" }).cout_centimes, 0);
++});
++
++test("le matériel de terrain attendu figure dans les défauts", () => {
++  const cles = CATALOGUES_DEFAUT.materiel_terrain.map((a) => a.cle);
++  for (const attendu of ["diable", "planche_roulettes", "bandes_porter"]) {
++    assert.ok(cles.includes(attendu), `${attendu} absent du matériel de terrain`);
++  }
++});
++
++test("coutsMateriel : une ligne par article facturé, sans les gratuits", () => {
++  // Les fournitures non réglées retombent sur le défaut : on isole la source
++  // testée pour ne mesurer que le comportement du filtre de coût.
++  const lignes = coutsMateriel({ materiel_terrain: [
++    { cle: "a", nom: "A", unite: "pièce", cout_centimes: 100, consommable: false },
++    { cle: "b", nom: "B", unite: "pièce", cout_centimes: 0 },
++  ] }).filter((l) => l.source === "materiel_terrain");
++  assert.equal(lignes.length, 1);
++  assert.equal(lignes[0].cle, "a");
++});
++
++test("valeurParcMateriel : ne compte que le non consommable", () => {
++  const v = valeurParcMateriel({ materiel_terrain: [
++    { cle: "a", nom: "A", cout_centimes: 1000, consommable: false },
++    { cle: "b", nom: "B", cout_centimes: 500, consommable: true },
++  ] });
++  assert.equal(v, 1000);
++});
++
++test("chaque liste réglable a des défauts", () => {
++  for (const l of LISTES_CATALOGUE) {
++    assert.ok(Array.isArray(CATALOGUES_DEFAUT[l.cle]), `défauts manquants : ${l.cle}`);
++    assert.ok(CATALOGUES_DEFAUT[l.cle].length > 0, `liste vide : ${l.cle}`);
++  }
++});
+diff --git a/packages/domaine/tests/identite.test.js b/packages/domaine/tests/identite.test.js
+index a81b1e3..568e694 100644
+--- a/packages/domaine/tests/identite.test.js
++++ b/packages/domaine/tests/identite.test.js
+@@ -1,77 +1,100 @@
+-// Tests — Identité & permissions : autorisation des commandes, claims JWT.
+-// Partie critique (T3) : ces règles gouvernent qui peut écrire dans le noyau.
+-
+-import { test } from "node:test";
++// Tests — identité de l'organisation, source de vérité.
++import test from "node:test";
+ import assert from "node:assert/strict";
++import {
++  FACTURATION_DEFAUT, identiteComplete, facturation, tauxTva, libelleTva,
++  tvaBelgeValide, ibanValide, nomAffiche, lignesEntete, normaliserNumero,
++} from "../src/organisation/identite.js";
+ 
+-import { COMMANDES, peutExecuter, verifierCommande } from "../src/noyau/autorisation.js";
+-import { construireClaims, claimsValides, rolesConnus } from "../src/noyau/jwt.js";
+-import { ROLES } from "../src/noyau/permissions.js";
++const COMPLETE = {
++  nom: "Déménagements Test SRL", bce: "BE 0478.363.616", tva: "BE0478363616",
++  adresse: "Rue de Test 1", cp: "1000", ville: "Bruxelles",
++  tel: "02 000 00 00", email: "info@test.be", iban: "BE68539007547034",
++};
+ 
+-// --- Autorisation des commandes ---------------------------------------------
++test("identiteComplete : une organisation neuve n'est pas prête", () => {
++  const e = identiteComplete({});
++  assert.equal(e.complete, false);
++  assert.equal(e.pretDocuments, false);
++  assert.ok(e.bloquants.includes("nom"));
++  assert.ok(e.bloquants.includes("iban"));
++});
+ 
+-test("la direction peut exécuter toutes les commandes du noyau", () => {
+-  for (const cmd of Object.keys(COMMANDES)) {
+-    assert.equal(peutExecuter(["direction"], cmd), true, `direction bloquée sur ${cmd}`);
+-  }
++test("identiteComplete : une organisation renseignée est prête", () => {
++  const e = identiteComplete(COMPLETE);
++  assert.equal(e.complete, true);
++  assert.equal(e.pretDocuments, true);
++  assert.deepEqual(e.invalides, []);
+ });
+ 
+-test("la coordination ne peut pas publier de référentiel", () => {
+-  // gérer_référentiels est réservé à la direction (S3) : coordination exclue.
+-  assert.equal(peutExecuter(["coordination"], "PUBLIER_REFERENTIEL"), false);
+-  assert.equal(peutExecuter(["coordination"], "AFFECTER_ROLE"), false);
++test("tvaBelgeValide : format BE + 10 chiffres", () => {
++  assert.equal(tvaBelgeValide("BE0478363616"), true);
++  assert.equal(tvaBelgeValide("BE 0478.363.616"), true);
++  assert.equal(tvaBelgeValide("BE123"), false);
++  assert.equal(tvaBelgeValide("FR0478363616"), false);
++  assert.equal(tvaBelgeValide(""), true, "un champ vide n'est pas jugé invalide");
+ });
+ 
+-test("un commercial ne peut pas inviter d'utilisateur", () => {
+-  assert.equal(peutExecuter(["commercial"], "INVITER_UTILISATEUR"), false);
++test("ibanValide : contrôle modulo 97, pas seulement la forme", () => {
++  assert.equal(ibanValide("BE68 5390 0754 7034"), true);
++  assert.equal(ibanValide("BE68539007547035"), false, "clé de contrôle fausse");
++  assert.equal(ibanValide("XX"), false);
++  assert.equal(ibanValide(""), true);
+ });
+ 
+-test("une commande inconnue est refusée par défaut (liste blanche)", () => {
+-  assert.equal(peutExecuter(["direction"], "COMMANDE_FANTOME"), false);
++test("un IBAN mal formé bloque l'envoi de documents", () => {
++  const e = identiteComplete({ ...COMPLETE, iban: "BE68539007547035" });
++  assert.ok(e.invalides.includes("iban"));
++  assert.equal(e.pretDocuments, false);
+ });
+ 
+-test("verifierCommande explicite la raison du refus (pour l'audit)", () => {
+-  const r1 = verifierCommande(["commercial"], "PUBLIER_REFERENTIEL");
+-  assert.equal(r1.autorise, false);
+-  assert.equal(r1.raison, "capacite_manquante");
+-  assert.equal(r1.capaciteRequise, "gerer_referentiels");
++test("facturation : défauts belges si rien n'est réglé", () => {
++  assert.deepEqual(facturation({}), { ...FACTURATION_DEFAUT });
++  assert.equal(tauxTva({}), 21);
++  assert.equal(libelleTva({}), "TVA 21 %");
++});
+ 
+-  const r2 = verifierCommande(["direction"], "COMMANDE_FANTOME");
+-  assert.equal(r2.autorise, false);
+-  assert.equal(r2.raison, "commande_inconnue");
++test("facturation : le taux de l'organisation prime", () => {
++  const org = { parametres_facturation: { tva_taux: 6 } };
++  assert.equal(tauxTva(org), 6);
++  assert.equal(libelleTva(org), "TVA 6 %");
++  assert.equal(facturation(org).echeance_jours, 30, "les autres défauts restent");
++});
+ 
+-  const r3 = verifierCommande(["direction"], "AFFECTER_ROLE");
+-  assert.equal(r3.autorise, true);
+-  assert.equal(r3.raison, null);
++test("facturation : un taux aberrant retombe sur le défaut", () => {
++  assert.equal(tauxTva({ parametres_facturation: { tva_taux: -3 } }), 21);
++  assert.equal(tauxTva({ parametres_facturation: { tva_taux: 250 } }), 21);
++  assert.equal(tauxTva({ parametres_facturation: { tva_taux: "abc" } }), 21);
+ });
+ 
+-// --- Claims JWT --------------------------------------------------------------
++test("nomAffiche : l'enseigne prime sur le nom légal", () => {
++  assert.equal(nomAffiche({ nom: "X SRL", nom_commercial: "Enseigne" }), "Enseigne");
++  assert.equal(nomAffiche({ nom: "X SRL" }), "X SRL");
++  assert.equal(nomAffiche({}), "");
++});
+ 
+-test("construireClaims produit org_id et roles", () => {
+-  const c = construireClaims({ org_id: "org-1", roles: ["coordination"] });
+-  assert.equal(c.org_id, "org-1");
+-  assert.deepEqual(c.roles, ["coordination"]);
++test("lignesEntete : aucune ligne vide, aucune valeur inventée", () => {
++  const l = lignesEntete(COMPLETE);
++  assert.ok(l.length > 0);
++  assert.equal(l.some((x) => !x || !x.trim()), false);
++  assert.deepEqual(lignesEntete({}), []);
+ });
+ 
+-test("construireClaims défaut roles à [] et exige org_id", () => {
+-  const c = construireClaims({ org_id: "org-1" });
+-  assert.deepEqual(c.roles, []);
+-  assert.throws(() => construireClaims({ roles: ["direction"] }), /org_id obligatoire/);
+-  assert.throws(() => construireClaims(null), /org_id obligatoire/);
++test("normaliserNumero : espaces, points et tirets retirés", () => {
++  assert.equal(normaliserNumero("be 0478.363-616"), "BE0478363616");
+ });
+ 
+-test("claimsValides accepte une forme correcte et rejette le reste", () => {
+-  assert.equal(claimsValides({ org_id: "o", roles: [] }), true);
+-  assert.equal(claimsValides({ org_id: "o", roles: ["direction"] }), true);
+-  assert.equal(claimsValides({ org_id: "", roles: [] }), false);      // org vide
+-  assert.equal(claimsValides({ roles: [] }), false);                   // pas d'org
+-  assert.equal(claimsValides({ org_id: "o", roles: "direction" }), false); // roles non-tableau
+-  assert.equal(claimsValides({ org_id: "o", roles: [1, 2] }), false);  // roles non-strings
+-  assert.equal(claimsValides(null), false);
++// — Moteur de chiffrage : le taux de TVA suit l'organisation —
++import { calculerScenario } from "../src/chiffrage/moteur.js";
++
++test("moteur : sans tvaPct, le taux belge par défaut (21 %) s'applique", () => {
++  const s = calculerScenario({ formule: "forfait", forfaitTvacEuros: 121 }, {}, {});
++  assert.equal(s.htva_centimes, 10000);
++  assert.equal(s.tva_centimes, 2100);
+ });
+ 
+-test("rolesConnus filtre les rôles hors catalogue (défense en profondeur)", () => {
+-  const filtres = rolesConnus(["direction", "pirate", "commercial"], ROLES);
+-  assert.deepEqual(filtres, ["direction", "commercial"]);
+-  assert.deepEqual(rolesConnus([], ROLES), []);
++test("moteur : ref.tvaPct pilote le calcul (6 %)", () => {
++  const s = calculerScenario({ formule: "forfait", forfaitTvacEuros: 106 }, {}, { tvaPct: 6 });
++  assert.equal(s.htva_centimes, 10000);
++  assert.equal(s.tva_centimes, 600);
+ });
+diff --git a/packages/domaine/tests/textes.test.js b/packages/domaine/tests/textes.test.js
+new file mode 100644
+index 0000000..85e80a8
+--- /dev/null
++++ b/packages/domaine/tests/textes.test.js
+@@ -0,0 +1,69 @@
++// Tests — catalogue des textes réglables.
++// Vérifie l'isolation des groupes dans le jsonb, le repli sur les défauts,
++// et l'absence de toute identité réelle dans les valeurs par défaut.
++
++import test from "node:test";
++import assert from "node:assert/strict";
++import {
++  GROUPES_TEXTES, DEFAUTS_PAR_GROUPE, groupeTextes,
++  lireGroupe, ecrireGroupe, textesEffectifs, TEXTES_PDF_DEFAUT,
++} from "../src/communication/textes.js";
++
++const OFFRE = groupeTextes("offre");
++const PDF = groupeTextes("pdf");
++
++test("lireGroupe : le groupe racine ne ramasse pas les sous-objets", () => {
++  const stockes = { objet: "Mon objet", pdf: { titre: "MON TITRE" } };
++  assert.deepEqual(lireGroupe(stockes, OFFRE), { objet: "Mon objet" });
++  assert.deepEqual(lireGroupe(stockes, PDF), { titre: "MON TITRE" });
++});
++
++test("ecrireGroupe : modifier un groupe ne touche pas les autres", () => {
++  const avant = { objet: "Mon objet", pdf: { titre: "MON TITRE" } };
++  const apres = ecrireGroupe(avant, PDF, { titre: "AUTRE", tva: "TVA 6 %" });
++  assert.equal(apres.objet, "Mon objet");
++  assert.deepEqual(apres.pdf, { titre: "AUTRE", tva: "TVA 6 %" });
++});
++
++test("ecrireGroupe : une valeur vide retire la personnalisation", () => {
++  const apres = ecrireGroupe({ objet: "X" }, OFFRE, { objet: "", salutation: "Salut," });
++  assert.equal(apres.objet, undefined);
++  assert.equal(apres.salutation, "Salut,");
++});
++
++test("ecrireGroupe : vider un groupe nommé supprime son espace", () => {
++  const apres = ecrireGroupe({ pdf: { titre: "X" } }, PDF, {});
++  assert.equal("pdf" in apres, false);
++});
++
++test("textesEffectifs : le défaut complète le réglage partiel", () => {
++  const t = textesEffectifs({ pdf: { titre: "DEVIS" } }, "pdf");
++  assert.equal(t.titre, "DEVIS");
++  assert.equal(t.total_tvac, TEXTES_PDF_DEFAUT.total_tvac);
++});
++
++test("textesEffectifs : sans rien de stocké, tout vient du défaut", () => {
++  assert.deepEqual(textesEffectifs({}, "pdf"), { ...TEXTES_PDF_DEFAUT });
++  assert.deepEqual(textesEffectifs(null, "pdf"), { ...TEXTES_PDF_DEFAUT });
++});
++
++test("chaque groupe déclare des champs connus et un défaut par champ", () => {
++  for (const g of GROUPES_TEXTES) {
++    if (g.fichier) continue;
++    const defauts = DEFAUTS_PAR_GROUPE[g.cle];
++    assert.ok(defauts, `défauts manquants pour le groupe ${g.cle}`);
++    for (const ch of g.champs) {
++      assert.ok(ch.cle in defauts,
++        `le champ ${g.cle}.${ch.cle} n'a pas de valeur par défaut`);
++    }
++  }
++});
++
++test("garde-fou multi-tenant : aucune identité réelle dans les défauts", () => {
++  const tout = JSON.stringify(DEFAUTS_PAR_GROUPE);
++  for (const interdit of [/roovers/i, /van\s*cutsem/i, /BE\s*73/i, /jodoigne/i,
++                          /0478\.363/, /raphael/i]) {
++    assert.doesNotMatch(tout, interdit,
++      `une donnée d'entreprise réelle traîne dans les textes par défaut : ${interdit}`);
++  }
++});
