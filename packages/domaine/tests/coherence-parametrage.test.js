@@ -100,3 +100,64 @@ test("fournituresOffre tolère un article sans pluriel", () => {
   assert.equal(t.length, 1);
   assert.match(t[0], /^3 /);
 });
+
+// — CGV : ajout, suppression, renumérotation, et cohérence avec l'offre —
+import { cgv, renumeroter, articlesCgv, CGV_VERSION_COURANTE }
+  from "../src/documents/cgv.js";
+
+test("sans personnalisation, les CGV du socle s'appliquent", () => {
+  assert.ok(cgv(CGV_VERSION_COURANTE).length > 0);
+  assert.deepEqual(cgv(CGV_VERSION_COURANTE, []), cgv(CGV_VERSION_COURANTE));
+  assert.deepEqual(cgv(CGV_VERSION_COURANTE, null), cgv(CGV_VERSION_COURANTE));
+});
+
+test("une liste personnalisée remplace intégralement le socle", () => {
+  const perso = ["1. Mon article.", "2. Le second."];
+  assert.deepEqual(cgv(CGV_VERSION_COURANTE, perso), perso);
+});
+
+test("supprimer un article ne laisse pas de trou dans la numérotation", () => {
+  const base = cgv(CGV_VERSION_COURANTE);
+  const sansLeDeuxieme = base.filter((_, i) => i !== 1);
+  const finale = renumeroter(sansLeDeuxieme);
+  assert.equal(finale.length, base.length - 1);
+  finale.forEach((a, i) => assert.ok(a.startsWith(`${i + 1}. `),
+    `article mal numéroté : ${a.slice(0, 24)}`));
+});
+
+test("ajouter un article le numérote à la suite", () => {
+  const finale = renumeroter([...cgv(CGV_VERSION_COURANTE), "Clause spéciale."]);
+  assert.match(finale[finale.length - 1], /^\d+\. Clause spéciale\.$/);
+});
+
+test("un article vide est écarté, pas numéroté", () => {
+  assert.equal(renumeroter(["1. Un.", "   ", "", "2. Deux."]).length, 2);
+});
+
+test("articlesCgv reflète la liste personnalisée, pas le socle", () => {
+  const arts = articlesCgv(CGV_VERSION_COURANTE, ["1. Alpha.", "2. Beta."]);
+  assert.equal(arts.length, 2);
+  assert.equal(arts[0].texte, "1. Alpha.");
+});
+
+test("COHÉRENCE OFFRE : le document imprime les articles figés, pas le socle", () => {
+  // composerOffre fige cgv_articles dans le document ; Contrat imprime ce
+  // champ en priorité. Une modification ultérieure ne doit PAS changer un
+  // document déjà composé — c'est ce qui rend une signature opposable.
+  const perso = ["1. Version au moment de la signature."];
+  const documentFige = { cgv_version: CGV_VERSION_COURANTE, cgv_articles: perso };
+  const rendu = Array.isArray(documentFige.cgv_articles) && documentFige.cgv_articles.length
+    ? documentFige.cgv_articles
+    : cgv(documentFige.cgv_version);
+  assert.deepEqual(rendu, perso);
+
+  // Et le socle a bien changé entre-temps : la divergence est le test.
+  assert.notDeepEqual(rendu, cgv(CGV_VERSION_COURANTE));
+});
+
+test("un vieux document sans articles figés retombe sur son socle de version", () => {
+  const ancien = { cgv_version: CGV_VERSION_COURANTE };
+  const rendu = Array.isArray(ancien.cgv_articles) && ancien.cgv_articles.length
+    ? ancien.cgv_articles : cgv(ancien.cgv_version);
+  assert.deepEqual(rendu, cgv(CGV_VERSION_COURANTE));
+});

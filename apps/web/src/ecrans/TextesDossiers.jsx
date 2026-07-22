@@ -19,7 +19,7 @@ import {
   urlConditionsCbd, televerserConditionsCbd, modeDonnees,
 } from "../lib/adaptateur.js";
 import { emailOffre } from "@domaine/communication/brief.js";
-import { articlesCgv, CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
+import { articlesCgv, renumeroter, cgv, CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
 import {
   GROUPES_TEXTES, DEFAUTS_PAR_GROUPE, lireGroupe, ecrireGroupe,
 } from "@domaine/communication/textes.js";
@@ -133,6 +133,26 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
     } catch { return null; }
   }, [groupe.apercu, valeurs, org]);
 
+  // ── Édition des CGV : liste complète, pas un diff. Une suppression ne doit
+  //    pas décaler les index des articles restants.
+  const liste = groupe.alineas
+    ? (Array.isArray(valeurs.__articles) ? valeurs.__articles : cgv(CGV_VERSION_COURANTE, stockes?.cgv))
+    : [];
+  function poserListe(nouvelle) {
+    setValeurs((v) => ({ ...v, __articles: nouvelle }));
+    setSauve(false);
+  }
+  function majArticle(i, texte) {
+    poserListe(liste.map((a, k) => (k === i ? texte : a)));
+  }
+  function retirerArticle(i) { poserListe(liste.filter((_, k) => k !== i)); }
+  function ajouterArticle() { poserListe([...liste, "Nouvel article. Rédigez son contenu ici."]); }
+  function deplacer(i, sens) {
+    const j = i + sens;
+    if (j < 0 || j >= liste.length) return;
+    const c = [...liste]; [c[i], c[j]] = [c[j], c[i]]; poserListe(c);
+  }
+
   function maj(cle, valeur) {
     setValeurs((v) => ({ ...v, [cle]: valeur }));
     setSauve(false);
@@ -145,12 +165,18 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
       // évolue, l'entreprise en bénéficie sans avoir à ressaisir.
       // Pour les alinéas, le "défaut" est le texte d'origine de l'article :
       // on ne stocke que ce qui en diffère réellement.
-      const origine = groupe.alineas
-        ? Object.fromEntries(articlesCgv().map((a) => [String(a.index), a.texte]))
-        : defauts;
-      const differences = Object.fromEntries(
-        Object.entries(valeurs).filter(([k, v]) => String(v ?? "") !== String(origine[k] ?? "")));
-      const complet = ecrireGroupe(stockes, groupe, differences);
+      let complet;
+      if (groupe.alineas) {
+        // On renumérote avant d'écrire : la numérotation imprimée doit suivre
+        // l'ordre réel. On stocke la liste complète résolue.
+        const finale = renumeroter(liste);
+        complet = { ...(stockes || {}), cgv: finale };
+        if (finale.length === 0) delete complet.cgv;
+      } else {
+        const differences = Object.fromEntries(
+          Object.entries(valeurs).filter(([k, v]) => String(v ?? "") !== String(defauts[k] ?? "")));
+        complet = ecrireGroupe(stockes, groupe, differences);
+      }
       await sauverTextes(complet);
       onStockes(complet);
       setSauve(true);
@@ -235,26 +261,38 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
       {groupe.alineas && (
         <div style={S.carte}>
           <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 10 }}>
-            Version {CGV_VERSION_COURANTE} en vigueur. Réécrivez un article : les
-            autres gardent leur texte d'origine. Les documents déjà signés
-            conservent le texte qu'ils contenaient — une réécriture ne les
-            modifie jamais.
+            Socle version {CGV_VERSION_COURANTE}. Réécrivez, ajoutez, supprimez
+            ou déplacez un article. Les documents <b>déjà signés gardent le texte
+            qu'ils portaient</b> — une modification ne les touche jamais.
           </div>
-          {articlesCgv().map((art) => (
-            <div key={art.index} style={{ marginBottom: 12 }}>
-              <label style={S.label}>
-                Article {art.numero} — {art.titre}
-                {valeurs[String(art.index)] && (
-                  <span style={{ fontWeight: 500, color: C.bleu, marginLeft: 6 }}>
-                    réécrit
-                  </span>
-                )}
-              </label>
-              <textarea style={{ ...S.input, minHeight: 70 }}
-                        value={valeurs[String(art.index)] ?? art.texte}
-                        onChange={(e) => maj(String(art.index), e.target.value)} />
+
+          {liste.map((texte, i) => (
+            <div key={i} style={{ marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <span style={{ ...S.label, margin: 0, flex: 1 }}>Article {i + 1}</span>
+                <button onClick={() => deplacer(i, -1)} disabled={i === 0}
+                        title="Monter" style={{ ...boutonMini, opacity: i === 0 ? .25 : 1 }}>↑</button>
+                <button onClick={() => deplacer(i, 1)} disabled={i === liste.length - 1}
+                        title="Descendre"
+                        style={{ ...boutonMini, opacity: i === liste.length - 1 ? .25 : 1 }}>↓</button>
+                <button onClick={() => retirerArticle(i)} title="Supprimer cet article"
+                        style={{ ...boutonMini, color: C.rouge }}>✕</button>
+              </div>
+              <textarea style={{ ...S.input, minHeight: 70 }} value={texte}
+                        onChange={(e) => majArticle(i, e.target.value)} />
             </div>
           ))}
+
+          <button onClick={ajouterArticle} style={{
+            width: "100%", padding: 11, borderRadius: 10, cursor: "pointer",
+            border: `1.5px dashed ${C.bord}`, background: C.blanc,
+            color: C.bleu, fontSize: 13, fontWeight: 700 }}>
+            + Ajouter un article
+          </button>
+          <div style={{ fontSize: 11, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
+            La numérotation se recalcule à l'enregistrement : un article déplacé
+            ou supprimé ne laisse jamais de trou dans les numéros.
+          </div>
         </div>
       )}
 
@@ -318,6 +356,11 @@ const carteBouton = {
   marginTop: 10, padding: 14, border: `1px solid ${C.bord}`, borderRadius: 14,
   background: C.blanc, boxShadow: "0 1px 3px rgba(15,23,42,.05)",
   cursor: "pointer", textAlign: "left",
+};
+
+const boutonMini = {
+  border: "none", background: "none", cursor: "pointer",
+  fontSize: 14, color: C.fantome, padding: "2px 5px", lineHeight: 1,
 };
 
 const sousTitre = {

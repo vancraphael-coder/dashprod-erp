@@ -52,7 +52,11 @@ export default function Contrat({ contenu, signature }) {
   const o = contenu.organisation || {};
   const cl = contenu.client || {};
   const horaire = contenu.formule !== "forfait";
-  const articles = cgv(contenu.cgv_version);
+  // Priorité au texte FIGÉ dans le document. On ne relit les conditions en
+  // vigueur que pour un vieux document composé avant ce mécanisme.
+  const articles = Array.isArray(contenu.cgv_articles) && contenu.cgv_articles.length
+    ? contenu.cgv_articles
+    : cgv(contenu.cgv_version);
 
   return (
     <div className="contrat-imprimable" style={S.doc}>

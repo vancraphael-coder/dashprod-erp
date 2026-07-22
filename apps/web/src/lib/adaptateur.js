@@ -10,7 +10,7 @@
 import { supabase, configPresente } from "./supabase.js";
 import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
-import { CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
+import { CGV_VERSION_COURANTE, cgv } from "@domaine/documents/cgv.js";
 import { volumeTotal, articlesADemonter } from "@domaine/releve/volumetrie.js";
 import { briefMission } from "@domaine/communication/brief.js";
 
@@ -805,9 +805,10 @@ export async function obtenirOrganisation() {
  * base (C-02). Tout ce qui s'imprime sur le contrat vient d'ici.
  */
 export async function composerOffre(affaireId) {
-  const [affaire, contact, inventaire, org] = await Promise.all([
+  const [affaire, contact, inventaire, org, textes] = await Promise.all([
     obtenirAffaire(affaireId), obtenirContact(affaireId),
     obtenirReleve(affaireId), obtenirOrganisation(),
+    obtenirTextes().catch(() => ({})),
   ]);
   const faits = affaire?.faits || {};
   const tvac = affaire?.tvac_centimes || 0;
@@ -820,6 +821,11 @@ export async function composerOffre(affaireId) {
     version: 1,
     emis_le: new Date().toISOString(),
     cgv_version: CGV_VERSION_COURANTE,
+    // Les articles sont FIGÉS dans le document au moment de sa composition.
+    // Le contrat ne relit jamais les conditions en vigueur : il imprime celles
+    // qu'il portait quand il a été établi. C'est ce qui rend une signature
+    // opposable — et c'est pour ça que le réglage doit passer par ici.
+    cgv_articles: cgv(CGV_VERSION_COURANTE, (textes || {}).cgv),
     organisation: org,
     client: {
       nom: affaire?.client?.nom || "", tel: affaire?.client?.tel || "",
@@ -1793,6 +1799,47 @@ export async function definirCreationComplete(utilisateurId, actif) {
  * redeviennent planifiées — mais NON PARTAGÉES, pour que le bureau revalide
  * avant que le terrain se remobilise.
  */
+// =============================================================================
+// ÉDITEUR — création et gestion des organisations clientes.
+// Réservé aux membres de l'organisation marquée `est_editeur` en base. Le
+// contrôle est fait par PostgreSQL, pas par l'interface : masquer un écran
+// n'est pas une sécurité.
+// =============================================================================
+
+export async function suisJeEditeur() {
+  if (modeDonnees() !== "reel") return false;
+  const { data, error } = await supabase.rpc("est_editeur");
+  if (error) return false;
+  return !!data;
+}
+
+export async function listerOrganisations() {
+  const { data, error } = await supabase.rpc("cmd_lister_organisations");
+  if (error) throw error;
+  return data || [];
+}
+
+/** Crée une organisation sur base VIERGE et son premier administrateur. */
+export async function creerOrganisation(champs) {
+  const { data, error } = await supabase.rpc("cmd_creer_organisation", {
+    p_nom: champs.nom, p_email_admin: champs.emailAdmin,
+    p_nom_admin: champs.nomAdmin || null, p_bce: champs.bce || null,
+    p_tva: champs.tva || null, p_tel: champs.tel || null,
+    p_email: champs.email || null,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/** Désactive (ou réactive) une organisation. La suppression n'existe pas :
+ *  le journal d'audit référence ses utilisateurs et ne s'efface jamais. */
+export async function activerOrganisation(orgId, actif) {
+  const { error } = await supabase.rpc("cmd_desactiver_organisation", {
+    p_org: orgId, p_actif: actif,
+  });
+  if (error) throw error;
+}
+
 export async function reprendreAffaire(affaireId, motif) {
   if (modeDonnees() === "reel") {
     const { error } = await supabase.rpc("cmd_reprendre_affaire", {

@@ -47,29 +47,41 @@ export const CGV_VERSION_COURANTE = 2;
  * @param {number} version
  * @returns {readonly string[]}
  */
-export function cgv(version = CGV_VERSION_COURANTE, reecritures = null) {
+export function cgv(version = CGV_VERSION_COURANTE, articlesPerso = null) {
   const base = VERSIONS[version] || [];
-  if (!reecritures || typeof reecritures !== "object") return base;
-  // Réécriture ALINÉA PAR ALINÉA : l'entreprise remplace le texte d'un article
-  // sans toucher aux autres ni au numéro de version. Un article non réécrit
-  // garde le texte d'origine. La clé est l'index de l'article (0-based).
+  // L'entreprise peut RÉÉCRIRE, AJOUTER, SUPPRIMER et RÉORDONNER ses articles.
+  // On stocke donc la liste résolue complète, pas un diff : c'est la seule
+  // forme qui survit à une suppression sans décaler les index restants.
   //
-  // Le versionnage reste intact : un document déjà signé porte l'empreinte du
-  // texte qu'il contenait, jamais celle d'une réécriture ultérieure.
-  return base.map((texte, i) => {
-    const perso = reecritures[String(i)];
-    return typeof perso === "string" && perso.trim() ? perso : texte;
-  });
+  // Le numéro de version ne bouge pas : il identifie le socle légal, pas la
+  // rédaction. Un document signé porte SA liste figée (voir composerOffre),
+  // jamais celle en vigueur aujourd'hui.
+  if (Array.isArray(articlesPerso) && articlesPerso.length > 0) {
+    return articlesPerso.filter((a) => typeof a === "string" && a.trim());
+  }
+  return base;
 }
 
-/** Articles réécrits par l'entreprise, pour l'écran de réglage. */
-export function articlesCgv(version = CGV_VERSION_COURANTE) {
-  return (VERSIONS[version] || []).map((texte, i) => ({
+/** Articles d'une version, pour l'écran de réglage. */
+export function articlesCgv(version = CGV_VERSION_COURANTE, articlesPerso = null) {
+  return cgv(version, articlesPerso).map((texte, i) => ({
     index: i,
     numero: (texte.match(/^\s*(\d+)\./) || [])[1] || String(i + 1),
     titre: (texte.match(/^\s*\d+\.\s*([^.]+)\./) || [])[1] || `Article ${i + 1}`,
     texte,
   }));
+}
+
+/**
+ * Renumérote les articles après ajout, suppression ou déplacement.
+ * Un article qui commençait par « 4. » et se retrouve en 3e position doit
+ * afficher « 3. » — sinon le document contient une numérotation fausse.
+ */
+export function renumeroter(articles) {
+  return (articles || [])
+    .filter((a) => typeof a === "string" && a.trim())
+    .map((texte, i) => texte.replace(/^\s*\d+\.\s*/, "").trim())
+    .map((corps, i) => `${i + 1}. ${corps}`);
 }
 
 /** Prestations toujours incluses (rendues avec une coche sur l'offre). */
