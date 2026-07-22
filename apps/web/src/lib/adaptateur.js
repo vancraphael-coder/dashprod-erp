@@ -16,6 +16,7 @@ import { briefMission } from "@domaine/communication/brief.js";
 
 const CLE = "dashprod-demo-v1";
 
+import { tauxTva } from "@domaine/organisation/identite.js";
 /** Mode courant des données. */
 export function modeDonnees() {
   return configPresente ? "reel" : "demo";
@@ -591,8 +592,12 @@ export async function lignesFacturePour(affaireId) {
   if (!a) return [];
   const lignes = [];
   if (a.faits) {
-    // Recompose la prestation HTVA depuis le TVAC connu (démo) ou le scénario (réel).
-    const htva = a.tvac_centimes ? Math.round(a.tvac_centimes / 1.21) : 0;
+    // Recompose la prestation HTVA depuis le TVAC connu. Le taux vient de
+    // l'organisation : une entreprise en TVA 6 % ne doit pas voir sa base
+    // imposable calculée à 21 %.
+    const pct = tauxTva(await obtenirOrganisation().catch(() => ({})));
+    const htva = a.tvac_centimes
+      ? Math.round(a.tvac_centimes / (1 + pct / 100)) : 0;
     lignes.push({ type: "prestation", libelle: `Déménagement — ${a.client?.nom || ""}`.trim(),
                   montant_htva_centimes: htva });
   }
@@ -803,7 +808,11 @@ export async function composerOffre(affaireId) {
   ]);
   const faits = affaire?.faits || {};
   const tvac = affaire?.tvac_centimes || 0;
-  const htva = Math.round(tvac / 1.21);
+  // Le taux vient de l'organisation, jamais d'un 1.21 en dur : sinon l'offre
+  // afficherait « TVA 6 % » tout en calculant à 21 %. Le libellé et le montant
+  // doivent sortir de la MÊME source.
+  const pct = tauxTva(org);
+  const htva = Math.round(tvac / (1 + pct / 100));
   return {
     version: 1,
     emis_le: new Date().toISOString(),

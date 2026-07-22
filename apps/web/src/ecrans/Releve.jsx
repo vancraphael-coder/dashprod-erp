@@ -13,9 +13,11 @@ import {
 } from "../lib/adaptateur.js";
 import { capaciteFlotte, jaugeCapacite } from "@domaine/flotte/vehicules.js";
 import {
-  PIECES, volumeTotal, grouperParPiece, volumeUnitaire,
+  volumeTotal, grouperParPiece, volumeUnitaire,
   articlesADemonter,
 } from "@domaine/releve/volumetrie.js";
+import { obtenirCatalogues } from "../lib/adaptateur.js";
+import { catalogue } from "@domaine/stocks/catalogues.js";
 import { C, S } from "../lib/theme.jsx";
 
 // Catalogue par pièce (roovers-mobile.jsx, CATALOGUE).
@@ -35,6 +37,30 @@ export default function Releve({ affaireId, retour, versDevis }) {
   const [affaire, setAffaire] = useState(null);
   const [inv, setInv] = useState([]);
   const [piece, setPiece] = useState("Salon");
+  // Les pièces viennent de Paramètres → Catalogues, plus celles ajoutées à la
+  // volée pour ce relevé précis. Une seule source de vérité, réglable.
+  const [cats, setCats] = useState({});
+  const [piecesAdHoc, setPiecesAdHoc] = useState([]);
+  const [nouvellePiece, setNouvellePiece] = useState("");
+  useEffect(() => { obtenirCatalogues().then(setCats).catch(() => {}); }, []);
+  const pieces = useMemo(() => {
+    const base = catalogue(cats, "pieces").map(String);
+    return [...base, ...piecesAdHoc.filter((p) => !base.includes(p))];
+  }, [cats, piecesAdHoc]);
+  useEffect(() => {
+    if (pieces.length && !pieces.includes(piece)) setPiece(pieces[0]);
+  }, [pieces, piece]);
+
+  function ajouterPiece() {
+    const nom = nouvellePiece.trim();
+    if (!nom || pieces.includes(nom)) { setNouvellePiece(""); return; }
+    setPiecesAdHoc((v) => [...v, nom]); setPiece(nom); setNouvellePiece("");
+  }
+  function retirerPiece() {
+    setInv((v) => v.filter((it) => it.piece !== piece));
+    setPiecesAdHoc((v) => v.filter((p) => p !== piece));
+    setSauve(false);
+  }
   const [libre, setLibre] = useState("");
   const [camionsSel, setCamionsSel] = useState([]);
   const [sauve, setSauve] = useState(false);
@@ -141,7 +167,7 @@ export default function Releve({ affaireId, retour, versDevis }) {
 
       {/* Sélecteur de pièce */}
       <div style={{ padding: "0 16px", display: "flex", gap: 6, overflowX: "auto", marginBottom: 10 }}>
-        {PIECES.map((p) => (
+        {pieces.map((p) => (
           <button key={p} onClick={() => setPiece(p)} style={{
             border: `1.5px solid ${piece === p ? C.bleu : C.bord}`,
             background: piece === p ? "#E7EFFC" : C.blanc,
@@ -150,6 +176,17 @@ export default function Releve({ affaireId, retour, versDevis }) {
             cursor: "pointer", whiteSpace: "nowrap",
           }}>{p}</button>
         ))}
+        <input value={nouvellePiece} placeholder="+ pièce"
+               onChange={(e) => setNouvellePiece(e.target.value)}
+               onKeyDown={(e) => e.key === "Enter" && ajouterPiece()}
+               style={{ border: `1.5px dashed ${C.bord}`, borderRadius: 999,
+                        padding: "6px 12px", fontSize: 12, width: 96,
+                        color: C.encre, background: C.blanc, outline: "none" }} />
+        <button onClick={retirerPiece} title="Retirer cette pièce et ses éléments"
+                style={{ border: `1.5px solid ${C.bord}`, background: C.blanc,
+                         color: C.rouge, borderRadius: 999, padding: "6px 11px",
+                         fontSize: 12, fontWeight: 700, cursor: "pointer",
+                         whiteSpace: "nowrap" }}>✕ pièce</button>
       </div>
 
       {/* Catalogue de la pièce + article libre */}
