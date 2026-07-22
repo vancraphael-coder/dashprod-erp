@@ -7,15 +7,32 @@
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
-import { obtenirParametresPrix, sauverParametresPrix } from "../lib/adaptateur.js";
+import {
+  obtenirParametresPrix, sauverParametresPrix,
+  obtenirCatalogues, sauverCatalogues,
+} from "../lib/adaptateur.js";
+import { catalogue, coutsMateriel } from "@domaine/stocks/catalogues.js";
 import { C, S } from "../lib/theme.jsx";
 
 export default function Cout({ retour }) {
   const [params, setParams] = useState(null);
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
+  const [cats, setCats] = useState(null);
 
-  useEffect(() => { obtenirParametresPrix().then(setParams).catch((e) => setErreur(e.message)); }, []);
+  useEffect(() => {
+    obtenirParametresPrix().then(setParams).catch((e) => setErreur(e.message));
+    obtenirCatalogues().then((x) => setCats(x || {})).catch(() => setCats({}));
+  }, []);
+
+  /** Écrit le coût d'un article DANS LE CATALOGUE : même donnée, un seul lieu. */
+  function majArticleCatalogue(source, cle, valeurEuros) {
+    const centimes = Math.max(0, Math.round(Number(valeurEuros || 0) * 100));
+    const liste = catalogue(cats, source).map((a) =>
+      a.cle === cle ? { ...a, cout_centimes: centimes } : a);
+    setCats((x) => ({ ...(x || {}), [source]: liste }));
+    setSauve(false);
+  }
 
   function majCout(cle, v) {
     setParams((p) => ({ ...p, couts: { ...(p.couts || {}), [cle]: num(v) } }));
@@ -24,12 +41,22 @@ export default function Cout({ retour }) {
 
   async function enregistrer() {
     setErreur(null);
-    try { await sauverParametresPrix(params); setSauve(true); }
-    catch (e) { setErreur(e.message); }
+    // Deux stockages, un seul geste : l'exploitation dans parametres_prix,
+    // les articles dans parametres_catalogues.
+    try {
+      await sauverParametresPrix(params);
+      await sauverCatalogues(cats || {});
+      setSauve(true);
+    } catch (e) { setErreur(e.message); }
   }
 
-  if (!params) return null;
+  if (!params || cats === null) return null;
   const c = params.couts || {};
+  // Le coût des fournitures et du matériel vient du CATALOGUE, pas d'une
+  // seconde liste codée en dur ici. Une seule saisie, deux écrans qui la lisent.
+  const lignes = coutsMateriel(cats);
+  const parc = lignes.filter((l) => !l.consommable)
+                     .reduce((t, l) => t + l.cout_centimes, 0);
 
   return (
     <div style={S.page}>
@@ -48,17 +75,31 @@ export default function Cout({ retour }) {
                value={c.taux_defaut} onChange={(v) => majCout("taux_defaut", v)} />
       </Section>
 
-      <Section titre="Prix fournisseur (cartons & fournitures)">
-        <Champ label="Carton standard" suffixe="€"
-               value={c.carton_standard} onChange={(v) => majCout("carton_standard", v)} />
-        <Champ label="Carton penderie" suffixe="€"
-               value={c.carton_penderie} onChange={(v) => majCout("carton_penderie", v)} />
-        <Champ label="Carton livres" suffixe="€"
-               value={c.carton_livres} onChange={(v) => majCout("carton_livres", v)} />
-        <Champ label="Papier bulle (rouleau)" suffixe="€"
-               value={c.papier_bulle} onChange={(v) => majCout("papier_bulle", v)} />
-        <Champ label="Ruban adhésif" suffixe="€"
-               value={c.ruban} onChange={(v) => majCout("ruban", v)} />
+      <Section titre="Fournitures & matériel">
+        <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 10 }}>
+          Ces articles viennent de <b>Paramètres → Catalogues</b>. Modifier un
+          coût ici le modifie là-bas : c'est la même donnée. Ajouter ou retirer
+          un article se fait dans les catalogues.
+        </div>
+        {lignes.length === 0 && (
+          <div style={{ fontSize: 12.5, color: C.fantome, padding: "6px 0" }}>
+            Aucun article avec un coût. Renseignez-les dans les catalogues.
+          </div>
+        )}
+        {lignes.map((l) => (
+          <Champ key={`${l.source}:${l.cle}`}
+                 label={`${l.nom} (${l.unite})`} suffixe="€"
+                 value={l.cout_centimes / 100}
+                 onChange={(v) => majArticleCatalogue(l.source, l.cle, v)} />
+        ))}
+        {parc > 0 && (
+          <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8 }}>
+            Valeur du parc non consommable :{" "}
+            <b style={{ color: C.encre }}>
+              {(parc / 100).toFixed(2).replace(".", ",")} €
+            </b>
+          </div>
+        )}
       </Section>
 
       <div style={{ margin: "0 16px 12px", fontSize: 11.5, color: C.muet, lineHeight: 1.5 }}>

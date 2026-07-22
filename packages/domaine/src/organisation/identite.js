@@ -138,3 +138,22 @@ export function lignesEntete(org) {
   return [o.adresse, ligneVille, contact, legal, o.site_web]
     .filter((l) => !vide(l)).map(String);
 }
+
+/**
+ * Adresse du dépôt, au format attendu par un service de cartographie.
+ *
+ * C'est le point de départ ET d'arrivée de tout itinéraire de chantier : les
+ * kilomètres facturés en dépendent. Elle vient de l'organisation, jamais d'une
+ * constante — une adresse codée en dur ferait facturer les trajets d'une autre
+ * entreprise. Renvoie null si l'adresse est incomplète : mieux vaut pas
+ * d'itinéraire qu'un itinéraire faux.
+ */
+export function adresseDepot(org) {
+  const o = org || {};
+  const rue = String(o.adresse ?? "").trim();
+  const ville = String(o.ville ?? "").trim();
+  if (!rue || !ville) return null;
+  const cp = String(o.cp ?? "").trim();
+  const pays = String(o.pays ?? "").trim() || "Belgique";
+  return [rue, [cp, ville].filter(Boolean).join(" "), pays].join(", ");
+}

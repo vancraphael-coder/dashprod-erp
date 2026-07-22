@@ -69,9 +69,25 @@ test("urlItineraire : part du dépôt, passe par les chantiers, revient au dép�
 
 test("urlItineraire : compose rue + CP + ville quand les champs séparés existent", () => {
   const u = urlItineraire(
-    [{ adresse: "Rue X 1", code_postal: "1300", ville: "Wavre" }], []
+    [{ adresse: "Rue X 1", code_postal: "1300", ville: "Wavre" }], [],
+    "Rue du Dépôt 9, 5000 Namur, Belgique"
   );
   assert.match(u, /Rue%20X%201%2C%201300%20Wavre/);
+});
+
+test("urlItineraire : null sans adresse de dépôt — jamais un trajet depuis « null »", () => {
+  // L'adresse de départ vient de l'organisation. Sans elle, le kilométrage
+  // serait faux : on ne propose pas d'itinéraire du tout.
+  assert.equal(urlItineraire([{ adresse: "Rue X 1", ville: "Wavre" }], []), null);
+  assert.equal(urlItineraire([{ adresse: "Rue X 1", ville: "Wavre" }], [], "  "), null);
+});
+
+test("urlItineraire : le dépôt fourni est bien le départ ET l'arrivée", () => {
+  const depot = "Rue du Dépôt 9, 5000 Namur, Belgique";
+  const u = urlItineraire([{ adresse: "Rue X 1", ville: "Wavre" }], [], depot);
+  const enc = encodeURIComponent(depot);
+  assert.ok(u.includes(`origin=${enc}`), "départ = dépôt");
+  assert.ok(u.includes(`destination=${enc}`), "arrivée = dépôt");
 });
 
 test("urlItineraire : null si aucun chantier (rien à router)", () => {
@@ -151,6 +167,10 @@ test("brief : aucune identité d'entreprise codée en dur", () => {
   // nommer AUCUNE entreprise (AUDIT_REAL.md §5).
   const b = briefMission({ date: "2026-07-17" });
   assert.doesNotMatch(b, /ROOVERS/i);
-  assert.equal(urlItineraire([{ adresse: "A" }], [{ adresse: "B" }])
-    .includes("Jodoigne"), false);
+  // Le dépôt est fourni par l'appelant depuis l'organisation : aucune adresse
+  // d'entreprise ne doit être connue du domaine.
+  const u = urlItineraire([{ adresse: "A" }], [{ adresse: "B" }],
+                          "Rue Neutre 1, 1000 Bruxelles");
+  assert.equal(u.includes("Jodoigne"), false);
+  assert.equal(urlItineraire([{ adresse: "A" }], [{ adresse: "B" }]), null);
 });

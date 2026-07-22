@@ -9,6 +9,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import {
+  obtenirOrganisation,
   obtenirAffaire, obtenirContact, sauverContact,
   listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
   obtenirClientFacturation, sauverClientFacturation,
@@ -19,6 +20,7 @@ import {
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
+import { adresseDepot } from "@domaine/organisation/identite.js";
 import { C, S, Badge, euros, declarerModifs, Confirmation } from "../lib/theme.jsx";
 
 function adrVide() {
@@ -30,6 +32,7 @@ function adrVide() {
 export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail, versMateriel, modeTerrain }) {
   const [affaire, setAffaire] = useState(null);
   const [contact, setContact] = useState(null);
+  const [org, setOrg] = useState(null);
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
   const [flotte, setFlotte] = useState([]);
@@ -45,6 +48,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const enregistrerRef = useRef(null);
 
   useEffect(() => {
+    obtenirOrganisation().then(setOrg).catch(() => {});
     obtenirAffaire(affaireId).then(setAffaire);
     listerVehicules().then(setFlotte).catch(() => {});
     obtenirCamionsAffaire(affaireId).then(setCamions).catch(() => {});
@@ -333,7 +337,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       {/* Itinéraire multi-arrêts : zéro API payante — Maps s'ouvre, on lit
           distance et durée (alignement 02 §3). */}
       {(() => {
-        const url = urlItineraire(contact.charges, contact.decharges);
+        const url = urlItineraire(contact.charges, contact.decharges, adresseDepot(org));
         return url ? (
           <div style={{ margin: "0 16px 14px" }}>
             <a href={url} target="_blank" rel="noreferrer" style={{

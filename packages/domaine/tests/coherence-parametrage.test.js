@@ -13,7 +13,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { tauxTva, libelleTva, facturation } from "../src/organisation/identite.js";
 import { calculerScenario } from "../src/chiffrage/moteur.js";
-import { catalogue, CATALOGUES_DEFAUT } from "../src/stocks/catalogues.js";
+import { catalogue, CATALOGUES_DEFAUT, coutsMateriel } from "../src/stocks/catalogues.js";
 import { textesEffectifs } from "../src/communication/textes.js";
 
 /** Reproduit le calcul de composerOffre : HTVA déduit du TVAC. */
@@ -160,4 +160,62 @@ test("un vieux document sans articles figés retombe sur son socle de version", 
   const rendu = Array.isArray(ancien.cgv_articles) && ancien.cgv_articles.length
     ? ancien.cgv_articles : cgv(ancien.cgv_version);
   assert.deepEqual(rendu, cgv(CGV_VERSION_COURANTE));
+});
+
+// — Adresse de l'entreprise → itinéraire Maps —
+import { adresseDepot } from "../src/organisation/identite.js";
+import { urlItineraire } from "../src/communication/brief.js";
+
+test("l'adresse du dépôt vient de l'organisation, formatée pour Maps", () => {
+  const org = { adresse: "Rue du Dépôt 9", cp: "1370", ville: "Jodoigne" };
+  assert.equal(adresseDepot(org), "Rue du Dépôt 9, 1370 Jodoigne, Belgique");
+});
+
+test("une adresse incomplète ne produit pas de dépôt", () => {
+  assert.equal(adresseDepot({ adresse: "Rue seule" }), null);
+  assert.equal(adresseDepot({ ville: "Ville seule" }), null);
+  assert.equal(adresseDepot({}), null);
+  assert.equal(adresseDepot(null), null);
+});
+
+test("COHÉRENCE MAPS : sans adresse d'entreprise, aucun itinéraire", () => {
+  // Régression du 21/07/2026 : le dépôt valait null et Maps recevait un trajet
+  // partant d'un lieu nommé « null ». Le kilométrage facturé était faux.
+  const chantier = [{ adresse: "Rue X 1", ville: "Wavre" }];
+  assert.equal(urlItineraire(chantier, [], adresseDepot({})), null);
+
+  const org = { adresse: "Rue du Dépôt 9", cp: "1370", ville: "Jodoigne" };
+  const u = urlItineraire(chantier, [], adresseDepot(org));
+  assert.ok(u && u.includes(encodeURIComponent("Rue du Dépôt 9, 1370 Jodoigne, Belgique")));
+});
+
+test("changer l'adresse de l'entreprise change l'itinéraire", () => {
+  const chantier = [{ adresse: "Rue X 1", ville: "Wavre" }];
+  const a = urlItineraire(chantier, [], adresseDepot(
+    { adresse: "A 1", cp: "1000", ville: "Bruxelles" }));
+  const b = urlItineraire(chantier, [], adresseDepot(
+    { adresse: "B 2", cp: "5000", ville: "Namur" }));
+  assert.notEqual(a, b);
+});
+
+// — Catalogue → coûts internes : une seule source —
+test("COHÉRENCE COÛTS : un article du catalogue apparaît dans les coûts", () => {
+  const cats = { materiel_terrain: [
+    { cle: "transpalette", nom: "Transpalette", unite: "pièce",
+      cout_centimes: 30000, consommable: false },
+  ] };
+  const l = coutsMateriel(cats).find((x) => x.cle === "transpalette");
+  assert.ok(l, "l'article doit remonter dans les coûts internes");
+  assert.equal(l.cout_centimes, 30000);
+  assert.equal(l.source, "materiel_terrain");
+});
+
+test("changer un coût dans les catalogues change la valeur du parc", () => {
+  const parc = (c) => coutsMateriel(c).filter((l) => !l.consommable)
+    .reduce((t, l) => t + l.cout_centimes, 0);
+  const avant = { materiel_terrain: [
+    { cle: "d", nom: "Diable", cout_centimes: 10000, consommable: false }] };
+  const apres = { materiel_terrain: [
+    { cle: "d", nom: "Diable", cout_centimes: 15000, consommable: false }] };
+  assert.equal(parc(apres) - parc(avant), 5000);
 });

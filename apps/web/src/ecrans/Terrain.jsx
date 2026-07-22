@@ -17,8 +17,9 @@ import {
 import {
   dureeSecondes, chronoEnCours, formaterChrono, enPause, listePauses,
 } from "@domaine/operations/chrono.js";
-import { listerConges } from "../lib/adaptateur.js";
+import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
+import { adresseDepot } from "@domaine/organisation/identite.js";
 import { C, S, Confirmation } from "../lib/theme.jsx";
 
 function aujourdhui() { return new Date().toISOString().slice(0, 10); }
@@ -35,6 +36,7 @@ function dateLongue(iso) {
 export default function Terrain({ profil, versConsult }) {
   const [missions, setMissions] = useState([]);
   const [conges, setConges] = useState([]);
+  const [org, setOrg] = useState(null);
   const [ouvert, setOuvert] = useState(null);
   const [chargement, setChargement] = useState(true);
 
@@ -44,6 +46,7 @@ export default function Terrain({ profil, versConsult }) {
     // congés. Un congé n'est pas une mission — il n'a pas de dossier, pas
     // d'équipe, pas de chrono. Il occupe juste ma journée.
     setMissions(await mesMissionsTerrain(profil.utilisateur_id).catch(() => []));
+    setOrg(await obtenirOrganisation().catch(() => null));
     const tous = await listerConges().catch(() => []);
     setConges((tous || []).filter((c) => c.utilisateur_id === profil.utilisateur_id));
     setChargement(false);
@@ -104,7 +107,7 @@ export default function Terrain({ profil, versConsult }) {
       )}
 
       {triees.map((m) => (
-        <Chantier key={m.id} mission={m} profil={profil}
+        <Chantier org={org} key={m.id} mission={m} profil={profil}
                   ouvert={ouvert === m.id}
                   onToggle={() => setOuvert(ouvert === m.id ? null : m.id)}
                   onChrono={recharger} versConsult={versConsult} />
@@ -113,7 +116,7 @@ export default function Terrain({ profil, versConsult }) {
   );
 }
 
-function Chantier({ mission, profil, ouvert, onToggle, onChrono, versConsult }) {
+function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsult }) {
   const estAujourdhui = mission.date === aujourdhui();
   const [secondes, setSecondes] = useState(dureeSecondes(mission.sessions));
   const [pauses, setPauses] = useState(listePauses(mission.sessions));
@@ -146,7 +149,11 @@ function Chantier({ mission, profil, ouvert, onToggle, onChrono, versConsult }) 
   }
 
   const [cloture, setCloture] = useState(false);
-  const itineraire = urlItineraire(mission.charges, mission.decharges);
+  // Le départ vient de l'adresse de l'entreprise (Paramètres → Identité).
+  // Sans elle, pas d'itinéraire : un kilométrage faux coûte plus cher qu'un
+  // bouton absent.
+  const itineraire = urlItineraire(mission.charges, mission.decharges,
+                                   adresseDepot(org));
   const enAttente = mission.etat === "brouillon";
   const termine = mission.etat === "effectuee";
 

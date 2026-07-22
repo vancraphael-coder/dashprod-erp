@@ -114,10 +114,15 @@ export function urlItineraire(charges, decharges, depot = null) {
     ...(decharges || []).map(composer),
   ].filter(Boolean);
   if (chantier.length === 0) return null;
+  // Sans adresse de dépôt, pas d'itinéraire. Avant, un dépôt absent produisait
+  // encodeURIComponent(null) : un trajet partant d'un lieu nommé « null », et
+  // donc un kilométrage faux. Mieux vaut ne rien proposer.
+  const depart = String(depot ?? "").trim();
+  if (!depart) return null;
 
   // Départ dépôt, retour dépôt : les arrêts de chantier sont tous des waypoints.
-  const origin = encodeURIComponent(depot);
-  const destination = encodeURIComponent(depot);
+  const origin = encodeURIComponent(depart);
+  const destination = encodeURIComponent(depart);
   const way = chantier.map(encodeURIComponent).join("|");
   return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}` +
          `&waypoints=${way}&travelmode=driving`;
