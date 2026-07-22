@@ -66,3 +66,37 @@ test("un texte réglé est celui que reprend le document", () => {
   const t = textesEffectifs({ pdf: { titre: "DEVIS" } }, "pdf");
   assert.equal(t.titre, "DEVIS");
 });
+
+// — Régression : écran blanc Matériel du 21/07/2026 —
+// resumeEmballage() calculait sur CATALOGUE_EMBALLAGE (clés std, livre…) alors
+// que l'écran affichait le catalogue de l'organisation (clés carton_standard…).
+// Le .find() ne trouvait rien, ligne.e plantait le rendu.
+import { resumeEmballage, fournituresOffre } from "../src/stocks/emballage.js";
+
+test("resumeEmballage calcule sur le catalogue qu'on lui donne", () => {
+  const perso = [{ cle: "carton_standard", nom: "Carton standard" }];
+  const r = resumeEmballage({ carton_standard: { e: 10, u: 7, r: 3 } }, perso);
+  assert.equal(r.lignes.length, 1);
+  assert.equal(r.lignes[0].cle, "carton_standard");
+  assert.equal(r.lignes[0].u, 7);
+});
+
+test("chaque article affiché a sa ligne — plus de find() undefined", () => {
+  const perso = [{ cle: "a", nom: "A" }, { cle: "b", nom: "B" }];
+  const r = resumeEmballage({}, perso);
+  for (const art of perso) {
+    assert.ok(r.lignes.find((l) => l.cle === art.cle), `ligne manquante : ${art.cle}`);
+  }
+});
+
+test("un catalogue vide retombe sur le catalogue du domaine", () => {
+  assert.ok(resumeEmballage({}, []).lignes.length > 0);
+  assert.ok(resumeEmballage({}, null).lignes.length > 0);
+});
+
+test("fournituresOffre tolère un article sans pluriel", () => {
+  const perso = [{ cle: "x", nom: "Housse spéciale" }];
+  const t = fournituresOffre({ x: { u: 3 } }, perso);
+  assert.equal(t.length, 1);
+  assert.match(t[0], /^3 /);
+});

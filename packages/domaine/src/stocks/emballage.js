@@ -38,9 +38,13 @@ export const CATALOGUE_EMBALLAGE = Object.freeze([
  *   ecarts: {cle: string, nom: string, ecart: number}[]
  * }}
  */
-export function resumeEmballage(emballage) {
+export function resumeEmballage(emballage, catalogue = CATALOGUE_EMBALLAGE) {
   const src = emballage || {};
-  const lignes = CATALOGUE_EMBALLAGE.map((a) => {
+  // Le catalogue est un PARAMÈTRE : l'entreprise règle ses fournitures dans
+  // Paramètres → Catalogues, et le résumé doit être calculé sur CE catalogue.
+  // Calculer sur une liste et afficher l'autre produit des lignes introuvables.
+  const liste = Array.isArray(catalogue) && catalogue.length ? catalogue : CATALOGUE_EMBALLAGE;
+  const lignes = liste.map((a) => {
     const v = src[a.cle] || {};
     const e = Number(v.e) || 0, u = Number(v.u) || 0, r = Number(v.r) || 0;
     // L'équilibre vient du domaine Stocks (Module 8) : une seule règle.
@@ -63,10 +67,13 @@ export function resumeEmballage(emballage) {
  * @param {Object} emballage
  * @returns {string[]}
  */
-export function fournituresOffre(emballage) {
+export function fournituresOffre(emballage, catalogue = CATALOGUE_EMBALLAGE) {
   const src = emballage || {};
-  return CATALOGUE_EMBALLAGE
+  const liste = Array.isArray(catalogue) && catalogue.length ? catalogue : CATALOGUE_EMBALLAGE;
+  return liste
     .map((a) => ({ a, u: Number((src[a.cle] || {}).u) || 0 }))
     .filter((x) => x.u > 0)
-    .map((x) => `${x.u} ${x.u > 1 ? x.a.pluriel : x.a.nom.toLowerCase()}`);
+    // pluriel est optionnel : un article ajouté par l'entreprise n'en a pas.
+    .map((x) => `${x.u} ${x.u > 1 ? (x.a.pluriel || x.a.nom.toLowerCase())
+                                  : x.a.nom.toLowerCase()}`);
 }

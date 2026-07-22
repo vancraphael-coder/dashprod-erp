@@ -12,7 +12,7 @@
 import React, { useEffect, useState } from "react";
 import {
   listerEquipement, ajouterEquipement, changerEtatEquipement,
-  listerConges, ajouterConge, supprimerConge, modeDonnees,
+  listerConges, ajouterConge, supprimerConge, supprimerEquipement, modeDonnees,
 } from "../lib/adaptateur.js";
 import { deconnecter } from "../lib/supabase.js";
 import { C, S } from "../lib/theme.jsx";
@@ -148,18 +148,30 @@ function Inventaire({ profil }) {
     recharger();
   }
 
+  async function retirer(art) {
+    await supprimerEquipement(art.id).catch(() => {});
+    recharger();
+  }
+
   const rendre = (arr) => arr.map((art) => (
-    <button key={art.id} onClick={() => cycler(art)} style={{
-      display: "flex", width: "100%", justifyContent: "space-between",
-      alignItems: "center", padding: "10px 12px", marginBottom: 6,
-      borderRadius: 10, cursor: "pointer", background: "#fff",
+    <div key={art.id} style={{
+      display: "flex", width: "100%", alignItems: "center", gap: 8,
+      padding: "10px 12px", marginBottom: 6, borderRadius: 10, background: "#fff",
       border: `1.5px solid ${art.etat === "a_remplacer" ? "#FECACA" : C.bord}` }}>
-      <span style={{ fontSize: 13.5, color: C.encre, fontWeight: 600 }}>{art.article}</span>
-      <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
-        color: "#fff", background: COULEUR[art.etat] || C.muet }}>
+      <span onClick={() => cycler(art)}
+            style={{ flex: 1, fontSize: 13.5, color: C.encre, fontWeight: 600,
+                     cursor: "pointer" }}>{art.article}</span>
+      <span onClick={() => cycler(art)}
+            style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
+                     color: "#fff", cursor: "pointer",
+                     background: COULEUR[art.etat] || C.muet }}>
         {ETATS[art.etat] || art.etat}
       </span>
-    </button>
+      <button onClick={() => retirer(art)} title="Retirer cet article"
+              style={{ border: "none", background: "none", cursor: "pointer",
+                       fontSize: 15, color: C.rouge, padding: "2px 4px",
+                       lineHeight: 1 }}>✕</button>
+    </div>
   ));
 
   if (liste.length === 0) {

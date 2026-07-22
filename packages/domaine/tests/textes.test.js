@@ -42,7 +42,9 @@ test("textesEffectifs : sans rien de stocké, tout vient du défaut", () => {
 
 test("chaque groupe déclare des champs connus et un défaut par champ", () => {
   for (const g of GROUPES_TEXTES) {
-    if (g.fichier) continue;
+    // Les groupes "fichier" (un PDF) et "alinéas" (articles numérotés réécrits
+    // un par un) n'ont pas de champs nommés : leur contenu vient du domaine.
+    if (g.fichier || g.alineas) continue;
     const defauts = DEFAUTS_PAR_GROUPE[g.cle];
     assert.ok(defauts, `défauts manquants pour le groupe ${g.cle}`);
     for (const ch of g.champs) {

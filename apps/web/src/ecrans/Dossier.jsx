@@ -15,7 +15,7 @@ import {
   obtenirClientIdentite, sauverClientIdentite,
   listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
   validerDossierTerrain, obtenirInstance, confirmerAffaire, archiverAffaire,
-  annulerAffaire, reporterAffaire,
+  annulerAffaire, reporterAffaire, reprendreAffaire,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -497,6 +497,32 @@ function ZoneDesistement({ affaire, affaireId, onFait }) {
 
   const peutAnnuler = ANNULABLE.includes(affaire.etat);
   const peutReporter = REPORTABLE.includes(affaire.etat);
+
+  // Annuler une annulation : un désistement encodé par erreur doit pouvoir se
+  // défaire. Le dossier repart de « confirmé » et ses missions redeviennent
+  // planifiées — mais NON PARTAGÉES, pour que le bureau revalide avant que le
+  // terrain se remobilise.
+  if (affaire.etat === "annule") {
+    return (
+      <div style={{ ...S.carte, background: "#FFF7ED", border: "1px solid #FDE68A" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "#92400E" }}>
+          Dossier annulé
+        </div>
+        <div style={{ fontSize: 12, color: "#92400E", marginTop: 4, lineHeight: 1.5 }}>
+          Il n'apparaît plus au planning, ni au bureau ni au terrain.
+        </div>
+        <button
+          onClick={async () => {
+            try { await reprendreAffaire(affaireId, "reprise depuis le dossier"); onFait(); }
+            catch (e) { alert(e.message || "Reprise refusée"); }
+          }}
+          style={{ ...S.boutonPlein, marginTop: 12 }}>
+          Annuler l'annulation — remettre le dossier en route
+        </button>
+      </div>
+    );
+  }
+
   if (!peutAnnuler && !peutReporter) return null;
 
   async function confirmer() {

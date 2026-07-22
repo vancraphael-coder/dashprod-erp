@@ -19,6 +19,7 @@ import {
   urlConditionsCbd, televerserConditionsCbd, modeDonnees,
 } from "../lib/adaptateur.js";
 import { emailOffre } from "@domaine/communication/brief.js";
+import { articlesCgv, CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
 import {
   GROUPES_TEXTES, DEFAUTS_PAR_GROUPE, lireGroupe, ecrireGroupe,
 } from "@domaine/communication/textes.js";
@@ -142,8 +143,13 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
     try {
       // On ne stocke que ce qui diffère du défaut : le jour où le défaut
       // évolue, l'entreprise en bénéficie sans avoir à ressaisir.
+      // Pour les alinéas, le "défaut" est le texte d'origine de l'article :
+      // on ne stocke que ce qui en diffère réellement.
+      const origine = groupe.alineas
+        ? Object.fromEntries(articlesCgv().map((a) => [String(a.index), a.texte]))
+        : defauts;
       const differences = Object.fromEntries(
-        Object.entries(valeurs).filter(([k, v]) => String(v ?? "") !== String(defauts[k] ?? "")));
+        Object.entries(valeurs).filter(([k, v]) => String(v ?? "") !== String(origine[k] ?? "")));
       const complet = ecrireGroupe(stockes, groupe, differences);
       await sauverTextes(complet);
       onStockes(complet);
@@ -226,6 +232,32 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
         </div>
       )}
 
+      {groupe.alineas && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 10 }}>
+            Version {CGV_VERSION_COURANTE} en vigueur. Réécrivez un article : les
+            autres gardent leur texte d'origine. Les documents déjà signés
+            conservent le texte qu'ils contenaient — une réécriture ne les
+            modifie jamais.
+          </div>
+          {articlesCgv().map((art) => (
+            <div key={art.index} style={{ marginBottom: 12 }}>
+              <label style={S.label}>
+                Article {art.numero} — {art.titre}
+                {valeurs[String(art.index)] && (
+                  <span style={{ fontWeight: 500, color: C.bleu, marginLeft: 6 }}>
+                    réécrit
+                  </span>
+                )}
+              </label>
+              <textarea style={{ ...S.input, minHeight: 70 }}
+                        value={valeurs[String(art.index)] ?? art.texte}
+                        onChange={(e) => maj(String(art.index), e.target.value)} />
+            </div>
+          ))}
+        </div>
+      )}
+
       {groupe.fichier && (
         <div style={S.carte}>
           <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 8 }}>
@@ -263,7 +295,7 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
         <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
       )}
 
-      {groupe.champs.length > 0 && (
+      {(groupe.champs.length > 0 || groupe.alineas) && (
         <div style={{ margin: "0 16px 24px" }}>
           <button style={S.boutonPlein} onClick={enregistrer}>
             {sauve ? "✓ Enregistré" : "Enregistrer"}

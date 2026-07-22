@@ -1788,6 +1788,40 @@ export async function definirCreationComplete(utilisateurId, actif) {
 // =============================================================================
 
 /** Annulation définitive (désistement). Motif tracé dans le journal. */
+/**
+ * Annule une annulation : le dossier repart de 'confirme' et ses missions
+ * redeviennent planifiées — mais NON PARTAGÉES, pour que le bureau revalide
+ * avant que le terrain se remobilise.
+ */
+export async function reprendreAffaire(affaireId, motif) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_reprendre_affaire", {
+      p_affaire: affaireId, p_motif: motif || null,
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  if (a) { a.etat = "confirme"; a.archive_le = null; ecrireDemo(d); }
+}
+
+/** Retire définitivement un article de l'inventaire d'un membre. */
+export async function supprimerEquipement(equipementId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("equipements_rh")
+      .delete().eq("id", equipementId).select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error("Suppression refusée : droits insuffisants.");
+    }
+    return;
+  }
+  const d = lireDemo();
+  d.equipements = (d.equipements || []).filter((e) => e.id !== equipementId);
+  ecrireDemo(d);
+}
+
 export async function annulerAffaire(affaireId, motif) {
   if (modeDonnees() === "reel") {
     const { error } = await supabase.rpc("cmd_annuler_affaire", {

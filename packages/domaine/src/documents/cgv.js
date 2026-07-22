@@ -47,8 +47,29 @@ export const CGV_VERSION_COURANTE = 2;
  * @param {number} version
  * @returns {readonly string[]}
  */
-export function cgv(version = CGV_VERSION_COURANTE) {
-  return VERSIONS[version] || [];
+export function cgv(version = CGV_VERSION_COURANTE, reecritures = null) {
+  const base = VERSIONS[version] || [];
+  if (!reecritures || typeof reecritures !== "object") return base;
+  // Réécriture ALINÉA PAR ALINÉA : l'entreprise remplace le texte d'un article
+  // sans toucher aux autres ni au numéro de version. Un article non réécrit
+  // garde le texte d'origine. La clé est l'index de l'article (0-based).
+  //
+  // Le versionnage reste intact : un document déjà signé porte l'empreinte du
+  // texte qu'il contenait, jamais celle d'une réécriture ultérieure.
+  return base.map((texte, i) => {
+    const perso = reecritures[String(i)];
+    return typeof perso === "string" && perso.trim() ? perso : texte;
+  });
+}
+
+/** Articles réécrits par l'entreprise, pour l'écran de réglage. */
+export function articlesCgv(version = CGV_VERSION_COURANTE) {
+  return (VERSIONS[version] || []).map((texte, i) => ({
+    index: i,
+    numero: (texte.match(/^\s*(\d+)\./) || [])[1] || String(i + 1),
+    titre: (texte.match(/^\s*\d+\.\s*([^.]+)\./) || [])[1] || `Article ${i + 1}`,
+    texte,
+  }));
 }
 
 /** Prestations toujours incluses (rendues avec une coche sur l'offre). */

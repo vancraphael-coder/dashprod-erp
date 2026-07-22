@@ -65,6 +65,15 @@ export const GROUPES_TEXTES = Object.freeze([
     ],
   },
   {
+    cle: "cgv",
+    espace: "cgv",
+    icone: "\u2696\ufe0f",
+    titre: "Conditions générales de l'offre",
+    resume: "Réécrivez chaque article, un par un. Les autres restent intacts.",
+    alineas: true,
+    champs: [],
+  },
+  {
     cle: "cbd",
     icone: "📎",
     titre: "Conditions générales C.B.D.",

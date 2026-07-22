@@ -40,8 +40,12 @@ export default function Materiel({ affaireId, retour }) {
     obtenirCatalogues().then(setCats).catch(() => {});
   }, [affaireId]);
 
-  const resume = useMemo(() => resumeEmballage(emballage), [emballage]);
-  const fournitures = useMemo(() => fournituresOffre(emballage), [emballage]);
+  const resume = useMemo(
+    () => resumeEmballage(emballage, fournituresCatalogue),
+    [emballage, fournituresCatalogue]);
+  const fournitures = useMemo(
+    () => fournituresOffre(emballage, fournituresCatalogue),
+    [emballage, fournituresCatalogue]);
 
   function maj(cle, colonne, valeur) {
     const n = Math.max(0, parseInt(valeur, 10) || 0);
@@ -95,7 +99,10 @@ export default function Materiel({ affaireId, retour }) {
           ))}
 
           {fournituresCatalogue.map((a) => {
-            const ligne = resume.lignes.find((l) => l.cle === a.cle);
+            // Garde-fou : si un article vient d'être ajouté au catalogue, sa
+            // ligne peut ne pas encore exister. On ne plante pas pour ça.
+            const ligne = resume.lignes.find((l) => l.cle === a.cle)
+              || { cle: a.cle, e: 0, u: 0, r: 0, ecart: 0, coherent: true };
             const enEcart = ligne.e > 0 && !ligne.coherent;
             return (
               <React.Fragment key={a.cle}>
