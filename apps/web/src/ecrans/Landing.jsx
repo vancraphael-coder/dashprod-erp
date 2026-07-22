@@ -57,12 +57,12 @@ export default function Landing({ onConnexion }) {
             pas adapté à la va-vite.
           </p>
           <div style={{ display: "flex", gap: 12, marginTop: 26, flexWrap: "wrap" }}>
-            <a href="mailto:contact@dashprod.be?subject=Demande%20d'acc%C3%A8s%20Dashprod&body=Bonjour,%0A%0AJe%20souhaite%20un%20acc%C3%A8s%20%C3%A0%20Dashprod%20pour%20mon%20entreprise%20de%20d%C3%A9m%C3%A9nagement.%0A%0ANom%20de%20l'entreprise%20:%20%0ANum%C3%A9ro%20d'entreprise%20(BCE)%20:%20%0AEmail%20administrateur%20:%20%0AT%C3%A9l%C3%A9phone%20:%20"
-               style={{ padding: "13px 22px", borderRadius: 12, background: C.bleu,
-                        color: "#fff", fontSize: 15, fontWeight: 700,
-                        textDecoration: "none" }}>
-              Demander un accès
-            </a>
+            <button onClick={onConnexion} style={{
+               padding: "13px 22px", borderRadius: 12, border: "none",
+               background: C.bleu, color: "#fff", fontSize: 15, fontWeight: 700,
+               cursor: "pointer" }}>
+              Créer ma société
+            </button>
             <button onClick={onConnexion} style={{
               padding: "13px 22px", borderRadius: 12, border: `1.5px solid ${C.bord}`,
               background: C.blanc, color: C.encre, fontSize: 15, fontWeight: 700,

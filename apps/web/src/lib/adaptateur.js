@@ -1800,44 +1800,24 @@ export async function definirCreationComplete(utilisateurId, actif) {
  * avant que le terrain se remobilise.
  */
 // =============================================================================
-// ÉDITEUR — création et gestion des organisations clientes.
-// Réservé aux membres de l'organisation marquée `est_editeur` en base. Le
-// contrôle est fait par PostgreSQL, pas par l'interface : masquer un écran
-// n'est pas une sécurité.
+// INSCRIPTION AUTONOME — un déménageur crée SA société.
+//
+// Pas de privilège d'éditeur, pas d'administration de la plateforme depuis
+// l'application cliente. Le garde-fou est en base : cmd_creer_ma_societe()
+// refuse si le compte appartient déjà à une organisation.
 // =============================================================================
 
-export async function suisJeEditeur() {
-  if (modeDonnees() !== "reel") return false;
-  const { data, error } = await supabase.rpc("est_editeur");
-  if (error) return false;
-  return !!data;
-}
-
-export async function listerOrganisations() {
-  const { data, error } = await supabase.rpc("cmd_lister_organisations");
-  if (error) throw error;
-  return data || [];
-}
-
-/** Crée une organisation sur base VIERGE et son premier administrateur. */
-export async function creerOrganisation(champs) {
-  const { data, error } = await supabase.rpc("cmd_creer_organisation", {
-    p_nom: champs.nom, p_email_admin: champs.emailAdmin,
-    p_nom_admin: champs.nomAdmin || null, p_bce: champs.bce || null,
-    p_tva: champs.tva || null, p_tel: champs.tel || null,
+export async function creerMaSociete(champs) {
+  const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
+    p_nom: champs.nom,
+    p_bce: champs.bce || null,
+    p_tva: champs.tva || null,
+    p_tel: champs.tel || null,
     p_email: champs.email || null,
+    p_nom_admin: champs.nomAdmin || null,
   });
   if (error) throw error;
   return data;
-}
-
-/** Désactive (ou réactive) une organisation. La suppression n'existe pas :
- *  le journal d'audit référence ses utilisateurs et ne s'efface jamais. */
-export async function activerOrganisation(orgId, actif) {
-  const { error } = await supabase.rpc("cmd_desactiver_organisation", {
-    p_org: orgId, p_actif: actif,
-  });
-  if (error) throw error;
 }
 
 export async function reprendreAffaire(affaireId, motif) {

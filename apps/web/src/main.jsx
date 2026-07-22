@@ -14,6 +14,7 @@ import { C, Icone, gardeModifs, Confirmation } from "./lib/theme.jsx";
 import Connexion from "./ecrans/Connexion.jsx";
 import Diagnostic from "./ecrans/Diagnostic.jsx";
 import NonInvite from "./ecrans/NonInvite.jsx";
+import Inscription from "./ecrans/Inscription.jsx";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide } from "./lib/adaptateur.js";
 import Terrain from "./ecrans/Terrain.jsx";
@@ -323,7 +324,10 @@ function App() {
     return <Connexion onConnecte={() => window.location.reload()} />;
   }
   if (configPresente && nonInvite) {
-    return <NonInvite email={nonInvite} />;
+    // Aucune organisation pour ce compte : ce n'est pas une impasse, c'est
+    // l'entrée. Le déménageur crée sa société et démarre sur une base vierge.
+    return <Inscription email={nonInvite}
+      onCreee={() => window.location.reload()} />;
   }
 
   const capacites = profil?.capacites || [];

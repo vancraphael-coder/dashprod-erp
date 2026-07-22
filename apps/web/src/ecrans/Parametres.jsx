@@ -17,10 +17,9 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from "react";
-import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation, suisJeEditeur } from "../lib/adaptateur.js";
+import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation } from "../lib/adaptateur.js";
 import { identiteComplete, tauxTva } from "@domaine/organisation/identite.js";
 import Identite from "./Identite.jsx";
-import Societes from "./Societes.jsx";
 import {
   LISTES_CATALOGUE, CATALOGUES_DEFAUT, catalogue, estPersonnalise,
   normaliserArticle, coutsMateriel,
@@ -35,7 +34,6 @@ export default function Parametres({
   const [cats, setCats] = useState(null);
   const [ouvert, setOuvert] = useState(null);
   const [org, setOrg] = useState({});
-  const [editeur, setEditeur] = useState(false);
   const [erreur, setErreur] = useState(null);
 
   useEffect(() => {
@@ -43,14 +41,10 @@ export default function Parametres({
       .then((c) => setCats(c || {}))
       .catch((e) => { setErreur(e.message); setCats({}); });
     obtenirOrganisation().then(setOrg).catch(() => {});
-    suisJeEditeur().then(setEditeur).catch(() => {});
   }, [ouvert]);
 
   if (cats === null) return null;
 
-  if (ouvert === "societes") {
-    return <Societes retour={() => setOuvert(null)} />;
-  }
   if (ouvert === "identite" || ouvert === "facturation") {
     return <Identite page={ouvert} retour={() => setOuvert(null)} />;
   }
@@ -113,15 +107,6 @@ export default function Parametres({
         <Entree icone="📝" titre="Textes des dossiers"
                 resume="Email d'offre, PDF d'offre, conditions générales."
                 onClick={versTextes} />
-
-        {editeur && (
-          <>
-            <Rubrique>Éditeur Dashprod</Rubrique>
-            <Entree icone="🏗️" titre="Sociétés"
-                    resume="Créer et gérer les entreprises hébergées sur la plateforme."
-                    onClick={() => setOuvert("societes")} />
-          </>
-        )}
 
         <Rubrique>Données</Rubrique>
         <Entree icone="🗂️" titre="Archivage"
