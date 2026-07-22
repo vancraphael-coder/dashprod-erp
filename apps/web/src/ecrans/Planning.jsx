@@ -9,7 +9,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   listerMissions, listerMembresSimples, basculerAffectation, composerBrief,
-  listerConges, listerVehicules, basculerVehiculeMission,
+  listerConges, listerVehicules, basculerVehiculeMission, partagerMission,
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
@@ -211,6 +211,31 @@ export default function Planning({ ouvrirDossier }) {
                 ⚠ Aucune équipe affectée
               </div>
             )}
+
+            {/* Partage au terrain — geste distinct de l'affectation. Le bureau
+                prépare son planning tranquillement, puis publie quand c'est sûr.
+                Sans partage, le déménageur ne voit rien, même affecté. */}
+            <button
+              onClick={async () => {
+                try { await partagerMission(m.id, !m.partagee); await recharger(); }
+                catch (e) { alert(e.message); }
+              }}
+              style={{
+                display: "flex", alignItems: "center", gap: 8, width: "100%",
+                marginTop: 10, padding: "9px 12px", borderRadius: 10, cursor: "pointer",
+                border: `1.5px solid ${m.partagee ? "#A7F3D0" : C.bord}`,
+                background: m.partagee ? "#ECFDF5" : C.blanc,
+                color: m.partagee ? "#065F46" : C.muet,
+                fontSize: 12.5, fontWeight: 700, textAlign: "left",
+              }}>
+              <span>{m.partagee ? "📣" : "🔒"}</span>
+              <span style={{ flex: 1 }}>
+                {m.partagee ? "Partagée au terrain" : "Non partagée — le terrain ne la voit pas"}
+              </span>
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: C.fantome }}>
+                {m.partagee ? "Retirer" : "Partager"}
+              </span>
+            </button>
 
             {affectes.length > 0 && (
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>

@@ -504,7 +504,7 @@ export async function listerMissions() {
       // archivage laissait des missions futures déjà annulées au planning.
       // Le "!inner" est indispensable — sans lui PostgREST fait une jointure
       // externe, garde la ligne et vide l'objet imbriqué : le fantôme reste.
-      .select("id, date, heure, type, etat, affaire_id, affaires!inner(archive_le, etat, clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
+      .select("id, date, heure, type, etat, affaire_id, partagee_le, affaires!inner(archive_le, etat, clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
       .is("affaires.archive_le", null)
       .neq("etat", "annulee")
       .neq("affaires.etat", "annule")
@@ -512,6 +512,9 @@ export async function listerMissions() {
     if (error) throw error;
     return (data || []).map((m) => ({
       id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
+      // Le bureau voit TOUT, partagé ou non : il prépare puis publie.
+      partagee: !!m.partagee_le,
+      affaire_id: m.affaire_id,
       client: m.affaires?.clients?.nom,
       affectations: (m.mission_affectations || []).map((a) => ({ utilisateur_id: a.utilisateur_id })),
       camions: (m.mission_vehicules || []).map((v) => v.vehicule_id),
@@ -1184,6 +1187,33 @@ export async function sauverEquipeAffaire(affaireId, ids) {
  * adresses, coéquipiers, camions, articles à démonter, sessions de chrono.
  * JAMAIS de prix ni de coûts.
  */
+/**
+ * Publie (ou retire) une mission au terrain.
+ *
+ * Séparer l'affectation du partage permet au bureau de construire un planning
+ * complet — équipes, camions, horaires — sans que les déménageurs voient un
+ * chantier qui bouge encore. Le partage est le geste qui engage.
+ */
+export async function partagerMission(missionId, partagee = true) {
+  if (modeDonnees() === "reel") {
+    const { data: moi } = await supabase.rpc("mon_profil");
+    const { data, error } = await supabase.from("missions")
+      .update({
+        partagee_le: partagee ? new Date().toISOString() : null,
+        partagee_par: partagee ? (moi?.utilisateur_id ?? null) : null,
+      })
+      .eq("id", missionId).select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error("Partage refusé : droits insuffisants sur cette mission.");
+    }
+    return;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) { m.partagee_le = partagee ? new Date().toISOString() : null; ecrireDemo(d); }
+}
+
 export async function mesMissionsTerrain(utilisateurId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("missions")
@@ -1197,6 +1227,9 @@ export async function mesMissionsTerrain(utilisateurId) {
       .is("affaires.archive_le", null)
       .neq("etat", "annulee")
       .neq("affaires.etat", "annule")
+      // ET EN PLUS : le terrain ne voit QUE ce que le bureau a partagé.
+      // Être affecté ne suffit pas — le bureau doit publier la mission.
+      .not("partagee_le", "is", null)
       .order("date", { ascending: true });
     if (error) throw error;
     // Filtre : uniquement mes missions (la RLS laisse voir celles du tenant).

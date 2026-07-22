@@ -17,6 +17,7 @@ import {
 import {
   dureeSecondes, chronoEnCours, formaterChrono, enPause, listePauses,
 } from "@domaine/operations/chrono.js";
+import { listerConges } from "../lib/adaptateur.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
 import { C, S, Confirmation } from "../lib/theme.jsx";
 
@@ -33,12 +34,18 @@ function dateLongue(iso) {
 
 export default function Terrain({ profil, versConsult }) {
   const [missions, setMissions] = useState([]);
+  const [conges, setConges] = useState([]);
   const [ouvert, setOuvert] = useState(null);
   const [chargement, setChargement] = useState(true);
 
   async function recharger() {
     if (!profil?.utilisateur_id) return;
+    // Deux sources distinctes : les chantiers PARTAGÉS par le bureau, et mes
+    // congés. Un congé n'est pas une mission — il n'a pas de dossier, pas
+    // d'équipe, pas de chrono. Il occupe juste ma journée.
     setMissions(await mesMissionsTerrain(profil.utilisateur_id).catch(() => []));
+    const tous = await listerConges().catch(() => []);
+    setConges((tous || []).filter((c) => c.utilisateur_id === profil.utilisateur_id));
     setChargement(false);
   }
   useEffect(() => { recharger(); }, [profil?.utilisateur_id]);
@@ -68,7 +75,31 @@ export default function Terrain({ profil, versConsult }) {
       )}
       {!chargement && triees.length === 0 && (
         <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
-          Aucun chantier affecté pour le moment.
+          Aucun chantier partagé pour le moment.
+        </div>
+      )}
+
+      {/* Mes congés — pas des missions : aucun dossier, aucun chrono. */}
+      {!chargement && conges.length > 0 && (
+        <div style={S.carte}>
+          <label style={{ ...S.label, marginTop: 0 }}>Mes congés</label>
+          {conges.map((c) => (
+            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10,
+                                     padding: "9px 0", borderTop: `1px solid ${C.doux}` }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%",
+                             background: C.ambre, flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 600,
+                               color: C.encre }}>
+                  {jourCourt(c.debut)} → {jourCourt(c.fin)}
+                </span>
+                {c.motif && (
+                  <span style={{ display: "block", fontSize: 11.5, color: C.fantome,
+                                 marginTop: 2 }}>{c.motif}</span>
+                )}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -307,3 +338,12 @@ const puce = (couleur) => ({
   fontSize: 11.5, fontWeight: 600, color: couleur,
   background: couleur + "18", borderRadius: 999, padding: "3px 9px",
 });
+
+/** Date courte pour l'affichage des congés. */
+function jourCourt(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso + "T00:00:00")
+      .toLocaleDateString("fr-BE", { day: "2-digit", month: "short" });
+  } catch { return iso; }
+}
