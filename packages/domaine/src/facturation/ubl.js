@@ -37,7 +37,7 @@ function partieXml(balise, p) {
   const pid = idPeppol(p.peppol_id);
   return `  <cac:${balise}>
     <cac:Party>
-${pid.id ? `      <cbc:EndpointID${pid.scheme ? ` schemeID="${esc(pid.scheme)}"` : ""}>${esc(pid.id)}</cbc:EndpointID>\n` : ""}      <cac:PartyName><cbc:Name>${esc(p.nom)}</cbc:Name></cac:PartyName>
+${pid.id ? `      <cbc:EndpointID${pid.scheme ? ` schemeID="${esc(pid.scheme)}"` : ""}>${esc(pid.id)}</cbc:EndpointID>\n` : ""}${pid.id ? `      <cac:PartyIdentification><cbc:ID${pid.scheme ? ` schemeID="${esc(pid.scheme)}"` : ""}>${esc(pid.id)}</cbc:ID></cac:PartyIdentification>\n` : ""}      <cac:PartyName><cbc:Name>${esc(p.nom)}</cbc:Name></cac:PartyName>
       <cac:PostalAddress>
         <cbc:StreetName>${esc(p.rue)}</cbc:StreetName>
         <cbc:CityName>${esc(p.ville)}</cbc:CityName>
@@ -119,10 +119,9 @@ export function versXmlUBL(f) {
   <cbc:DocumentCurrencyCode>${esc(f.devise)}</cbc:DocumentCurrencyCode>
 ${partieXml("AccountingSupplierParty", f.vendeur)}
 ${partieXml("AccountingCustomerParty", f.acheteur)}
-${f.communication ? `  <cac:PaymentMeans>
+${(f.communication || f.vendeur.iban) ? `  <cac:PaymentMeans>
     <cbc:PaymentMeansCode>31</cbc:PaymentMeansCode>
-    <cbc:PaymentID>${esc(f.communication)}</cbc:PaymentID>
-  </cac:PaymentMeans>\n` : ""}  <cac:TaxTotal>
+${f.communication ? `    <cbc:PaymentID>${esc(f.communication)}</cbc:PaymentID>\n` : ""}${f.vendeur.iban ? `    <cac:PayeeFinancialAccount><cbc:ID>${esc(f.vendeur.iban)}</cbc:ID></cac:PayeeFinancialAccount>\n` : ""}  </cac:PaymentMeans>\n` : ""}  <cac:TaxTotal>
     <cbc:TaxAmount currencyID="${esc(f.devise)}">${dec(tva)}</cbc:TaxAmount>
 ${sousTotaux}
   </cac:TaxTotal>

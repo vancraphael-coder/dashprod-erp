@@ -117,6 +117,8 @@ function partie(p) {
     cp: String(o.cp ?? "").trim(),
     ville: String(o.ville ?? "").trim(),
     pays: String(o.pays ?? "BE").trim().toUpperCase().slice(0, 2),
+    // IBAN du vendeur : imprimé dans PaymentMeans, c'est là que le client paie.
+    iban: vide(o.iban) ? null : String(o.iban).toUpperCase().replace(/\s/g, ""),
   };
 }
 
