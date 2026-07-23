@@ -1427,6 +1427,102 @@ export async function validerDossierTerrain(affaireId) {
 const TAUX_DEMO = { t1: 38, t2: 32, t3: 30, t4: 30 }; // chef plus cher
 
 /** Taux horaire (€/h) par membre. Nécessite voir_paie en réel. */
+// =============================================================================
+// PAIE — réglages par membre et décompte de période.
+// Le brut vient des heures réellement pointées. Le net n'est calculé que si le
+// précompte est renseigné : voir packages/domaine/src/rh/paie.js.
+// =============================================================================
+
+/** Réglages de paie de tous les membres (taux, statut, précompte). */
+export async function obtenirReglagesPaie() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("donnees_paie")
+      .select("utilisateur_id, taux_horaire, type_contrat, statut, precompte_pct, majoration_sup");
+    if (error) throw error;
+    const par = {};
+    for (const r of data || []) par[r.utilisateur_id] = r;
+    return par;
+  }
+  return lireDemo().reglagesPaie || {};
+}
+
+/** Enregistre les réglages de paie d'UN membre. */
+export async function sauverReglagePaie(utilisateurId, reglage) {
+  if (modeDonnees() === "reel") {
+    const { data: org } = await supabase.from("organisations").select("id").single();
+    const { data, error } = await supabase.from("donnees_paie")
+      .upsert({
+        utilisateur_id: utilisateurId,
+        org_id: org?.id,
+        taux_horaire: reglage.taux_horaire ?? null,
+        statut: reglage.statut ?? null,
+        precompte_pct: reglage.precompte_pct ?? null,
+        majoration_sup: reglage.majoration_sup ?? null,
+        type_contrat: reglage.type_contrat ?? null,
+      }, { onConflict: "utilisateur_id" })
+      .select("utilisateur_id");
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error("Enregistrement refusé : capacité « voir la paie » requise.");
+    }
+    return;
+  }
+  const d = lireDemo();
+  d.reglagesPaie = { ...(d.reglagesPaie || {}), [utilisateurId]: reglage };
+  ecrireDemo(d);
+}
+
+/**
+ * Heures pointées par membre sur une période, depuis le chrono.
+ * Source unique : les sessions réellement enregistrées sur le terrain.
+ */
+export async function heuresParMembre(debut, fin) {
+  if (modeDonnees() !== "reel") return lireDemo().heuresPaie || {};
+  const { data, error } = await supabase.from("missions")
+    .select("id, date, mission_affectations(utilisateur_id), chrono_sessions(debut, fin, type)")
+    .gte("date", debut).lte("date", fin);
+  if (error) throw error;
+
+  const par = {};
+  for (const m of data || []) {
+    // Durée effective de la mission : les pauses ne sont pas payées.
+    let secondes = 0;
+    for (const s of m.chrono_sessions || []) {
+      if (s.type === "pause" || !s.debut || !s.fin) continue;
+      secondes += Math.max(0, (new Date(s.fin) - new Date(s.debut)) / 1000);
+    }
+    if (secondes <= 0) continue;
+    // Le temps de chantier est partagé par l'équipe présente : chacun a
+    // presté la durée de la mission, pas une fraction de celle-ci.
+    for (const a of m.mission_affectations || []) {
+      par[a.utilisateur_id] = (par[a.utilisateur_id] || 0) + secondes / 3600;
+    }
+  }
+  return par;
+}
+
+/** Décompte figé d'une période close (null si la période est ouverte). */
+export async function obtenirPeriodePaie(periode) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.from("paie_periodes")
+    .select("periode, cloturee_le, decompte").eq("periode", periode).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+/** Fige le décompte d'une période : elle ne bougera plus si un taux change. */
+export async function cloturerPeriodePaie(periode, decompte) {
+  const { data: org } = await supabase.from("organisations").select("id").single();
+  const { data, error } = await supabase.from("paie_periodes")
+    .upsert({ org_id: org?.id, periode, decompte,
+              cloturee_le: new Date().toISOString() }, { onConflict: "org_id,periode" })
+    .select("periode");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("Clôture refusée : capacité « voir la paie » requise.");
+  }
+}
+
 export async function tauxMembres() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("donnees_paie")

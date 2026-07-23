@@ -7,9 +7,15 @@
 
 import React, { useEffect, useState } from "react";
 import { obtenirParametresPrix, sauverParametresPrix } from "../lib/adaptateur.js";
+import Paie from "./Paie.jsx";
 import { C, S } from "../lib/theme.jsx";
 
 export default function Bareme({ retour }) {
+  // Deux onglets : le prix CLIENT (barème) et le coût SALARIÉ (paie).
+  // Ils vivent au même endroit parce qu'ils répondent à la même question :
+  // combien vaut une heure de chantier, vue du client et vue de l'entreprise.
+  const [vue, setVue] = useState("bareme");
+  if (vue === "paie") return <Paie retour={() => setVue("bareme")} />;
   const [params, setParams] = useState(null);
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
@@ -42,6 +48,18 @@ export default function Bareme({ retour }) {
         <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
           Ce qui est facturé au client.
         </div>
+
+      </div>
+
+      <div style={{ display: "flex", gap: 8, margin: "0 16px 12px" }}>
+        {[["bareme", "Prix client"], ["paie", "Paie"]].map(([cle, lib]) => (
+          <button key={cle} onClick={() => setVue(cle)} style={{
+            flex: 1, padding: "9px 6px", borderRadius: 10, cursor: "pointer",
+            fontSize: 12.5, fontWeight: 700,
+            border: `1.5px solid ${vue === cle ? C.bleu : C.bord}`,
+            background: vue === cle ? "#E7EFFC" : C.blanc,
+            color: vue === cle ? C.bleu : C.muet }}>{lib}</button>
+        ))}
       </div>
 
       <Section titre="Tarif horaire (HTVA / heure)">
