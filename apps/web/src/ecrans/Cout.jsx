@@ -12,9 +12,15 @@ import {
   obtenirCatalogues, sauverCatalogues,
 } from "../lib/adaptateur.js";
 import { catalogue, coutsMateriel } from "@domaine/stocks/catalogues.js";
+import Paie from "./Paie.jsx";
 import { C, S } from "../lib/theme.jsx";
 
 export default function Cout({ retour }) {
+  // La paie vit ICI, dans les coûts : un salaire est un coût interne, pas un
+  // prix client. C'est le coût employeur réel qui doit ensuite alimenter le
+  // barème — pas l'inverse.
+  const [vue, setVue] = useState("couts");
+  if (vue === "paie") return <Paie retour={() => setVue("couts")} />;
   const [params, setParams] = useState(null);
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
@@ -66,6 +72,17 @@ export default function Cout({ retour }) {
         <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
           Ce que ça coûte à l'entreprise (base des marges).
         </div>
+
+      <div style={{ display: "flex", gap: 8, margin: "0 16px 12px" }}>
+        {[["couts", "Coûts d'exploitation"], ["paie", "Paie"]].map(([cle, lib]) => (
+          <button key={cle} onClick={() => setVue(cle)} style={{
+            flex: 1, padding: "9px 6px", borderRadius: 10, cursor: "pointer",
+            fontSize: 12.5, fontWeight: 700,
+            border: `1.5px solid ${vue === cle ? C.bleu : C.bord}`,
+            background: vue === cle ? "#E7EFFC" : C.blanc,
+            color: vue === cle ? C.bleu : C.muet }}>{lib}</button>
+        ))}
+      </div>
       </div>
 
       <Section titre="Exploitation">

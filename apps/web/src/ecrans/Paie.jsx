@@ -27,6 +27,7 @@ import {
 import {
   decompteEquipe, bornesPeriode, periodeCourante,
   STATUT_PAR_METIER, ONSS_TRAVAILLEUR,
+  coutEmployeur, coutHoraireReel, indexationARevoir, SECTEUR_140_05,
 } from "@domaine/rh/paie.js";
 import { nomAffiche } from "@domaine/organisation/identite.js";
 import { C, S } from "../lib/theme.jsx";
@@ -98,12 +99,23 @@ export default function Paie({ retour }) {
   return (
     <div style={S.page}>
       <div style={S.entete}>
-        {retour && <button style={S.boutonLien} onClick={retour}>← Barème</button>}
+        {retour && <button style={S.boutonLien} onClick={retour}>← Coûts</button>}
         <div style={S.titre}>Paie</div>
         <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
-          Décompte des heures réellement pointées, par membre.
+          Coût salarial réel, calculé sur les heures pointées.
+          {SECTEUR_140_05.nom.replace("SCP", " · SCP")}
         </div>
       </div>
+
+      {indexationARevoir(SECTEUR_140_05) && (
+        <div style={{ margin: "0 16px 12px", padding: "11px 13px", borderRadius: 11,
+                      background: "#FFFBEB", border: "1px solid #FDE68A",
+                      fontSize: 12, color: "#92400E", lineHeight: 1.5 }}>
+          <b>Indexation sectorielle à vérifier.</b> Les salaires de la SCP 140.05
+          sont indexés chaque 1er janvier. Le dernier taux enregistré date du
+          {" "}{SECTEUR_140_05.indexation_derniere}.
+        </div>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 16px 12px" }}>
         <button onClick={() => moisPrecedent(-1)} style={navMois}>‹</button>
@@ -241,6 +253,27 @@ function FicheMembre({ ligne, periode, org, reglage, onReglage, sauve }) {
                placeholder="laisser vide si inconnu"
                value={reglage.precompte_pct ?? ""}
                onChange={(e) => onReglage("precompte_pct", num(e.target.value))} />
+        <label style={S.label}>
+          ONSS patronale (%)
+          <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
+            votre taux réel, réductions comprises
+          </span>
+        </label>
+        <input style={S.input} type="number" step="0.01" min="0" max="100"
+               placeholder="laisser vide si inconnu"
+               value={reglage.onss_patronale_pct ?? ""}
+               onChange={(e) => onReglage("onss_patronale_pct", num(e.target.value))} />
+
+        <label style={S.label}>
+          Ancienneté (mois)
+          <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
+            chèques-repas après {SECTEUR_140_05.cheque_repas.delai_attente_mois} mois
+          </span>
+        </label>
+        <input style={S.input} type="number" step="1" min="0"
+               value={reglage.anciennete_mois ?? ""}
+               onChange={(e) => onReglage("anciennete_mois", num(e.target.value))} />
+
         {sauve && (
           <div style={{ fontSize: 11.5, color: "#065F46", marginTop: 6 }}>✓ Enregistré</div>
         )}
@@ -270,6 +303,8 @@ function FicheMembre({ ligne, periode, org, reglage, onReglage, sauve }) {
         )}
       </div>
 
+      <CoutEmployeur ligne={ligne} reglage={reglage} />
+
       <div style={{ margin: "0 16px 12px" }}>
         <button style={S.boutonPlein}
                 onClick={() => imprimerPreparation(ligne, periode, org)}>
@@ -279,6 +314,56 @@ function FicheMembre({ ligne, periode, org, reglage, onReglage, sauve }) {
 
       <Avertissement />
     </>
+  );
+}
+
+/** Ce que l'heure coûte VRAIMENT — le chiffre qui doit alimenter le barème. */
+function CoutEmployeur({ ligne, reglage }) {
+  const cout = coutEmployeur({
+    brut_centimes: ligne.brut_centimes,
+    statut: ligne.statut,
+    onssPatronalePct: reglage.onss_patronale_pct,
+    joursPrestes: Math.round(ligne.heures / 8),
+    anciennete_mois: reglage.anciennete_mois,
+  });
+  const horaire = coutHoraireReel(cout, ligne.heures);
+
+  return (
+    <div style={S.carte}>
+      <label style={{ ...S.label, marginTop: 0 }}>Coût employeur</label>
+      <Ligne l="Brut" v={eur(cout.brut_centimes)} />
+      <Ligne l={`Base de cotisation (${Math.round(cout.assiette * 100)} %)`}
+             v={eur(cout.base_centimes)} />
+      <Ligne l="ONSS patronale"
+             v={cout.onss_connu ? eur(cout.onss_patronale_centimes) : "à renseigner"} />
+      <Ligne l={`Pension complémentaire sectorielle (${cout.pension_pct} %)`}
+             v={eur(cout.pension_complementaire_centimes)} />
+      <Ligne l={`Chèques-repas (${cout.jours_prestes} j × ${
+                 (SECTEUR_140_05.cheque_repas.part_employeur_centimes / 100)
+                   .toFixed(2).replace(".", ",")} €)`}
+             v={cout.cheques_repas_dus ? eur(cout.cheques_repas_centimes)
+                                       : "délai d'attente en cours"} />
+      <Ligne l="Coût total" v={cout.total_centimes ? eur(cout.total_centimes) : "—"} gras />
+
+      {cout.total_centimes ? (
+        <div style={{ marginTop: 10, padding: "11px 13px", borderRadius: 11,
+                      background: "#EFF6FF", border: `1px solid ${C.bord}`,
+                      fontSize: 12.5, color: C.encre, lineHeight: 1.5 }}>
+          <b>{eur(horaire)} de l'heure</b> — coefficient {cout.coefficient} × le brut.
+          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 4 }}>
+            C'est ce chiffre, pas le salaire brut, qui doit guider votre barème client.
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10,
+                      background: "#FFFBEB", border: "1px solid #FDE68A",
+                      fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+          Sans le taux d'ONSS patronale, le coût réel n'est pas calculé. Il dépend
+          des réductions structurelles et du profil du travailleur — votre
+          secrétariat social vous donne le vôtre.
+        </div>
+      )}
+    </div>
   );
 }
 

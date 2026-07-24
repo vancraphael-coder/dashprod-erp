@@ -1437,7 +1437,8 @@ const TAUX_DEMO = { t1: 38, t2: 32, t3: 30, t4: 30 }; // chef plus cher
 export async function obtenirReglagesPaie() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("donnees_paie")
-      .select("utilisateur_id, taux_horaire, type_contrat, statut, precompte_pct, majoration_sup");
+      .select("utilisateur_id, taux_horaire, type_contrat, statut, precompte_pct, "
+              + "majoration_sup, onss_patronale_pct, anciennete_mois, secteur_cle");
     if (error) throw error;
     const par = {};
     for (const r of data || []) par[r.utilisateur_id] = r;
@@ -1459,6 +1460,8 @@ export async function sauverReglagePaie(utilisateurId, reglage) {
         precompte_pct: reglage.precompte_pct ?? null,
         majoration_sup: reglage.majoration_sup ?? null,
         type_contrat: reglage.type_contrat ?? null,
+        onss_patronale_pct: reglage.onss_patronale_pct ?? null,
+        anciennete_mois: reglage.anciennete_mois ?? null,
       }, { onConflict: "utilisateur_id" })
       .select("utilisateur_id");
     if (error) throw error;

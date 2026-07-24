@@ -24,6 +24,43 @@
 // Ces deux règles sont stables. Le précompte, lui, n'est jamais deviné ici.
 // =============================================================================
 
+// =============================================================================
+// SECTEUR DU DÉMÉNAGEMENT — SCP 140.05
+//
+// Sources vérifiées au 21/07/2026. Ces montants sont INDEXÉS chaque 1er janvier
+// (indexation de +2,23 % au 01/01/2026). Ils doivent être revus à chaque
+// indexation : un barème périmé fait sous-payer, ce qui se règle avec arriérés
+// et amendes.
+//
+// L'entreprise peut tout surcharger : ces valeurs sont des repères, pas une
+// vérité figée dans le code.
+// =============================================================================
+
+export const SECTEUR_140_05 = Object.freeze({
+  cle: "140.05",
+  nom: "SCP 140.05 — Déménagement",
+  duree_hebdo_max: 38,
+  indexation_derniere: "2026-01-01",
+  indexation_taux_pct: 2.23,
+
+  // Chèques-repas introduits dans le secteur au 01/01/2026 : 3,09 € par jour
+  // presté, dont 2 € à charge de l'employeur et 1,09 € du travailleur.
+  // Délai d'attente de 6 mois pour un nouveau travailleur, pendant lequel une
+  // indemnité de repas est versée à la place.
+  cheque_repas: Object.freeze({
+    valeur_centimes: 309,
+    part_employeur_centimes: 200,
+    part_travailleur_centimes: 109,
+    delai_attente_mois: 6,
+    depuis: "2026-01-01",
+  }),
+
+  // Pension complémentaire sectorielle, en % des salaires bruts.
+  // Trajectoire convenue : 0,887 % → 1,09 % en 2026 → 1,3 % en 2027.
+  pension_complementaire_pct: 1.09,
+  pension_complementaire_2027_pct: 1.30,
+});
+
 /** Taux de cotisation personnelle à la sécurité sociale. */
 export const ONSS_TRAVAILLEUR = 0.1307;
 
@@ -39,6 +76,21 @@ export const STATUT_PAR_METIER = Object.freeze({
 });
 
 const c = (v) => Math.round(Number(v) || 0);
+
+/**
+ * Nombre EXPLICITEMENT fourni, sinon NaN.
+ *
+ * Piège coûteux : Number(null) et Number("") valent 0. Sans ce garde-fou, un
+ * taux absent passe pour un taux à 0 % — et produit un net trop élevé ou un
+ * coût employeur trop bas, avec l'air d'être juste. L'erreur a été commise
+ * deux fois dans ce fichier ; elle est désormais impossible.
+ */
+function nombreExplicite(v) {
+  if (v === null || v === undefined) return NaN;
+  const s = typeof v === "string" ? v.trim() : v;
+  if (s === "") return NaN;
+  return Number(s);
+}
 const heuresValides = (h) => {
   const n = Number(h);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -83,12 +135,7 @@ export function decompte({
   const onss = Math.round(brut * assiette * ONSS_TRAVAILLEUR);
   const imposable = brut - onss;
 
-  // Attention : Number(null) et Number("") valent 0, ce qui ferait passer un
-  // précompte ABSENT pour un précompte à 0 % — et produirait un net faux, plus
-  // élevé que la réalité. On exige donc une valeur explicitement numérique.
-  const brutPct = typeof precomptePct === "string" ? precomptePct.trim() : precomptePct;
-  const pct = (brutPct === null || brutPct === undefined || brutPct === "")
-    ? NaN : Number(brutPct);
+  const pct = nombreExplicite(precomptePct);
   const precompteConnu = Number.isFinite(pct) && pct >= 0 && pct <= 100;
   const precompte = precompteConnu ? Math.round(imposable * (pct / 100)) : null;
 
@@ -180,4 +227,97 @@ export function bornesPeriode(periode) {
   const fin = new Date(Date.UTC(a, m, 0));
   const iso = (d) => d.toISOString().slice(0, 10);
   return { debut: iso(debut), fin: iso(fin) };
+}
+
+// =============================================================================
+// COÛT EMPLOYEUR — ce que l'heure coûte VRAIMENT à l'entreprise.
+//
+// C'est ce chiffre, pas le salaire brut, qui doit alimenter le barème client.
+// Facturer 45 €/h en croyant payer 18 €/h alors que l'heure coûte 25 € fausse
+// toute la marge.
+//
+// Le taux d'ONSS patronale n'est PAS codé en dur : il dépend des réductions
+// structurelles, de la taille de l'entreprise et du profil du travailleur.
+// Votre secrétariat social vous donne le vôtre. Sans lui, le coût n'est pas
+// calculé — il est signalé comme incomplet, jamais deviné.
+// =============================================================================
+
+/**
+ * Coût employeur d'une période pour un membre.
+ *
+ * `onssPatronalePct` : taux réel communiqué par le secrétariat social.
+ *                      null → le coût total n'est pas calculé.
+ * `joursPrestes`     : nombre de jours ouvrant droit au chèque-repas.
+ * `anciennete_mois`  : sous 6 mois, pas de chèque-repas dans la SCP 140.05 —
+ *                      une indemnité de repas est versée à la place.
+ */
+export function coutEmployeur({
+  brut_centimes,
+  statut = "ouvrier",
+  onssPatronalePct = null,
+  joursPrestes = 0,
+  anciennete_mois = null,
+  secteur = SECTEUR_140_05,
+  pensionComplementairePct = null,
+  autresCharges_centimes = 0,
+}) {
+  const brut = Math.max(0, c(brut_centimes));
+  const assiette = ASSIETTE[statut] ?? ASSIETTE.ouvrier;
+  const base = Math.round(brut * assiette);
+
+  const pctOnss = nombreExplicite(onssPatronalePct);
+  const onssConnu = Number.isFinite(pctOnss) && pctOnss >= 0 && pctOnss <= 100;
+  const onssPatronale = onssConnu ? Math.round(base * (pctOnss / 100)) : null;
+
+  const pctPensionSaisi = nombreExplicite(pensionComplementairePct);
+  const pctPension = Number.isFinite(pctPensionSaisi)
+    ? pctPensionSaisi
+    : (secteur?.pension_complementaire_pct ?? 0);
+  const pension = Math.round(base * (pctPension / 100));
+
+  // Chèques-repas : uniquement après le délai d'attente sectoriel.
+  const cr = secteur?.cheque_repas;
+  const anciennete = nombreExplicite(anciennete_mois);
+  const delaiPasse = !cr || !Number.isFinite(anciennete)
+    || anciennete >= (cr.delai_attente_mois ?? 0);
+  const jours = Math.max(0, Math.round(Number(joursPrestes) || 0));
+  const chequesRepas = (cr && delaiPasse)
+    ? jours * cr.part_employeur_centimes : 0;
+
+  const autres = Math.max(0, c(autresCharges_centimes));
+  const total = onssConnu
+    ? brut + onssPatronale + pension + chequesRepas + autres
+    : null;
+
+  return {
+    brut_centimes: brut,
+    assiette,
+    base_centimes: base,
+    onss_patronale_centimes: onssPatronale,
+    onss_connu: onssConnu,
+    pension_complementaire_centimes: pension,
+    pension_pct: pctPension,
+    cheques_repas_centimes: chequesRepas,
+    cheques_repas_dus: !!(cr && delaiPasse),
+    jours_prestes: jours,
+    autres_charges_centimes: autres,
+    total_centimes: total,
+    // Coefficient de charge : total / brut. C'est le multiplicateur à garder
+    // en tête quand on fixe un prix horaire client.
+    coefficient: total && brut > 0 ? Math.round((total / brut) * 100) / 100 : null,
+  };
+}
+
+/** Coût horaire réel employeur, pour alimenter le barème client. */
+export function coutHoraireReel(cout, heures) {
+  const h = Number(heures);
+  if (!cout?.total_centimes || !Number.isFinite(h) || h <= 0) return null;
+  return Math.round(cout.total_centimes / h);
+}
+
+/** L'indexation sectorielle est-elle en retard ? Elle tombe chaque 1er janvier. */
+export function indexationARevoir(secteur = SECTEUR_140_05, maintenant = new Date()) {
+  const derniere = new Date(`${secteur?.indexation_derniere || "1970-01-01"}T00:00:00Z`);
+  const anneeCourante = maintenant.getUTCFullYear();
+  return derniere.getUTCFullYear() < anneeCourante;
 }
