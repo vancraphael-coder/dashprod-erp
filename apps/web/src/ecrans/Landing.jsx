@@ -19,7 +19,7 @@ const POINTS = [
   { t: "Vos données, isolées", d: "Chaque entreprise sur sa base, cloisonnée. Vos clients ne sortent pas de chez vous." },
 ];
 
-export default function Landing({ onConnexion }) {
+export default function Landing({ onConnexion, onPortail }) {
   return (
     <div style={{ minHeight: "100vh", background: C.fond || "#F6F8FB",
                   color: C.encre, display: "flex", flexDirection: "column" }}>
@@ -68,6 +68,33 @@ export default function Landing({ onConnexion }) {
               background: C.blanc, color: C.encre, fontSize: 15, fontWeight: 700,
               cursor: "pointer" }}>J'ai déjà un compte</button>
           </div>
+        </section>
+
+        {/* Rubrique CLIENT — un particulier qui déménage, pas une entreprise.
+            Elle est volontairement séparée : ce n'est pas le même public. */}
+        <section style={{ marginTop: 8, padding: 22, borderRadius: 16,
+                          background: C.blanc, border: `1px solid ${C.bord}`,
+                          boxShadow: "0 1px 3px rgba(15,23,42,.05)" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.bleu,
+                        textTransform: "uppercase", letterSpacing: ".05em" }}>
+            Gestion de votre déménagement
+          </div>
+          <div style={{ fontSize: 19, fontWeight: 800, marginTop: 6,
+                        letterSpacing: "-.01em" }}>
+            Vous déménagez ? Suivez votre dossier.
+          </div>
+          <div style={{ fontSize: 13.5, color: C.muet, marginTop: 6,
+                        lineHeight: 1.55, maxWidth: "52ch" }}>
+            Votre dossier, l'inventaire numéroté de vos meubles, les offres
+            reçues et vos factures. Entrez le code que votre déménageur vous a
+            transmis.
+          </div>
+          <button onClick={onPortail} style={{
+            marginTop: 14, padding: "12px 20px", borderRadius: 12, border: "none",
+            background: C.encre, color: "#fff", fontSize: 14.5, fontWeight: 700,
+            cursor: "pointer" }}>
+            Accéder à mon déménagement
+          </button>
         </section>
 
         <section style={{ display: "grid", gap: 14, marginTop: 20,

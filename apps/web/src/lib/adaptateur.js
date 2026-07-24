@@ -1908,6 +1908,42 @@ export async function definirCreationComplete(utilisateurId, actif) {
 // refuse si le compte appartient déjà à une organisation.
 // =============================================================================
 
+// =============================================================================
+// PORTAIL CLIENT — appels par code, sans compte.
+//
+// Ces fonctions passent par des RPC ouvertes au rôle `anon`. Chacune reçoit le
+// code et la base filtre sur le dossier qui lui est lié : l'application ne
+// décide d'aucun périmètre, elle demande et la base accorde ou refuse.
+// =============================================================================
+
+async function rpcPortail(nom, code) {
+  const { data, error } = await supabase.rpc(nom, { p_code: code });
+  if (error) throw new Error(error.message || "Accès refusé.");
+  return data;
+}
+
+export const portailOuvrir     = (code) => rpcPortail("cmd_portail_ouvrir", code);
+export const portailDossier    = (code) => rpcPortail("cmd_portail_dossier", code);
+export const portailOffres     = (code) => rpcPortail("cmd_portail_offres", code);
+export const portailFactures   = (code) => rpcPortail("cmd_portail_factures", code);
+export const portailInventaire = (code) => rpcPortail("cmd_portail_inventaire", code);
+
+/** Annuaire public : aucun code requis, seules les entreprises opt-in sortent. */
+export async function reseauDemenageurs() {
+  const { data, error } = await supabase.rpc("cmd_reseau_demenageurs");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Crée un code d'accès pour un dossier (côté déménageur). */
+export async function creerAccesClient(affaireId, code, jours = 90) {
+  const { data, error } = await supabase.rpc("cmd_creer_acces_client", {
+    p_affaire: affaireId, p_code: code, p_jours: jours,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,

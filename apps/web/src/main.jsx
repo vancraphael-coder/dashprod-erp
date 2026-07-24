@@ -27,6 +27,7 @@ import Parametres from "./ecrans/Parametres.jsx";
 import Profil from "./ecrans/Profil.jsx";
 import Landing from "./ecrans/Landing.jsx";
 import Bienvenue from "./ecrans/Bienvenue.jsx";
+import Portail from "./ecrans/Portail.jsx";
 import { obtenirOrganisation } from "./lib/adaptateur.js";
 import { identiteComplete } from "@domaine/organisation/identite.js";
 import Dossier from "./ecrans/Dossier.jsx";
@@ -287,6 +288,10 @@ function App() {
     try { return sessionStorage.getItem("dashprod-entrer") === "1"; } catch { return false; }
   });
   const [accueilVu, setAccueilVu] = useState(false);
+  // Portail client : vue publique, sans compte. Elle vit avant la connexion.
+  const [portail, setPortail] = useState(
+    () => { try { return new URLSearchParams(location.search).has("suivi"); }
+            catch { return false; } });
   const [profil, setProfil] = useState(null);
   const [nonInvite, setNonInvite] = useState(null);
   const [charge, setCharge] = useState(false);
@@ -315,11 +320,14 @@ function App() {
 
   if (!charge) return null;
   if (configPresente && !session) {
+    if (portail) return <Portail retour={() => setPortail(false)} />;
     if (!veutEntrer) {
-      return <Landing onConnexion={() => {
-        try { sessionStorage.setItem("dashprod-entrer", "1"); } catch {}
-        setVeutEntrer(true);
-      }} />;
+      return <Landing
+        onConnexion={() => {
+          try { sessionStorage.setItem("dashprod-entrer", "1"); } catch {}
+          setVeutEntrer(true);
+        }}
+        onPortail={() => setPortail(true)} />;
     }
     return <Connexion onConnecte={() => window.location.reload()} />;
   }
