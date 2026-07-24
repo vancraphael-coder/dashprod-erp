@@ -1544,7 +1544,9 @@ const PARAMS_PRIX_DEMO = {
   bareme_horaire: { 2: 85, 3: 130, 4: 170, 5: 215, 6: 255 },
   tarifs: { elevateur: 150, km_facture: 1, emballage_horaire: 75,
             emballage_km: 0.75, heure_sup_forfait: 42.5, assurance_htva: 50 },
-  couts: { carburant_km: 0.35, taux_defaut: 32 },
+  // Plus de taux_defaut : le taux de chaque membre vit dans donnees_paie,
+  // avec ses charges. Un repli global masquerait un taux manquant.
+  couts: { carburant_km: 0.35 },
 };
 
 /** Paramètres de prix de l'organisation (barème client + coûts internes). */

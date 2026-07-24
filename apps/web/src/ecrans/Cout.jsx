@@ -1,6 +1,6 @@
 // =============================================================================
 // Écran — Coût (prix INTERNES). Page dédiée, accessible depuis le Compte.
-// Ce que ça coûte à l'entreprise : carburant, taux horaire par défaut, prix
+// Ce que ça coûte à l'entreprise : carburant, prix
 // FOURNISSEUR des cartons/fournitures (base des marges). Les taux horaires
 // réels par membre se règlent dans Ressources ; le taux par défaut sert de
 // repli. Persisté dans organisations.parametres_prix.couts (jsonb).
@@ -19,8 +19,11 @@ export default function Cout({ retour }) {
   // La paie vit ICI, dans les coûts : un salaire est un coût interne, pas un
   // prix client. C'est le coût employeur réel qui doit ensuite alimenter le
   // barème — pas l'inverse.
+  //
+  // ⚠️ Le basculement vers Paie doit venir APRÈS tous les hooks. Un return
+  // anticipé fait rendre moins de hooks au second passage, et React casse
+  // l'écran entier. C'est exactement ce qui produisait l'écran blanc.
   const [vue, setVue] = useState("couts");
-  if (vue === "paie") return <Paie retour={() => setVue("couts")} />;
   const [params, setParams] = useState(null);
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
@@ -56,6 +59,7 @@ export default function Cout({ retour }) {
     } catch (e) { setErreur(e.message); }
   }
 
+  if (vue === "paie") return <Paie retour={() => setVue("couts")} />;
   if (!params || cats === null) return null;
   const c = params.couts || {};
   // Le coût des fournitures et du matériel vient du CATALOGUE, pas d'une
@@ -88,8 +92,6 @@ export default function Cout({ retour }) {
       <Section titre="Exploitation">
         <Champ label="Carburant" suffixe="€/km"
                value={c.carburant_km} onChange={(v) => majCout("carburant_km", v)} />
-        <Champ label="Taux horaire par défaut" suffixe="€/h"
-               value={c.taux_defaut} onChange={(v) => majCout("taux_defaut", v)} />
       </Section>
 
       <Section titre="Fournitures & matériel">
@@ -120,9 +122,9 @@ export default function Cout({ retour }) {
       </Section>
 
       <div style={{ margin: "0 16px 12px", fontSize: 11.5, color: C.muet, lineHeight: 1.5 }}>
-        Les taux horaires réels de chaque membre se règlent dans Ressources
-        (Membres) et alimentent automatiquement le coût main-d'œuvre du devis.
-        Le taux par défaut ci-dessus sert de repli quand un taux manque.
+        Le taux horaire de chaque membre se règle dans l'onglet <b>Paie</b>,
+        avec ses charges. Il n'y a plus de taux par défaut : un repli global
+        masquerait un taux manquant au lieu de le signaler.
       </div>
 
       {erreur && <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
