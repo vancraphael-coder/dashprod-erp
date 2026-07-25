@@ -7,8 +7,8 @@ import { facture, ligne, ventilationTva, valider, echeanceDepuis }
   from "../src/facturation/modele.js";
 import { versXmlUBL, preparerTransmission, passagePermis, estTermine, PASSAGES }
   from "../src/facturation/ubl.js";
-import { versCsv, journalVentes, journalCsv, equilibre, COMPTES_DEFAUT }
-  from "../src/facturation/exports.js";
+import { versCsv, journalVentes, journalCsv, equilibre, COMPTES_DEFAUT,
+  ecrituresFec, versFec, FEC_COLONNES } from "../src/facturation/exports.js";
 
 const VENDEUR = { nom: "Déménagements Test SRL", tva: "BE0478363616",
   peppol_id: "0208:0478363616", rue: "Rue du Dépôt 9", cp: "1370",
@@ -245,4 +245,47 @@ test("ARCHITECTURE : tous les canaux dérivent du MÊME modèle", () => {
   assert.ok(xml.includes(">1210.00<"));
   assert.ok(csv.includes("1210.00"));
   assert.equal(jrn[0].debit_centimes, f.total.tvac_centimes);
+});
+
+
+// — FEC (France) —
+test("FEC : 18 colonnes réglementaires, dans l'ordre", () => {
+  assert.equal(FEC_COLONNES.length, 18);
+  assert.equal(FEC_COLONNES[0], "JournalCode");
+  assert.equal(FEC_COLONNES[4], "CompteNum");
+});
+
+test("FEC : équilibre débit/crédit par facture", () => {
+  const ec = ecrituresFec([base()]);
+  const debit = ec.reduce((t, e) => t + parseFloat(e.Debit.replace(",", ".")), 0);
+  const credit = ec.reduce((t, e) => t + parseFloat(e.Credit.replace(",", ".")), 0);
+  assert.ok(Math.abs(debit - credit) < 0.001, "un FEC déséquilibré est rejeté par le fisc");
+});
+
+test("FEC : montants à virgule, débit client = TVAC", () => {
+  const ec = ecrituresFec([base()]);
+  assert.equal(ec[0].CompteNum, COMPTES_DEFAUT.clients);
+  assert.equal(ec[0].Debit, "1210,00");
+});
+
+test("FEC : le tiers est rattaché au compte client par sa TVA", () => {
+  const ec = ecrituresFec([base()]);
+  assert.equal(ec[0].CompAuxNum, "BE0999888777");
+  assert.ok(ec[0].CompAuxLib.length > 0);
+});
+
+test("FEC : fichier tabulé, en-tête en première ligne", () => {
+  const fec = versFec([base()]);
+  const lignes = fec.split("\r\n");
+  assert.equal(lignes[0], FEC_COLONNES.join("\t"));
+  assert.ok(lignes[1].includes("\t"), "séparateur tabulation");
+});
+
+test("FEC : une facture mixte ventile ses taux", () => {
+  const ec = ecrituresFec([base({ lignes: [
+    { libelle: "A", quantite: 1, prix_unitaire_centimes: 100000, tva_pct: 21 },
+    { libelle: "B", quantite: 1, prix_unitaire_centimes: 50000, tva_pct: 6 },
+  ] })]);
+  // 1 client + 2 ventes + 2 TVA = 5 lignes.
+  assert.equal(ec.length, 5);
 });
