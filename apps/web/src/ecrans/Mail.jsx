@@ -12,10 +12,10 @@
 import React, { useEffect, useState } from "react";
 import {
   obtenirAffaire, obtenirContact, obtenirInstance, obtenirOrganisation,
-  obtenirTextes, composerOffre, urlConditionsCbd,
+  obtenirTextes, creerLienSignature,
 } from "../lib/adaptateur.js";
-import { pdfOffre, nomFichierOffre, telecharger } from "../lib/pdfOffre.js";
 import { emailOffre, urlMailto } from "@domaine/communication/brief.js";
+import { genererCode } from "@domaine/portail/acces.js";
 import { C, S } from "../lib/theme.jsx";
 
 export default function Mail({ affaireId, retour, versOffre }) {
@@ -23,23 +23,20 @@ export default function Mail({ affaireId, retour, versOffre }) {
   const [instance, setInstance] = useState(null);
   const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState(null);
-  const [cbd, setCbd] = useState(null);        // URL des conditions, ou null
-  const [pdfEnCours, setPdfEnCours] = useState(false);
-  const [pdfFait, setPdfFait] = useState(false);
+  const [lien, setLien] = useState(null);      // { code, url } une fois généré
+  const [enCours, setEnCours] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [affaire, contact, inst, org, textes, lienCbd] = await Promise.all([
+        const [affaire, contact, inst, org, textes] = await Promise.all([
           obtenirAffaire(affaireId),
           obtenirContact(affaireId).catch(() => null),
           obtenirInstance(affaireId).catch(() => null),
           obtenirOrganisation().catch(() => ({})),
           obtenirTextes().catch(() => ({})),
-          urlConditionsCbd().catch(() => null),
         ]);
         setInstance(inst);
-        setCbd(lienCbd);
         const faits = affaire?.faits || {};
         setMail(emailOffre({
           client: affaire?.client || {},
@@ -52,22 +49,12 @@ export default function Mail({ affaireId, retour, versOffre }) {
           remarques: contact?.notes,
           organisation: org,
           textes,                       // modèles réglés dans Compte → Textes
+          lienSignature: lien?.url || null,
+          codeSignature: lien?.code || null,
         }));
       } catch (e) { setErreur(e.message); }
     })();
-  }, [affaireId]);
-
-  /** Génère le PDF de l'offre depuis la MÊME source que l'offre à l'écran. */
-  async function telechargerOffre() {
-    setErreur(null); setPdfEnCours(true);
-    try {
-      const contenu = await composerOffre(affaireId);
-      const blob = await pdfOffre(contenu, instance?.numero);
-      telecharger(blob, nomFichierOffre(contenu));
-      setPdfFait(true);
-    } catch (e) { setErreur(e.message || "Génération du PDF impossible"); }
-    setPdfEnCours(false);
-  }
+  }, [affaireId, lien]);
 
   async function copier() {
     const texte = `À : ${mail.a}\nObjet : ${mail.objet}\n\n${mail.corps}`;
@@ -86,72 +73,57 @@ export default function Mail({ affaireId, retour, versOffre }) {
         <div style={S.titre}>Mail — envoi de l'offre</div>
       </div>
 
-      {/* Pièces jointes : l'offre (PDF généré) et les conditions C.B.D. */}
+      {/* Signature en ligne — plus de pièce jointe. Le client lit l'offre et
+          les conditions sur la page de signature, puis approuve. */}
       <div style={S.carte}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 10,
+        <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
                       textTransform: "uppercase", letterSpacing: ".03em" }}>
-          Pièces jointes
+          Signature en ligne
         </div>
-
-        {/* 1 — Offre de prix */}
-        <div style={{ display: "flex", justifyContent: "space-between",
-                      alignItems: "center", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>📎</span>
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.encre }}>
-                Offre de prix (PDF)
-              </div>
-              <div style={{ fontSize: 11.5, color: C.muet }}>
-                {signee ? "Signée par le client" : instance ? "Émise, non signée" : "Pas encore émise"}
-              </div>
-            </div>
-          </div>
-          <button onClick={telechargerOffre} disabled={pdfEnCours} style={{
-            padding: "8px 14px", borderRadius: 10, cursor: "pointer",
-            fontSize: 12.5, fontWeight: 700,
-            border: `1.5px solid ${pdfFait ? C.vert : C.bleu}`,
-            background: pdfFait ? "#ECFDF5" : C.bleuClair,
-            color: pdfFait ? "#065F46" : C.bleu,
-          }}>
-            {pdfEnCours ? "…" : pdfFait ? "✓ Téléchargée" : "Télécharger"}
-          </button>
-        </div>
-
-        {/* 2 — Conditions générales C.B.D. */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>📄</span>
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.encre }}>
-                Conditions générales C.B.D.
-              </div>
-              <div style={{ fontSize: 11.5, color: cbd ? C.muet : C.ambre }}>
-                {cbd ? "Document du bureau" : "Non déposé — Compte → Textes"}
-              </div>
-            </div>
-          </div>
-          {cbd && (
-            <a href={cbd} target="_blank" rel="noreferrer" download style={{
-              padding: "8px 14px", borderRadius: 10, textDecoration: "none",
-              fontSize: 12.5, fontWeight: 700,
-              border: `1.5px solid ${C.bleu}`, background: C.bleuClair, color: C.bleu,
-            }}>Télécharger</a>
-          )}
-        </div>
-
-        <div style={{ marginTop: 10, padding: "9px 11px", borderRadius: 9,
-          background: "#F8FAFC", border: `1px solid ${C.bord}`,
-          fontSize: 11, color: C.muet, lineHeight: 1.5 }}>
-          Téléchargez les pièces, puis joignez-les au message : un lien
-          « ouvrir dans Mail » ne peut pas transporter de fichier.
+        <div style={{ fontSize: 12, color: C.muet, lineHeight: 1.55, marginBottom: 10 }}>
+          L'offre et les conditions générales ne sont plus jointes au mail. Le
+          client les consulte en ligne et les approuve d'un « Lu et approuvé ».
+          Générez le code, il s'insère dans le message ci-dessous.
         </div>
 
         {!instance && (
-          <button style={{ ...S.boutonLien, paddingLeft: 0, marginTop: 6 }}
+          <button style={{ ...S.boutonLien, paddingLeft: 0 }}
                   onClick={() => versOffre(affaireId)}>
-            Préparer l'offre d'abord →
+            Préparer et figer l'offre d'abord →
           </button>
+        )}
+
+        {instance && !lien && (
+          <button style={S.boutonPlein} disabled={enCours} onClick={async () => {
+            setEnCours(true); setErreur(null);
+            try {
+              const code = genererCode();
+              await creerLienSignature(affaireId, code, 30);
+              setLien({ code, url: `${location.origin}/?signer=`
+                + encodeURIComponent(code.replace(/-/g, "")) });
+            } catch (e) { setErreur(e.message); }
+            finally { setEnCours(false); }
+          }}>
+            {enCours ? "Génération…" : "Générer le code de signature"}
+          </button>
+        )}
+
+        {lien && (
+          <div style={{ padding: "10px 12px", borderRadius: 10,
+                        background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+            <div style={{ fontSize: 11.5, color: "#065F46", fontWeight: 700 }}>
+              Code inséré dans le message
+            </div>
+            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 18,
+                          fontWeight: 800, color: C.encre, textAlign: "center",
+                          letterSpacing: ".1em", padding: "6px 0" }}>
+              {lien.code}
+            </div>
+            <div style={{ fontSize: 11, color: C.fantome, lineHeight: 1.5 }}>
+              Valable 30 jours, une seule utilisation. Notez-le : il ne sera plus
+              affiché en entier.
+            </div>
+          </div>
         )}
       </div>
 

@@ -219,6 +219,15 @@ export function emailOffre(p) {
   }
   if (p.remarques) { l.push(""); l.push(`Remarques : ${p.remarques}`); }
   l.push("");
+  // L'offre et les conditions ne sont plus jointes : le client les lit en ligne
+  // et les approuve d'un « Lu et approuvé ». On lui transmet le lien et le code.
+  if (p.lienSignature) {
+    l.push("Pour consulter votre offre détaillée, vos conditions générales et");
+    l.push("les approuver en ligne, rendez-vous sur :");
+    l.push(p.lienSignature);
+    if (p.codeSignature) l.push(`Votre code : ${p.codeSignature}`);
+    l.push("");
+  }
   l.push(remplir(T.formule_politesse, vars));
   if (T.signataire) l.push(remplir(T.signataire, vars));
   l.push(org.nom || "");

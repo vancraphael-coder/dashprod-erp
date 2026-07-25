@@ -1942,9 +1942,11 @@ export async function offreApercu(code) {
   if (error) throw new Error(error.message);
   return data;
 }
-export async function offreSigner(code, nom) {
-  const { data, error } = await supabase.rpc("cmd_offre_signer",
-    { p_code: code, p_nom: nom || null });
+export async function offreSigner(code, { nom, mention, empreinte } = {}) {
+  const { data, error } = await supabase.rpc("cmd_offre_signer", {
+    p_code: code, p_nom: nom || null,
+    p_mention: mention || null, p_empreinte: empreinte || null,
+  });
   if (error) throw new Error(error.message);
   return data;
 }

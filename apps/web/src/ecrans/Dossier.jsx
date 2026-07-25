@@ -9,7 +9,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import {
-  obtenirOrganisation, creerLienSignature,
+  obtenirOrganisation,
   obtenirAffaire, obtenirContact, sauverContact,
   listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
   obtenirClientFacturation, sauverClientFacturation,
@@ -21,7 +21,6 @@ import {
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
 import { adresseDepot } from "@domaine/organisation/identite.js";
-import { genererCode } from "@domaine/portail/acces.js";
 import { C, S, Badge, euros, declarerModifs, Confirmation } from "../lib/theme.jsx";
 
 function adrVide() {
@@ -34,7 +33,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const [affaire, setAffaire] = useState(null);
   const [contact, setContact] = useState(null);
   const [org, setOrg] = useState(null);
-  const [lienSignature, setLienSignature] = useState(null);
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
   const [flotte, setFlotte] = useState([]);
@@ -144,55 +142,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       {/* Rattrapage : offre SIGNÉE mais affaire jamais confirmée (affaires
           antérieures au correctif de chaîne). Confirmer crée la mission au
           planning et y reporte camions + équipe pressentis. */}
-      {["devis", "envoye"].includes(affaire.etat) && instance?.statut !== "signee" && (
-        <div style={{ margin: "0 16px 10px", padding: "11px 12px", borderRadius: 12,
-          background: "#EFF6FF", border: `1px solid ${C.bord}` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>
-            Lien de signature client
-          </div>
-          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 2, marginBottom: 8,
-                        lineHeight: 1.5 }}>
-            Générez un code unique. Le client le reçoit, voit l'offre et la signe
-            en ligne — l'affaire passe alors en confirmée.
-          </div>
-          {!lienSignature ? (
-            <button onClick={async () => {
-              try {
-                const code = genererCode();
-                await creerLienSignature(affaireId, code, 30);
-                const url = `${location.origin}/?signer=${encodeURIComponent(
-                  code.replace(/-/g, ""))}`;
-                setLienSignature({ code, url });
-              } catch (e) { setErreur(e.message); }
-            }} style={{ padding: "9px 16px", borderRadius: 10, border: "none",
-              cursor: "pointer", background: C.bleu, color: "#fff",
-              fontSize: 13, fontWeight: 700 }}>
-              Générer le lien de signature
-            </button>
-          ) : (
-            <div>
-              <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 18,
-                            fontWeight: 800, color: C.encre, letterSpacing: ".08em",
-                            textAlign: "center", padding: "8px 0" }}>
-                {lienSignature.code}
-              </div>
-              <button onClick={() => {
-                navigator.clipboard?.writeText(lienSignature.url).catch(() => {});
-              }} style={{ width: "100%", padding: "9px 16px", borderRadius: 10,
-                border: `1.5px solid ${C.bord}`, cursor: "pointer",
-                background: C.blanc, color: C.encre, fontSize: 12.5, fontWeight: 700 }}>
-                Copier le lien à envoyer
-              </button>
-              <div style={{ fontSize: 11, color: C.fantome, marginTop: 6,
-                            lineHeight: 1.5 }}>
-                Ce code est valable 30 jours et ne peut servir qu'une fois.
-                Notez-le : il ne sera plus affiché en entier.
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {instance?.statut === "signee" && ["devis", "envoye"].includes(affaire.etat) && (
         <div style={{ margin: "0 16px 10px", padding: "11px 12px", borderRadius: 12,
           background: "#ECFDF5", border: "1px solid #A7F3D0" }}>

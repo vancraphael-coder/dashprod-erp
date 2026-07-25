@@ -8,13 +8,15 @@
 // Impression : window.print() + CSS ciblant .contrat-imprimable (index.html).
 // =============================================================================
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  obtenirAffaire, composerOffre, envoyerOffre, obtenirInstance, signerOffre,
+  obtenirAffaire, composerOffre, envoyerOffre, obtenirInstance,
+  creerLienSignature,
 } from "../lib/adaptateur.js";
 import { instanceIntacte } from "@domaine/documents/instances.js";
 import { ACOMPTE_PCT } from "@domaine/documents/cgv.js";
 import Contrat from "./Contrat.jsx";
+import { genererCode } from "@domaine/portail/acces.js";
 import { pdfOffre, nomFichierOffre, telecharger } from "../lib/pdfOffre.js";
 import { C, S, euros } from "../lib/theme.jsx";
 
@@ -28,7 +30,7 @@ export default function Offre({ affaireId, retour }) {
   const [apercu, setApercu] = useState(null);   // contenu composé, avant envoi
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
-  const [padOuvert, setPadOuvert] = useState(false);
+  const [lien, setLien] = useState(null);
   const [pdfEnCours, setPdfEnCours] = useState(false);
 
   async function recharger() {
@@ -130,26 +132,48 @@ export default function Offre({ affaireId, retour }) {
           </>
         )}
 
-        {instance && !signee && !padOuvert && (
-          <button style={S.boutonPlein} onClick={() => setPadOuvert(true)}>
-            Recueillir la signature du client
-          </button>
-        )}
-
-        {instance && !signee && padOuvert && (
-          <PadSignature
-            enCours={enCours}
-            onAnnuler={() => setPadOuvert(false)}
-            onSigner={async ({ nom, image }) => {
-              setEnCours(true); setErreur(null);
-              try {
-                await signerOffre(instance.id, { affaireId, nom, canal: "ecran", image });
-                setPadOuvert(false);
-                await recharger();
-              } catch (e) { setErreur(e.message); }
-              finally { setEnCours(false); }
-            }}
-          />
+        {instance && !signee && (
+          <div style={{ padding: "12px 13px", borderRadius: 12, marginBottom: 10,
+                        background: "#EFF6FF", border: `1px solid ${C.bord}` }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.encre }}>
+              Faire signer le client
+            </div>
+            <div style={{ fontSize: 11.5, color: C.muet, marginTop: 3,
+                          marginBottom: 10, lineHeight: 1.5 }}>
+              La signature se fait côté client : il lit l'offre et les conditions,
+              recopie « Lu et approuvé » et indique son nom. Envoyez-lui ce code.
+            </div>
+            {!lien ? (
+              <button style={S.boutonPlein} disabled={enCours} onClick={async () => {
+                setEnCours(true); setErreur(null);
+                try {
+                  const code = genererCode();
+                  await creerLienSignature(affaireId, code, 30);
+                  setLien({ code, url: `${location.origin}/?signer=`
+                    + encodeURIComponent(code.replace(/-/g, "")) });
+                } catch (e) { setErreur(e.message); }
+                finally { setEnCours(false); }
+              }}>
+                {enCours ? "Génération…" : "Générer le code de signature"}
+              </button>
+            ) : (
+              <div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 20,
+                              fontWeight: 800, color: C.encre, letterSpacing: ".1em",
+                              textAlign: "center", padding: "10px 0" }}>
+                  {lien.code}
+                </div>
+                <button style={{ ...S.boutonPlein }} onClick={() => {
+                  navigator.clipboard?.writeText(lien.url).catch(() => {});
+                }}>Copier le lien à envoyer par e-mail</button>
+                <div style={{ fontSize: 11, color: C.fantome, marginTop: 6,
+                              lineHeight: 1.5 }}>
+                  Valable 30 jours, utilisable une seule fois. Notez le code :
+                  il ne sera plus affiché en entier.
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {signee && (
@@ -189,104 +213,6 @@ export default function Offre({ affaireId, retour }) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-/**
- * Pad de signature — pointer events (doigt, stylet, souris) et mise à l'échelle
- * devicePixelRatio pour un tracé net sur écran haute densité.
- */
-function PadSignature({ onSigner, onAnnuler, enCours }) {
-  const canvasRef = useRef(null);
-  const ctxRef = useRef(null);
-  const wrapRef = useRef(null);
-  const dessine = useRef(false);
-  const precedent = useRef(null);
-  const [nom, setNom] = useState("");
-  const [encre, setEncre] = useState(false);
-
-  useEffect(() => {
-    function preparer() {
-      const cv = canvasRef.current, w = wrapRef.current;
-      if (!cv || !w) return;
-      const dpr = window.devicePixelRatio || 1;
-      const largeur = w.clientWidth, hauteur = 160;
-      cv.width = largeur * dpr; cv.height = hauteur * dpr;
-      cv.style.width = largeur + "px"; cv.style.height = hauteur + "px";
-      const ctx = cv.getContext("2d");
-      ctx.scale(dpr, dpr);
-      ctx.lineWidth = 2.3; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.strokeStyle = "#0F172A";
-      ctxRef.current = ctx;
-    }
-    preparer();
-    window.addEventListener("resize", preparer);
-    return () => window.removeEventListener("resize", preparer);
-  }, []);
-
-  const pos = (e) => {
-    const r = canvasRef.current.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  };
-  const debut = (e) => {
-    e.preventDefault();
-    dessine.current = true; setEncre(true);
-    precedent.current = pos(e);
-    try { canvasRef.current.setPointerCapture(e.pointerId); } catch { /* ignoré */ }
-  };
-  const trace = (e) => {
-    if (!dessine.current) return;
-    const p = pos(e), ctx = ctxRef.current;
-    ctx.beginPath();
-    ctx.moveTo(precedent.current.x, precedent.current.y);
-    ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    precedent.current = p;
-  };
-  const fin = () => { dessine.current = false; };
-  const effacer = () => {
-    const cv = canvasRef.current;
-    ctxRef.current.clearRect(0, 0, cv.width, cv.height);
-    setEncre(false);
-  };
-
-  return (
-    <div style={{ ...S.carte, margin: "0 0 10px" }}>
-      <label style={{ ...S.label, marginTop: 0 }}>Nom du signataire</label>
-      <input style={S.input} value={nom} onChange={(e) => setNom(e.target.value)}
-             placeholder="Prénom Nom" />
-      <label style={S.label}>Signature</label>
-      <div ref={wrapRef} style={{ position: "relative" }}>
-        <canvas
-          ref={canvasRef}
-          onPointerDown={debut} onPointerMove={trace}
-          onPointerUp={fin} onPointerLeave={fin}
-          style={{ width: "100%", height: 160, border: `1.5px dashed ${C.bord}`,
-                   borderRadius: 12, background: "#fff", touchAction: "none" }}
-        />
-        {!encre && (
-          <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center",
-                         pointerEvents: "none", color: C.fantome, fontSize: 13 }}>
-            Signez ici avec le doigt
-          </span>
-        )}
-      </div>
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <button style={{ ...S.boutonLien, flex: 1, textAlign: "center",
-                          border: `1.5px solid ${C.bord}`, borderRadius: 10 }}
-                onClick={effacer}>Effacer</button>
-        <button style={{ ...S.boutonLien, flex: 1, textAlign: "center",
-                          border: `1.5px solid ${C.bord}`, borderRadius: 10 }}
-                onClick={onAnnuler}>Annuler</button>
-      </div>
-      <button
-        style={{ ...S.boutonPlein, marginTop: 10, opacity: (nom && encre && !enCours) ? 1 : 0.5 }}
-        disabled={!nom || !encre || enCours}
-        onClick={() => onSigner({ nom, image: canvasRef.current.toDataURL("image/png") })}
-      >
-        {enCours ? "Enregistrement…" : "Valider la signature"}
-      </button>
     </div>
   );
 }
