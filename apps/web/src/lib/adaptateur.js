@@ -2001,6 +2001,21 @@ export async function creerLienSignature(affaireId, code, jours = 30) {
 }
 
 // =============================================================================
+// ── RGPD : aperçu de rétention et purge des données expirées ───────────────
+export async function apercuRetention() {
+  const { data, error } = await supabase.rpc("cmd_apercu_retention");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** p_dry_run=true par défaut : ne supprime rien, montre ce qui serait purgé. */
+export async function purgerDonneesExpirees(dryRun = true) {
+  const { data, error } = await supabase.rpc("cmd_purger_donnees_expirees",
+    { p_dry_run: dryRun });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,

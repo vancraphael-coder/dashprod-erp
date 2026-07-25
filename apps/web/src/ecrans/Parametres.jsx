@@ -19,6 +19,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation } from "../lib/adaptateur.js";
 import Fermetures from "./Fermetures.jsx";
+import Confidentialite from "./Confidentialite.jsx";
 import { identiteComplete, tauxTva } from "@domaine/organisation/identite.js";
 import Identite from "./Identite.jsx";
 import {
@@ -51,6 +52,9 @@ export default function Parametres({
   }
   if (ouvert === "fermetures") {
     return <Fermetures retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "confidentialite") {
+    return <Confidentialite retour={() => setOuvert(null)} />;
   }
 
   if (ouvert) {
@@ -118,6 +122,9 @@ export default function Parametres({
                 onClick={versTextes} />
 
         <Rubrique>Données</Rubrique>
+        <Entree icone="🔒" titre="Confidentialité & données"
+                resume="Conservation, suppression RGPD des données clients."
+                onClick={() => setOuvert("confidentialite")} />
         <Entree icone="🗂️" titre="Archivage"
                 resume="Dossiers, véhicules et membres archivés."
                 onClick={versArchivage} />
