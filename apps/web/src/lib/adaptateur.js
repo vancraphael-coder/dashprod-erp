@@ -984,6 +984,46 @@ const CONGES_DEMO = [
 ];
 
 /** Congés APPROUVÉS de l'organisation (ceux qui comptent pour les conflits). */
+// ── Fermetures de l'entreprise (congé annuel collectif, ponts) ─────────────
+export async function listerFermetures() {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.from("fermetures_entreprise")
+      .select("id, debut, fin, motif").order("debut");
+    if (error) throw error;
+    return data || [];
+  }
+  return lireDemo().fermetures || [];
+}
+
+export async function ajouterFermeture({ debut, fin, motif }) {
+  if (modeDonnees() === "reel") {
+    const { data: org } = await supabase.from("organisations").select("id").single();
+    const { data, error } = await supabase.from("fermetures_entreprise")
+      .insert({ org_id: org?.id, debut, fin, motif: motif || null })
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error("Ajout refusé : capacité « gérer les référentiels » requise.");
+    }
+    return;
+  }
+  const d = lireDemo();
+  d.fermetures = [...(d.fermetures || []),
+    { id: idDemo(), debut, fin, motif: motif || null }];
+  ecrireDemo(d);
+}
+
+export async function supprimerFermeture(id) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.from("fermetures_entreprise").delete().eq("id", id);
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.fermetures = (d.fermetures || []).filter((f) => f.id !== id);
+  ecrireDemo(d);
+}
+
 export async function listerConges() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("conges")

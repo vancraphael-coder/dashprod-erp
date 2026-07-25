@@ -9,11 +9,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   listerMissions, listerMembresSimples, basculerAffectation, composerBrief,
-  listerConges, listerVehicules, basculerVehiculeMission, partagerMission,
+  listerConges, listerFermetures, listerVehicules, basculerVehiculeMission, partagerMission,
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
 import { conflitsAffectation } from "@domaine/operations/missions.js";
+import { qualifierJour } from "@domaine/planning/jours-feries.js";
 import { C, S, Confirmation } from "../lib/theme.jsx";
 
 const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -30,11 +31,17 @@ function dateLongue(iso) {
   } catch { return iso; }
 }
 
+const bandeauStyle = (fond, bord, couleur) => ({
+  padding: "9px 12px", borderRadius: 10, fontSize: 12, lineHeight: 1.4,
+  background: fond, border: `1px solid ${bord}`, color: couleur,
+});
+
 export default function Planning({ ouvrirDossier }) {
   const [missions, setMissions] = useState([]);
   const [membres, setMembres] = useState([]);       // actifs (sélection)
   const [tousMembres, setTousMembres] = useState([]); // + archivés (affichage)
   const [conges, setConges] = useState([]);
+  const [fermetures, setFermetures] = useState([]);
   const [flotte, setFlotte] = useState([]);
   // Sélection en attente : 1er clic choisit, 2e confirme (Retirer/Ajouter).
   const [selection, setSelection] = useState(null); // {missionId, type, id, nom, present}
@@ -50,6 +57,7 @@ export default function Planning({ ouvrirDossier }) {
     setMembres(await listerMembresSimples());
     setTousMembres(await listerMembresSimples(true).catch(() => []));
     setConges(await listerConges().catch(() => []));
+    setFermetures(await listerFermetures().catch(() => []));
     setFlotte(await listerVehicules().catch(() => []));
   }
   useEffect(() => { recharger(); }, []);
@@ -139,23 +147,40 @@ export default function Planning({ ouvrirDossier }) {
           {grille.jours.map((j) => {
             const estAujourdhui = j.date === aujourdhui();
             const selectionne = j.date === jourSel;
+            const q = qualifierJour(j.date, fermetures);
+            const nbConges = conges.filter((c) =>
+              c.debut && c.fin && j.date >= c.debut && j.date <= c.fin).length;
+            // Priorité visuelle : fermeture entreprise, puis férié légal.
+            const fondSpecial = q.ferme ? "#FEF2F2" : q.ferie ? "#FFFBEB" : null;
             return (
               <button key={j.date} onClick={() => { setJourSel(j.date); setOuvert(null); }}
                 style={{
                   position: "relative", aspectRatio: "1", borderRadius: 9,
                   border: selectionne ? `2px solid ${C.bleu}` : "1.5px solid transparent",
-                  background: estAujourdhui ? C.bleu : selectionne ? "#E7EFFC" : "transparent",
+                  background: estAujourdhui ? C.bleu : selectionne ? "#E7EFFC"
+                    : fondSpecial || "transparent",
                   color: estAujourdhui ? "#fff" : C.encre,
                   fontSize: 13.5, fontWeight: (estAujourdhui || selectionne) ? 700 : 500,
                   cursor: "pointer",
                 }}>
                 {j.jour}
-                {j.nb > 0 && (
-                  <span style={{
-                    position: "absolute", bottom: 5, left: "50%", transform: "translateX(-50%)",
-                    width: 5, height: 5, borderRadius: "50%",
-                    background: estAujourdhui ? "#fff" : C.ambre,
-                  }} />
+                {(q.ferie || q.ferme) && !estAujourdhui && (
+                  <span style={{ position: "absolute", top: 3, right: 4,
+                    fontSize: 8, lineHeight: 1,
+                    color: q.ferme ? C.rouge : C.ambre }}>●</span>
+                )}
+                {(j.nb > 0 || nbConges > 0) && (
+                  <span style={{ position: "absolute", bottom: 5, left: "50%",
+                    transform: "translateX(-50%)", display: "flex", gap: 2 }}>
+                    {j.nb > 0 && (
+                      <span style={{ width: 5, height: 5, borderRadius: "50%",
+                        background: estAujourdhui ? "#fff" : C.ambre }} />
+                    )}
+                    {nbConges > 0 && (
+                      <span style={{ width: 5, height: 5, borderRadius: "50%",
+                        background: estAujourdhui ? "#fff" : (C.violet || "#7C3AED") }} />
+                    )}
+                  </span>
                 )}
               </button>
             );
@@ -176,6 +201,39 @@ export default function Planning({ ouvrirDossier }) {
           </span>
         )}
       </div>
+
+      {(() => {
+        const q = qualifierJour(jourSel, fermetures);
+        const enConge = conges
+          .filter((c) => c.debut && c.fin && jourSel >= c.debut && jourSel <= c.fin)
+          .map((c) => {
+            const m = tousMembres.find((x) => x.id === c.utilisateur_id);
+            return { nom: m?.nom || "Membre", motif: c.motif };
+          });
+        if (!q.ferie && !q.ferme && enConge.length === 0) return null;
+        return (
+          <div style={{ margin: "0 16px 10px", display: "flex",
+                        flexDirection: "column", gap: 6 }}>
+            {q.ferme && (
+              <div style={bandeauStyle("#FEF2F2", "#FECACA", C.rouge)}>
+                <b>Entreprise fermée</b>
+                {q.motif_fermeture ? ` — ${q.motif_fermeture}` : ""}
+              </div>
+            )}
+            {q.ferie && (
+              <div style={bandeauStyle("#FFFBEB", "#FDE68A", "#92400E")}>
+                <b>Jour férié</b> — {q.ferie}
+              </div>
+            )}
+            {enConge.length > 0 && (
+              <div style={bandeauStyle("#F5F3FF", "#DDD6FE", (C.violet || "#6D28D9"))}>
+                <b>{enConge.length} en congé</b> :{" "}
+                {enConge.map((e) => e.nom.split(" ")[0]).join(", ")}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {duJour.length === 0 && (
         <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>

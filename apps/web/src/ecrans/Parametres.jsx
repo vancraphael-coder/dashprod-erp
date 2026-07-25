@@ -18,6 +18,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation } from "../lib/adaptateur.js";
+import Fermetures from "./Fermetures.jsx";
 import { identiteComplete, tauxTva } from "@domaine/organisation/identite.js";
 import Identite from "./Identite.jsx";
 import {
@@ -47,6 +48,9 @@ export default function Parametres({
 
   if (ouvert === "identite" || ouvert === "facturation") {
     return <Identite page={ouvert} retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "fermetures") {
+    return <Fermetures retour={() => setOuvert(null)} />;
   }
 
   if (ouvert) {
@@ -102,6 +106,11 @@ export default function Parametres({
                   actif={estPersonnalise(cats, l.cle)}
                   onClick={() => setOuvert(l.cle)} />
         ))}
+
+        <Rubrique>Planning</Rubrique>
+        <Entree icone="🗓️" titre="Fermetures de l'entreprise"
+                resume="Congé annuel collectif, ponts. S'affichent sur le planning avec les jours fériés."
+                onClick={() => setOuvert("fermetures")} />
 
         <Rubrique>Documents</Rubrique>
         <Entree icone="📝" titre="Textes des dossiers"
