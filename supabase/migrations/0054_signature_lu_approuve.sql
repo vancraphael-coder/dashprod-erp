@@ -32,19 +32,20 @@ alter table public.acces_client
 
 -- Mention attendue. On la compare de façon tolérante (casse, accents, espaces),
 -- mais elle DOIT être présente : un simple clic ne suffit pas à engager.
-create or replace function public.mention_conforme(p_saisie text)
-returns boolean language sql immutable set search_path to 'public' as $$
-  select lower(regexp_replace(unaccent_simple(coalesce(p_saisie,'')), '\s+', ' ', 'g'))
-         like '%lu et approuve%';
-$$;
-
 -- unaccent n'est pas garanti installé : on fait un remplacement minimal, sans
--- dépendre d'une extension.
+-- dépendre d'une extension. DÉFINIE EN PREMIER car mention_conforme l'appelle
+-- (PostgreSQL résout les dépendances dans l'ordre du fichier).
 create or replace function public.unaccent_simple(p text)
 returns text language sql immutable set search_path to 'public' as $$
   select translate(coalesce(p,''),
     'àâäáãéèêëíìîïóòôöõúùûüçÀÂÄÁÃÉÈÊËÍÌÎÏÓÒÔÖÕÚÙÛÜÇ',
     'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC');
+$$;
+
+create or replace function public.mention_conforme(p_saisie text)
+returns boolean language sql immutable set search_path to 'public' as $$
+  select lower(regexp_replace(unaccent_simple(coalesce(p_saisie,'')), '\s+', ' ', 'g'))
+         like '%lu et approuve%';
 $$;
 
 revoke all on function public.mention_conforme(text) from public, anon, authenticated;
