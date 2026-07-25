@@ -2016,6 +2016,125 @@ export async function purgerDonneesExpirees(dryRun = true) {
   return data;
 }
 
+// =============================================================================
+// FACTURATION ÉLECTRONIQUE — Peppol via point d'accès Digiteal.
+//
+// Assemble une facture CANONIQUE depuis la facture réelle + l'organisation + le
+// client, la valide, et la transmet via l'adaptateur Digiteal. Sans clé
+// configurée, l'adaptateur s'arrête à PRETE et le dit — aucun statut inventé.
+// =============================================================================
+
+import { facture as factureCanonique, ligne as ligneCanonique }
+  from "@domaine/facturation/modele.js";
+import { clientDigiteal, identifiantsBelges }
+  from "@domaine/facturation/digiteal.js";
+
+/**
+ * Construit la facture canonique d'une facture en base.
+ * Le vendeur vient de l'organisation, l'acheteur des données de facturation du
+ * client. Peppol exige des identifiants et adresses complets des deux côtés.
+ */
+async function factureCanoniqueDepuisBase(factureId, affaireId) {
+  const [f, org, cli] = await Promise.all([
+    obtenirFacture(factureId),
+    obtenirOrganisation(),
+    obtenirClientFacturation(affaireId),
+  ]);
+  if (!f) throw new Error("Facture introuvable.");
+
+  const pf = org.parametres_facturation || {};
+  const idsVendeur = identifiantsBelges({ bce: org.bce, tva: org.tva });
+  const idsClient = identifiantsBelges({ tva: cli.tva_num });
+
+  const lignes = (f.facture_lignes || []).map((l) => ligneCanonique({
+    libelle: l.libelle,
+    quantite: l.quantite ?? 1,
+    unite: l.unite || "pièce",
+    prix_unitaire_centimes: l.prix_unitaire_centimes ?? l.montant_htva_centimes,
+    tva_pct: l.tva_pct,
+  }));
+
+  return factureCanonique({
+    numero: f.numero,
+    date_emission: f.date_emission,
+    echeance: f.echeance,
+    devise: f.devise || org.devise_defaut || "EUR",
+    tva_pct_defaut: pf.tva_pct ?? 21,
+    communication: f.communication,
+    type: f.type === "avoir" ? "avoir" : "facture",
+    vendeur: {
+      nom: org.nom_commercial || org.nom, tva: org.tva,
+      peppol_id: org.peppol_id || pf.peppol_id || idsVendeur[0] || null,
+      rue: org.adresse, cp: org.cp, ville: org.ville, pays: org.pays || "BE",
+      iban: org.iban,
+    },
+    acheteur: {
+      nom: cli.societe || cli.nom, tva: cli.tva_num,
+      peppol_id: idsClient[0] || null,
+      rue: cli.fact_lignes, cp: cli.fact_cp, ville: cli.fact_ville,
+      pays: cli.fact_pays || "BE",
+    },
+    lignes,
+  });
+}
+
+/** Client Digiteal configuré depuis les paramètres de l'organisation. */
+async function clientPeppol() {
+  const org = await obtenirOrganisation();
+  const pf = org.parametres_facturation || {};
+  return clientDigiteal({
+    identifiant: pf.digiteal_id || null,
+    secret: pf.digiteal_secret || null,
+    environnement: pf.digiteal_env || "test",
+  });
+}
+
+/** Le destinataire d'une facture est-il joignable sur Peppol ? */
+export async function peppolJoignable(factureId, affaireId) {
+  const fc = await factureCanoniqueDepuisBase(factureId, affaireId);
+  if (!fc.acheteur.peppol_id) {
+    return { ok: true, joignable: false,
+      message: "Le client n'a pas d'identifiant Peppol (numéro de TVA requis)." };
+  }
+  const c = await clientPeppol();
+  return c.estJoignable(fc.acheteur.peppol_id);
+}
+
+/**
+ * Transmet une facture par Peppol et journalise la transmission.
+ * Enregistre l'état réel renvoyé (PRETE si non configuré, SOUMISE si envoyé),
+ * jamais un statut fabriqué.
+ */
+export async function peppolTransmettre(factureId, affaireId) {
+  const fc = await factureCanoniqueDepuisBase(factureId, affaireId);
+  const c = await clientPeppol();
+  const r = await c.transmettre(fc);
+
+  if (modeDonnees() === "reel") {
+    const { data: org } = await supabase.from("organisations").select("id").single();
+    // On journalise la tentative, quel que soit son sort.
+    await supabase.from("transmissions").upsert({
+      org_id: org?.id, facture_id: factureId, canal: "PEPPOL",
+      etat: r.etat || "ECHEC",
+      reference_ext: r.reference_ext || null,
+      erreur: r.ok ? null : (r.message || null),
+      cle_idempotence: r.cle_idempotence || null,
+      charge_utile: r.charge_utile || null,
+    }, { onConflict: "facture_id,canal,cle_idempotence" }).select("id");
+  }
+  return r;
+}
+
+/** Journal des transmissions d'une facture. */
+export async function listerTransmissions(factureId) {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.from("transmissions")
+    .select("id, canal, etat, reference_ext, erreur, cree_le, updated_at")
+    .eq("facture_id", factureId).order("cree_le", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,

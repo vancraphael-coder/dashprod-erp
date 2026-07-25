@@ -14,6 +14,7 @@ import {
   obtenirClientFacturation,
 } from "../lib/adaptateur.js";
 import FactureDoc from "./FactureDoc.jsx";
+import FacturePeppol from "./FacturePeppol.jsx";
 import { composerTotal, etatPaiement } from "@domaine/facturation/facture.js";
 import { libelleTva } from "@domaine/organisation/identite.js";
 import { C, S, euros, Confirmation } from "../lib/theme.jsx";
@@ -176,6 +177,9 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
           🖨️ Imprimer / Enregistrer en PDF
         </button>
       </div>
+
+      <FacturePeppol factureId={facture.id} affaireId={affaireId}
+                     emise={!!facture.emise} />
 
       <div style={S.carte}>
         <Ligne l="Total TVAC" v={euros(facture.tvac_centimes)} gras />

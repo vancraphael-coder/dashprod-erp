@@ -112,6 +112,41 @@ export default function Identite({ retour, page = "identite" }) {
             Le taux saisi ici remplace le 21 % appliqué par défaut, partout :
             devis, PDF, factures. Un seul endroit décide.
           </div>
+
+          <div style={{ marginTop: 18, paddingTop: 16,
+                        borderTop: `1px solid ${C.bord}` }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: C.encre }}>
+              Facturation électronique (Peppol)
+            </div>
+            <div style={{ fontSize: 11.5, color: C.muet, marginTop: 4,
+                          marginBottom: 10, lineHeight: 1.5 }}>
+              Obligatoire en B2B belge depuis 2026. L'envoi passe par Digiteal,
+              point d'accès certifié. Contact commercial : sales@digiteal.eu.
+              Sans identifiants, les factures restent préparées mais non transmises.
+            </div>
+
+            <label style={S.label}>Identifiant Peppol de votre entreprise</label>
+            <input style={S.input} value={fact.peppol_id ?? ""}
+                   placeholder="0208:0478363616 (dérivé du numéro d'entreprise)"
+                   onChange={(e) => majFact("peppol_id", e.target.value)} />
+
+            <label style={S.label}>Identifiant Digiteal</label>
+            <input style={S.input} value={fact.digiteal_id ?? ""}
+                   placeholder="fourni par Digiteal"
+                   onChange={(e) => majFact("digiteal_id", e.target.value)} />
+
+            <label style={S.label}>Clé secrète Digiteal</label>
+            <input style={S.input} type="password" value={fact.digiteal_secret ?? ""}
+                   placeholder="fournie par Digiteal"
+                   onChange={(e) => majFact("digiteal_secret", e.target.value)} />
+
+            <label style={S.label}>Environnement</label>
+            <select style={S.input} value={fact.digiteal_env || "test"}
+                    onChange={(e) => majFact("digiteal_env", e.target.value)}>
+              <option value="test">Test (aucune facture réelle envoyée)</option>
+              <option value="production">Production</option>
+            </select>
+          </div>
         </div>
       ) : (
         <div style={S.carte}>
