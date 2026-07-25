@@ -13,6 +13,8 @@ import {
   obtenirOrganisation,
 } from "../lib/adaptateur.js";
 import { calculerScenario } from "@domaine/chiffrage/moteur.js";
+import { catalogueSupplements, supplementsRetenus, libelleLigne, UNITES_SUPPLEMENT }
+  from "@domaine/chiffrage/supplements.js";
 import { BAREME_HORAIRE, TARIFS } from "@domaine/chiffrage/bareme.js";
 import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
 import { C, S, ZONES_MARGE, euros } from "../lib/theme.jsx";
@@ -35,12 +37,17 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   const [sauve, setSauve] = useState(false);
   const [equipe, setEquipe] = useState([]);     // membres pressentis {id, nom, taux}
   const [ref, setRef] = useState(null);          // barème + tarifs configurés
+  const [catalogue, setCatalogue] = useState([]);  // suppléments définis (Barème)
+  const [selSup, setSelSup] = useState({});         // { cle: quantité } cochés
 
   useEffect(() => {
     obtenirOrganisation().then(setOrg).catch(() => {});
     obtenirAffaire(affaireId).then((a) => {
       setAffaire(a);
-      if (a?.faits) setFaits((f) => ({ ...f, ...a.faits }));
+      if (a?.faits) {
+        setFaits((f) => ({ ...f, ...a.faits }));
+        if (a.faits.selSupplements) setSelSup(a.faits.selSupplements);
+      }
       if (a?.couts) setCouts((c) => ({ ...c, ...a.couts }));
     });
     // Coût MO auto : équipe pressentie du dossier × leur taux horaire.
@@ -60,6 +67,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
       const tarifs = {};
       Object.entries(p.tarifs || {}).forEach(([k, v]) => { tarifs[k] = Number(v); });
       setRef({ bareme, tarifs });
+      setCatalogue(catalogueSupplements(p.supplements || []));
     }).catch(() => {});
   }, [affaireId]);
 
@@ -76,14 +84,20 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
     () => ({ ...couts, mainOeuvreEuros: coutMoAuto }),
     [couts, coutMoAuto]);
 
+  // Suppléments retenus (cochés avec quantité) → additionnés par le moteur.
+  const supRetenus = useMemo(
+    () => supplementsRetenus(catalogue, selSup), [catalogue, selSup]);
+
   // Le moteur — recalcul à chaque frappe. L'écran n'additionne rien lui-même.
   const scenario = useMemo(() => {
     try {
       const tvaPct = tauxTva(org || {});
-      return calculerScenario(faits, coutsEffectifs, { ...(ref || {}), tvaPct });
+      return calculerScenario(
+        { ...faits, supplements: supRetenus },
+        coutsEffectifs, { ...(ref || {}), tvaPct });
     }
     catch { return null; }
-  }, [faits, coutsEffectifs, ref]);
+  }, [faits, supRetenus, coutsEffectifs, ref]);
 
   function maj(champ, valeur) { setFaits((f) => ({ ...f, [champ]: valeur })); setSauve(false); }
   function majCout(champ, valeur) { setCouts((c) => ({ ...c, [champ]: valeur })); setSauve(false); }
@@ -92,7 +106,8 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   async function enregistrer() {
     if (!scenario) return; // pas de chiffrage abouti → rien à enregistrer
     await enregistrerChiffrage(affaireId, {
-      faits, couts: coutsEffectifs,
+      faits: { ...faits, selSupplements: selSup, supplements: supRetenus },
+      couts: coutsEffectifs,
       resultat: { tvac_centimes: scenario.tvac_centimes, marge_pct: scenario.marge_pct },
     });
     // Recharge l'affaire : le montant enregistré est désormais la source de
@@ -189,6 +204,45 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
                      onChange={(e) => maj("elevateur", e.target.checked)} />
               Élévateur ({TARIFS.elevateur} € — max 7ᵉ étage)
             </label>
+
+            {/* Suppléments variables définis dans le barème. Cocher applique,
+                la quantité multiplie. Le moteur les additionne. */}
+            {catalogue.filter((sp) => sp.actif).length > 0 && (
+              <div style={{ marginTop: 6 }}>
+                <label style={S.label}>Suppléments</label>
+                {catalogue.filter((sp) => sp.actif).map((sp) => {
+                  const coche = (selSup[sp.cle] || 0) > 0;
+                  const unite = UNITES_SUPPLEMENT.find((u) => u.cle === sp.unite);
+                  const pluralisable = unite?.pluralisable;
+                  return (
+                    <div key={sp.cle} style={{ display: "flex", alignItems: "center",
+                           gap: 8, padding: "6px 0" }}>
+                      <input type="checkbox" checked={coche}
+                        onChange={(e) => {
+                          setSelSup((s) => ({ ...s, [sp.cle]: e.target.checked ? 1 : 0 }));
+                          setSauve(false);
+                        }} />
+                      <span style={{ flex: 1, fontSize: 13, color: C.encre }}>
+                        {sp.libelle || "(sans nom)"}
+                        <span style={{ color: C.fantome, marginLeft: 6 }}>
+                          {(sp.montant_centimes / 100).toFixed(0)} €
+                          {unite && unite.cle !== "forfait" ? ` ${unite.nom}` : ""}
+                        </span>
+                      </span>
+                      {coche && pluralisable && (
+                        <input type="number" min="1" step="1"
+                          style={{ ...S.input, width: 64, padding: "6px 8px" }}
+                          value={selSup[sp.cle] || 1}
+                          onChange={(e) => {
+                            setSelSup((s) => ({ ...s, [sp.cle]: num(e.target.value) }));
+                            setSauve(false);
+                          }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {faits.formule === "emballage" && (
               <div style={{ display: "flex", gap: 10 }}>

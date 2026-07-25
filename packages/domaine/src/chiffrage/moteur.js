@@ -50,6 +50,14 @@ function recetteHtvaCentimes(f, bareme = BAREME_HORAIRE, tarifs = TARIFS, tvaPct
   }
   let c = versCentimes((f.heures || 0) * taux);
   if (f.elevateur) c += versCentimes(tarifs.elevateur);
+  // Suppléments variables : chaque société définit les siens (piano, cave
+  // difficile, étage sans ascenseur…). Ils s'ajoutent au chiffrage, chacun
+  // avec sa quantité. Un montant absent vaut zéro, jamais NaN.
+  for (const sup of f.supplements || []) {
+    const montant = Number(sup?.montant_centimes) || 0;
+    const qte = Number(sup?.quantite);
+    c += montant * (Number.isFinite(qte) && qte > 0 ? qte : 1);
+  }
   c += versCentimes((f.km || 0) * tarifs.km_facture * Math.max(1, f.nbCamions || 1));
   if (f.formule === "emballage") {
     c += versCentimes((f.heuresEmballage || 0) * tarifs.emballage_horaire);

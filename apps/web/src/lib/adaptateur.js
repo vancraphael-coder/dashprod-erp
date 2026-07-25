@@ -844,6 +844,11 @@ export async function composerOffre(affaireId) {
     nb_demenageurs: faits.nbDemenageurs || null,
     heures: faits.heures || null,
     elevateur: !!faits.elevateur,
+    // Suppléments retenus au devis : listés sur l'offre pour la transparence.
+    supplements: (faits.supplements || []).map((s) => ({
+      libelle: s.libelle, quantite: s.quantite,
+      unite: s.unite, total_centimes: s.total_centimes,
+    })),
     htva_centimes: htva,
     tva_centimes: tvac - htva,
     tvac_centimes: tvac,

@@ -7,6 +7,8 @@
 
 import React, { useEffect, useState } from "react";
 import { obtenirParametresPrix, sauverParametresPrix } from "../lib/adaptateur.js";
+import { catalogueSupplements, ajouterSupplement, retirerSupplement, UNITES_SUPPLEMENT }
+  from "@domaine/chiffrage/supplements.js";
 import { C, S } from "../lib/theme.jsx";
 
 export default function Bareme({ retour }) {
@@ -29,6 +31,22 @@ export default function Bareme({ retour }) {
     setErreur(null);
     try { await sauverParametresPrix(params); setSauve(true); }
     catch (e) { setErreur(e.message); }
+  }
+
+  const supplements = catalogueSupplements(params?.supplements || []);
+  function majSup(cle, champ, valeur) {
+    setParams((p) => ({ ...p, supplements:
+      catalogueSupplements(p.supplements).map((s) =>
+        s.cle === cle ? { ...s, [champ]: valeur } : s) }));
+    setSauve(false);
+  }
+  function ajouter() {
+    setParams((p) => ({ ...p, supplements: ajouterSupplement(p.supplements || []) }));
+    setSauve(false);
+  }
+  function retirer(cle) {
+    setParams((p) => ({ ...p, supplements: retirerSupplement(p.supplements, cle) }));
+    setSauve(false);
   }
 
   if (!params) return null;
@@ -84,6 +102,38 @@ export default function Bareme({ retour }) {
                value={t.heure_sup_forfait} onChange={(v) => majTarif("heure_sup_forfait", v)} />
         <Champ label="Assurance" suffixe="€"
                value={t.assurance_htva} onChange={(v) => majTarif("assurance_htva", v)} />
+      </Section>
+
+      <Section titre="Suppléments">
+        <div style={{ fontSize: 11.5, color: C.fantome, marginBottom: 10,
+                      lineHeight: 1.5, padding: "0 2px" }}>
+          Vos suppléments récurrents (piano, cave difficile, étage sans
+          ascenseur…). Ils apparaîtront sur le devis, à cocher selon le dossier.
+        </div>
+        {supplements.map((sp) => (
+          <div key={sp.cle} style={{ display: "flex", gap: 6, alignItems: "center",
+                 marginBottom: 8 }}>
+            <input style={{ ...S.input, flex: 1, margin: 0 }} value={sp.libelle}
+                   placeholder="Nom du supplément"
+                   onChange={(e) => majSup(sp.cle, "libelle", e.target.value)} />
+            <input style={{ ...S.input, width: 74, margin: 0 }} type="number" min="0"
+                   value={sp.montant_centimes / 100}
+                   onChange={(e) => majSup(sp.cle, "montant_centimes",
+                     Math.round(Number(e.target.value) * 100))} />
+            <select style={{ ...S.input, width: 96, margin: 0 }} value={sp.unite}
+                    onChange={(e) => majSup(sp.cle, "unite", e.target.value)}>
+              {UNITES_SUPPLEMENT.map((u) => (
+                <option key={u.cle} value={u.cle}>{u.nom}</option>
+              ))}
+            </select>
+            <button onClick={() => retirer(sp.cle)} style={{ border: "none",
+              background: "none", color: C.rouge, cursor: "pointer", fontSize: 18,
+              padding: "0 4px" }}>×</button>
+          </div>
+        ))}
+        <button onClick={ajouter} style={{ ...S.boutonLien, paddingLeft: 0 }}>
+          + Ajouter un supplément
+        </button>
       </Section>
 
       {erreur && <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
