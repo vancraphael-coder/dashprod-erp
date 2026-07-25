@@ -19,7 +19,7 @@ const POINTS = [
   { t: "Vos données, isolées", d: "Chaque entreprise sur sa base, cloisonnée. Vos clients ne sortent pas de chez vous." },
 ];
 
-export default function Landing({ onConnexion, onPortail }) {
+export default function Landing({ onConnexion, onClient }) {
   return (
     <div style={{ minHeight: "100vh", background: C.fond || "#F6F8FB",
                   color: C.encre, display: "flex", flexDirection: "column" }}>
@@ -86,10 +86,10 @@ export default function Landing({ onConnexion, onPortail }) {
           <div style={{ fontSize: 13.5, color: C.muet, marginTop: 6,
                         lineHeight: 1.55, maxWidth: "52ch" }}>
             Votre dossier, l'inventaire numéroté de vos meubles, les offres
-            reçues et vos factures. Entrez le code que votre déménageur vous a
-            transmis.
+            reçues et vos factures — réunis dans un espace à vous. Connectez-vous
+            avec Google, le même compte que celui de votre déménageur.
           </div>
-          <button onClick={onPortail} style={{
+          <button onClick={onClient} style={{
             marginTop: 14, padding: "12px 20px", borderRadius: 12, border: "none",
             background: C.encre, color: "#fff", fontSize: 14.5, fontWeight: 700,
             cursor: "pointer" }}>

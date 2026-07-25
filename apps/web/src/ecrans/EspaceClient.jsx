@@ -1,21 +1,22 @@
 // =============================================================================
-// Écran — Portail client « Gestion de votre déménagement ».
+// Écran — Espace client (accès OAuth).
 //
-// Vue publique, sans compte. L'accès se fait par un code à 12 caractères.
-// Le code n'est PAS conservé après la session : il vit en mémoire le temps de
-// la visite. Un client sur un poste partagé ne laisse rien derrière lui.
+// Le client se connecte avec Google, comme le déménageur. Ce qui l'amène ici
+// plutôt que dans l'application métier : son e-mail figure sur un dossier
+// client. Il n'y a pas de code à saisir — le code 12 caractères sert à signer
+// une offre, pas à ouvrir cet espace.
 //
-// Tout ce qui s'affiche ici vient de fonctions cmd_portail_* qui filtrent en
-// base sur le dossier lié au code. L'écran ne décide de rien : s'il demandait
-// plus que son droit, la base refuserait.
+// Cinq pages : dossier, meubles, offres reçues (multi-entreprises), factures,
+// annuaire réseau. Tout vient de fonctions cmd_client_* qui filtrent en base
+// sur l'e-mail authentifié : l'écran ne choisit pas son périmètre.
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  portailOuvrir, portailDossier, portailOffres, portailFactures,
-  portailInventaire, reseauDemenageurs,
+  clientDossiers, clientInventaire, clientOffres, clientFactures,
+  reseauDemenageurs,
 } from "../lib/adaptateur.js";
-import { formater, formeValide, essaisRestants } from "@domaine/portail/acces.js";
+import { deconnecter } from "../lib/supabase.js";
 import { manifeste, manifestePret, packingListCsv }
   from "@domaine/releve/inventaire-export.js";
 import { C, S } from "../lib/theme.jsx";
@@ -38,83 +39,8 @@ const ONGLETS = [
   ["reseau", "Déménageurs"],
 ];
 
-export default function Portail({ retour }) {
-  const [code, setCode] = useState("");
-  const [session, setSession] = useState(null);
-  const [erreur, setErreur] = useState(null);
-  const [enCours, setEnCours] = useState(false);
+export default function EspaceClient({ client }) {
   const [onglet, setOnglet] = useState("dossier");
-
-  const pret = formeValide(code);
-
-  async function ouvrir() {
-    setErreur(null); setEnCours(true);
-    try {
-      const r = await portailOuvrir(code);
-      if (!r?.ouvert) {
-        setErreur(r?.message || "Code invalide, expiré ou bloqué.");
-      } else {
-        setSession(r);
-      }
-    } catch (e) {
-      setErreur(e.message || "Connexion impossible.");
-    } finally { setEnCours(false); }
-  }
-
-  if (!session) {
-    return (
-      <div style={{ ...S.page, paddingBottom: 60 }}>
-        <div style={{ padding: "34px 20px 8px", maxWidth: 520, margin: "0 auto" }}>
-          {retour && (
-            <button style={S.boutonLien} onClick={retour}>← Retour</button>
-          )}
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.bleu, marginTop: 8 }}>
-            Gestion de votre déménagement
-          </div>
-          <h1 style={{ fontSize: 25, fontWeight: 800, margin: "6px 0 8px",
-                       letterSpacing: "-.02em", lineHeight: 1.18 }}>
-            Suivez votre déménagement en un seul endroit.
-          </h1>
-          <p style={{ fontSize: 14.5, color: C.muet, lineHeight: 1.55, margin: 0 }}>
-            Votre dossier, l'inventaire de vos meubles, les offres reçues et vos
-            factures. Entrez le code que votre déménageur vous a transmis.
-          </p>
-        </div>
-
-        <div style={S.carte}>
-          <label style={{ ...S.label, marginTop: 0 }}>Votre code d'accès</label>
-          <input
-            style={{ ...S.input, fontSize: 20, letterSpacing: ".12em",
-                     textAlign: "center", fontFamily: "ui-monospace, monospace",
-                     textTransform: "uppercase" }}
-            value={code} autoFocus placeholder="ABCD-EFGH-JKMN"
-            maxLength={16}
-            onChange={(e) => { setCode(formater(e.target.value)); setErreur(null); }}
-            onKeyDown={(e) => e.key === "Enter" && pret && ouvrir()} />
-
-          {erreur && (
-            <div style={{ fontSize: 12.5, color: C.rouge, background: "#FEF2F2",
-                          border: "1px solid #FECACA", borderRadius: 10,
-                          padding: "10px 12px", marginTop: 10, lineHeight: 1.5 }}>
-              {erreur}
-            </div>
-          )}
-
-          <button style={{ ...S.boutonPlein, marginTop: 12, opacity: pret ? 1 : .5 }}
-                  disabled={!pret || enCours} onClick={ouvrir}>
-            {enCours ? "Vérification…" : "Connexion"}
-          </button>
-
-          <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 10,
-                        lineHeight: 1.5 }}>
-            Le code figure sur l'email ou le SMS de votre déménageur. Après
-            plusieurs essais infructueux, l'accès se bloque par sécurité —
-            votre déménageur peut le réactiver.
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={S.page}>
@@ -122,9 +48,11 @@ export default function Portail({ retour }) {
         <div style={{ fontSize: 11.5, fontWeight: 700, color: C.bleu }}>
           Gestion de votre déménagement
         </div>
-        <div style={S.titre}>{session.client || "Votre dossier"}</div>
+        <div style={S.titre}>{client?.nom || "Votre espace"}</div>
         <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
-          Dossier {session.reference || "—"}
+          {client?.dossiers > 1
+            ? `${client.dossiers} dossiers`
+            : "Votre déménagement"}
         </div>
       </div>
 
@@ -140,14 +68,14 @@ export default function Portail({ retour }) {
         ))}
       </div>
 
-      {onglet === "dossier"    && <Dossier code={code} />}
-      {onglet === "inventaire" && <Inventaire code={code} />}
-      {onglet === "offres"     && <Offres code={code} />}
-      {onglet === "factures"   && <Factures code={code} />}
+      {onglet === "dossier"    && <Dossiers />}
+      {onglet === "inventaire" && <Inventaire />}
+      {onglet === "offres"     && <Offres />}
+      {onglet === "factures"   && <Factures />}
       {onglet === "reseau"     && <Reseau />}
 
       <div style={{ margin: "18px 16px 30px", textAlign: "center" }}>
-        <button onClick={() => { setSession(null); setCode(""); }}
+        <button onClick={async () => { await deconnecter(); window.location.reload(); }}
                 style={{ background: "none", border: "none", color: C.muet,
                          fontSize: 12.5, cursor: "pointer", padding: 10 }}>
           Se déconnecter
@@ -159,16 +87,16 @@ export default function Portail({ retour }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function useCharge(fn, code) {
+function useCharge(fn) {
   const [etat, setEtat] = useState({ chargement: true, donnees: null, erreur: null });
   useEffect(() => {
     let vivant = true;
-    fn(code)
+    fn()
       .then((d) => vivant && setEtat({ chargement: false, donnees: d, erreur: null }))
       .catch((e) => vivant && setEtat({ chargement: false, donnees: null,
                                         erreur: e.message }));
     return () => { vivant = false; };
-  }, [code]);
+  }, []);
   return etat;
 }
 
@@ -189,29 +117,26 @@ function Etat({ chargement, erreur, vide, children }) {
   return children;
 }
 
-function Dossier({ code }) {
-  const { chargement, donnees: d, erreur } = useCharge(portailDossier, code);
+function Dossiers() {
+  const { chargement, donnees, erreur } = useCharge(clientDossiers);
+  const dossiers = donnees || [];
   return (
-    <Etat chargement={chargement} erreur={erreur} vide={!d?.reference && "Dossier introuvable."}>
+    <Etat chargement={chargement} erreur={erreur}
+          vide={dossiers.length === 0 && "Aucun dossier pour le moment."}>
       <>
-        <div style={S.carte}>
-          <label style={{ ...S.label, marginTop: 0 }}>Votre déménagement</label>
-          <L l="Référence" v={d?.reference} />
-          <L l="Date souhaitée" v={jour(d?.date_souhaitee)} />
-          <L l="Visite technique" v={jour(d?.date_visite)} />
-        </div>
+        {dossiers.map((d) => (
+          <div key={d.affaire_id} style={S.carte}>
+            <div style={{ display: "flex", justifyContent: "space-between",
+                          alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
+                {d.entreprise?.nom || "Déménageur"}
+              </span>
+              <span style={{ fontSize: 11.5, color: C.fantome }}>{d.reference}</span>
+            </div>
+            <L l="Date souhaitée" v={jour(d.date_souhaitee)} />
+            <L l="Visite technique" v={jour(d.date_visite)} />
 
-        <div style={S.carte}>
-          <label style={{ ...S.label, marginTop: 0 }}>Vos coordonnées</label>
-          <L l="Nom" v={d?.client?.nom} />
-          <L l="Email" v={d?.client?.email} />
-          <L l="Téléphone" v={d?.client?.tel} />
-        </div>
-
-        {(d?.adresses || []).length > 0 && (
-          <div style={S.carte}>
-            <label style={{ ...S.label, marginTop: 0 }}>Adresses</label>
-            {d.adresses.map((a, i) => (
+            {(d.adresses || []).map((a, i) => (
               <div key={i} style={{ padding: "9px 0",
                                     borderTop: `1px solid ${C.doux}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.bleu,
@@ -227,27 +152,23 @@ function Dossier({ code }) {
                 </div>
               </div>
             ))}
-          </div>
-        )}
 
-        <div style={S.carte}>
-          <label style={{ ...S.label, marginTop: 0 }}>Votre déménageur</label>
-          <L l="Entreprise" v={d?.entreprise?.nom} />
-          <L l="Téléphone" v={d?.entreprise?.tel} />
-          <L l="Email" v={d?.entreprise?.email} />
-        </div>
+            {d.entreprise?.tel && (
+              <div style={{ fontSize: 12, color: C.muet, marginTop: 8 }}>
+                Contact : {d.entreprise.tel}
+              </div>
+            )}
+          </div>
+        ))}
       </>
     </Etat>
   );
 }
 
-function Inventaire({ code }) {
-  const { chargement, donnees, erreur } = useCharge(portailInventaire, code);
+function Inventaire() {
+  const { chargement, donnees, erreur } = useCharge(clientInventaire);
   const lignes = donnees || [];
 
-  // Le relevé devient un manifeste : un colis par ligne relevée, ce qui donne
-  // une numérotation exploitable en export. Les dimensions et poids se
-  // complètent lors de l'emballage — d'où les avertissements affichés.
   const m = useMemo(() => manifeste(
     lignes.map((r) => ({
       type: "carton", piece: r.piece, volume_m3: r.volume_m3,
@@ -330,8 +251,7 @@ function Inventaire({ code }) {
                         color: "#92400E", lineHeight: 1.5 }}>
             <b>Pour un envoi maritime ou aérien</b>, poids et dimensions de
             chaque colis restent à compléter par votre déménageur, ainsi que la
-            valeur déclarée de chaque objet — c'est la base de l'assurance et de
-            la déclaration douanière.
+            valeur déclarée — base de l'assurance et de la déclaration douanière.
           </div>
         )}
 
@@ -345,8 +265,8 @@ function Inventaire({ code }) {
   );
 }
 
-function Offres({ code }) {
-  const { chargement, donnees, erreur } = useCharge(portailOffres, code);
+function Offres() {
+  const { chargement, donnees, erreur } = useCharge(clientOffres);
   const offres = donnees || [];
   return (
     <Etat chargement={chargement} erreur={erreur}
@@ -399,8 +319,8 @@ function Offres({ code }) {
   );
 }
 
-function Factures({ code }) {
-  const { chargement, donnees, erreur } = useCharge(portailFactures, code);
+function Factures() {
+  const { chargement, donnees, erreur } = useCharge(clientFactures);
   const f = donnees || [];
   return (
     <Etat chargement={chargement} erreur={erreur}
@@ -443,24 +363,18 @@ function Factures({ code }) {
 }
 
 function Reseau() {
-  const [etat, setEtat] = useState({ chargement: true, donnees: [], erreur: null });
-  useEffect(() => {
-    reseauDemenageurs()
-      .then((d) => setEtat({ chargement: false, donnees: d || [], erreur: null }))
-      .catch((e) => setEtat({ chargement: false, donnees: [], erreur: e.message }));
-  }, []);
-
+  const { chargement, donnees, erreur } = useCharge(reseauDemenageurs);
+  const liste = donnees || [];
   return (
-    <Etat chargement={etat.chargement} erreur={etat.erreur}
-          vide={etat.donnees.length === 0
-            && "Aucun déménageur ne figure encore dans l'annuaire."}>
+    <Etat chargement={chargement} erreur={erreur}
+          vide={liste.length === 0 && "Aucun déménageur ne figure encore dans l'annuaire."}>
       <>
         <div style={{ margin: "0 16px 10px", fontSize: 11.5, color: C.muet,
                       lineHeight: 1.5 }}>
           Les entreprises qui utilisent Dashprod et ont accepté de figurer dans
           cet annuaire. Demandez-leur une offre pour comparer.
         </div>
-        {etat.donnees.map((o, i) => (
+        {liste.map((o, i) => (
           <div key={i} style={S.carte}>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: C.encre }}>
               {o.nom}

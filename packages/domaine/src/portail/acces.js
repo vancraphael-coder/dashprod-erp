@@ -1,12 +1,15 @@
 // =============================================================================
-// Accès client au portail — sans compte, par code unique.
+// Code de SIGNATURE d'offre — usage unique, ciblé sur une affaire.
+//
+// ⚠️ Ce code n'ouvre PLUS un espace client (l'espace passe par OAuth). Il sert
+// à signer UNE offre depuis un lien envoyé par le déménageur. Le générateur et
+// la validation de forme restent utiles ; le modèle de menace ci-dessous vaut
+// pour tout code court exposé en clair.
 //
 // MODÈLE DE MENACE, à garder en tête avant de toucher à ce fichier.
 //
-// Le client n'a pas de compte. Il entre un code sur une page publique. Ce code
-// est donc la SEULE chose qui protège son dossier : nom, adresses, inventaire
-// de ses biens, valeur déclarée. Un code trop court ou sans limite d'essais
-// s'énumère en quelques heures.
+// Le code protège un acte opposable : la signature d'une offre. Un code trop
+// court ou sans limite d'essais s'énumère en quelques heures.
 //
 // Trois défenses, et il faut les trois :
 //   1. Entropie — 12 caractères sur un alphabet de 32 ≈ 1,15 × 10^18

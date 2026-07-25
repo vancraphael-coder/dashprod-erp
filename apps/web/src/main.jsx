@@ -27,8 +27,9 @@ import Parametres from "./ecrans/Parametres.jsx";
 import Profil from "./ecrans/Profil.jsx";
 import Landing from "./ecrans/Landing.jsx";
 import Bienvenue from "./ecrans/Bienvenue.jsx";
-import Portail from "./ecrans/Portail.jsx";
-import { obtenirOrganisation } from "./lib/adaptateur.js";
+import EspaceClient from "./ecrans/EspaceClient.jsx";
+import SignatureOffre from "./ecrans/SignatureOffre.jsx";
+import { clientMoi, obtenirOrganisation } from "./lib/adaptateur.js";
 import { identiteComplete } from "@domaine/organisation/identite.js";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
@@ -288,10 +289,16 @@ function App() {
     try { return sessionStorage.getItem("dashprod-entrer") === "1"; } catch { return false; }
   });
   const [accueilVu, setAccueilVu] = useState(false);
-  // Portail client : vue publique, sans compte. Elle vit avant la connexion.
-  const [portail, setPortail] = useState(
-    () => { try { return new URLSearchParams(location.search).has("suivi"); }
-            catch { return false; } });
+  // Trois portes distinctes.
+  //   signer   → signature d'une offre par code (avant connexion, ?signer=CODE)
+  //   client   → espace client, après connexion Google, si l'e-mail est client
+  //   (défaut) → application déménageur
+  const [signer, setSigner] = useState(
+    () => { try {
+      const p = new URLSearchParams(location.search);
+      return p.has("signer") ? (p.get("signer") || "") : null;
+    } catch { return null; } });
+  const [client, setClient] = useState(null);
   const [profil, setProfil] = useState(null);
   const [nonInvite, setNonInvite] = useState(null);
   const [charge, setCharge] = useState(false);
@@ -305,13 +312,23 @@ function App() {
         try {
           await reclamerInvitation();
           const p = await monProfil();
-          if (!p) setNonInvite(s.user?.email || "cet email");
-          else {
+          if (p) {
+            // Déménageur : il a une organisation.
             setProfil(p);
             setOrg(await obtenirOrganisation().catch(() => ({})));
+          } else {
+            // Pas de profil déménageur. Est-ce un client ? On le décide en
+            // base, sur l'e-mail authentifié — jamais dans l'interface.
+            const c = await clientMoi().catch(() => null);
+            if (c?.est_client) setClient(c);
+            else setNonInvite(s.user?.email || "cet email");
           }
         } catch (e) {
-          setNonInvite(s.user?.email || "cet email");
+          // Même en cas d'erreur profil, tenter la résolution client avant de
+          // proposer la création de société (parcours payant à 360 €/mois).
+          const c = await clientMoi().catch(() => null);
+          if (c?.est_client) setClient(c);
+          else setNonInvite(s.user?.email || "cet email");
         }
       }
       setCharge(true);
@@ -319,18 +336,31 @@ function App() {
   }, []);
 
   if (!charge) return null;
+  // Signature d'offre : accessible sans compte, c'est un lien ciblé.
+  if (signer !== null) {
+    return <SignatureOffre codeInitial={signer} retour={() => setSigner(null)} />;
+  }
   if (configPresente && !session) {
-    if (portail) return <Portail retour={() => setPortail(false)} />;
     if (!veutEntrer) {
       return <Landing
         onConnexion={() => {
           try { sessionStorage.setItem("dashprod-entrer", "1"); } catch {}
           setVeutEntrer(true);
         }}
-        onPortail={() => setPortail(true)} />;
+        onClient={() => {
+          // « Accéder à mon déménagement » = connexion Google, comme le
+          // déménageur. Le routage post-connexion l'enverra vers l'espace
+          // client si son e-mail est reconnu.
+          try { sessionStorage.setItem("dashprod-entrer", "1"); } catch {}
+          setVeutEntrer(true);
+        }} />;
     }
     return <Connexion onConnecte={() => window.location.reload()} />;
   }
+
+  // Espace client : e-mail authentifié reconnu comme client. Priorité sur toute
+  // proposition de création de société.
+  if (configPresente && client) return <EspaceClient client={client} />;
   if (configPresente && nonInvite) {
     // Aucune organisation pour ce compte : ce n'est pas une impasse, c'est
     // l'entrée. Le déménageur crée sa société et démarre sur une base vierge.

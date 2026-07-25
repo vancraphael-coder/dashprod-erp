@@ -1909,41 +1909,56 @@ export async function definirCreationComplete(utilisateurId, actif) {
 // =============================================================================
 
 // =============================================================================
-// PORTAIL CLIENT — appels par code, sans compte.
-//
-// Ces fonctions passent par des RPC ouvertes au rôle `anon`. Chacune reçoit le
-// code et la base filtre sur le dossier qui lui est lié : l'application ne
-// décide d'aucun périmètre, elle demande et la base accorde ou refuse.
+// ESPACE CLIENT (OAuth) — le client se connecte avec Google, comme le
+// déménageur. Ce qui le distingue : son e-mail figure sur un dossier client.
+// Aucune de ces fonctions ne prend de paramètre de périmètre — la base filtre
+// sur l'e-mail authentifié, non falsifiable côté client.
 // =============================================================================
 
-async function rpcPortail(nom, code) {
-  const { data, error } = await supabase.rpc(nom, { p_code: code });
+async function rpcClient(nom) {
+  const { data, error } = await supabase.rpc(nom);
   if (error) throw new Error(error.message || "Accès refusé.");
   return data;
 }
 
-export const portailOuvrir     = (code) => rpcPortail("cmd_portail_ouvrir", code);
-export const portailDossier    = (code) => rpcPortail("cmd_portail_dossier", code);
-export const portailOffres     = (code) => rpcPortail("cmd_portail_offres", code);
-export const portailFactures   = (code) => rpcPortail("cmd_portail_factures", code);
-export const portailInventaire = (code) => rpcPortail("cmd_portail_inventaire", code);
+/** Suis-je un client ? Sert à router : client vs déménageur vs prospect. */
+export const clientMoi        = () => rpcClient("cmd_client_moi");
+export const clientDossiers   = () => rpcClient("cmd_client_dossiers");
+export const clientProfil     = () => rpcClient("cmd_client_profil");
+export const clientInventaire = () => rpcClient("cmd_client_inventaire");
+export const clientOffres     = () => rpcClient("cmd_client_offres");
+export const clientFactures   = () => rpcClient("cmd_client_factures");
 
-/** Annuaire public : aucun code requis, seules les entreprises opt-in sortent. */
+/** Annuaire public : aucun compte requis, seules les entreprises opt-in sortent. */
 export async function reseauDemenageurs() {
   const { data, error } = await supabase.rpc("cmd_reseau_demenageurs");
   if (error) throw new Error(error.message);
   return data || [];
 }
 
-/** Crée un code d'accès pour un dossier (côté déménageur). */
-export async function creerAccesClient(affaireId, code, jours = 90) {
-  const { data, error } = await supabase.rpc("cmd_creer_acces_client", {
+// ── Signature d'offre par code (le lien envoyé au client) ──────────────────
+export async function offreApercu(code) {
+  const { data, error } = await supabase.rpc("cmd_offre_apercu", { p_code: code });
+  if (error) throw new Error(error.message);
+  return data;
+}
+export async function offreSigner(code, nom) {
+  const { data, error } = await supabase.rpc("cmd_offre_signer",
+    { p_code: code, p_nom: nom || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Crée un lien de signature pour un dossier (côté déménageur). */
+export async function creerLienSignature(affaireId, code, jours = 30) {
+  const { data, error } = await supabase.rpc("cmd_creer_lien_signature", {
     p_affaire: affaireId, p_code: code, p_jours: jours,
   });
   if (error) throw error;
   return data;
 }
 
+// =============================================================================
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,
