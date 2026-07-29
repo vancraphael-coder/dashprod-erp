@@ -430,7 +430,11 @@ function App() {
     else fn();
   }
 
-  const nav = {
+  // Toute navigation passe par la garde — y compris les flèches « retour »
+  // des sous-pages. Auparavant seule la barre d'onglets était protégée : on
+  // pouvait donc perdre un relevé en cours en revenant au dossier. Envelopper
+  // l'objet ENTIER évite d'avoir à y penser à chaque nouvel écran.
+  const navBrute = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
     nouvelle: async () => { const id = await creerDossierVide(); setRoute({ ecran: "dossier", affaireId: id }); },
     dossier: (id) => setRoute({ ecran: "dossier", affaireId: id }),
@@ -450,6 +454,10 @@ function App() {
     textes: () => setRoute({ ecran: "textes", affaireId: null }),
     parametres: () => setRoute({ ecran: "parametres", affaireId: null }),
   };
+  // Chaque entrée de nav est gardée, sans exception possible par oubli.
+  const nav = Object.fromEntries(
+    Object.entries(navBrute).map(([cle, fn]) =>
+      [cle, (...args) => naviguerAvecGarde(() => fn(...args))]));
   const retourDossier = () => nav.dossier(route.affaireId);
 
   const RACINES = ["liste", "planning", "equipe", "compte"];
