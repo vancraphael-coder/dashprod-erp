@@ -211,8 +211,11 @@ Colonne `organisations.peppol_id` (0049) ET clé
 tolère les deux (`org.peppol_id || pf.peppol_id`), mais l'écriture ne remplit
 que le JSON : la colonne dédiée restera vide pour toujours. **Réglé (0058)** : les deux sources étaient vides en production. Source unique retenue = `parametres_facturation.peppol_id` (ce que l'écran écrit) ; la colonne `organisations.peppol_id` est retirée et l'adaptateur ne lit plus qu'elle.
 
-### INC-08 · P2 · Code mort dans l'adaptateur
-Orphelins confirmés : `signerOffre` (ancien pad bureau — sa RPC
+### INC-08 · P2 · partiellement traité · Code mort dans l'adaptateur
+✅ Retirés le 2026-07-28 avec le double minuteur : `chronoDemarrer`,
+`chronoArreter`, `chronoPause` (remplacés par le pointage déclaré ; les RPC
+`cmd_chrono_*` restent en base, sans appelant).
+Orphelins restants : `signerOffre` (ancien pad bureau — sa RPC
 `cmd_signer_instance` n'est plus appelée par personne), `listerClients`,
 `creerAffaire` (vs `creerDossierVide`), `creerMission`, `creerDossierTerrain`,
 `supprimerVehicule`, constantes `CAPACITES`, `FICHIER`. **Action** : supprimer
@@ -255,6 +258,16 @@ booléen retourné par `transition_interne` (qui est tolérante) au lieu de
 supposer le succès. Le `exception when others` aveugle est supprimé.
 Leçon : un `exception when others` qui réécrit le message masque la cause —
 ne jamais en poser sur un chemin métier.
+
+### INC-14 · P0 · ✅ CLOS le 2026-07-28 · pgcrypto hors du search_path
+« function gen_random_bytes(integer) does not exist » à la génération d'un code
+de signature. Sur Supabase, pgcrypto est installée dans le schéma `extensions`,
+et nos fonctions figent `search_path = public` : l'extension est présente mais
+**inatteignable depuis la fonction**. Le contrôle « l'extension est-elle
+installée ? » (fait en 0055) ne prouve donc rien — il faut tester l'appel
+DEPUIS le search_path réel. **Réglé (0059)** en qualifiant
+`extensions.gen_random_bytes`, sans relâcher le search_path.
+Leçon, à ranger avec §1.4 : *un objet installé n'est pas un objet accessible*.
 
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·

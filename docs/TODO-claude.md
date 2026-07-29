@@ -40,9 +40,10 @@ tranchées.
 - [ ] **EX-05 · Meubles pré-remplis par pièce** : structure
       `parametres_catalogues.meubles_par_piece`, UI dans Paramètres →
       « pièces du relevé », insertion en un geste dans le Relevé.
-- [ ] **EX-02 · Terrain déclaratif** (après décision sort du chrono) :
-      heures prévues côté Bureau (mission), saisie départ réel / pauses / fin
-      côté Terrain, **paie basculée sur les heures déclarées**.
+- [x] **EX-02 · Terrain déclaratif** ✅ 2026-07-28 — double minuteur
+      départ/arrivée + pauses déclarées (0060). Paie inchangée : le stockage
+      `chrono_sessions` est conservé. **Reste** : heures *prévues* de départ et
+      d'arrivée pré-remplies par le Bureau sur la mission.
 - [ ] **EX-07 · Planning en feux** : verdict véhicule systématique, temps de
       trajet (réutiliser l'itinéraire du devis), affichage 🔴🟡🟢 à la
       création.
@@ -78,8 +79,8 @@ tranchées.
 
 - [ ] **EX-01** : prix et contenu de Starter et Pro/Group ; confirmer la
       limite 5 utilisateurs Regular (la vitrine actuelle dit « illimités »).
-- [ ] **EX-02** : le chronomètre disparaît, ou reste en aide facultative à
-      côté des heures déclarées ?
+- [x] **EX-02** ✅ tranché : le chronomètre disparaît, remplacé par le double
+      minuteur déclaré.
 - [ ] **EX-03** : lancement du module Demandes (marketplace) — périmètre v1 ?
 - [ ] **EX-06** : source de vérification BCE (KBO/BCE Public Search, service
       tiers ?) — accès à ouvrir côté Raphaël.

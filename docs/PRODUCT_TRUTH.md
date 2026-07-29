@@ -97,12 +97,22 @@ l'écart (objet non prévu, photo, commentaire, impact potentiel) ; le Bureau
 valide et ajuste (devis complémentaire, facture). L'écart est un **objet**,
 pas un SMS au bureau.
 
-### 2.3 Terrain déclaratif `DECISION` (EX-02)
+### 2.3 Terrain déclaratif — `LIVE` depuis le 2026-07-28 (EX-02)
 
-Heures déclarées (Bureau pré-remplit le prévu, le chef d'équipe saisit départ
-réel / pauses / fin) au lieu du chronomètre. Impact vérifié : **la paie lit
-aujourd'hui les heures chrono**. Décision ouverte : le chrono disparaît ou
-reste en aide facultative.
+**Décision prise par Raphaël** : le chronomètre est remplacé par un **double
+minuteur départ / arrivée**. Le chef d'équipe pose chaque instant d'un geste
+(« maintenant ») ou le corrige à la main ; les pauses sont déclarées avec un
+début et une fin, plus un compteur qu'on oublie d'arrêter.
+
+Le compteur affiché ne mesure rien : il projette l'heure courante depuis le
+départ déclaré. **Le stockage n'a pas changé** (`chrono_sessions` : le départ
+ouvre la session `travail`, l'arrivée la ferme) — la paie et l'écran Heures du
+bureau continuent de lire les mêmes données, sans modification. C'est ce qui a
+permis de basculer le modèle sans toucher au calcul du brut.
+
+Reste ouvert : le pré-remplissage par le Bureau des heures *prévues* (la
+mission porte `heure`, affichée en repère « prévu 07:30 », mais l'arrivée
+prévue n'existe pas encore).
 
 ## 3. Horizon B — Produit SaaS vendable
 
@@ -192,7 +202,7 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 | TVA % | `parametres_facturation.tva_pct` via `tauxTva()` | `TVA_PCT` en dur |
 | Document d'offre | `documents_instances.contenu` + empreinte | recomposition après gel |
 | Identité facturation client | `clients.fact_*`, `tva_num` | adresses de chantier |
-| Heures travaillées | chrono serveur **aujourd'hui** ; heures déclarées **cible** (EX-02 `DECISION`) | — |
+| Heures travaillées | `chrono_sessions` — départ/arrivée **déclarés** (EX-02 `LIVE`) | un compteur navigateur |
 
 ## 9. État vision ↔ code
 
@@ -201,7 +211,7 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 | Trois portes + résolution client d'abord | A | `LIVE` | — |
 | Circuit relevé→devis→offre→facture | A | `LIVE` | LAUNCH_TRUTH |
 | Signature « Lu et approuvé » | A | `?` base / badge `BROKEN` | INC-03 |
-| Terrain (chrono) | A | `LIVE` mais `?` (cmd_terminer_chantier) | INC-02 |
+| Terrain (double minuteur déclaré) | A | `LIVE` ✅ | EX-02 |
 | Boucle d'écart terrain | A | `MISSING` | EX-10 |
 | Article enrichi (chevron) | A | `PARTIAL` (demont seul ; pas de photo ✓) | EX-04 |
 | Meubles pré-remplis par pièce | A | `MISSING` (pièces : `LIVE`) | EX-05 |
@@ -219,8 +229,9 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 
 - **EX-01** plans & limites & vitrine — `DECISION` · IMPACT: vitrine,
   base, inscription · DEP: pricing Starter/Pro, confirmation 5 users.
-- **EX-02** terrain déclaratif — `DECISION` · IMPACT: **PAIE**, missions,
-  Terrain · DEP: sort du chrono.
+- **EX-02** terrain déclaratif — ✅ `LIVE` (2026-07-28) · double minuteur
+  départ/arrivée + pauses déclarées · paie inchangée (même stockage) ·
+  reste : heures prévues pré-remplies par le Bureau.
 - **EX-03** demandes client — `VISION` (horizon C) · IMPACT: architecture
   hors org_id · DEP: périmètre v1.
 - **EX-04** article enrichi — `PARTIAL→cible validée` · IMPACT: relevé,
