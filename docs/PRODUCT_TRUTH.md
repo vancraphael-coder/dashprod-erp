@@ -110,9 +110,17 @@ ouvre la session `travail`, l'arrivée la ferme) — la paie et l'écran Heures 
 bureau continuent de lire les mêmes données, sans modification. C'est ce qui a
 permis de basculer le modèle sans toucher au calcul du brut.
 
-Reste ouvert : le pré-remplissage par le Bureau des heures *prévues* (la
-mission porte `heure`, affichée en repère « prévu 07:30 », mais l'arrivée
-prévue n'existe pas encore).
+Complété le 2026-07-28 : le Bureau renseigne le **trajet dépôt → première
+adresse** (minutes) sur la mission ; le terrain en déduit son heure de départ
+(« Partez à 07:15 »), calculée à l'envers depuis le rendez-vous, marge de
+préparation comprise. Sans trajet connu, **aucune heure n'est proposée** — un
+horaire inventé ferait arriver l'équipe en retard. La source du chiffre
+(mesure / estimation / manuel) est affichée : une estimation ne se lit pas
+comme un horaire garanti.
+
+Reste ouvert : le calcul **automatique** du trajet demande un service de
+routage (clé API). Aujourd'hui la saisie est manuelle côté bureau ; la colonne
+`trajet_source` est prête à accueillir une valeur « mesure ».
 
 ## 3. Horizon B — Produit SaaS vendable
 
@@ -212,6 +220,9 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 | Circuit relevé→devis→offre→facture | A | `LIVE` | LAUNCH_TRUTH |
 | Signature « Lu et approuvé » | A | `?` base / badge `BROKEN` | INC-03 |
 | Terrain (double minuteur déclaré) | A | `LIVE` ✅ | EX-02 |
+| Agenda terrain (= bureau, lecture seule) | A | `LIVE` ✅ 28/07 | EX-11 |
+| Ma paie lisible par le terrain | A | `LIVE` ✅ 28/07 | EX-12 |
+| Heure de départ conseillée (trajet) | A | `LIVE` ✅ 28/07, routage auto `MISSING` | EX-13 |
 | Boucle d'écart terrain | A | `MISSING` | EX-10 |
 | Article enrichi (chevron) | A | `PARTIAL` (demont seul ; pas de photo ✓) | EX-04 |
 | Meubles pré-remplis par pièce | A | `MISSING` (pièces : `LIVE`) | EX-05 |
@@ -243,6 +254,16 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 - **EX-07** planning feux — `PARTIAL` · DEP: réutiliser l'itinéraire devis.
 - **EX-08** frontière Core/Premium — `VISION` · DEP: EX-01.
 - **EX-09** vitrine vend le circuit + pavés prix — `PARTIAL` · DEP: EX-01.
+- **EX-11** agenda terrain — ✅ `LIVE` (2026-07-28) · le terrain ouvre le MÊME
+  planning que le bureau (missions, congés, fériés, fermetures) en lecture
+  seule, limité aux missions **partagées** : une mission préparée non publiée
+  reste au bureau (règle 0044).
+- **EX-12** paie personnelle au terrain — ✅ `LIVE` (2026-07-28) · `cmd_ma_paie`
+  ne répond que sur l'appelant (`auth.uid()`, aucun paramètre d'identité) :
+  chacun vérifie ses heures sans voir les salaires des collègues.
+- **EX-13** heure de départ conseillée — `PARTIAL` · trajet saisi par le bureau,
+  conseil calculé et affiché au terrain · **manque** : calcul automatique
+  (service de routage à choisir, `DECISION`).
 - **EX-10** boucle d'écart terrain — `VISION` validée · IMPACT: terrain,
   bureau, devis complémentaire, facture · DEP: EX-02 souhaitable avant.
 
