@@ -2069,7 +2069,7 @@ async function factureCanoniqueDepuisBase(factureId, affaireId) {
     type: f.type === "avoir" ? "avoir" : "facture",
     vendeur: {
       nom: org.nom_commercial || org.nom, tva: org.tva,
-      peppol_id: org.peppol_id || pf.peppol_id || idsVendeur[0] || null,
+      peppol_id: pf.peppol_id || idsVendeur[0] || null,   // source unique : parametres_facturation
       rue: org.adresse, cp: org.cp, ville: org.ville, pays: org.pays || "BE",
       iban: org.iban,
     },
