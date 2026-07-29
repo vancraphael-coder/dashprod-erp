@@ -1269,6 +1269,7 @@ export async function mesMissionsTerrain(utilisateurId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("missions")
       .select(`id, date, heure, type, etat, affaire_id,
+               trajet_minutes, trajet_km, trajet_source,
                affaires!inner(archive_le, etat, clients(nom), notes_commerciales),
                mission_affectations(utilisateur_id, utilisateurs(nom)),
                mission_vehicules(vehicules(nom)),
@@ -1300,6 +1301,8 @@ export async function mesMissionsTerrain(utilisateurId) {
         charges: contact?.charges || [], decharges: contact?.decharges || [],
         aDemonter: (inventaire || []).filter((it) => it.demont)
           .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 })),
+        trajet_minutes: m.trajet_minutes, trajet_km: m.trajet_km,
+        trajet_source: m.trajet_source,
         sessions: (m.chrono_sessions || []).map((s) => ({ id: s.id, debut: s.debut, fin: s.fin, type: s.type })),
       };
     }));
@@ -1326,6 +1329,29 @@ export async function mesMissionsTerrain(utilisateurId) {
         sessions: m.sessions || [],
       };
     });
+}
+
+/** Pose le trajet dépôt → premier chantier d'une mission. */
+export async function definirTrajet(missionId, { minutes, km, source } = {}) {
+  const { data, error } = await supabase.rpc("cmd_trajet_definir", {
+    p_mission: missionId,
+    p_minutes: minutes ?? null,
+    p_km: km ?? null,
+    p_source: source || "manuel",
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.message);
+  return data;
+}
+
+/**
+ * Ma paie — le déménageur lit SES heures et SON brut, jamais ceux des autres.
+ * Aucun paramètre d'identité : la base répond sur l'appelant authentifié.
+ */
+export async function maPaie(periode) {
+  const { data, error } = await supabase.rpc("cmd_ma_paie", { p_periode: periode || null });
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 // ── Pointage déclaré : départ / arrivée, et pauses ────────────────────────
