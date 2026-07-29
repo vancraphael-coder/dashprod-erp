@@ -12,11 +12,12 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  mesMissionsTerrain, chronoDemarrer, chronoArreter, chronoPause, terminerChantier,
+  mesMissionsTerrain, pointageDefinir, pauseAjouter, pauseRetirer, terminerChantier,
 } from "../lib/adaptateur.js";
 import {
-  dureeSecondes, chronoEnCours, formaterChrono, enPause, listePauses,
-} from "@domaine/operations/chrono.js";
+  instant, heureDe, corrigerJourSuivant, secondesTravail, formaterDuree,
+  etatPointage, verifierPointage, pausesValides,
+} from "@domaine/operations/pointage.js";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
 import { adresseDepot } from "@domaine/organisation/identite.js";
@@ -118,34 +119,69 @@ export default function Terrain({ profil, versConsult }) {
 
 function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsult }) {
   const estAujourdhui = mission.date === aujourdhui();
-  const [secondes, setSecondes] = useState(dureeSecondes(mission.sessions));
-  const [pauses, setPauses] = useState(listePauses(mission.sessions));
-  const enCours = chronoEnCours(mission.sessions);
-  const pause = enPause(mission.sessions);
+
+  // Le pointage vit dans la session « travail » : son début est le départ,
+  // sa fin l'arrivée. Les autres sessions sont des pauses déclarées.
+  const travail = (mission.sessions || [])
+    .find((x) => (x.type || "travail") === "travail") || {};
+  const depart = travail.debut ? new Date(travail.debut) : null;
+  const arrivee = travail.fin ? new Date(travail.fin) : null;
+  const pauses = (mission.sessions || []).filter((x) => x.type === "pause");
+
+  const [tic, setTic] = useState(Date.now());
+  const [saisie, setSaisie] = useState({ depart: "", arrivee: "" });
+  const [nouvellePause, setNouvellePause] = useState(null);
+  const [erreur, setErreur] = useState(null);
   const timer = useRef(null);
 
-  // Tic d'affichage quand le chrono tourne.
-  useEffect(() => {
-    if (enCours || pause) {
-      timer.current = setInterval(() => {
-        setSecondes(dureeSecondes(mission.sessions));
-        setPauses(listePauses(mission.sessions));
-      }, 1000);
-    } else {
-      setSecondes(dureeSecondes(mission.sessions));
-      setPauses(listePauses(mission.sessions));
-    }
-    return () => clearInterval(timer.current);
-  }, [enCours, pause, mission.sessions]);
+  const etat = etatPointage(depart, arrivee, pauses, new Date(tic));
 
-  async function basculerChrono() {
-    if (enCours) await chronoArreter(mission.id);
-    else await chronoDemarrer(mission.id);
-    await onChrono();
+  // Le compteur ne « mesure » rien : il projette l'heure courante depuis le
+  // départ déclaré. Il ne tourne que tant qu'aucune arrivée n'est posée.
+  useEffect(() => {
+    if (etat.encours) {
+      timer.current = setInterval(() => setTic(Date.now()), 30000);
+      return () => clearInterval(timer.current);
+    }
+  }, [etat.encours]);
+
+  // Les champs suivent ce qui est enregistré, tant qu'on n'y touche pas.
+  useEffect(() => {
+    setSaisie({ depart: heureDe(depart), arrivee: heureDe(arrivee) });
+  }, [travail.debut, travail.fin]);
+
+  /** Pose un instant : « maintenant » d'un geste, ou l'heure saisie. */
+  async function poser(quoi, valeur) {
+    setErreur(null);
+    try {
+      let t = valeur instanceof Date ? valeur : instant(mission.date, valeur);
+      if (!t) { setErreur("Heure incomplète (format 07:30)."); return; }
+      if (quoi === "arrivee") t = corrigerJourSuivant(depart, t);
+
+      const v = verifierPointage(quoi === "depart" ? t : depart,
+                                 quoi === "arrivee" ? t : arrivee, pauses);
+      if (!v.ok) { setErreur(v.message); return; }
+
+      await pointageDefinir(mission.id, { [quoi]: t });
+      await onChrono();
+    } catch (e) { setErreur(e.message); }
   }
-  async function basculerPause() {
-    await chronoPause(mission.id);
-    await onChrono();
+  async function enregistrerPause() {
+    setErreur(null);
+    try {
+      const d = instant(mission.date, nouvellePause?.debut);
+      const f = instant(mission.date, nouvellePause?.fin);
+      if (!d || !f) { setErreur("Indiquez le début et la fin de la pause."); return; }
+      await pauseAjouter(mission.id, d, f);
+      setNouvellePause(null);
+      await onChrono();
+    } catch (e) { setErreur(e.message); }
+  }
+
+  async function retirerPause(id) {
+    setErreur(null);
+    try { await pauseRetirer(id); await onChrono(); }
+    catch (e) { setErreur(e.message); }
   }
 
   const [cloture, setCloture] = useState(false);
@@ -192,62 +228,107 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
 
       {ouvert && (
         <div style={{ marginTop: 12 }}>
-          {/* Chrono — sessions serveur */}
-          <div style={{ background: "#0F172A", borderRadius: 12, padding: "14px",
-            textAlign: "center", marginBottom: 12 }}>
-            {termine && (
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#34D399",
-                textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 4 }}>
-                ✓ Chantier terminé
+          {/* DOUBLE MINUTEUR — départ et arrivée déclarés.
+              Le bureau prévoit, le terrain déclare. Chaque heure se pose d'un
+              geste (« maintenant ») ou se corrige à la main : un téléphone
+              oublié dans le camion ne doit pas fausser une paie. */}
+          <div style={{ background: "#0F172A", borderRadius: 12, padding: 14,
+            marginBottom: 12 }}>
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".06em",
+                textTransform: "uppercase",
+                color: etat.phase === "termine" ? "#34D399"
+                     : etat.phase === "encours" ? "#FBBF24" : "#94A3B8" }}>
+                {etat.phase === "termine" ? "✓ Chantier terminé" : etat.libelle}
               </div>
-            )}
-            <div style={{ fontSize: 32, fontWeight: 800, color: "#fff",
-              fontFamily: "ui-monospace, monospace", letterSpacing: ".04em" }}>
-              {formaterChrono(secondes)}
-            </div>
-            {pauses.length > 0 && (
-              <div style={{ marginTop: 6 }}>
-                {pauses.map((pz) => (
-                  <div key={pz.n} style={{
-                    display: "flex", justifyContent: "space-between",
-                    fontSize: 12, fontFamily: "ui-monospace, monospace",
-                    color: pz.enCours ? "#FBBF24" : "#94A3B8", padding: "1px 8px" }}>
-                    <span>Pause {pz.n}{pz.enCours ? " · en cours" : ""}</span>
-                    <span>{formaterChrono(pz.secondes)}</span>
-                  </div>
-                ))}
+              <div style={{ fontSize: 34, fontWeight: 800, color: "#fff",
+                fontFamily: "ui-monospace, monospace", letterSpacing: ".02em",
+                marginTop: 2 }}>
+                {formaterDuree(etat.secondes)}
               </div>
-            )}
-            {!termine && (
-            <div style={{ display: "flex", gap: 8, marginTop: 12, justifyContent: "center" }}>
-              {/* Démarrer / Stop : Stop est une INTERRUPTION (on peut
-                  reprendre), pas la fin du chantier. */}
-              <button onClick={basculerChrono} style={{
-                padding: "11px 22px", borderRadius: 999, border: "none",
-                cursor: "pointer", fontSize: 14, fontWeight: 800,
-                background: enCours ? "#DC2626" : "#22C55E", color: "#fff",
-              }}>
-                {enCours ? "⏹ Stop" : secondes > 0 ? "▶ Reprendre" : "▶ Démarrer"}
-              </button>
-              {/* Pause : marque un arrêt d'équipe, le compteur principal continue. */}
-              {enCours && (
-                <button onClick={basculerPause} style={{
-                  padding: "11px 22px", borderRadius: 999,
-                  border: `1.5px solid ${pause ? "#FBBF24" : "#475569"}`,
-                  cursor: "pointer", fontSize: 14, fontWeight: 800,
-                  background: pause ? "#FBBF24" : "transparent",
-                  color: pause ? "#0F172A" : "#E2E8F0",
-                }}>
-                  {pause ? "Reprendre" : "⏸ Pause"}
-                </button>
+              {pauses.length > 0 && (
+                <div style={{ fontSize: 11.5, color: "#94A3B8", marginTop: 2 }}>
+                  pauses déduites
+                </div>
               )}
             </div>
+
+            <div style={{ display: "grid", gap: 8,
+                          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+              <Minuteur
+                titre="Départ" prevu={mission.heure} valeur={saisie.depart}
+                pose={!!depart} accent="#22C55E"
+                onSaisir={(v) => setSaisie((x) => ({ ...x, depart: v }))}
+                onMaintenant={() => poser("depart", new Date())}
+                onValider={() => poser("depart", saisie.depart)} />
+              <Minuteur
+                titre="Arrivée" valeur={saisie.arrivee}
+                pose={!!arrivee} accent="#3B82F6" inactif={!depart}
+                onSaisir={(v) => setSaisie((x) => ({ ...x, arrivee: v }))}
+                onMaintenant={() => poser("arrivee", new Date())}
+                onValider={() => poser("arrivee", saisie.arrivee)} />
+            </div>
+
+            {/* Pauses déclarées : bornées, pas un compteur qu'on oublie. */}
+            {pausesValides(pauses, depart, arrivee).map((pz) => (
+              <div key={pz.id} style={{ display: "flex", alignItems: "center",
+                justifyContent: "space-between", gap: 8, marginTop: 8,
+                padding: "7px 10px", borderRadius: 9, background: "#1E293B" }}>
+                <span style={{ fontSize: 12.5, color: "#E2E8F0",
+                  fontFamily: "ui-monospace, monospace" }}>
+                  Pause {heureDe(pz.debut)} → {heureDe(pz.fin)}
+                </span>
+                <button onClick={() => retirerPause(pz.id)} style={{
+                  background: "none", border: "none", color: "#F87171",
+                  cursor: "pointer", fontSize: 12.5, fontWeight: 700 }}>
+                  Retirer
+                </button>
+              </div>
+            ))}
+
+            {depart && !nouvellePause && (
+              <button onClick={() => setNouvellePause({ debut: "", fin: "" })}
+                style={{ width: "100%", marginTop: 8, padding: "9px",
+                  borderRadius: 9, border: "1px dashed #475569", cursor: "pointer",
+                  background: "transparent", color: "#CBD5E1",
+                  fontSize: 12.5, fontWeight: 700 }}>
+                + Ajouter une pause
+              </button>
+            )}
+            {nouvellePause && (
+              <div style={{ marginTop: 8, padding: 10, borderRadius: 9,
+                background: "#1E293B" }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input type="time" value={nouvellePause.debut} aria-label="Début de pause"
+                    onChange={(e) => setNouvellePause((p) => ({ ...p, debut: e.target.value }))}
+                    style={champHeure} />
+                  <input type="time" value={nouvellePause.fin} aria-label="Fin de pause"
+                    onChange={(e) => setNouvellePause((p) => ({ ...p, fin: e.target.value }))}
+                    style={champHeure} />
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button onClick={enregistrerPause} style={{ flex: 1, padding: "9px",
+                    borderRadius: 9, border: "none", cursor: "pointer",
+                    background: "#FBBF24", color: "#0F172A",
+                    fontSize: 13, fontWeight: 800 }}>Enregistrer</button>
+                  <button onClick={() => setNouvellePause(null)} style={{ padding: "9px 14px",
+                    borderRadius: 9, border: "1px solid #475569", cursor: "pointer",
+                    background: "transparent", color: "#CBD5E1",
+                    fontSize: 13, fontWeight: 700 }}>Annuler</button>
+                </div>
+              </div>
+            )}
+
+            {erreur && (
+              <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 9,
+                background: "#7F1D1D", color: "#FEE2E2", fontSize: 12,
+                lineHeight: 1.45 }}>{erreur}</div>
             )}
           </div>
 
           {/* TERMINER : la vraie fin. Clôt le chrono et fait passer le dossier
               en « effectué » au bureau — la facture devient possible. */}
-          {!termine && secondes > 0 && !cloture && (
+          {!termine && depart && !cloture && (
             <button onClick={() => setCloture(true)} style={{
               width: "100%", padding: "12px", borderRadius: 11, marginBottom: 12,
               border: "none", cursor: "pointer", fontSize: 14, fontWeight: 800,
@@ -354,3 +435,42 @@ function jourCourt(iso) {
       .toLocaleDateString("fr-BE", { day: "2-digit", month: "short" });
   } catch { return iso; }
 }
+
+/** Un minuteur : l'heure prévue, l'heure réelle, et deux façons de la poser. */
+function Minuteur({ titre, prevu, valeur, pose, accent, inactif,
+                    onSaisir, onMaintenant, onValider }) {
+  return (
+    <div style={{ padding: 10, borderRadius: 10, background: "#1E293B",
+      opacity: inactif ? .5 : 1 }}>
+      <div style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "baseline" }}>
+        <span style={{ fontSize: 11.5, fontWeight: 800, color: "#fff",
+          textTransform: "uppercase", letterSpacing: ".05em" }}>{titre}</span>
+        {prevu && (
+          <span style={{ fontSize: 10.5, color: "#94A3B8" }}>
+            prévu {String(prevu).slice(0, 5)}
+          </span>
+        )}
+      </div>
+      <input type="time" value={valeur} disabled={inactif} aria-label={titre}
+        onChange={(e) => onSaisir(e.target.value)}
+        onBlur={() => valeur && onValider()}
+        style={{ ...champHeure, marginTop: 6,
+          borderColor: pose ? accent : "#475569" }} />
+      {!pose && (
+        <button onClick={onMaintenant} disabled={inactif} style={{
+          width: "100%", marginTop: 6, padding: "8px", borderRadius: 8,
+          border: "none", cursor: inactif ? "default" : "pointer",
+          background: accent, color: "#0F172A", fontSize: 12.5, fontWeight: 800 }}>
+          Maintenant
+        </button>
+      )}
+    </div>
+  );
+}
+
+const champHeure = {
+  width: "100%", boxSizing: "border-box", padding: "9px 10px", borderRadius: 8,
+  border: "1.5px solid #475569", background: "#0F172A", color: "#fff",
+  fontSize: 15, fontFamily: "ui-monospace, monospace", textAlign: "center",
+};
