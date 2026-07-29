@@ -504,7 +504,7 @@ export async function listerMissions() {
       // archivage laissait des missions futures déjà annulées au planning.
       // Le "!inner" est indispensable — sans lui PostgREST fait une jointure
       // externe, garde la ligne et vide l'objet imbriqué : le fantôme reste.
-      .select("id, date, heure, type, etat, affaire_id, partagee_le, affaires!inner(archive_le, etat, clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
+      .select("id, date, heure, heure_depart_prevue, heure_arrivee_prevue, type, etat, affaire_id, partagee_le, affaires!inner(archive_le, etat, clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
       .is("affaires.archive_le", null)
       .neq("etat", "annulee")
       .neq("affaires.etat", "annule")
@@ -1269,7 +1269,7 @@ export async function mesMissionsTerrain(utilisateurId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("missions")
       .select(`id, date, heure, type, etat, affaire_id,
-               trajet_minutes, trajet_km, trajet_source,
+               heure_depart_prevue, heure_arrivee_prevue,
                affaires!inner(archive_le, etat, clients(nom), notes_commerciales),
                mission_affectations(utilisateur_id, utilisateurs(nom)),
                mission_vehicules(vehicules(nom)),
@@ -1301,8 +1301,8 @@ export async function mesMissionsTerrain(utilisateurId) {
         charges: contact?.charges || [], decharges: contact?.decharges || [],
         aDemonter: (inventaire || []).filter((it) => it.demont)
           .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 })),
-        trajet_minutes: m.trajet_minutes, trajet_km: m.trajet_km,
-        trajet_source: m.trajet_source,
+        heure_depart_prevue: m.heure_depart_prevue,
+        heure_arrivee_prevue: m.heure_arrivee_prevue,
         sessions: (m.chrono_sessions || []).map((s) => ({ id: s.id, debut: s.debut, fin: s.fin, type: s.type })),
       };
     }));
@@ -1331,13 +1331,13 @@ export async function mesMissionsTerrain(utilisateurId) {
     });
 }
 
-/** Pose le trajet dépôt → premier chantier d'une mission. */
-export async function definirTrajet(missionId, { minutes, km, source } = {}) {
-  const { data, error } = await supabase.rpc("cmd_trajet_definir", {
+/** Pose les trois heures prévues d'une mission (départ / heure / arrivée). */
+export async function definirHorairesMission(missionId, { depart, heure, arrivee } = {}) {
+  const { data, error } = await supabase.rpc("cmd_horaires_mission", {
     p_mission: missionId,
-    p_minutes: minutes ?? null,
-    p_km: km ?? null,
-    p_source: source || "manuel",
+    p_depart: depart || null,
+    p_heure: heure || null,
+    p_arrivee: arrivee || null,
   });
   if (error) throw new Error(error.message);
   if (data && data.ok === false) throw new Error(data.message);
