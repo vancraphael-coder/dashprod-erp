@@ -10,6 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   listerMissions, listerMembresSimples, basculerAffectation, composerBrief,
   listerConges, listerFermetures, listerVehicules, basculerVehiculeMission, partagerMission,
+  definirTrajet,
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
@@ -36,7 +37,19 @@ const bandeauStyle = (fond, bord, couleur) => ({
   background: fond, border: `1px solid ${bord}`, color: couleur,
 });
 
-export default function Planning({ ouvrirDossier }) {
+/**
+ * Agenda partagé bureau ↔ terrain.
+ *
+ * `lectureSeule` : le terrain voit le MÊME agenda que le bureau — mêmes
+ * missions, mêmes congés, mêmes fériés, mêmes fermetures — mais ne pilote
+ * rien. Deux différences, et elles sont voulues :
+ *   1. aucune action (affecter, partager, changer un véhicule) : le planning
+ *      se décide au bureau ;
+ *   2. seules les missions PARTAGÉES sont visibles. Une mission préparée mais
+ *      non publiée reste au bureau — c'est la règle posée en 0044, et la
+ *      contourner ici viderait le partage de son sens.
+ */
+export default function Planning({ ouvrirDossier, lectureSeule = false }) {
   const [missions, setMissions] = useState([]);
   const [membres, setMembres] = useState([]);       // actifs (sélection)
   const [tousMembres, setTousMembres] = useState([]); // + archivés (affichage)
@@ -53,7 +66,9 @@ export default function Planning({ ouvrirDossier }) {
   const [copie, setCopie] = useState(null); // id de mission dont le brief vient d'être copié
 
   async function recharger() {
-    setMissions(await listerMissions());
+    const toutes = await listerMissions();
+    // Le terrain ne voit que ce que le bureau a publié.
+    setMissions(lectureSeule ? toutes.filter((m) => m.partagee) : toutes);
     setMembres(await listerMembresSimples());
     setTousMembres(await listerMembresSimples(true).catch(() => []));
     setConges(await listerConges().catch(() => []));
@@ -257,11 +272,18 @@ export default function Planning({ ouvrirDossier }) {
                   {m.type}
                 </div>
               </div>
-              <button style={{ ...S.boutonLien, border: `1.5px solid ${C.bord}`,
-                               borderRadius: 9, padding: "6px 10px" }}
-                      onClick={() => setOuvert(ouvertIci ? null : m.id)}>
-                {affectes.length} affecté·s
-              </button>
+              {lectureSeule ? (
+                <span style={{ fontSize: 12, color: C.muet, fontWeight: 700,
+                               padding: "6px 10px" }}>
+                  {affectes.length} affecté·s
+                </span>
+              ) : (
+                <button style={{ ...S.boutonLien, border: `1.5px solid ${C.bord}`,
+                                 borderRadius: 9, padding: "6px 10px" }}
+                        onClick={() => setOuvert(ouvertIci ? null : m.id)}>
+                  {affectes.length} affecté·s
+                </button>
+              )}
             </div>
 
             {affectes.length === 0 && !ouvertIci && (
@@ -270,9 +292,17 @@ export default function Planning({ ouvrirDossier }) {
               </div>
             )}
 
+            {/* Trajet dépôt → 1re adresse. Ce n'est PAS le km du devis (qui est
+                l'aller-retour complet) : c'est ce qui permet de dire à l'équipe
+                à quelle heure partir. Sans lui, le terrain n'a aucun conseil. */}
+            {!lectureSeule && m.type !== "visite" && (
+              <TrajetMission mission={m} onEnregistre={recharger} />
+            )}
+
             {/* Partage au terrain — geste distinct de l'affectation. Le bureau
                 prépare son planning tranquillement, puis publie quand c'est sûr.
                 Sans partage, le déménageur ne voit rien, même affecté. */}
+            {!lectureSeule && (
             <button
               onClick={async () => {
                 try { await partagerMission(m.id, !m.partagee); await recharger(); }
@@ -294,6 +324,7 @@ export default function Planning({ ouvrirDossier }) {
                 {m.partagee ? "Retirer" : "Partager"}
               </span>
             </button>
+            )}
 
             {affectes.length > 0 && (
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
@@ -328,7 +359,7 @@ export default function Planning({ ouvrirDossier }) {
               </div>
             )}
 
-            {ouvertIci && (
+            {ouvertIci && !lectureSeule && (
               <div style={{ marginTop: 10, borderTop: `1px solid ${C.bord}`, paddingTop: 10 }}>
                 <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 8 }}>
                   Touchez un membre pour l'affecter ou le retirer. Un membre déjà pris
@@ -417,3 +448,73 @@ const btnFleche = {
   width: 38, height: 38, borderRadius: 10, border: `1.5px solid ${C.bord}`,
   background: "#fff", cursor: "pointer", fontSize: 16, color: C.encre, fontWeight: 700,
 };
+
+/**
+ * Saisie du trajet dépôt → première adresse, côté bureau.
+ * Une fois posé, le terrain voit « Partez à 07:15 » sur son minuteur.
+ */
+function TrajetMission({ mission, onEnregistre }) {
+  const [edition, setEdition] = useState(false);
+  const [minutes, setMinutes] = useState(mission.trajet_minutes ?? "");
+  const [erreur, setErreur] = useState(null);
+
+  const info = trajet({ minutes: mission.trajet_minutes, km: mission.trajet_km,
+    source: mission.trajet_source === "mesure" ? "mesure" : "estime" });
+  const rdv = instant(mission.date, mission.heure);
+  const conseil = rdv && info.ok ? conseilDepart(rdv, info) : null;
+
+  async function enregistrer() {
+    setErreur(null);
+    const v = Number(minutes);
+    if (!Number.isFinite(v) || v <= 0) { setErreur("Durée en minutes."); return; }
+    try {
+      await definirTrajet(mission.id, { minutes: Math.round(v), source: "manuel" });
+      setEdition(false);
+      await onEnregistre();
+    } catch (e) { setErreur(e.message); }
+  }
+
+  if (!edition) {
+    return (
+      <button onClick={() => setEdition(true)} style={{
+        display: "flex", alignItems: "center", gap: 8, width: "100%",
+        marginTop: 8, padding: "8px 11px", borderRadius: 10, cursor: "pointer",
+        border: `1px dashed ${info.ok ? C.bord : C.ambre}`, background: C.blanc,
+        textAlign: "left" }}>
+        <span>🚚</span>
+        <span style={{ flex: 1, fontSize: 12, color: info.ok ? C.encre : C.ambre,
+                       fontWeight: 600 }}>
+          {info.ok
+            ? `Trajet dépôt → chantier : ${info.minutes} min${conseil ? ` · ${conseil.texte.toLowerCase()}` : ""}`
+            : "Trajet dépôt → chantier non renseigné"}
+        </span>
+        <span style={{ fontSize: 11.5, color: C.fantome }}>
+          {info.ok ? "Modifier" : "Ajouter"}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 8, padding: 11, borderRadius: 10,
+                  border: `1px solid ${C.bord}`, background: "#F8FAFC" }}>
+      <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6, lineHeight: 1.45 }}>
+        Durée dépôt → première adresse, en minutes. Le terrain en déduira son
+        heure de départ.
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input type="number" min="1" value={minutes} autoFocus
+          onChange={(e) => setMinutes(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && enregistrer()}
+          style={{ ...S.input, margin: 0, width: 90 }} placeholder="25" />
+        <button onClick={enregistrer} style={{ ...S.boutonPlein, margin: 0,
+          padding: "9px 16px", fontSize: 13 }}>Enregistrer</button>
+        <button onClick={() => setEdition(false)} style={{ ...S.boutonLien,
+          padding: "9px 10px" }}>Annuler</button>
+      </div>
+      {erreur && (
+        <div style={{ fontSize: 11.5, color: C.rouge, marginTop: 6 }}>{erreur}</div>
+      )}
+    </div>
+  );
+}

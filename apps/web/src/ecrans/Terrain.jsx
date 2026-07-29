@@ -18,6 +18,8 @@ import {
   instant, heureDe, corrigerJourSuivant, secondesTravail, formaterDuree,
   etatPointage, verifierPointage, pausesValides,
 } from "@domaine/operations/pointage.js";
+import { trajet, conseilDepart, heureArriveePrevue }
+  from "@domaine/operations/trajet.js";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
 import { adresseDepot } from "@domaine/organisation/identite.js";
@@ -136,6 +138,18 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
 
   const etat = etatPointage(depart, arrivee, pauses, new Date(tic));
 
+  // Heure de départ conseillée : on calcule à l'envers depuis le rendez-vous.
+  // Sans trajet connu, aucune heure n'est proposée — un horaire inventé ferait
+  // arriver l'équipe en retard chez le client.
+  const infoTrajet = trajet({
+    minutes: mission.trajet_minutes, km: mission.trajet_km,
+    source: mission.trajet_source === "mesure" ? "mesure" : "estime",
+  });
+  const rdv = instant(mission.date, mission.heure);
+  const conseil = rdv ? conseilDepart(rdv, infoTrajet) : null;
+  const arriveePrevue = depart && !arrivee
+    ? heureArriveePrevue(depart, infoTrajet) : null;
+
   // Le compteur ne « mesure » rien : il projette l'heure courante depuis le
   // départ déclaré. Il ne tourne que tant qu'aucune arrivée n'est posée.
   useEffect(() => {
@@ -252,6 +266,31 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
                 </div>
               )}
             </div>
+
+            {/* Conseil de départ — la vraie question du matin n'est pas
+                « combien de route ? » mais « à quelle heure partir ? ». */}
+            {!depart && conseil && (
+              <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 10,
+                background: conseil.ok ? "#1E293B" : "transparent",
+                border: conseil.ok ? "none" : "1px dashed #475569" }}>
+                <div style={{ fontSize: conseil.ok ? 15 : 12.5, fontWeight: 800,
+                  color: conseil.ok ? "#FBBF24" : "#94A3B8" }}>
+                  {conseil.texte}
+                </div>
+                {conseil.detail && (
+                  <div style={{ fontSize: 11.5, color: "#94A3B8", marginTop: 3,
+                                lineHeight: 1.45 }}>
+                    {conseil.detail}
+                  </div>
+                )}
+              </div>
+            )}
+            {arriveePrevue && (
+              <div style={{ marginBottom: 10, fontSize: 12, color: "#94A3B8",
+                            textAlign: "center" }}>
+                Arrivée prévue sur place vers {heureDe(arriveePrevue)}
+              </div>
+            )}
 
             <div style={{ display: "grid", gap: 8,
                           gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
