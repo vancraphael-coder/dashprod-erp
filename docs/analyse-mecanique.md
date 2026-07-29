@@ -12,7 +12,7 @@
 > `docs/TODO-claude.md` (l'exécution ordonnée). Le registre INC reste
 > code-only ; les écarts avec la vision produit vivent dans PRODUCT_TRUTH §8.
 
-Dernier audit complet : 2026-07-26.
+Dernier audit complet : 2026-07-26. Vérification EN BASE le 2026-07-28 (connecteur rétabli) — voir §3, plusieurs INC clos et deux nouveaux détectés, invisibles sans accès à la production.
 
 ---
 
@@ -162,14 +162,13 @@ Sévérité : **P0** casse ou peut casser en production · **P1** fonctionnalit�
 construite mais inopérante/incomplète · **P2** dette, doublon, décision à
 trancher.
 
-### INC-01 · P0 · Le repo ne contient pas sa propre base
+### INC-01 · ✅ CLOS le 2026-07-28 · Le repo ne contient pas sa propre base
 `supabase/migrations/` s'arrête à **0043**. Les migrations 0044→0057 vivent
 hors du dépôt (téléchargements + base pour 0044–0049b appliquées via
 connecteur). La source de vérité SQL est éparpillée : un clone frais ne peut
-pas reconstruire la base. **Action** : ranger les 14 fichiers dans
-`supabase/migrations/`, commit.
+pas reconstruire la base. **Réglé** : `supabase/migrations/` contient désormais 0001→0058 (63 fichiers). Les 0044→0049b ont été rapatriées depuis `supabase_migrations.schema_migrations` (Supabase conserve le SQL des migrations enregistrées), les 0050→0057 depuis les livraisons, la 0058 écrite ce jour. Un clone frais peut reconstruire la base.
 
-### INC-02 · P0 · `cmd_terminer_chantier` appelée, définie nulle part
+### INC-02 · ✅ CLOS le 2026-07-28 · `cmd_terminer_chantier`
 `Terrain.jsx:163` (bouton « Terminer le chantier ») → adaptateur →
 `supabase.rpc("cmd_terminer_chantier")`. Introuvable dans les 45 fichiers du
 repo ET dans les migrations en attente ; seulement citée en commentaire
@@ -178,14 +177,12 @@ soit archivé — invérifiable, connecteur coupé. **Action** : migration 0058 
 rattrapage qui la (re)définit (idempotente : `create or replace`), pour que le
 repo redevienne complet et que le bouton soit garanti.
 
-### INC-03 · P1 · La signature client ne marque pas le document signé
+### INC-03 · ✅ CLOS le 2026-07-28 · Signature ne marquait pas le document
 `cmd_offre_signer` (0054/0055) fait `transition_interne('confirmee')` et
 consomme le code, mais **ne touche pas** `documents_instances.statut`. Or le
 badge « ✓ Offre signée » de l'espace client et l'écran Offre lisent
 `statut = 'signee'`. Une offre signée par « Lu et approuvé » ne s'affichera
-jamais comme signée. **Action** : dans 0058, `cmd_offre_signer` marque aussi
-la dernière instance de l'affaire (`statut='signee'`) avec la mention en
-trace.
+jamais comme signée. **Réglé (0058)** : la signature client marque désormais l'instance `statut='signee', gele=true` ET inscrit une ligne dans `signatures` (canal `client_en_ligne`), comme le fait `cmd_signer_instance` au bureau. Prouvé par test réel.
 
 ### INC-04 · P1 · Moteur comptable sans interface
 `facturation/exports.js` (CSV BOM, journal des ventes PCMN, **FEC**) n'est
@@ -208,13 +205,11 @@ appelé — la promesse « dossier = données personnelles » est incomplète.
 **Action** : retirer les `reference`, afficher les coordonnées via
 `clientProfil` dans l'onglet Dossier.
 
-### INC-07 · P2 · `peppol_id` a deux sources
+### INC-07 · ✅ CLOS le 2026-07-28 · `peppol_id` avait deux sources
 Colonne `organisations.peppol_id` (0049) ET clé
 `parametres_facturation.peppol_id` (écrite par l'écran Identité). La lecture
 tolère les deux (`org.peppol_id || pf.peppol_id`), mais l'écriture ne remplit
-que le JSON : la colonne dédiée restera vide pour toujours. **Action** :
-trancher UNE source (recommandé : le JSON, et retirer la colonne en 0058) ou
-faire écrire la colonne.
+que le JSON : la colonne dédiée restera vide pour toujours. **Réglé (0058)** : les deux sources étaient vides en production. Source unique retenue = `parametres_facturation.peppol_id` (ce que l'écran écrit) ; la colonne `organisations.peppol_id` est retirée et l'adaptateur ne lit plus qu'elle.
 
 ### INC-08 · P2 · Code mort dans l'adaptateur
 Orphelins confirmés : `signerOffre` (ancien pad bureau — sa RPC
@@ -240,9 +235,30 @@ consenti à ce que son prix soit comparé chez A. Ouvert depuis la session
 espace client. **Action** : décision (statu quo / restreindre au dossier
 d'origine / opt-in réseau).
 
+### INC-12 · P0 · ✅ CLOS le 2026-07-28 · `cmd_offre_apercu` était cassée
+La fonction triait les documents par `di.created_at` — colonne **inexistante**
+(`documents_instances` porte `genere_le`). Toute lecture d'offre par un client
+levait une erreur : **le client ne pouvait pas voir l'offre à signer**. Ni les
+tests ni le build ne pouvaient le détecter (SQL non typé côté app), seul un
+appel réel le révèle. **Réglé (0058)** : tri sur `genere_le`, instance gelée
+priorisée. Leçon : ajouter au registre §1.4 — une colonne de tri inventée est
+la même famille d'erreur que la table inventée.
+
+### INC-13 · P0 · ✅ CLOS le 2026-07-28 · La signature client échouait toujours
+`cmd_offre_signer` appelait `transition_interne(affaire, 'confirmee', jsonb)` :
+l'état valide est **`confirme`** (sans e final) et `transition_interne` ne
+prend que **deux** arguments. L'appel levait, et le `exception when others`
+transformait l'échec en message trompeur (« pas dans un état permettant la
+signature »). La signature échouait donc **à tous les coups** en donnant une
+fausse explication. **Réglé (0058)** : bon état, bon arity, et on lit le
+booléen retourné par `transition_interne` (qui est tolérante) au lieu de
+supposer le succès. Le `exception when others` aveugle est supprimé.
+Leçon : un `exception when others` qui réécrit le message masque la cause —
+ne jamais en poser sur un chemin métier.
+
 ### Hors code (rappels d'état, pas des découvertes)
-Migrations **0050→0057 à exécuter** dans l'éditeur SQL (ordre strict), puis
-`update organisations set visible_reseau = true where id = jwt_org();` ·
+✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
+✅ `visible_reseau` activé pour Roovers (annuaire peuplé) ·
 repo GitHub **public** avec IBAN dans l'historique → repasser privé ·
 Edge Function `inviter-membre` non déployée (aucun mail d'invitation ne part) ·
 contrat Digiteal (sales@digiteal.eu) · relecture avocat CGV/DPA · assurance

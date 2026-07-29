@@ -10,10 +10,11 @@
 > lancement : un maillon `?` est un maillon **non lançable** tant qu'il n'est
 > pas vérifié en réel.
 
-Dernière mise à jour : 2026-07-26. Cartographie établie depuis le code
-(audit du 26/07) ; les `?` tiennent au fait que l'état de la base est
-invérifiable d'ici (connecteur coupé) et que les migrations 0050→0057 sont
-en attente d'exécution.
+Dernière mise à jour : 2026-07-28 — **connecteur Supabase rétabli**, base
+vérifiée. Les `?` de la version précédente sont levés : 0050→0057 sont
+appliquées, `cmd_terminer_chantier` existe, et la 0058 a corrigé deux bugs
+P0 de la signature client (INC-12, INC-13) que seul un appel réel pouvait
+révéler. Le circuit a été testé de bout en bout en base.
 
 ---
 
@@ -73,15 +74,17 @@ Crée : gel du devis · Table : `documents_instances` (contenu figé +
 Vérité : l'instance figée (jamais recomposer après gel) · Écrans :
 `Offre.jsx`, `Contrat.jsx` (CGV figées, suppléments listés).
 
-### 07 · Signature client — `?` (base) + `BROKEN` (badge)
+### 07 · Signature client — `LIVE` ✅ (testée en base le 28/07)
 Crée : le client (« Lu et approuvé » + nom, exigés **en base**) · Tables :
 `acces_client` (code salé/haché, 8 essais, expiration) +
 transition `confirmee` via garde S4 · RPC : `cmd_creer_lien_signature`,
 `cmd_offre_apercu`, `cmd_offre_signer` · Écrans : `SignatureOffre.jsx`
-(?signer=), génération du code dans `Offre.jsx`/`Mail.jsx` · **Dépend des
-migrations 0051→0055 (en attente)** → `?` jusqu'à exécution + test réel ·
-INC-03 : la signature ne marque pas `documents_instances.statut='signee'`
-(badge mort) → correctif en 0058.
+(?signer=), génération du code dans `Offre.jsx`/`Mail.jsx` · **Test réel du 28/07** :
+aperçu lisible (entreprise, client, montant, document) · refus sans mention ·
+refus nom trop court · signature acceptée → affaire `confirme`, document
+`signee`+`gele`, ligne dans `signatures` (canal `client_en_ligne`), mention et
+nom tracés, code consommé (rejeu refusé). Trois bugs corrigés au passage :
+INC-12 (aperçu cassé), INC-13 (signature toujours en échec), INC-03 (badge).
 
 ### 08 · Planning / Mission — `LIVE` (couches 0056 en attente)
 Crée : Bureau · Tables : `missions`, `mission_affectations`,
@@ -91,14 +94,11 @@ fériés calculés `LIVE` ; fermetures société → table 0056 **en attente** �
 Écran : `Planning.jsx` · EX-07 (feux, trajet, verdict véhicule) =
 post-launch souhaitable, pas bloquant.
 
-### 09 · Terrain — `?` **(bloqueur n°1 à lever)**
+### 09 · Terrain — `LIVE` ✅ (fonction vérifiée en base le 28/07)
 Crée : chef d'équipe — heures (chrono serveur : sessions/pauses) + photos ·
 RPC : `cmd_chrono_demarrer/pause/arreter` (`LIVE` dans le repo) +
-**`cmd_terminer_chantier` : appelée par le bouton, définie NULLE PART dans le
-repo** (INC-02). Soit elle existe en base (créée jadis via connecteur), soit
-le bouton casse. Vérification Raphaël :
-`select proname from pg_proc where proname='cmd_terminer_chantier';` —
-sinon la 0058 la (re)définit · Écran : `Terrain.jsx` · EX-02 (déclaratif) et
+`cmd_terminer_chantier` **existe bien en base** et est saine (INC-02 était un
+trou d'archive, pas un bouton cassé) ; elle est désormais archivée dans 0058 · Écran : `Terrain.jsx` · EX-02 (déclaratif) et
 EX-10 (écarts) = post-launch, `DECISION`/`VISION`.
 
 ### 10 · Facture — `LIVE`
@@ -146,10 +146,11 @@ Chaque `✗` ou `?` remonte dans `docs/TODO-claude.md` avec le symptôme exact.
 
 ## 4. Bloqueurs de lancement (état au 26/07)
 
-1. **Exécuter 0050→0057** (ordre strict), puis 0058 (rattrapage : INC-02,
-   INC-03, INC-07) dès qu'elle est livrée — technique.
-2. **`cmd_terminer_chantier`** confirmée en base ou recréée — technique.
-3. **Manipulation complète** §3 sans `✗` — validation.
+1. ✅ **Fait** — 0050→0057 appliquées, 0058 appliquée et testée (28/07).
+2. ✅ **Fait** — `cmd_terminer_chantier` confirmée en base et archivée.
+3. **Manipulation complète** §3 sans `✗` — validation, **seul bloqueur
+   technique restant**. Le circuit est prouvé côté base ; il reste à le
+   prouver dans l'interface.
 4. **Repo privé** (IBAN dans l'historique Git) — hygiène, avant tout accès
    tiers.
 5. Lancement **commercial** (au-delà de Roovers) : relecture avocat CGV/DPA +

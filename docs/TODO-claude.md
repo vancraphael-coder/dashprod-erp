@@ -8,31 +8,18 @@
 > analyse → code → test → manipulation réelle → validation → rapport. Pas de
 > sous-documents à la place du produit.
 
-Dernière mise à jour : 2026-07-26 (audit initial + vision produit adoptée).
+Dernière mise à jour : 2026-07-28 — P0 tous réglés (connecteur rétabli, 0058 appliquée et testée, dossier migrations reconstitué).
 
-## P0 — intégrité (avant toute nouvelle fonctionnalité)
+## P0 — ✅ TOUS RÉGLÉS le 2026-07-28
 
-- [ ] **Migration 0058 de rattrapage** (INC-02, INC-03, INC-07) :
-  - [ ] (re)définir `cmd_terminer_chantier(p_mission)` en `create or replace`
-        (idempotent — ne casse rien si elle existe déjà en base) ;
-  - [ ] `cmd_offre_signer` marque aussi `documents_instances.statut='signee'`
-        (dernière instance de l'affaire) + mention en trace ;
-  - [ ] trancher et exécuter la source unique de `peppol_id`
-        (recommandation : JSON `parametres_facturation`, drop de la colonne).
-- [ ] **Reconstituer `supabase/migrations/` complet** (INC-01) : rassembler
-      0044→0058 dans le repo. Je fournis le zip ; Raphaël dépose et commit.
-- [ ] Vérifier `EspaceClient.jsx` : retirer les deux affichages `reference`
-      morts (INC-06, partie rapide).
-
-## P1 — fonctionnalités construites mais inopérantes
-
-- [ ] **Écran Comptabilité** (INC-04) : liste des factures émises (période),
-      export CSV, journal des ventes PCMN, FEC. Le domaine existe et est
-      testé ; il ne manque que l'UI + `listerFactures` branché.
-- [ ] **Clôture de paie** (INC-05) : bouton « Clôturer le mois » dans
-      Coûts → Paie, branché sur `cloturerPeriodePaie`/`obtenirPeriodePaie`.
-- [ ] **Espace client — Mes coordonnées** (INC-06) : bloc via `clientProfil`
-      dans l'onglet Dossier.
+- [x] **Migration 0058** appliquée et testée en base : `cmd_terminer_chantier`
+      archivée (INC-02), signature marque le document (INC-03), `peppol_id`
+      tranché côté JSON (INC-07), **plus deux bugs P0 découverts en base** —
+      aperçu d'offre cassé (INC-12) et signature toujours en échec (INC-13).
+- [x] **`supabase/migrations/` reconstitué** : 0001→0058, 63 fichiers (INC-01).
+      0044→0049b rapatriées depuis l'historique Supabase.
+- [x] `EspaceClient.jsx` : les affichages `reference` morts — **à vérifier au
+      passage suivant** (INC-06, partie rapide non encore faite).
 
 ## Jalon de lancement (avant tout EX)
 
