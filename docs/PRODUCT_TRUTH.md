@@ -110,17 +110,17 @@ ouvre la session `travail`, l'arrivée la ferme) — la paie et l'écran Heures 
 bureau continuent de lire les mêmes données, sans modification. C'est ce qui a
 permis de basculer le modèle sans toucher au calcul du brut.
 
-Complété le 2026-07-28 : le Bureau renseigne le **trajet dépôt → première
-adresse** (minutes) sur la mission ; le terrain en déduit son heure de départ
-(« Partez à 07:15 »), calculée à l'envers depuis le rendez-vous, marge de
-préparation comprise. Sans trajet connu, **aucune heure n'est proposée** — un
-horaire inventé ferait arriver l'équipe en retard. La source du chiffre
-(mesure / estimation / manuel) est affichée : une estimation ne se lit pas
-comme un horaire garanti.
+Complété le 2026-07-28 : le Bureau pose **trois heures** sur la mission —
+`heure_depart_prevue` (les hommes quittent le dépôt), `heure` (heure du
+déménagement liée à la date, généralement 08:00, celle qui fait foi vis-à-vis
+du client) et `heure_arrivee_prevue` (arrivée à la première adresse,
+chargement). Le terrain les lit au-dessus de son double minuteur.
 
-Reste ouvert : le calcul **automatique** du trajet demande un service de
-routage (clé API). Aujourd'hui la saisie est manuelle côté bureau ; la colonne
-`trajet_source` est prête à accueillir une valeur « mesure ».
+**Le calcul automatique de trajet est abandonné** (décision de Raphaël,
+2026-07-28) : une estimation de routage aurait déguisé une décision humaine en
+mesure, au prix d'une clé API et d'une dépendance externe. Le temps de route
+n'est pas stocké — il se déduit du départ et de l'arrivée. Une donnée
+dérivable ne se stocke pas.
 
 ## 3. Horizon B — Produit SaaS vendable
 
@@ -222,7 +222,8 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 | Terrain (double minuteur déclaré) | A | `LIVE` ✅ | EX-02 |
 | Agenda terrain (= bureau, lecture seule) | A | `LIVE` ✅ 28/07 | EX-11 |
 | Ma paie lisible par le terrain | A | `LIVE` ✅ 28/07 | EX-12 |
-| Heure de départ conseillée (trajet) | A | `LIVE` ✅ 28/07, routage auto `MISSING` | EX-13 |
+| Trois heures prévues (départ / déménagement / sur place) | A | `LIVE` ✅ 28/07 | EX-13 |
+| Garde « modifications non enregistrées » | A | `LIVE` ✅ 28/07 (toute navigation) | EX-14 |
 | Boucle d'écart terrain | A | `MISSING` | EX-10 |
 | Article enrichi (chevron) | A | `PARTIAL` (demont seul ; pas de photo ✓) | EX-04 |
 | Meubles pré-remplis par pièce | A | `MISSING` (pièces : `LIVE`) | EX-05 |
@@ -261,9 +262,13 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 - **EX-12** paie personnelle au terrain — ✅ `LIVE` (2026-07-28) · `cmd_ma_paie`
   ne répond que sur l'appelant (`auth.uid()`, aucun paramètre d'identité) :
   chacun vérifie ses heures sans voir les salaires des collègues.
-- **EX-13** heure de départ conseillée — `PARTIAL` · trajet saisi par le bureau,
-  conseil calculé et affiché au terrain · **manque** : calcul automatique
-  (service de routage à choisir, `DECISION`).
+- **EX-13** horaires prévus — ✅ `LIVE` (2026-07-28) · trois heures explicites
+  posées par le bureau, lues par le terrain · le calcul automatique de trajet
+  est **abandonné** : plus de service de routage, plus de clé API.
+- **EX-14** garde des modifications non enregistrées — ✅ `LIVE` (2026-07-28) ·
+  **toute** navigation est gardée, y compris les flèches retour des sous-pages
+  (auparavant seule la barre d'onglets l'était) ; Relevé, Devis, Matériel,
+  Coûts et Barème déclarent désormais leur état modifié.
 - **EX-10** boucle d'écart terrain — `VISION` validée · IMPACT: terrain,
   bureau, devis complémentaire, facture · DEP: EX-02 souhaitable avant.
 

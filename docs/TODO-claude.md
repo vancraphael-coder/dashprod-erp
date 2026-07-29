@@ -62,9 +62,6 @@ tranchées.
       Listing international derrière un droit de plan (en base, pas en
       cachant des boutons).
 
-- [ ] **EX-13 · Calcul automatique du trajet** : brancher un service de
-      routage (géocodage + itinéraire) pour remplir `trajet_minutes` avec
-      `source='mesure'`. Demande une clé API — voir décisions.
 
 ## P2 — dette et décisions
 
@@ -86,9 +83,6 @@ tranchées.
 - [x] **EX-02** ✅ tranché : le chronomètre disparaît, remplacé par le double
       minuteur déclaré.
 - [ ] **EX-03** : lancement du module Demandes (marketplace) — périmètre v1 ?
-- [ ] **EX-13** : quel service de routage pour le trajet automatique
-      (OpenRouteService gratuit avec clé, Google Distance Matrix payant,
-      autre) ? Sans clé, la saisie reste manuelle.
 - [ ] **EX-06** : source de vérification BCE (KBO/BCE Public Search, service
       tiers ?) — accès à ouvrir côté Raphaël.
 - [ ] INC-10 : la remise % doit-elle s'appliquer aux suppléments ?
