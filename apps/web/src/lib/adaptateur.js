@@ -1272,7 +1272,7 @@ export async function mesMissionsTerrain(utilisateurId) {
                affaires!inner(archive_le, etat, clients(nom), notes_commerciales),
                mission_affectations(utilisateur_id, utilisateurs(nom)),
                mission_vehicules(vehicules(nom)),
-               chrono_sessions(debut, fin, type)`)
+               chrono_sessions(id, debut, fin, type)`)
       // MÊME RÈGLE QUE LE PLANNING BUREAU. La vue terrain a son propre chemin
       // de données : sans ça le bureau annule et le terrain se déplace quand même.
       .is("affaires.archive_le", null)
@@ -1300,7 +1300,7 @@ export async function mesMissionsTerrain(utilisateurId) {
         charges: contact?.charges || [], decharges: contact?.decharges || [],
         aDemonter: (inventaire || []).filter((it) => it.demont)
           .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 })),
-        sessions: (m.chrono_sessions || []).map((s) => ({ debut: s.debut, fin: s.fin, type: s.type })),
+        sessions: (m.chrono_sessions || []).map((s) => ({ id: s.id, debut: s.debut, fin: s.fin, type: s.type })),
       };
     }));
     return enrichies;
@@ -1328,54 +1328,39 @@ export async function mesMissionsTerrain(utilisateurId) {
     });
 }
 
-/** Démarre le chrono d'une mission. */
-export async function chronoDemarrer(missionId) {
-  if (modeDonnees() === "reel") {
-    const { error } = await supabase.rpc("cmd_chrono_demarrer", { p_mission: missionId });
-    if (error) throw error;
-    return;
-  }
-  const d = lireDemo();
-  const m = (d.missions || []).find((x) => x.id === missionId);
-  if (m) {
-    m.sessions = m.sessions || [];
-    if (!m.sessions.some((s) => !s.fin)) m.sessions.push({ debut: new Date().toISOString() });
-    ecrireDemo(d);
-  }
+// ── Pointage déclaré : départ / arrivée, et pauses ────────────────────────
+// Le terrain DÉCLARE ses heures, il ne les fait pas mesurer. Ces trois appels
+// remplacent le chronomètre ; le stockage (chrono_sessions) reste le même, la
+// paie continue donc de lire les mêmes données.
+
+/** Pose ou corrige le départ et/ou l'arrivée. Dates ISO ou null. */
+export async function pointageDefinir(missionId, { depart, arrivee } = {}) {
+  const { data, error } = await supabase.rpc("cmd_pointage_definir", {
+    p_mission: missionId,
+    p_depart: depart ? new Date(depart).toISOString() : null,
+    p_arrivee: arrivee ? new Date(arrivee).toISOString() : null,
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.message || "Pointage refusé.");
+  return data;
 }
 
-/** Arrête le chrono (ferme la session ouverte). */
-export async function chronoArreter(missionId) {
-  if (modeDonnees() === "reel") {
-    const { error } = await supabase.rpc("cmd_chrono_arreter", { p_mission: missionId });
-    if (error) throw error;
-    return;
-  }
-  const d = lireDemo();
-  const m = (d.missions || []).find((x) => x.id === missionId);
-  if (m) {
-    const ouverte = (m.sessions || []).find((s) => !s.fin && s.type !== "pause");
-    if (ouverte) ouverte.fin = new Date().toISOString();
-    ecrireDemo(d);
-  }
+/** Ajoute une pause déclarée (début et fin fournis). */
+export async function pauseAjouter(missionId, debut, fin) {
+  const { data, error } = await supabase.rpc("cmd_pause_ajouter", {
+    p_mission: missionId,
+    p_debut: new Date(debut).toISOString(),
+    p_fin: new Date(fin).toISOString(),
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.message || "Pause refusée.");
+  return data;
 }
 
-/** Bascule une pause d'équipe (informatif — le compteur principal continue). */
-export async function chronoPause(missionId) {
-  if (modeDonnees() === "reel") {
-    const { error } = await supabase.rpc("cmd_chrono_pause", { p_mission: missionId });
-    if (error) throw error;
-    return;
-  }
-  const d = lireDemo();
-  const m = (d.missions || []).find((x) => x.id === missionId);
-  if (m) {
-    m.sessions = m.sessions || [];
-    const pauseOuverte = m.sessions.find((s) => s.type === "pause" && !s.fin);
-    if (pauseOuverte) pauseOuverte.fin = new Date().toISOString();
-    else m.sessions.push({ debut: new Date().toISOString(), type: "pause" });
-    ecrireDemo(d);
-  }
+/** Retire une pause saisie par erreur. */
+export async function pauseRetirer(sessionId) {
+  const { error } = await supabase.rpc("cmd_pause_retirer", { p_session: sessionId });
+  if (error) throw new Error(error.message);
 }
 
 /** Signale un souci matériel/véhicule (capacité signaler_materiel). */
