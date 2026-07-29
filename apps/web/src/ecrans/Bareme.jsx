@@ -5,31 +5,48 @@
 // organisations.parametres_prix (jsonb) — le moteur de chiffrage le lit.
 // =============================================================================
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef} from "react";
 import { obtenirParametresPrix, sauverParametresPrix } from "../lib/adaptateur.js";
 import { catalogueSupplements, ajouterSupplement, retirerSupplement, UNITES_SUPPLEMENT }
   from "@domaine/chiffrage/supplements.js";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, declarerModifs} from "../lib/theme.jsx";
 
 export default function Bareme({ retour }) {
   const [params, setParams] = useState(null);
   const [sauve, setSauve] = useState(false);
+  // `sauve` signale « vient d'être enregistré » ; il vaut false à l'ouverture,
+  // il ne peut donc pas servir de drapeau « modifié ». D'où `touche`, mis à
+  // vrai par la première modification réelle.
+  const [touche, setTouche] = useState(false);
+  const sauverRef = useRef(null);
   const [erreur, setErreur] = useState(null);
 
   useEffect(() => { obtenirParametresPrix().then(setParams).catch((e) => setErreur(e.message)); }, []);
 
   function majBareme(cle, v) {
     setParams((p) => ({ ...p, bareme_horaire: { ...p.bareme_horaire, [cle]: num(v) } }));
-    setSauve(false);
+    marquerTouche();
   }
   function majTarif(cle, v) {
     setParams((p) => ({ ...p, tarifs: { ...(p.tarifs || {}), [cle]: num(v) } }));
-    setSauve(false);
+    marquerTouche();
   }
+
+  /** Une modification réelle : le garde-fou s'arme. */
+  function marquerTouche() { setSauve(false); setTouche(true); }
+
+  // Garde de modifications — AVANT tout return conditionnel (règle des hooks).
+  // Toute navigation, y compris la flèche retour, demandera d'abord
+  // « Enregistrer / Annuler les modifications ».
+  useEffect(() => {
+    declarerModifs(touche, () => sauverRef.current && sauverRef.current());
+    return () => declarerModifs(false, null);
+  }, [touche]);
+  sauverRef.current = enregistrer;
 
   async function enregistrer() {
     setErreur(null);
-    try { await sauverParametresPrix(params); setSauve(true); }
+    try { await sauverParametresPrix(params); setSauve(true); setTouche(false); }
     catch (e) { setErreur(e.message); }
   }
 
@@ -38,15 +55,15 @@ export default function Bareme({ retour }) {
     setParams((p) => ({ ...p, supplements:
       catalogueSupplements(p.supplements).map((s) =>
         s.cle === cle ? { ...s, [champ]: valeur } : s) }));
-    setSauve(false);
+    marquerTouche();
   }
   function ajouter() {
     setParams((p) => ({ ...p, supplements: ajouterSupplement(p.supplements || []) }));
-    setSauve(false);
+    marquerTouche();
   }
   function retirer(cle) {
     setParams((p) => ({ ...p, supplements: retirerSupplement(p.supplements, cle) }));
-    setSauve(false);
+    marquerTouche();
   }
 
   if (!params) return null;

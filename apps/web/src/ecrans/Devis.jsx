@@ -6,7 +6,7 @@
 // l'écran saisit, le domaine calcule (une seule implémentation, T1).
 // =============================================================================
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef} from "react";
 import {
   obtenirAffaire, enregistrerChiffrage,
   obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
@@ -17,7 +17,7 @@ import { catalogueSupplements, supplementsRetenus, libelleLigne, UNITES_SUPPLEME
   from "@domaine/chiffrage/supplements.js";
 import { BAREME_HORAIRE, TARIFS } from "@domaine/chiffrage/bareme.js";
 import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
-import { C, S, ZONES_MARGE, euros } from "../lib/theme.jsx";
+import { C, S, ZONES_MARGE, euros, declarerModifs} from "../lib/theme.jsx";
 
 const FORMULES = [
   { cle: "tarifaire", libelle: "Tarifaire" },
@@ -35,6 +35,11 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   });
   const [couts, setCouts] = useState({ mainOeuvreEuros: 0, carburantEuros: 0, materielEuros: 0, diversEuros: 0, peagesEuros: 0 });
   const [sauve, setSauve] = useState(false);
+  // `sauve` signale « vient d'être enregistré » ; il vaut false à l'ouverture,
+  // il ne peut donc pas servir de drapeau « modifié ». D'où `touche`, mis à
+  // vrai par la première modification réelle.
+  const [touche, setTouche] = useState(false);
+  const sauverRef = useRef(null);
   const [equipe, setEquipe] = useState([]);     // membres pressentis {id, nom, taux}
   const [ref, setRef] = useState(null);          // barème + tarifs configurés
   const [catalogue, setCatalogue] = useState([]);  // suppléments définis (Barème)
@@ -99,9 +104,21 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
     catch { return null; }
   }, [faits, supRetenus, coutsEffectifs, ref]);
 
-  function maj(champ, valeur) { setFaits((f) => ({ ...f, [champ]: valeur })); setSauve(false); }
-  function majCout(champ, valeur) { setCouts((c) => ({ ...c, [champ]: valeur })); setSauve(false); }
+  function maj(champ, valeur) { setFaits((f) => ({ ...f, [champ]: valeur })); marquerTouche(); }
+  function majCout(champ, valeur) { setCouts((c) => ({ ...c, [champ]: valeur })); marquerTouche(); }
   const num = (v) => (v === "" ? 0 : Number(v));
+
+  /** Une modification réelle : le garde-fou s'arme. */
+  function marquerTouche() { setSauve(false); setTouche(true); }
+
+  // Garde de modifications — AVANT tout return conditionnel (règle des hooks).
+  // Toute navigation, y compris la flèche retour, demandera d'abord
+  // « Enregistrer / Annuler les modifications ».
+  useEffect(() => {
+    declarerModifs(touche, () => sauverRef.current && sauverRef.current());
+    return () => declarerModifs(false, null);
+  }, [touche]);
+  sauverRef.current = enregistrer;
 
   async function enregistrer() {
     if (!scenario) return; // pas de chiffrage abouti → rien à enregistrer
@@ -113,7 +130,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
     // Recharge l'affaire : le montant enregistré est désormais la source de
     // vérité (en-tête, offre, liste le reliront de la base).
     obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
-    setSauve(true);
+    setSauve(true); setTouche(false);
   }
 
   const horaire = faits.formule !== "forfait";
@@ -220,7 +237,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
                       <input type="checkbox" checked={coche}
                         onChange={(e) => {
                           setSelSup((s) => ({ ...s, [sp.cle]: e.target.checked ? 1 : 0 }));
-                          setSauve(false);
+                          marquerTouche();
                         }} />
                       <span style={{ flex: 1, fontSize: 13, color: C.encre }}>
                         {sp.libelle || "(sans nom)"}
@@ -235,7 +252,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
                           value={selSup[sp.cle] || 1}
                           onChange={(e) => {
                             setSelSup((s) => ({ ...s, [sp.cle]: num(e.target.value) }));
-                            setSauve(false);
+                            marquerTouche();
                           }} />
                       )}
                     </div>

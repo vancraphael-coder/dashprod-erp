@@ -9,19 +9,24 @@
 // ligne « Fourniture du matériel d'emballage » de l'offre.
 // =============================================================================
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef} from "react";
 import { obtenirAffaire, obtenirEmballage, sauverEmballage } from "../lib/adaptateur.js";
 import {
   resumeEmballage, fournituresOffre,
 } from "@domaine/stocks/emballage.js";
 import { obtenirCatalogues } from "../lib/adaptateur.js";
 import { catalogue } from "@domaine/stocks/catalogues.js";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, declarerModifs} from "../lib/theme.jsx";
 
 export default function Materiel({ affaireId, retour }) {
   const [affaire, setAffaire] = useState(null);
   const [emballage, setEmballage] = useState({});
   const [sauve, setSauve] = useState(false);
+  // `sauve` signale « vient d'être enregistré » ; il vaut false à l'ouverture,
+  // il ne peut donc pas servir de drapeau « modifié ». D'où `touche`, mis à
+  // vrai par la première modification réelle.
+  const [touche, setTouche] = useState(false);
+  const sauverRef = useRef(null);
   const [erreur, setErreur] = useState(null);
   // Fournitures ET matériel de terrain viennent de Paramètres → Catalogues.
   const [cats, setCats] = useState({});
@@ -31,7 +36,7 @@ export default function Materiel({ affaireId, retour }) {
   function majTerrain(cle, valeur) {
     const n = Math.max(0, parseInt(valeur, 10) || 0);
     setEmballage((e) => ({ ...e, terrain: { ...(e.terrain || {}), [cle]: n } }));
-    setSauve(false);
+    marquerTouche();
   }
 
   useEffect(() => {
@@ -50,12 +55,24 @@ export default function Materiel({ affaireId, retour }) {
   function maj(cle, colonne, valeur) {
     const n = Math.max(0, parseInt(valeur, 10) || 0);
     setEmballage((e) => ({ ...e, [cle]: { ...(e[cle] || {}), [colonne]: n } }));
-    setSauve(false);
+    marquerTouche();
   }
+
+  /** Une modification réelle : le garde-fou s'arme. */
+  function marquerTouche() { setSauve(false); setTouche(true); }
+
+  // Garde de modifications — AVANT tout return conditionnel (règle des hooks).
+  // Toute navigation, y compris la flèche retour, demandera d'abord
+  // « Enregistrer / Annuler les modifications ».
+  useEffect(() => {
+    declarerModifs(touche, () => sauverRef.current && sauverRef.current());
+    return () => declarerModifs(false, null);
+  }, [touche]);
+  sauverRef.current = enregistrer;
 
   async function enregistrer() {
     setErreur(null);
-    try { await sauverEmballage(affaireId, emballage); setSauve(true); }
+    try { await sauverEmballage(affaireId, emballage); setSauve(true); setTouche(false); }
     catch (e) { setErreur(e.message); }
   }
 

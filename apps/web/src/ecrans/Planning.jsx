@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   listerMissions, listerMembresSimples, basculerAffectation, composerBrief,
   listerConges, listerFermetures, listerVehicules, basculerVehiculeMission, partagerMission,
-  definirTrajet,
+  definirHorairesMission,
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
@@ -292,11 +292,10 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
               </div>
             )}
 
-            {/* Trajet dépôt → 1re adresse. Ce n'est PAS le km du devis (qui est
-                l'aller-retour complet) : c'est ce qui permet de dire à l'équipe
-                à quelle heure partir. Sans lui, le terrain n'a aucun conseil. */}
+            {/* Les trois heures du matin. Posées par le bureau, lues par le
+                terrain. Aucune n'est devinée : ce qui manque reste vide. */}
             {!lectureSeule && m.type !== "visite" && (
-              <TrajetMission mission={m} onEnregistre={recharger} />
+              <HorairesMission mission={m} onEnregistre={recharger} />
             )}
 
             {/* Partage au terrain — geste distinct de l'affectation. Le bureau
@@ -450,25 +449,32 @@ const btnFleche = {
 };
 
 /**
- * Saisie du trajet dépôt → première adresse, côté bureau.
- * Une fois posé, le terrain voit « Partez à 07:15 » sur son minuteur.
+ * Les trois heures prévues d'une mission, posées par le bureau.
+ *   départ  : les hommes quittent le dépôt
+ *   heure   : heure du déménagement liée à la date (généralement 08:00)
+ *   arrivée : arrivée à la première adresse (chargement)
+ * Le temps de route s'affiche en dessous — il se déduit, il ne se saisit pas.
  */
-function TrajetMission({ mission, onEnregistre }) {
+function HorairesMission({ mission, onEnregistre }) {
   const [edition, setEdition] = useState(false);
-  const [minutes, setMinutes] = useState(mission.trajet_minutes ?? "");
+  const [f, setF] = useState({
+    depart: hhmm(mission.heure_depart_prevue),
+    heure: hhmm(mission.heure) || HEURE_DEFAUT,
+    arrivee: hhmm(mission.heure_arrivee_prevue),
+  });
   const [erreur, setErreur] = useState(null);
 
-  const info = trajet({ minutes: mission.trajet_minutes, km: mission.trajet_km,
-    source: mission.trajet_source === "mesure" ? "mesure" : "estime" });
-  const rdv = instant(mission.date, mission.heure);
-  const conseil = rdv && info.ok ? conseilDepart(rdv, info) : null;
+  const r = resumeHoraires({
+    depart: mission.heure_depart_prevue, heure: mission.heure,
+    arrivee: mission.heure_arrivee_prevue,
+  });
 
   async function enregistrer() {
     setErreur(null);
-    const v = Number(minutes);
-    if (!Number.isFinite(v) || v <= 0) { setErreur("Durée en minutes."); return; }
+    const v = verifierHoraires(f);
+    if (!v.ok) { setErreur(v.message); return; }
     try {
-      await definirTrajet(mission.id, { minutes: Math.round(v), source: "manuel" });
+      await definirHorairesMission(mission.id, f);
       setEdition(false);
       await onEnregistre();
     } catch (e) { setErreur(e.message); }
@@ -479,42 +485,53 @@ function TrajetMission({ mission, onEnregistre }) {
       <button onClick={() => setEdition(true)} style={{
         display: "flex", alignItems: "center", gap: 8, width: "100%",
         marginTop: 8, padding: "8px 11px", borderRadius: 10, cursor: "pointer",
-        border: `1px dashed ${info.ok ? C.bord : C.ambre}`, background: C.blanc,
+        border: `1px dashed ${r.complet ? C.bord : C.ambre}`, background: C.blanc,
         textAlign: "left" }}>
-        <span>🚚</span>
-        <span style={{ flex: 1, fontSize: 12, color: info.ok ? C.encre : C.ambre,
-                       fontWeight: 600 }}>
-          {info.ok
-            ? `Trajet dépôt → chantier : ${info.minutes} min${conseil ? ` · ${conseil.texte.toLowerCase()}` : ""}`
-            : "Trajet dépôt → chantier non renseigné"}
+        <span>🕗</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 600,
+                       color: r.complet ? C.encre : C.ambre }}>
+          {r.depart || r.arrivee
+            ? `Départ ${r.depart || "—"} · sur place ${r.arrivee || "—"}`
+              + (r.route ? ` · ${r.route} de route` : "")
+            : "Heures de départ et d'arrivée non définies"}
         </span>
         <span style={{ fontSize: 11.5, color: C.fantome }}>
-          {info.ok ? "Modifier" : "Ajouter"}
+          {r.complet ? "Modifier" : "Définir"}
         </span>
       </button>
     );
   }
 
+  const champ = (cle, libelle, aide) => (
+    <div style={{ flex: 1, minWidth: 96 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.encre }}>{libelle}</div>
+      {aide && (
+        <div style={{ fontSize: 10.5, color: C.fantome, lineHeight: 1.3,
+                      marginBottom: 3 }}>{aide}</div>
+      )}
+      <input type="time" value={f[cle]} aria-label={libelle}
+        onChange={(e) => setF((x) => ({ ...x, [cle]: e.target.value }))}
+        style={{ ...S.input, margin: 0, padding: "8px 9px" }} />
+    </div>
+  );
+
   return (
     <div style={{ marginTop: 8, padding: 11, borderRadius: 10,
                   border: `1px solid ${C.bord}`, background: "#F8FAFC" }}>
-      <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6, lineHeight: 1.45 }}>
-        Durée dépôt → première adresse, en minutes. Le terrain en déduira son
-        heure de départ.
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {champ("depart", "Départ", "du dépôt")}
+        {champ("heure", "Déménagement", "heure client")}
+        {champ("arrivee", "Sur place", "1re adresse")}
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input type="number" min="1" value={minutes} autoFocus
-          onChange={(e) => setMinutes(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && enregistrer()}
-          style={{ ...S.input, margin: 0, width: 90 }} placeholder="25" />
+      {erreur && (
+        <div style={{ fontSize: 11.5, color: C.rouge, marginTop: 7 }}>{erreur}</div>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 9 }}>
         <button onClick={enregistrer} style={{ ...S.boutonPlein, margin: 0,
           padding: "9px 16px", fontSize: 13 }}>Enregistrer</button>
         <button onClick={() => setEdition(false)} style={{ ...S.boutonLien,
           padding: "9px 10px" }}>Annuler</button>
       </div>
-      {erreur && (
-        <div style={{ fontSize: 11.5, color: C.rouge, marginTop: 6 }}>{erreur}</div>
-      )}
     </div>
   );
 }

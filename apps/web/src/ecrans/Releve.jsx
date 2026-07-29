@@ -6,7 +6,7 @@
 // Aligné sur le modèle validé roovers-mobile.jsx (catalogue, quantités).
 // =============================================================================
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef} from "react";
 import {
   obtenirAffaire, enregistrerReleve, obtenirReleve,
   listerVehicules, obtenirCamionsAffaire,
@@ -18,7 +18,7 @@ import {
 } from "@domaine/releve/volumetrie.js";
 import { obtenirCatalogues } from "../lib/adaptateur.js";
 import { catalogue } from "@domaine/stocks/catalogues.js";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, declarerModifs} from "../lib/theme.jsx";
 
 // Catalogue par pièce (roovers-mobile.jsx, CATALOGUE).
 const CATALOGUE = {
@@ -59,11 +59,16 @@ export default function Releve({ affaireId, retour, versDevis }) {
   function retirerPiece() {
     setInv((v) => v.filter((it) => it.piece !== piece));
     setPiecesAdHoc((v) => v.filter((p) => p !== piece));
-    setSauve(false);
+    marquerTouche();
   }
   const [libre, setLibre] = useState("");
   const [camionsSel, setCamionsSel] = useState([]);
   const [sauve, setSauve] = useState(false);
+  // `sauve` signale « vient d'être enregistré » ; il vaut false à l'ouverture,
+  // il ne peut donc pas servir de drapeau « modifié ». D'où `touche`, mis à
+  // vrai par la première modification réelle.
+  const [touche, setTouche] = useState(false);
+  const sauverRef = useRef(null);
 
   useEffect(() => {
     obtenirAffaire(affaireId).then(setAffaire);
@@ -86,14 +91,14 @@ export default function Releve({ affaireId, retour, versDevis }) {
       if (existe) return v.map((it) => it === existe ? { ...it, quantite: it.quantite + 1 } : it);
       return [...v, { id: uid(), nom, piece, quantite: 1 }];
     });
-    setSauve(false);
+    marquerTouche();
   }
   function quantite(id, delta) {
     setInv((v) => v.map((it) => it.id === id
       ? { ...it, quantite: Math.max(1, it.quantite + delta) } : it));
-    setSauve(false);
+    marquerTouche();
   }
-  function retirer(id) { setInv((v) => v.filter((it) => it.id !== id)); setSauve(false); }
+  function retirer(id) { setInv((v) => v.filter((it) => it.id !== id)); marquerTouche(); }
 
   /** Ajuste le volume UNITAIRE d'un article (le volume saisi prime sur la référence). */
   function ajusterVolume(id, delta) {
@@ -102,17 +107,17 @@ export default function Releve({ affaireId, retour, versDevis }) {
       const actuel = it.vol != null ? it.vol : volumeUnitaire(it.nom);
       return { ...it, vol: Math.max(0, Math.round((actuel + delta) * 100) / 100) };
     }));
-    setSauve(false);
+    marquerTouche();
   }
   /** Marque un article à démonter/remonter — alimente l'offre et le terrain. */
   function basculerDemontage(id) {
     setInv((v) => v.map((it) => it.id === id ? { ...it, demont: !it.demont } : it));
-    setSauve(false);
+    marquerTouche();
   }
   function toutDemonter() {
     const tous = inv.length > 0 && inv.every((it) => it.demont);
     setInv((v) => v.map((it) => ({ ...it, demont: !tous })));
-    setSauve(false);
+    marquerTouche();
   }
   function ajouterLibre() {
     const nom = libre.trim();
@@ -121,9 +126,21 @@ export default function Releve({ affaireId, retour, versDevis }) {
     setLibre("");
   }
 
+  /** Une modification réelle : le garde-fou s'arme. */
+  function marquerTouche() { setSauve(false); setTouche(true); }
+
+  // Garde de modifications — AVANT tout return conditionnel (règle des hooks).
+  // Toute navigation, y compris la flèche retour, demandera d'abord
+  // « Enregistrer / Annuler les modifications ».
+  useEffect(() => {
+    declarerModifs(touche, () => sauverRef.current && sauverRef.current());
+    return () => declarerModifs(false, null);
+  }, [touche]);
+  sauverRef.current = enregistrer;
+
   async function enregistrer() {
     await enregistrerReleve(affaireId, inv);
-    setSauve(true);
+    setSauve(true); setTouche(false);
   }
 
   return (

@@ -18,8 +18,7 @@ import {
   instant, heureDe, corrigerJourSuivant, secondesTravail, formaterDuree,
   etatPointage, verifierPointage, pausesValides,
 } from "@domaine/operations/pointage.js";
-import { trajet, conseilDepart, heureArriveePrevue }
-  from "@domaine/operations/trajet.js";
+import { resumeHoraires } from "@domaine/operations/horaires.js";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
 import { adresseDepot } from "@domaine/organisation/identite.js";
@@ -138,17 +137,13 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
 
   const etat = etatPointage(depart, arrivee, pauses, new Date(tic));
 
-  // Heure de départ conseillée : on calcule à l'envers depuis le rendez-vous.
-  // Sans trajet connu, aucune heure n'est proposée — un horaire inventé ferait
-  // arriver l'équipe en retard chez le client.
-  const infoTrajet = trajet({
-    minutes: mission.trajet_minutes, km: mission.trajet_km,
-    source: mission.trajet_source === "mesure" ? "mesure" : "estime",
+  // Les heures prévues par le bureau. Rien n'est calculé ni deviné : ce que le
+  // bureau n'a pas renseigné reste vide.
+  const prevu = resumeHoraires({
+    depart: mission.heure_depart_prevue,
+    heure: mission.heure,
+    arrivee: mission.heure_arrivee_prevue,
   });
-  const rdv = instant(mission.date, mission.heure);
-  const conseil = rdv ? conseilDepart(rdv, infoTrajet) : null;
-  const arriveePrevue = depart && !arrivee
-    ? heureArriveePrevue(depart, infoTrajet) : null;
 
   // Le compteur ne « mesure » rien : il projette l'heure courante depuis le
   // départ déclaré. Il ne tourne que tant qu'aucune arrivée n'est posée.
@@ -267,41 +262,40 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
               )}
             </div>
 
-            {/* Conseil de départ — la vraie question du matin n'est pas
-                « combien de route ? » mais « à quelle heure partir ? ». */}
-            {!depart && conseil && (
-              <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 10,
-                background: conseil.ok ? "#1E293B" : "transparent",
-                border: conseil.ok ? "none" : "1px dashed #475569" }}>
-                <div style={{ fontSize: conseil.ok ? 15 : 12.5, fontWeight: 800,
-                  color: conseil.ok ? "#FBBF24" : "#94A3B8" }}>
-                  {conseil.texte}
-                </div>
-                {conseil.detail && (
-                  <div style={{ fontSize: 11.5, color: "#94A3B8", marginTop: 3,
-                                lineHeight: 1.45 }}>
-                    {conseil.detail}
-                  </div>
+            {/* Le programme du bureau. Le minuteur, juste en dessous,
+                enregistre ce qui s'est réellement passé. */}
+            {(prevu.depart || prevu.arrivee) && !arrivee && (
+              <div style={{ marginBottom: 10, padding: "9px 12px", borderRadius: 10,
+                background: "#1E293B", display: "flex", gap: 14,
+                justifyContent: "center", flexWrap: "wrap" }}>
+                {prevu.depart && (
+                  <span style={{ fontSize: 12.5, color: "#E2E8F0" }}>
+                    Départ prévu <b style={{ color: "#FBBF24" }}>{prevu.depart}</b>
+                  </span>
                 )}
-              </div>
-            )}
-            {arriveePrevue && (
-              <div style={{ marginBottom: 10, fontSize: 12, color: "#94A3B8",
-                            textAlign: "center" }}>
-                Arrivée prévue sur place vers {heureDe(arriveePrevue)}
+                {prevu.arrivee && (
+                  <span style={{ fontSize: 12.5, color: "#E2E8F0" }}>
+                    Sur place <b style={{ color: "#FBBF24" }}>{prevu.arrivee}</b>
+                  </span>
+                )}
+                {prevu.route && (
+                  <span style={{ fontSize: 11.5, color: "#94A3B8" }}>
+                    ({prevu.route} de route)
+                  </span>
+                )}
               </div>
             )}
 
             <div style={{ display: "grid", gap: 8,
                           gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
               <Minuteur
-                titre="Départ" prevu={mission.heure} valeur={saisie.depart}
+                titre="Départ" prevu={prevu.depart} valeur={saisie.depart}
                 pose={!!depart} accent="#22C55E"
                 onSaisir={(v) => setSaisie((x) => ({ ...x, depart: v }))}
                 onMaintenant={() => poser("depart", new Date())}
                 onValider={() => poser("depart", saisie.depart)} />
               <Minuteur
-                titre="Arrivée" valeur={saisie.arrivee}
+                titre="Arrivée" prevu={prevu.arrivee} valeur={saisie.arrivee}
                 pose={!!arrivee} accent="#3B82F6" inactif={!depart}
                 onSaisir={(v) => setSaisie((x) => ({ ...x, arrivee: v }))}
                 onMaintenant={() => poser("arrivee", new Date())}

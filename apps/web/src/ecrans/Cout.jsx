@@ -6,14 +6,14 @@
 // repli. Persisté dans organisations.parametres_prix.couts (jsonb).
 // =============================================================================
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef} from "react";
 import {
   obtenirParametresPrix, sauverParametresPrix,
   obtenirCatalogues, sauverCatalogues,
 } from "../lib/adaptateur.js";
 import { catalogue, coutsMateriel } from "@domaine/stocks/catalogues.js";
 import Paie from "./Paie.jsx";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, declarerModifs} from "../lib/theme.jsx";
 
 export default function Cout({ retour }) {
   // La paie vit ICI, dans les coûts : un salaire est un coût interne, pas un
@@ -26,6 +26,11 @@ export default function Cout({ retour }) {
   const [vue, setVue] = useState("couts");
   const [params, setParams] = useState(null);
   const [sauve, setSauve] = useState(false);
+  // `sauve` signale « vient d'être enregistré » ; il vaut false à l'ouverture,
+  // il ne peut donc pas servir de drapeau « modifié ». D'où `touche`, mis à
+  // vrai par la première modification réelle.
+  const [touche, setTouche] = useState(false);
+  const sauverRef = useRef(null);
   const [erreur, setErreur] = useState(null);
   const [cats, setCats] = useState(null);
 
@@ -40,13 +45,25 @@ export default function Cout({ retour }) {
     const liste = catalogue(cats, source).map((a) =>
       a.cle === cle ? { ...a, cout_centimes: centimes } : a);
     setCats((x) => ({ ...(x || {}), [source]: liste }));
-    setSauve(false);
+    marquerTouche();
   }
 
   function majCout(cle, v) {
     setParams((p) => ({ ...p, couts: { ...(p.couts || {}), [cle]: num(v) } }));
-    setSauve(false);
+    marquerTouche();
   }
+
+  /** Une modification réelle : le garde-fou s'arme. */
+  function marquerTouche() { setSauve(false); setTouche(true); }
+
+  // Garde de modifications — AVANT tout return conditionnel (règle des hooks).
+  // Toute navigation, y compris la flèche retour, demandera d'abord
+  // « Enregistrer / Annuler les modifications ».
+  useEffect(() => {
+    declarerModifs(touche, () => sauverRef.current && sauverRef.current());
+    return () => declarerModifs(false, null);
+  }, [touche]);
+  sauverRef.current = enregistrer;
 
   async function enregistrer() {
     setErreur(null);
@@ -55,7 +72,7 @@ export default function Cout({ retour }) {
     try {
       await sauverParametresPrix(params);
       await sauverCatalogues(cats || {});
-      setSauve(true);
+      setSauve(true); setTouche(false);
     } catch (e) { setErreur(e.message); }
   }
 
