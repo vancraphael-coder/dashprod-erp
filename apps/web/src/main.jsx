@@ -207,6 +207,10 @@ function AppTerrain({ profil }) {
   // ── Coquille terrain : Chantiers / (Nouveau) / Profil ─────────────────────
   const items = [
     ["chantiers", "chantiers", "Chantiers"],
+    // L'agenda est le MÊME que celui du bureau : mêmes missions publiées,
+    // mêmes congés, mêmes fériés, mêmes fermetures. Ce qui change, ce sont
+    // les droits — le terrain regarde, il ne pilote pas.
+    ["agenda", "planning", "Agenda"],
     ...(peutCreer ? [["nouveau", "outils", "Nouveau"]] : []),
     ["profil", "profil", "Profil"],
   ];
@@ -214,6 +218,10 @@ function AppTerrain({ profil }) {
     <div>
       {ecran === "chantiers" && <Terrain profil={profil}
         versConsult={(id) => setRoute({ mode: "consult", ecran: "dossier", affaireId: id })} />}
+      {ecran === "agenda" && (
+        <Planning lectureSeule
+          ouvrirDossier={(id) => setRoute({ mode: "consult", ecran: "dossier", affaireId: id })} />
+      )}
       {ecran === "profil" && <TerrainProfil profil={profil} />}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
