@@ -1,7 +1,4 @@
 -- =============================================================================
--- 0044_partage_mission_terrain.sql — APPLIQUÉE en production le 21/07/2026
--- (ne pas rejouer dans l'éditeur SQL : ranger dans le dépôt, c'est tout)
---
 -- Partage explicite bureau → terrain.
 --
 -- Avant : un déménageur voyait une mission dès qu'il y était AFFECTÉ. Le bureau
