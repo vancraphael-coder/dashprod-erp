@@ -269,6 +269,57 @@ DEPUIS le search_path réel. **Réglé (0059)** en qualifiant
 `extensions.gen_random_bytes`, sans relâcher le search_path.
 Leçon, à ranger avec §1.4 : *un objet installé n'est pas un objet accessible*.
 
+### INC-15 · P0 · ✅ CLOS le 2026-07-29 · Écran blanc du planning
+`Planning.jsx` utilisait `hhmm`, `resumeHoraires`, `verifierHoraires` et
+`HEURE_DEFAUT` **sans les importer** : une substitution de la veille avait
+manqué sa cible et l'import n'avait jamais été ajouté. Conséquence :
+`ReferenceError` à l'ouverture → page blanche. **Ni `npm test` ni le build ne
+l'attrapent** (l'écran n'est pas exécuté, et Rollup n'échoue pas sur un
+identifiant libre). **Réglé** : import ajouté, et surtout un **test statique**
+(`packages/domaine/tests/imports-ecrans.test.js`) qui compare les exports du
+domaine aux imports de chaque écran. Cette classe d'erreur ne peut plus sortir.
+Leçon : après une substitution de texte, VÉRIFIER qu'elle a mordu — un
+`assert` sur le résultat, pas un « ok » imprimé.
+
+### INC-16 · P0 · ✅ CLOS le 2026-07-29 · Heures de mission jamais mappées
+`listerMissions` **sélectionnait** `heure_depart_prevue` et
+`heure_arrivee_prevue` mais ne les recopiait pas dans l'objet renvoyé : le
+bureau ne voyait donc jamais les heures qu'il venait d'enregistrer. **Réglé.**
+Leçon : dans l'adaptateur, `select` et mapping sont deux endroits — ajouter une
+colonne demande les deux.
+
+### INC-17 · P0 · Facture émise sur un dossier non facturable
+`Dossier.jsx` : `facturable = ["confirme","effectue","facture","paye"]`. Or
+`transition_permise` n'accepte que `effectue → facture`. Depuis `confirme`,
+`cmd_emettre_facture` appelle `transition_interne(affaire,'facture')` qui
+**renvoie false sans lever** : la facture est émise avec son numéro légal, le
+dossier reste « confirmé », et le paiement s'enregistre par-dessus. D'où le
+symptôme « confirmé et payé en même temps ». **Cause commune** avec INC-18 :
+personne ne lit le verdict de `transition_interne`. Traitement : LOT 1,
+décision D1.
+
+### INC-18 · P0 · Annuler une annulation ne fait rien
+`cmd_reprendre_affaire` (0045b) appelle
+`transition_interne(p_affaire,'confirme')` depuis l'état `annule`. Or
+`transition_permise` ne contient **aucune** paire au départ de `annule` : la
+transition échoue silencieusement, seul `archive_le` est remis à null, et la
+fonction renvoie un succès mensonger. Traitement : LOT 1.
+
+### INC-19 · P1 · Double affectation invisible
+Dans `Planning.jsx` : `const verdict = estAffecte ? null : conflitPour(...)`.
+Le conflit n'est donc **jamais** évalué pour un membre déjà affecté — un homme
+sur deux chantiers le même jour n'est signalé nulle part. De plus le rendu de
+conflit est rouge (`C.rouge`), alors qu'un « déjà pris » devrait se distinguer
+d'un « en congé ». Aucun contrôle n'existe pour les véhicules. Traitement :
+LOT 4.
+
+### INC-20 · P1 · Deux rendus concurrents pour l'offre
+`Contrat.jsx` (238 lignes, écran) et `lib/pdfOffre.js` (180 lignes,
+téléchargement) rendent le même document par deux chemins distincts : ils
+divergent par construction, et c'est pourquoi le PDF n'est pas la copie exacte
+de l'offre affichée. Contredit le verrou « une source de vérité, plusieurs
+sorties ». Traitement : LOT 3, décision D2.
+
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
 ✅ `visible_reseau` activé pour Roovers (annuaire peuplé) ·

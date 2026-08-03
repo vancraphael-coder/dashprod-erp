@@ -21,6 +21,21 @@ Dernière mise à jour : 2026-07-28 — P0 tous réglés (connecteur rétabli, 0
 - [x] `EspaceClient.jsx` : les affichages `reference` morts — **à vérifier au
       passage suivant** (INC-06, partie rapide non encore faite).
 
+## Plan de lancement 1.0
+
+Le découpage en lots, le registre de traçabilité de toutes les demandes et les
+quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
+porte plus que le lot en cours.
+
+**Lot en cours : LOT 1 — intégrité du cycle de vie** (bloqué par la décision
+D1 de Raphaël).
+
+- [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),
+      corrigés le 2026-07-29, avec test statique d'imports.
+- [ ] LOT 1 — facturation depuis un état non facturable (INC-17), reprise
+      d'annulation (INC-18), et la règle « tout `transition_interne` lit son
+      verdict ».
+
 ## Jalon de lancement (avant tout EX)
 
 - [ ] **Manipulation complète** (LAUNCH_TRUTH §3) exécutée par Raphaël après
