@@ -121,14 +121,26 @@ disparaissait de l'affichage. Verrouillé à deux niveaux (0066), testé en base
 Et `obtenirInstance` prenait la dernière instance plutôt que la signée : une
 signature pouvait être masquée par un document régénéré. Corrigé.
 
-### LOT 4 — Planning *(la fiabilité de l'affectation)*
-- **Doublons en orange** : le verdict de conflit est calculé
-  `estAffecte ? null : conflitPour(...)` — donc **jamais** pour un membre déjà
-  affecté. Un homme sur deux chantiers le même jour n'est signalé nulle part
-  (INC-19). Et la couleur actuelle est rouge, pas orange.
-- **Conflit de véhicule** : aucun contrôle n'existe pour les camions.
-- Distinguer visuellement *indisponible* (congé, rouge) de *déjà pris*
-  (double affectation, orange).
+### LOT 4 — Planning ✅ FAIT le 2026-07-29
+**Livré** — trois niveaux, une seule grammaire pour les hommes et les camions :
+
+| Niveau | Sens | Couleur |
+|---|---|---|
+| `libre` | rien à signaler | neutre |
+| `double` | déjà pris sur un autre chantier ce jour-là | **orange** ⚠ |
+| `indisponible` | en congé — la personne n'est pas là | **rouge** ⛔ |
+
+Le doublon est un **avertissement, pas une interdiction** : deux missions
+courtes dans la même journée sont parfois voulues. Le système signale, le
+bureau décide.
+
+Corrections de fond :
+- le verdict se calcule **aussi pour une ressource déjà affectée** — c'était la
+  cause d'INC-19 : un doublon devenait invisible à l'instant où on le créait ;
+- **conflit de véhicule** ajouté (aucun contrôle n'existait) : un camion ne
+  peut pas être à deux chantiers à la fois ;
+- **alerte au niveau de la carte** : sans ouvrir le panneau d'affectation, un
+  conflit ne se voyait jamais une fois l'équipe posée.
 
 ### LOT 5 — Membres et permissions
 - Recenser les **actions réellement utiles au terrain**, et lesquelles le
@@ -176,7 +188,7 @@ correctifs.
 | 1 | Un dossier peut être confirmé et payé en même temps | 1 | ✅ corrigé (INC-17) |
 | 2 | Le bureau ne sait pas définir l'heure de départ des hommes | 0 | ✅ corrigé (INC-16) |
 | 3 | Conflits planning → écran blanc | 0 | ✅ corrigé (INC-15) |
-| 4 | Hommes/camions sélectionnés plusieurs fois pas en orange | 4 | vérifié (INC-19) |
+| 4 | Hommes/camions sélectionnés plusieurs fois pas en orange | 4 | ✅ fait |
 | 5 | Annuler une annulation ne fonctionne pas | 1 | ✅ corrigé (INC-18) |
 | 6 | Espace remarque sur les articles du relevé | 2 | ✅ fait |
 | 7 | 2ᵉ bouton remontage (démonter bleu / remonter vert) | 2 | ✅ fait |

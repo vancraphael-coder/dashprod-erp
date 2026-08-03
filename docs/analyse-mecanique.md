@@ -307,13 +307,18 @@ fonction renvoyait un succès mensonger. **Réglé (0064 + 0065)** : `annule` a
 des sorties, l'état d'avant est mémorisé et restauré, et `transition_exigee`
 lève au lieu de mentir.
 
-### INC-19 · P1 · Double affectation invisible
+### INC-19 · ✅ CLOS le 2026-07-29 · Double affectation invisible
 Dans `Planning.jsx` : `const verdict = estAffecte ? null : conflitPour(...)`.
 Le conflit n'est donc **jamais** évalué pour un membre déjà affecté — un homme
 sur deux chantiers le même jour n'est signalé nulle part. De plus le rendu de
 conflit est rouge (`C.rouge`), alors qu'un « déjà pris » devrait se distinguer
-d'un « en congé ». Aucun contrôle n'existe pour les véhicules. Traitement :
-LOT 4.
+d'un « en congé ». Aucun contrôle n'existait pour les véhicules.
+**Réglé** : `disponibiliteRessource` (domaine) rend un verdict à trois niveaux
+— libre / double (orange, avertissement) / indisponible (rouge, congé) —
+calculé **quelle que soit** l'affectation courante, et appliqué aux membres
+comme aux camions. Une alerte remonte au niveau de la carte de mission.
+Leçon : une condition d'affichage de la forme `dejaFait ? null : verifier(...)`
+masque précisément le cas qu'on cherche à voir.
 
 ### INC-20 · ✅ CLOS le 2026-07-29 · Deux rendus concurrents pour l'offre
 `Contrat.jsx` (238 lignes, écran) et `lib/pdfOffre.js` (180 lignes,
