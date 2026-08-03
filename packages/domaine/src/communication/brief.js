@@ -74,7 +74,11 @@ export function briefMission(p) {
   if (inv.length) {
     const max = p.maxArticles ?? 6;
     const tetes = inv.slice(0, max).map((it) =>
-      `${it.quantite || 1}× ${it.nom}${it.demont ? " (démontage)" : ""}`);
+      `${it.quantite || 1}× ${it.nom}`
+      + (it.demont && it.remont ? " (démontage + remontage)"
+         : it.demont ? " (démontage)"
+         : it.remont ? " (remontage)" : "")
+      + (String(it.remarque ?? "").trim() ? ` — ${String(it.remarque).trim()}` : ""));
     const reste = inv.length - max;
     l.push(`📦 Meubles : ${tetes.join(", ")}${reste > 0 ? ` … +${reste} autres` : ""}`);
   }
