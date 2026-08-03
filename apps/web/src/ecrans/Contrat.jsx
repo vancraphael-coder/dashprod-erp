@@ -107,13 +107,43 @@ export default function Contrat({ contenu, signature }) {
           ))}
         </div>
 
-        {/* Démontage (issu du relevé) */}
-        {contenu.a_demonter?.length > 0 && (
+        {/* Démontage et remontage (issus du relevé). Deux lignes distinctes :
+            un meuble peut partir démonté au garde-meuble sans être remonté, et
+            un meuble neuf se remonte sans avoir été démonté. Le client doit
+            voir exactement ce qui est prévu. */}
+        {(contenu.a_demonter?.length > 0 || contenu.a_remonter?.length > 0) && (
           <div style={S.encadreBleu}>
-            <div style={{ ...S.legende, color: "#1E40AF" }}>Démontage / remontage prévu</div>
-            <div style={{ fontSize: 12, color: "#1E3A8A" }}>
-              {contenu.a_demonter.map((it) => `${it.quantite}× ${it.nom}`).join(" · ")}
-            </div>
+            {contenu.a_demonter?.length > 0 && (
+              <>
+                <div style={{ ...S.legende, color: "#1E40AF" }}>Démontage prévu</div>
+                <div style={{ fontSize: 12, color: "#1E3A8A" }}>
+                  {contenu.a_demonter.map((it) => `${it.quantite}× ${it.nom}`).join(" · ")}
+                </div>
+              </>
+            )}
+            {contenu.a_remonter?.length > 0 && (
+              <>
+                <div style={{ ...S.legende, color: "#1E40AF",
+                              marginTop: contenu.a_demonter?.length > 0 ? 8 : 0 }}>
+                  Remontage prévu
+                </div>
+                <div style={{ fontSize: 12, color: "#1E3A8A" }}>
+                  {contenu.a_remonter.map((it) => `${it.quantite}× ${it.nom}`).join(" · ")}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Remarques du métreur : ce qui évite la mauvaise surprise le jour J. */}
+        {contenu.remarques_articles?.length > 0 && (
+          <div style={S.encadreBleu}>
+            <div style={{ ...S.legende, color: "#1E40AF" }}>Points d'attention</div>
+            {contenu.remarques_articles.map((r, i) => (
+              <div key={i} style={{ fontSize: 12, color: "#1E3A8A", marginTop: i ? 3 : 0 }}>
+                <b>{r.nom}</b>{r.piece ? ` (${r.piece})` : ""} — {r.remarque}
+              </div>
+            ))}
           </div>
         )}
 

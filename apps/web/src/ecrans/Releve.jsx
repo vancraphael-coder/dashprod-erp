@@ -14,22 +14,14 @@ import {
 import { capaciteFlotte, jaugeCapacite } from "@domaine/flotte/vehicules.js";
 import {
   volumeTotal, grouperParPiece, volumeUnitaire,
-  articlesADemonter,
+  articlesADemonter, articlesARemonter,
 } from "@domaine/releve/volumetrie.js";
 import { obtenirCatalogues } from "../lib/adaptateur.js";
 import { catalogue } from "@domaine/stocks/catalogues.js";
+import { meublesDePiece } from "@domaine/stocks/meubles-piece.js";
 import { C, S, declarerModifs} from "../lib/theme.jsx";
 
 // Catalogue par pièce (roovers-mobile.jsx, CATALOGUE).
-const CATALOGUE = {
-  "Salon": ["Canapé 3pl", "Canapé 2pl", "Fauteuil", "Table basse", "Meuble TV", "Bibliothèque", "Buffet", "TV"],
-  "Chambre": ["Armoire 2p", "Armoire 3p", "Lit 160", "Lit 140", "Lit 90", "Commode", "Chevet", "Matelas"],
-  "Cuisine": ["Frigo", "Congélateur", "Lave-linge", "Lave-vaisselle", "Four", "Table", "Chaise"],
-  "Salle de bain": ["Meuble vasque", "Colonne", "Sèche-linge", "Étagère"],
-  "Bureau": ["Bureau", "Chaise", "Bibliothèque", "Caisse"],
-  "Cave/Garage": ["Vélo", "Tondeuse", "Coffre", "Caisse", "Établi"],
-  "Autre": ["Piano", "Coffre-fort", "Miroir", "Caisse"],
-};
 
 function uid() { return "i" + Math.random().toString(36).slice(2, 9); }
 
@@ -41,6 +33,9 @@ export default function Releve({ affaireId, retour, versDevis }) {
   // volée pour ce relevé précis. Une seule source de vérité, réglable.
   const [cats, setCats] = useState({});
   const [piecesAdHoc, setPiecesAdHoc] = useState([]);
+  // Article déplié : options et remarque. La ligne reste compacte par défaut —
+  // un relevé se fait debout, chez le client, sur un téléphone.
+  const [deplie, setDeplie] = useState(null);
   const [nouvellePiece, setNouvellePiece] = useState("");
   useEffect(() => { obtenirCatalogues().then(setCats).catch(() => {}); }, []);
   const pieces = useMemo(() => {
@@ -83,6 +78,10 @@ export default function Releve({ affaireId, retour, versDevis }) {
   const capacite = useMemo(() => capaciteFlotte(camionsSel), [camionsSel]);
   const jauge = useMemo(() => jaugeCapacite(volume, capacite), [volume, capacite]);
   const aDemonter = useMemo(() => articlesADemonter(inv), [inv]);
+  const aRemonter = useMemo(() => articlesARemonter(inv), [inv]);
+  // Meubles proposés pour la pièce en cours : réglés dans Paramètres → Pièces
+  // du relevé, à défaut le socle livré avec le produit.
+  const suggestions = useMemo(() => meublesDePiece(cats, piece), [cats, piece]);
 
   function ajouter(nom) {
     setInv((v) => {
@@ -112,6 +111,16 @@ export default function Releve({ affaireId, retour, versDevis }) {
   /** Marque un article à démonter/remonter — alimente l'offre et le terrain. */
   function basculerDemontage(id) {
     setInv((v) => v.map((it) => it.id === id ? { ...it, demont: !it.demont } : it));
+    marquerTouche();
+  }
+  /** Remontage : distinct du démontage — voir articlesARemonter (domaine). */
+  function basculerRemontage(id) {
+    setInv((v) => v.map((it) => it.id === id ? { ...it, remont: !it.remont } : it));
+    marquerTouche();
+  }
+  /** La phrase qui évite la mauvaise surprise le jour J. */
+  function definirRemarque(id, texte) {
+    setInv((v) => v.map((it) => it.id === id ? { ...it, remarque: texte } : it));
     marquerTouche();
   }
   function toutDemonter() {
@@ -208,8 +217,15 @@ export default function Releve({ affaireId, retour, versDevis }) {
 
       {/* Catalogue de la pièce + article libre */}
       <div style={S.carte}>
+        {suggestions.length === 0 && (
+          <div style={{ fontSize: 11.5, color: C.fantome, marginBottom: 8,
+                        lineHeight: 1.45 }}>
+            Aucun meuble proposé pour « {piece} ». Réglez-les dans
+            Paramètres → Pièces du relevé, ou ajoutez-les à la main ci-dessous.
+          </div>
+        )}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {(CATALOGUE[piece] || []).map((nom) => (
+          {suggestions.map((nom) => (
             <button key={nom} onClick={() => ajouter(nom)} style={{
               border: `1.5px solid ${C.bord}`, background: C.blanc, color: C.encre,
               borderRadius: 10, padding: "8px 11px", fontSize: 12.5, cursor: "pointer",
@@ -254,23 +270,33 @@ export default function Releve({ affaireId, retour, versDevis }) {
           </div>
           {g.articles.map((it) => {
             const unitaire = it.vol != null ? it.vol : volumeUnitaire(it.nom);
+            const ouvertIci = deplie === it.id;
+            const aUneRemarque = !!String(it.remarque ?? "").trim();
             return (
               <div key={it.id} style={{
                 padding: "8px 9px", marginBottom: 6, borderRadius: 10,
-                background: it.demont ? "#EFF6FF" : "#F8FAFC",
-                border: `1px solid ${it.demont ? "#BFDBFE" : "transparent"}`,
+                background: it.demont || it.remont ? "#EFF6FF" : "#F8FAFC",
+                border: `1px solid ${it.demont || it.remont ? "#BFDBFE" : "transparent"}`,
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {/* Chevron : la ligne reste compacte, les options se déplient.
+                      Un relevé se fait debout, chez le client, sur un téléphone. */}
+                  <button onClick={() => setDeplie(ouvertIci ? null : it.id)}
+                          aria-label={ouvertIci ? "Replier" : "Options"}
+                          style={{ ...btnQ, width: 26, borderColor: "transparent",
+                                   background: "transparent", color: C.muet,
+                                   fontSize: 12 }}>
+                    {ouvertIci ? "▾" : "▸"}
+                  </button>
                   <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: C.encre }}>
                     {it.nom}
+                    {(it.demont || it.remont || aUneRemarque) && (
+                      <span style={{ marginLeft: 6, fontSize: 10.5, color: C.fantome }}>
+                        {it.demont ? "🔧" : ""}{it.remont ? "🔩" : ""}
+                        {aUneRemarque ? "💬" : ""}
+                      </span>
+                    )}
                   </span>
-                  {/* Le démontage est la variable d'heures la plus sous-estimée :
-                      le tracer article par article protège la marge et briefe l'équipe. */}
-                  <button onClick={() => basculerDemontage(it.id)} title="Démontage"
-                          style={{ ...btnQ, width: 32,
-                                   borderColor: it.demont ? C.bleu : C.bord,
-                                   background: it.demont ? C.bleu : "#fff",
-                                   color: it.demont ? "#fff" : C.muet }}>🔧</button>
                   <button onClick={() => quantite(it.id, -1)} style={btnQ}>−</button>
                   <span style={{ minWidth: 20, textAlign: "center", fontWeight: 700, fontSize: 14 }}>
                     {it.quantite}
@@ -293,6 +319,39 @@ export default function Releve({ affaireId, retour, versDevis }) {
                     <button onClick={() => ajusterVolume(it.id, +0.1)} style={btnVol}>+</button>
                   </span>
                 </div>
+
+                {/* Options dépliées. Démonter et remonter sont DEUX drapeaux :
+                    une armoire peut partir démontée au garde-meuble sans être
+                    remontée, un lit neuf se remonte sans avoir été démonté.
+                    Les confondre fausse le temps annoncé. */}
+                {ouvertIci && (
+                  <div style={{ marginTop: 8, paddingTop: 8,
+                                borderTop: `1px solid ${C.bord}` }}>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => basculerDemontage(it.id)}
+                        style={{ ...btnOption,
+                          borderColor: it.demont ? C.bleu : C.bord,
+                          background: it.demont ? C.bleu : "#fff",
+                          color: it.demont ? "#fff" : C.muet }}>
+                        🔧 Démonter
+                      </button>
+                      <button onClick={() => basculerRemontage(it.id)}
+                        style={{ ...btnOption,
+                          borderColor: it.remont ? C.vert : C.bord,
+                          background: it.remont ? C.vert : "#fff",
+                          color: it.remont ? "#fff" : C.muet }}>
+                        🔩 Remonter
+                      </button>
+                    </div>
+                    <input value={it.remarque || ""}
+                      placeholder="Remarque : accès, fragilité, particularité…"
+                      onChange={(e) => definirRemarque(it.id, e.target.value)}
+                      style={{ width: "100%", boxSizing: "border-box", marginTop: 6,
+                        padding: "8px 10px", borderRadius: 8, fontSize: 12.5,
+                        border: `1px solid ${C.bord}`, background: "#fff",
+                        color: C.encre, outline: "none" }} />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -324,6 +383,11 @@ const btnQ = {
   width: 30, height: 30, borderRadius: 8, border: `1.5px solid #DCE4F0`,
   background: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", color: "#0F172A",
 };
+const btnOption = {
+  flex: 1, padding: "8px 10px", borderRadius: 9, cursor: "pointer",
+  border: "1.5px solid", fontSize: 12.5, fontWeight: 700,
+};
+
 const btnVol = {
   border: "none", background: "none", cursor: "pointer", color: "#64748B",
   fontWeight: 700, fontSize: 14, lineHeight: 1, padding: "0 4px",

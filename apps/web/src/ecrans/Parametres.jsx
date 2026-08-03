@@ -26,6 +26,10 @@ import {
   LISTES_CATALOGUE, CATALOGUES_DEFAUT, catalogue, estPersonnalise,
   normaliserArticle, coutsMateriel,
 } from "@domaine/stocks/catalogues.js";
+import {
+  meublesDePiece, ajouterMeuble, retirerMeuble, listePersonnalisee,
+  reinitialiserMeubles,
+} from "@domaine/stocks/meubles-piece.js";
 import { C, S } from "../lib/theme.jsx";
 
 const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €";
@@ -146,6 +150,7 @@ function EditeurListe({ liste, cats, onCats, retour }) {
   const [nouveau, setNouveau] = useState(simple ? "" : { nom: "", unite: "pièce", cout: "" });
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
+  const [pieceOuverte, setPieceOuverte] = useState(null);
 
   const total = useMemo(
     () => simple ? 0 : items.reduce((t, a) => t + Number(a?.cout_centimes || 0), 0),
@@ -268,11 +273,28 @@ function EditeurListe({ liste, cats, onCats, retour }) {
                 </span>
               )}
             </span>
+            {/* Pour les PIÈCES : accès aux meubles pré-remplis. C'est ce qui
+                rend la visite chez le client fluide — on coche au lieu de
+                taper. */}
+            {liste.cle === "pieces" && (
+              <button onClick={() => setPieceOuverte(pieceOuverte === a ? null : a)}
+                      title="Meubles de cette pièce"
+                      style={{ ...boutonIcone,
+                               color: pieceOuverte === a ? C.bleu : C.muet }}>
+                {pieceOuverte === a ? "▾" : "🛋"}
+              </button>
+            )}
             <button onClick={() => retirer(i)} title="Retirer"
                     style={{ ...boutonIcone, color: C.rouge }}>✕</button>
           </div>
         ))}
       </div>
+
+      {/* Meubles de la pièce sélectionnée */}
+      {liste.cle === "pieces" && pieceOuverte && (
+        <MeublesDePiece piece={pieceOuverte} cats={cats} onCats={onCats}
+                        onFerme={() => setPieceOuverte(null)} />
+      )}
 
       {erreur && (
         <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>
@@ -344,3 +366,96 @@ const boutonIcone = {
   border: "none", background: "none", cursor: "pointer",
   fontSize: 15, color: C.fantome, padding: "2px 6px", lineHeight: 1,
 };
+
+/**
+ * Meubles pré-remplis d'une pièce.
+ *
+ * Ce que le déménageur règle ici se retrouve, sans ressaisie, sous forme de
+ * boutons pendant le relevé chez le client. C'est le dernier maillon entre le
+ * paramétrage et le terrain.
+ *
+ * La liste de l'entreprise REMPLACE le socle livré avec le produit : si un
+ * meuble est retiré, il ne revient pas au chargement suivant.
+ */
+function MeublesDePiece({ piece, cats, onCats, onFerme }) {
+  const [nouveau, setNouveau] = useState("");
+  const [erreur, setErreur] = useState(null);
+  const [sauve, setSauve] = useState(false);
+
+  const meubles = meublesDePiece(cats, piece);
+  const perso = listePersonnalisee(cats, piece);
+
+  async function appliquer(suite) {
+    setErreur(null); setSauve(false);
+    try {
+      await sauverCatalogues(suite);
+      onCats(suite);
+      setSauve(true);
+    } catch (e) { setErreur(e.message); }
+  }
+
+  function ajouter() {
+    const nom = nouveau.trim();
+    if (!nom) return;
+    setNouveau("");
+    appliquer(ajouterMeuble(cats, piece, nom));
+  }
+
+  return (
+    <div style={{ ...S.carte, borderColor: C.bleu, borderWidth: 1.5 }}>
+      <div style={{ display: "flex", alignItems: "baseline",
+                    justifyContent: "space-between", marginBottom: 8 }}>
+        <label style={{ ...S.label, marginTop: 0 }}>
+          Meubles de « {piece} »
+        </label>
+        <button onClick={onFerme} style={{ background: "none", border: "none",
+          color: C.muet, fontSize: 12, cursor: "pointer" }}>Fermer</button>
+      </div>
+
+      <div style={{ fontSize: 11.5, color: C.fantome, marginBottom: 10,
+                    lineHeight: 1.5 }}>
+        Ces meubles s'affichent en boutons pendant le relevé : un geste au lieu
+        d'une saisie. {perso ? "Liste personnalisée." : "Liste par défaut."}
+      </div>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <input style={{ ...S.input, flex: 1, margin: 0 }} value={nouveau}
+               placeholder="Nom du meuble" onChange={(e) => setNouveau(e.target.value)}
+               onKeyDown={(e) => e.key === "Enter" && ajouter()} />
+        <button style={boutonAjout} onClick={ajouter}>Ajouter</button>
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
+        {meubles.length === 0 && (
+          <span style={{ fontSize: 12.5, color: C.muet }}>
+            Aucun meuble : le relevé de cette pièce se fera à la main.
+          </span>
+        )}
+        {meubles.map((m) => (
+          <span key={m} style={{ display: "inline-flex", alignItems: "center",
+            gap: 6, border: `1px solid ${C.bord}`, borderRadius: 999,
+            padding: "5px 6px 5px 11px", fontSize: 12.5, background: C.blanc }}>
+            {m}
+            <button onClick={() => appliquer(retirerMeuble(cats, piece, m))}
+                    title={`Retirer ${m}`}
+                    style={{ border: "none", background: "none", cursor: "pointer",
+                             color: C.rouge, fontSize: 13, padding: "0 2px" }}>✕</button>
+          </span>
+        ))}
+      </div>
+
+      {perso && (
+        <button onClick={() => appliquer(reinitialiserMeubles(cats, piece))}
+                style={{ ...S.boutonLien, paddingLeft: 0, marginTop: 10 }}>
+          Revenir à la liste par défaut
+        </button>
+      )}
+      {erreur && (
+        <div style={{ fontSize: 12, color: C.rouge, marginTop: 8 }}>{erreur}</div>
+      )}
+      {sauve && !erreur && (
+        <div style={{ fontSize: 12, color: C.vert, marginTop: 8 }}>Enregistré.</div>
+      )}
+    </div>
+  );
+}
