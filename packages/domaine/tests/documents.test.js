@@ -119,3 +119,36 @@ test("resoudreCbd n'impose rien à une facture", () => {
   assert.equal(r.requise, false);
   assert.equal(r.cbdVersionId, null);
 });
+
+// — Validité de l'offre : réglable, bornée, figée (LOT 3) —
+import { validiteJours, VALIDITE_JOURS_OUVRABLES, VALIDITE_MIN, VALIDITE_MAX }
+  from "../src/documents/cgv.js";
+
+test("sans réglage, la validité retombe sur le défaut", () => {
+  assert.equal(validiteJours({}), VALIDITE_JOURS_OUVRABLES);
+  assert.equal(validiteJours(null), VALIDITE_JOURS_OUVRABLES);
+  assert.equal(validiteJours({ validite_jours: "" }), VALIDITE_JOURS_OUVRABLES);
+});
+
+test("la valeur réglée par l'entreprise est reprise", () => {
+  assert.equal(validiteJours({ validite_jours: 15 }), 15);
+  assert.equal(validiteJours({ validite_jours: "21" }), 21);
+});
+
+test("les valeurs aberrantes sont ramenées dans les bornes", () => {
+  assert.equal(validiteJours({ validite_jours: 0 }), VALIDITE_MIN);
+  assert.equal(validiteJours({ validite_jours: -5 }), VALIDITE_MIN);
+  assert.equal(validiteJours({ validite_jours: 9999 }), VALIDITE_MAX);
+});
+
+test("une saisie décimale est arrondie", () => {
+  assert.equal(validiteJours({ validite_jours: 10.6 }), 11);
+});
+
+test("une seule clé de réglage — pas de doublon avec l'e-mail", () => {
+  // L'e-mail et le document lisent la MÊME clé : ils ne peuvent pas annoncer
+  // deux durées différentes au même client.
+  assert.equal(validiteJours({ validite_jours: 12 }), 12);
+  assert.equal(validiteJours({ validite_jours_ouvrables: 12 }),
+               VALIDITE_JOURS_OUVRABLES, "l'ancienne clé n'existe pas");
+});
