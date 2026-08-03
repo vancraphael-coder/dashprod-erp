@@ -246,10 +246,12 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
             Facture soldée
           </div>
 
-          {/* Dernière étape du cycle : clore le dossier. Le paiement du solde a
-              déjà fait passer l'affaire en « payé » (côté serveur) ; la clôture
-              est l'acte du bureau qui referme l'affaire. */}
-          {affaire?.etat === "paye" && !clos && (
+          {/* Clore le dossier. Depuis la séparation des cycles (0064), l'affaire
+              ne passe plus jamais en « payé » : on se fie au solde réel (cycle
+              de facturation) ET à l'exécution du déménagement (cycle
+              opérationnel). Auparavant ce bouton attendait un état que rien
+              n'atteignait — il était donc invisible en permanence. */}
+          {solde.statut === "paye" && affaire?.etat === "effectue" && !clos && (
             <button onClick={() => setCloture(true)} style={{
               width: "100%", marginTop: 12, padding: "12px", borderRadius: 11,
               border: "none", cursor: "pointer", fontSize: 13.5, fontWeight: 800,

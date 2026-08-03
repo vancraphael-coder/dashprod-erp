@@ -16,12 +16,13 @@ import {
   obtenirClientIdentite, sauverClientIdentite,
   listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
   validerDossierTerrain, obtenirInstance, confirmerAffaire, archiverAffaire,
-  annulerAffaire, reporterAffaire, reprendreAffaire,
+  annulerAffaire, reporterAffaire, reprendreAffaire, etatFacturation,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
 import { adresseDepot } from "@domaine/organisation/identite.js";
-import { C, S, Badge, euros, declarerModifs, Confirmation } from "../lib/theme.jsx";
+import { C, S, Badge, BadgeFacturation, euros, declarerModifs, Confirmation }
+  from "../lib/theme.jsx";
 
 function adrVide() {
   return { id: "a" + Math.random().toString(36).slice(2, 8), adresse: "", type: "maison",
@@ -44,10 +45,15 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const [equipe, setEquipe] = useState([]);
   const [instance, setInstance] = useState(null);
   const [modifie, setModifie] = useState(false);
+  // L'argent a son propre cycle, dérivé des factures (0064). Nom distinct de
+  // `facturation`, qui désigne ici les données de facturation DU CLIENT.
+  const [cycleFacture, setCycleFacture] = useState(null);
   const [archivage, setArchivage] = useState(false);
   const enregistrerRef = useRef(null);
 
   useEffect(() => {
+    // État de facturation : dérivé en base, jamais déduit de affaire.etat.
+    etatFacturation(affaireId).then(setCycleFacture).catch(() => setCycleFacture(null));
     obtenirOrganisation().then(setOrg).catch(() => {});
     obtenirAffaire(affaireId).then(setAffaire);
     listerVehicules().then(setFlotte).catch(() => {});
@@ -120,7 +126,11 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   enregistrerRef.current = enregistrer;
 
   const chiffree = affaire.tvac_centimes != null;
-  const facturable = ["confirme", "effectue", "facture", "paye"].includes(affaire.etat);
+  // Depuis la séparation des cycles (0064), on facture un dossier ENGAGÉ —
+  // un acompte sur un dossier confirmé est légitime. Les anciens états
+  // « facture » / « paye » ne sont plus des états du déménagement.
+  const facturable = ["confirme", "planifie", "en_cours", "effectue", "clos"]
+    .includes(affaire.etat);
 
   return (
     <div style={S.page}>
@@ -128,7 +138,11 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={S.titre}>{affaire.client?.nom || "Dossier"}</div>
-          <Badge etat={affaire.etat} />
+          {/* Deux badges : où en est le déménagement, où en est l'argent. */}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <Badge etat={affaire.etat} />
+            <BadgeFacturation etat={cycleFacture?.etat} discret />
+          </div>
         </div>
         <div style={{ fontSize: 12.5, color: C.muet, marginTop: 2 }}>
           {affaire.client?.tel || "—"}
