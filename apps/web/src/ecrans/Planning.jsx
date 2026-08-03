@@ -16,6 +16,8 @@ import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
 import { conflitsAffectation } from "@domaine/operations/missions.js";
 import { qualifierJour } from "@domaine/planning/jours-feries.js";
+import { hhmm, resumeHoraires, verifierHoraires, HEURE_DEFAUT }
+  from "@domaine/operations/horaires.js";
 import { C, S, Confirmation } from "../lib/theme.jsx";
 
 const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
