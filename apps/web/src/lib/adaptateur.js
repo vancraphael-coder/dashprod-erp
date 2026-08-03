@@ -512,6 +512,8 @@ export async function listerMissions() {
     if (error) throw error;
     return (data || []).map((m) => ({
       id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
+      heure_depart_prevue: m.heure_depart_prevue,
+      heure_arrivee_prevue: m.heure_arrivee_prevue,
       // Le bureau voit TOUT, partagé ou non : il prépare puis publie.
       partagee: !!m.partagee_le,
       affaire_id: m.affaire_id,
