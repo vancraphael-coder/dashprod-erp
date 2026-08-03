@@ -331,6 +331,16 @@ déménagement (cycle opérationnel). Leçon : une condition d'affichage qui
 dépend d'un état jamais atteint est un mort silencieux — les chercher en
 croisant les états produits et les états attendus.
 
+### INC-22 · P1 · ✅ CLOS le 2026-07-29 · Catalogue de meubles codé en dur
+`Releve.jsx` portait une constante `CATALOGUE` (meubles par pièce) invisible du
+paramétrage : un déménageur ne pouvait rien y ajouter, et ses libellés
+(« Canapé 3pl », « Lit 160 ») divergeaient des volumes de référence du domaine.
+Deuxième source de vérité, même famille que la liste de fournitures dupliquée
+dans Cout.jsx corrigée plus tôt. **Réglé** : suggestions issues du catalogue
+(`meubles_par_piece`), avec socle par défaut pour qu'une entreprise neuve soit
+utilisable immédiatement. Leçon : toute liste métier affichée dans un écran
+doit venir du domaine ou du paramétrage — jamais d'une constante d'écran.
+
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
 ✅ `visible_reseau` activé pour Roovers (annuaire peuplé) ·

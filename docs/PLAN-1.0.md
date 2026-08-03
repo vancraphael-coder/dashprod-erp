@@ -72,16 +72,29 @@ facture d'acompte sur un dossier confirmé devient possible.
 `paye`, que rien n'atteignait — il était donc **invisible en permanence**
 (INC-21). Rattaché au solde réel + dossier effectué.
 
-### LOT 2 — Le relevé *(l'outil du quotidien)*
+### LOT 2 — Le relevé ✅ FAIT le 2026-07-29
 - Espace **remarque par article** (EX-04, partie manquante).
 - **Deux boutons distincts** : démonter (bleu) et remonter (vertical/vert),
   aujourd'hui fondus dans un seul indicateur `demont`.
 - **Articles pré-remplis par pièce** dans Paramètres → pièces du relevé, avec
   ajout dans une pièce existante ou nouvelle (EX-05).
 
-*Terminé quand* : une visite chez un client se relève sans taper un nom
-d'article deux fois, et chaque article porte sa remarque et ses deux
-indicateurs.
+**Livré** : chaque article se déplie d'un chevron sur **Démonter** (bleu),
+**Remonter** (vert) et une **remarque** libre. Démonter et remonter sont deux
+drapeaux indépendants en base comme dans le domaine — une armoire part démontée
+au garde-meuble sans être remontée, un lit neuf se remonte sans avoir été
+démonté ; les confondre faussait le temps annoncé. Les trois remontent
+jusqu'à l'offre que le client signe (blocs « Démontage prévu », « Remontage
+prévu », « Points d'attention ») et jusqu'au brief d'équipe.
+
+Les **meubles par pièce** se règlent dans Paramètres → Pièces du relevé
+(bouton 🛋 sur chaque pièce) et s'affichent en boutons pendant le relevé.
+
+**Trouvé au passage** (INC-22) : l'écran Relevé portait un `CATALOGUE` codé en
+dur — une seconde source de vérité, invisible du paramétrage et divergente des
+volumes de référence. Supprimé : les suggestions viennent désormais du
+catalogue, avec un socle par défaut pour qu'une entreprise neuve soit
+utilisable immédiatement.
 
 ### LOT 3 — Offre, signature et mail *(la chaîne commerciale)*
 - **Validité de l'offre paramétrable** (aujourd'hui `VALIDITE_JOURS_OUVRABLES
@@ -159,15 +172,15 @@ correctifs.
 | 3 | Conflits planning → écran blanc | 0 | ✅ corrigé (INC-15) |
 | 4 | Hommes/camions sélectionnés plusieurs fois pas en orange | 4 | vérifié (INC-19) |
 | 5 | Annuler une annulation ne fonctionne pas | 1 | ✅ corrigé (INC-18) |
-| 6 | Espace remarque sur les articles du relevé | 2 | à faire |
-| 7 | 2ᵉ bouton remontage (démonter bleu / remonter vertical) | 2 | à faire |
+| 6 | Espace remarque sur les articles du relevé | 2 | ✅ fait |
+| 7 | 2ᵉ bouton remontage (démonter bleu / remonter vert) | 2 | ✅ fait |
 | 8 | Modifier la durée de validité de l'offre | 3 | à faire |
 | 9 | PDF = copie exacte de l'offre | 3 | vérifié : deux rendus distincts |
 | 10 | Offre signée apparaît signée définitivement | 3 | à vérifier puis verrouiller |
 | 11 | Supprimer le bouton code dans offre, garder dans mail | 3 | à faire |
 | 12 | Garder vivant un code de signature | 3 | à faire (D3) |
 | 13 | Lancer les pièces jointes dans le mail | 3 | à faire |
-| 14 | Articles dans chaque pièce du relevé (paramètres) | 2 | à faire (EX-05) |
+| 14 | Articles dans chaque pièce du relevé (paramètres) | 2 | ✅ fait (EX-05) |
 | 15 | Page comptabilité + export compta pro | 6 | à faire (INC-04) |
 | 16 | Page notes/archive des modifications et décisions | 7 | à concevoir (D4) |
 | 17 | Rapport chef d'équipe lié à un dossier | 8 | à faire (EX-10) |

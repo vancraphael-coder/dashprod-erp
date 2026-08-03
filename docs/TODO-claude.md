@@ -27,7 +27,7 @@ Le découpage en lots, le registre de traçabilité de toutes les demandes et le
 quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
 porte plus que le lot en cours.
 
-**Lot en cours : LOT 2 — le relevé** (les quatre décisions D1→D4 sont
+**Lot en cours : LOT 3 — offre, signature et mail** (les quatre décisions D1→D4 sont
 tranchées ; plus aucun lot n'est bloqué).
 
 - [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),
@@ -35,8 +35,13 @@ tranchées ; plus aucun lot n'est bloqué).
 - [x] LOT 1 — ✅ 2026-07-29 : cycles séparés (0064), reprise d'annulation
       réelle (0065), `transition_exigee`, deux badges, bouton de clôture
       ressuscité (INC-21).
-- [ ] LOT 2 — relevé : remarque par article, boutons démonter/remonter
-      distincts, articles pré-remplis par pièce.
+- [x] LOT 2 — ✅ 2026-07-29 : remarque par article, démonter/remonter
+      distincts, meubles par pièce paramétrables, catalogue codé en dur
+      supprimé (INC-22).
+- [ ] LOT 3 — offre/signature/mail : validité paramétrable, PDF = impression
+      navigateur de `Contrat` (D2, supprimer `lib/pdfOffre.js`), offre signée
+      verrouillée, un seul bouton de code (dans Mail), durée de code choisie
+      par l'émetteur (D3), pièces jointes rétablies à côté du code.
 
 ## Jalon de lancement (avant tout EX)
 
