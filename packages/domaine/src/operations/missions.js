@@ -90,3 +90,75 @@ function memeJour(a, b) {
       && da.getUTCMonth() === db.getUTCMonth()
       && da.getUTCDate() === db.getUTCDate();
 }
+
+// =============================================================================
+// DISPONIBILITÉ D'UNE RESSOURCE — hommes et camions, même grammaire.
+//
+// Trois niveaux, et il faut les distinguer : les confondre a fait qu'un homme
+// posé sur deux chantiers le même jour ne se voyait nulle part.
+//
+//   libre         → rien à signaler
+//   double        → déjà pris sur un AUTRE chantier ce jour-là.
+//                   AVERTISSEMENT, pas interdiction : deux missions courtes
+//                   dans la même journée sont parfois voulues. Le bureau
+//                   décide, le système signale. (Orange.)
+//   indisponible  → en congé. Le bureau peut passer outre, mais c'est une
+//                   autre nature de problème : la personne n'est pas là.
+//                   (Rouge.)
+//
+// Un point qui coûtait cher : le verdict se calcule AUSSI pour une ressource
+// déjà affectée à la mission courante. Sinon un doublon devient invisible dès
+// qu'on l'a créé — exactement le symptôme constaté.
+// =============================================================================
+
+/** Niveaux, du plus anodin au plus grave. */
+export const NIVEAUX_DISPO = Object.freeze(["libre", "double", "indisponible"]);
+
+/**
+ * Disponibilité d'une ressource (membre ou véhicule) pour une mission.
+ *
+ * @param {object} p
+ * @param {string} p.date        jour de la mission
+ * @param {string} p.missionId   mission en cours d'édition (exclue du calcul)
+ * @param {{missionId: string, date: string}[]} [p.affectations]
+ *        les autres missions où cette ressource est engagée
+ * @param {{debut: string, fin: string}[]} [p.conges]
+ *        congés de la personne — vide pour un véhicule
+ */
+export function disponibiliteRessource({ date, missionId, affectations, conges }) {
+  const enConge = estEnConge(conges, date);
+  // On exclut la mission courante : être affecté ICI n'est pas un doublon.
+  const ailleurs = (affectations || []).filter(
+    (a) => a.missionId !== missionId && memeJour(a.date, date));
+
+  const niveau = enConge ? "indisponible" : ailleurs.length > 0 ? "double" : "libre";
+  return {
+    niveau,
+    enConge,
+    doubleAffectation: ailleurs.length > 0,
+    nbAutresMissions: ailleurs.length,
+    conflit: niveau !== "libre",
+    // Le libellé court affiché à côté du nom, ou null si rien à dire.
+    raison: enConge ? "congé"
+          : ailleurs.length > 1 ? `${ailleurs.length} autres chantiers`
+          : ailleurs.length === 1 ? "déjà pris"
+          : null,
+  };
+}
+
+/**
+ * Le verdict d'ensemble d'une mission : ce que le bureau doit voir avant de
+ * partager. On remonte le pire niveau rencontré, plus le détail.
+ */
+export function verdictMission({ date, missionId, membres, vehicules }) {
+  const problemes = [];
+  for (const r of [...(membres || []), ...(vehicules || [])]) {
+    const d = disponibiliteRessource({
+      date, missionId, affectations: r.affectations, conges: r.conges,
+    });
+    if (d.conflit) problemes.push({ nom: r.nom, type: r.type || "membre", ...d });
+  }
+  const pire = problemes.some((p) => p.niveau === "indisponible") ? "indisponible"
+             : problemes.length > 0 ? "double" : "libre";
+  return { niveau: pire, problemes, ok: pire === "libre" };
+}
