@@ -57,15 +57,35 @@ test("aucune correspondance renvoie null (nouveau client)", () => {
 
 // --- Machine à états : transitions structurelles -----------------------------
 
-test("le chemin nominal complet est permis, étape par étape", () => {
+test("le chemin OPÉRATIONNEL complet est permis, étape par étape", () => {
   const chemin = [
     ["brouillon", "devis"], ["devis", "envoye"], ["envoye", "confirme"],
     ["confirme", "planifie"], ["planifie", "en_cours"], ["en_cours", "effectue"],
-    ["effectue", "facture"], ["facture", "paye"], ["paye", "clos"],
+    ["effectue", "clos"],
   ];
   for (const [s, c] of chemin) {
     assert.equal(transitionPermise(s, c), true, `${s} → ${c} devrait être permis`);
   }
+});
+
+test("le cycle OPÉRATIONNEL ne mène plus à la facturation", () => {
+  // Séparation des cycles (0064) : l'argent se déduit des factures, il n'est
+  // plus un état du déménagement. Ces transitions doivent rester FERMÉES,
+  // sinon un dossier peut de nouveau afficher « confirmé et payé ».
+  assert.equal(transitionPermise("effectue", "facture"), false);
+  assert.equal(transitionPermise("facture", "paye"), false);
+  assert.equal(transitionPermise("paye", "clos"), false);
+});
+
+test("une annulation se reprend vers l'état d'où elle venait", () => {
+  // Auparavant `annule` n'avait aucune sortie : « annuler une annulation » ne
+  // faisait rien du tout (INC-18).
+  for (const cible of ["devis", "envoye", "confirme", "planifie"]) {
+    assert.equal(transitionPermise("annule", cible), true,
+      `reprise vers ${cible} attendue`);
+  }
+  assert.equal(transitionPermise("annule", "effectue"), false,
+    "on ne ressuscite pas un dossier directement en exécuté");
 });
 
 test("les sauts d'étape sont interdits", () => {
@@ -95,15 +115,11 @@ test("INVARIANT : pas de passage à 'confirme' sans instance signée (C-02)", ()
   assert.equal(avecSignature.autorise, true);
 });
 
-test("INVARIANT : pas de facture sans numéro de séquence attribué", () => {
-  assert.equal(
-    verifierTransition("effectue", "facture", { numeroAttribue: false }).raison,
-    "garde_non_satisfaite"
-  );
-  assert.equal(
-    verifierTransition("effectue", "facture", { numeroAttribue: true }).autorise,
-    true
-  );
+test("les états hérités facture/paye ne mènent plus nulle part", () => {
+  // Ils survivent dans l'énumération pour lire d'anciens dossiers, mais aucune
+  // transition n'y mène ni n'en part.
+  assert.equal(transitionsPossibles("facture").length, 0);
+  assert.equal(transitionsPossibles("paye").length, 0);
 });
 
 test("'envoye' exige une instance de document générée", () => {
