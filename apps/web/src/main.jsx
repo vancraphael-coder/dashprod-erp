@@ -493,7 +493,8 @@ function App() {
                    versOffre={nav.offre} versReleve={nav.releve}
                    peutVoirPrix={peutVoirPrix} />;
   } else if (route.ecran === "offre") {
-    ecran = <Offre affaireId={route.affaireId} retour={retourDossier} />;
+    ecran = <Offre affaireId={route.affaireId} retour={retourDossier}
+                   versMail={nav.mail} />;
   } else if (route.ecran === "parametres") {
     ecran = <Parametres retour={() => nav.compte()}
       versBareme={nav.bareme} versCout={nav.cout}
