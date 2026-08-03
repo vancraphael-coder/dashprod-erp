@@ -10,7 +10,7 @@
 import { supabase, configPresente } from "./supabase.js";
 import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
-import { CGV_VERSION_COURANTE, cgv } from "@domaine/documents/cgv.js";
+import { CGV_VERSION_COURANTE, cgv , validiteJours } from "@domaine/documents/cgv.js";
 import { volumeTotal, articlesADemonter, articlesARemonter, articlesAvecRemarque }
   from "@domaine/releve/volumetrie.js";
 import { briefMission } from "@domaine/communication/brief.js";
@@ -368,14 +368,22 @@ export async function envoyerOffre(affaireId, { type, contenu }) {
 export async function obtenirInstance(affaireId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("documents_instances")
-      .select("id, contenu, empreinte_sha256, statut, envoye_le, signatures(signataire_nom, image_trait, horodatage)")
-      .eq("affaire_id", affaireId).order("genere_le", { ascending: false }).limit(1).maybeSingle();
+      .select("id, contenu, empreinte_sha256, statut, envoye_le, genere_le, "
+            + "signatures(signataire_nom, image_trait, horodatage, canal)")
+      .eq("affaire_id", affaireId)
+      .order("genere_le", { ascending: false });
     if (error) throw error;
-    if (!data) return null;
-    const sig = (data.signatures && data.signatures[0]) || null;
+    if (!data || data.length === 0) return null;
+    // Une instance SIGNÉE prime toujours sur une instance plus récente : la
+    // signature est la preuve, elle ne doit jamais être masquée par un
+    // document régénéré depuis. (0066 empêche désormais cette régénération,
+    // mais d'anciens dossiers peuvent porter les deux.)
+    const data0 = data.find((x) => x.statut === "signee") || data[0];
+    const sig = (data0.signatures && data0.signatures[0]) || null;
     return {
-      ...data,
-      signature: sig ? { nom: sig.signataire_nom, image: sig.image_trait, date: sig.horodatage } : null,
+      ...data0,
+      signature: sig ? { nom: sig.signataire_nom, image: sig.image_trait,
+                         date: sig.horodatage, canal: sig.canal } : null,
     };
   }
   const d = lireDemo();
@@ -839,6 +847,8 @@ export async function composerOffre(affaireId) {
     date_dem: contact?.date || "", heure_dem: contact?.heure || "",
     remarques: contact?.notes || "",
     volume_m3: volumeTotal(inventaire),
+    // Validité FIGÉE ici : le document garde ce qu'il annonçait le jour du gel.
+    validite_jours: validiteJours(textes),
     a_demonter: articlesADemonter(inventaire),
     // Remontage et remarques : posés au relevé, ils doivent atteindre l'offre
     // que le client lit et signe — sinon le travail du métreur se perd.
