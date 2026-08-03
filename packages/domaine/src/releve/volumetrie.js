@@ -92,9 +92,8 @@ export function grouperParPiece(inventaire) {
 }
 
 /**
- * Articles marqués pour démontage/remontage (drapeau `demont` posé au relevé).
- * Alimente : l'offre (« Démontage / remontage prévu »), la fiche terrain
- * (« À démonter ») et le brief équipe. Une seule implémentation, trois usages.
+ * Articles à DÉMONTER (drapeau `demont`, posé au relevé, au départ).
+ * Alimente : l'offre, la fiche terrain et le brief équipe.
  * @param {{nom: string, quantite?: number, demont?: boolean}[]} inventaire
  * @returns {{nom: string, quantite: number}[]}
  */
@@ -102,4 +101,33 @@ export function articlesADemonter(inventaire) {
   return (inventaire || [])
     .filter((it) => it.demont)
     .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 }));
+}
+
+/**
+ * Articles à REMONTER (drapeau `remont`, posé au relevé, à l'arrivée).
+ *
+ * Pourquoi c'est un drapeau distinct de `demont` : les deux ne vont pas
+ * toujours ensemble. Une armoire démontée peut partir au garde-meuble sans
+ * être remontée ; un lit livré en pièces détachées se remonte sans avoir été
+ * démonté. Les confondre fausse le temps annoncé, qui est la variable la plus
+ * sous-estimée d'un devis.
+ * @param {{nom: string, quantite?: number, remont?: boolean}[]} inventaire
+ * @returns {{nom: string, quantite: number}[]}
+ */
+export function articlesARemonter(inventaire) {
+  return (inventaire || [])
+    .filter((it) => it.remont)
+    .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 }));
+}
+
+/**
+ * Articles portant une remarque du métreur — la phrase qui évite la mauvaise
+ * surprise le jour J (« accès difficile », « pieds à démonter », « fragile »).
+ * @returns {{nom: string, piece?: string, remarque: string}[]}
+ */
+export function articlesAvecRemarque(inventaire) {
+  return (inventaire || [])
+    .filter((it) => String(it.remarque ?? "").trim())
+    .map((it) => ({ nom: it.nom, piece: it.piece,
+                    remarque: String(it.remarque).trim() }));
 }
