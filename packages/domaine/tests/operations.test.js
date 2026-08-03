@@ -108,3 +108,80 @@ test("remplacantsDisponibles exclut inactifs et personnes en conflit (C-20)", ()
   const dispo = remplacantsDisponibles({ date: "2026-07-15", missionId: "m1", membres });
   assert.deepEqual(dispo, ["libre"]);
 });
+
+// — Disponibilité des ressources : hommes ET camions (LOT 4) —
+import { disponibiliteRessource, verdictMission }
+  from "../src/operations/missions.js";
+
+const M1 = "m1", M2 = "m2";
+const JOUR = "2026-08-10";
+
+test("une ressource libre ne signale rien", () => {
+  const d = disponibiliteRessource({ date: JOUR, missionId: M1,
+    affectations: [], conges: [] });
+  assert.equal(d.niveau, "libre");
+  assert.equal(d.conflit, false);
+  assert.equal(d.raison, null);
+});
+
+test("être affecté à la mission COURANTE n'est pas un doublon", () => {
+  const d = disponibiliteRessource({ date: JOUR, missionId: M1,
+    affectations: [{ missionId: M1, date: JOUR }] });
+  assert.equal(d.niveau, "libre", "sinon toute ressource affectée se croit en conflit");
+});
+
+test("INC-19 : un doublon reste visible même une fois l'affectation faite", () => {
+  // Le symptôme constaté : le verdict n'était calculé que pour les ressources
+  // NON affectées, donc un doublon disparaissait dès qu'on le créait.
+  const d = disponibiliteRessource({ date: JOUR, missionId: M1,
+    affectations: [{ missionId: M1, date: JOUR }, { missionId: M2, date: JOUR }] });
+  assert.equal(d.niveau, "double");
+  assert.equal(d.raison, "déjà pris");
+});
+
+test("plusieurs autres chantiers sont comptés", () => {
+  const d = disponibiliteRessource({ date: JOUR, missionId: M1,
+    affectations: [{ missionId: "a", date: JOUR }, { missionId: "b", date: JOUR }] });
+  assert.equal(d.nbAutresMissions, 2);
+  assert.match(d.raison, /2 autres/);
+});
+
+test("un autre jour n'est pas un conflit", () => {
+  const d = disponibiliteRessource({ date: JOUR, missionId: M1,
+    affectations: [{ missionId: M2, date: "2026-08-11" }] });
+  assert.equal(d.niveau, "libre");
+});
+
+test("le congé prime sur le doublon — ce n'est pas la même nature de problème", () => {
+  const d = disponibiliteRessource({ date: JOUR, missionId: M1,
+    affectations: [{ missionId: M2, date: JOUR }],
+    conges: [{ debut: "2026-08-08", fin: "2026-08-14" }] });
+  assert.equal(d.niveau, "indisponible");
+  assert.equal(d.raison, "congé");
+});
+
+test("un véhicule n'a pas de congés, mais peut être en doublon", () => {
+  const d = disponibiliteRessource({ date: JOUR, missionId: M1,
+    affectations: [{ missionId: M2, date: JOUR }] });
+  assert.equal(d.niveau, "double", "un camion sur deux chantiers le même jour");
+});
+
+test("le verdict d'une mission remonte le pire niveau", () => {
+  const v = verdictMission({ date: JOUR, missionId: M1,
+    membres: [
+      { nom: "Ali", affectations: [{ missionId: M2, date: JOUR }] },
+      { nom: "Bea", conges: [{ debut: JOUR, fin: JOUR }] },
+    ],
+    vehicules: [{ nom: "Iveco", type: "vehicule", affectations: [] }] });
+  assert.equal(v.niveau, "indisponible");
+  assert.equal(v.ok, false);
+  assert.equal(v.problemes.length, 2);
+});
+
+test("une mission sans problème est déclarée ok", () => {
+  const v = verdictMission({ date: JOUR, missionId: M1,
+    membres: [{ nom: "Ali", affectations: [{ missionId: M1, date: JOUR }] }],
+    vehicules: [{ nom: "Iveco", affectations: [{ missionId: M1, date: JOUR }] }] });
+  assert.equal(v.ok, true);
+  assert.equal(v.niveau, "libre");
+});
