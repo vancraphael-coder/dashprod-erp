@@ -11,27 +11,22 @@
 import React, { useEffect, useState } from "react";
 import {
   obtenirAffaire, composerOffre, envoyerOffre, obtenirInstance,
-  creerLienSignature,
 } from "../lib/adaptateur.js";
 import { instanceIntacte } from "@domaine/documents/instances.js";
 import { ACOMPTE_PCT } from "@domaine/documents/cgv.js";
 import Contrat from "./Contrat.jsx";
-import { genererCode } from "@domaine/portail/acces.js";
-import { pdfOffre, nomFichierOffre, telecharger } from "../lib/pdfOffre.js";
 import { C, S, euros } from "../lib/theme.jsx";
 
 const TYPE_PAR_FORMULE = {
   tarifaire: "offre_tarifaire", emballage: "offre_emballage", forfait: "offre_forfait",
 };
 
-export default function Offre({ affaireId, retour }) {
+export default function Offre({ affaireId, retour, versMail }) {
   const [affaire, setAffaire] = useState(null);
   const [instance, setInstance] = useState(null);
   const [apercu, setApercu] = useState(null);   // contenu composé, avant envoi
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
-  const [lien, setLien] = useState(null);
-  const [pdfEnCours, setPdfEnCours] = useState(false);
 
   async function recharger() {
     setAffaire(await obtenirAffaire(affaireId));
@@ -139,78 +134,67 @@ export default function Offre({ affaireId, retour }) {
               Faire signer le client
             </div>
             <div style={{ fontSize: 11.5, color: C.muet, marginTop: 3,
-                          marginBottom: 10, lineHeight: 1.5 }}>
-              La signature se fait côté client : il lit l'offre et les conditions,
-              recopie « Lu et approuvé » et indique son nom. Envoyez-lui ce code.
+                          lineHeight: 1.5 }}>
+              Le code de signature s'envoie depuis l'écran <b>Mail</b>, avec le
+              message et les pièces jointes. Un seul endroit pour un seul geste.
             </div>
-            {!lien ? (
-              <button style={S.boutonPlein} disabled={enCours} onClick={async () => {
-                setEnCours(true); setErreur(null);
-                try {
-                  const code = genererCode();
-                  await creerLienSignature(affaireId, code, 30);
-                  setLien({ code, url: `${location.origin}/?signer=`
-                    + encodeURIComponent(code.replace(/-/g, "")) });
-                } catch (e) { setErreur(e.message); }
-                finally { setEnCours(false); }
-              }}>
-                {enCours ? "Génération…" : "Générer le code de signature"}
+            {versMail && (
+              <button onClick={() => versMail(affaireId)} style={{
+                ...S.boutonPlein, marginTop: 10 }}>
+                Préparer l'envoi au client →
               </button>
-            ) : (
-              <div>
-                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 20,
-                              fontWeight: 800, color: C.encre, letterSpacing: ".1em",
-                              textAlign: "center", padding: "10px 0" }}>
-                  {lien.code}
-                </div>
-                <button style={{ ...S.boutonPlein }} onClick={() => {
-                  navigator.clipboard?.writeText(lien.url).catch(() => {});
-                }}>Copier le lien à envoyer par e-mail</button>
-                <div style={{ fontSize: 11, color: C.fantome, marginTop: 6,
-                              lineHeight: 1.5 }}>
-                  Valable 30 jours, utilisable une seule fois. Notez le code :
-                  il ne sera plus affiché en entier.
-                </div>
-              </div>
             )}
           </div>
         )}
 
         {signee && (
-          <div style={{ padding: "10px 12px", background: "#ECFDF5", border: "1px solid #A7F3D0",
-                        borderRadius: 10, fontSize: 12.5, color: "#065F46", fontWeight: 600,
+          <div style={{ padding: "12px 13px", background: "#ECFDF5",
+                        border: "1px solid #A7F3D0", borderRadius: 10,
                         marginBottom: 10 }}>
-            Offre acceptée — le dossier est confirmé. Acompte de {ACOMPTE_PCT} % à
-            réclamer : <b>{euros(acompte)}</b>.
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#065F46" }}>
+              ✓ Offre signée — définitive
+            </div>
+            {instance?.signature && (
+              <div style={{ fontSize: 12, color: "#065F46", marginTop: 4 }}>
+                Par <b>{instance.signature.nom}</b>
+                {instance.signature.date && (
+                  <> le {new Date(instance.signature.date).toLocaleDateString("fr-BE",
+                    { day: "2-digit", month: "long", year: "numeric" })}</>
+                )}
+                {instance.signature.canal === "client_en_ligne" && " · en ligne"}
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: "#065F46", marginTop: 6 }}>
+              Le dossier est confirmé. Acompte de {ACOMPTE_PCT} % à réclamer :{" "}
+              <b>{euros(acompte)}</b>.
+            </div>
+            <div style={{ fontSize: 11, color: "#047857", marginTop: 6,
+                          lineHeight: 1.5 }}>
+              Ce document ne peut plus être modifié ni remplacé. Pour repartir
+              sur de nouvelles bases, reprenez le dossier depuis sa fiche.
+            </div>
           </div>
         )}
 
         {instance && (
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            {/* Le PDF généré est LA pièce jointe envoyée au client (même
-                contenu que l'écran) ; l'impression reste pour le papier. */}
-            <button disabled={pdfEnCours} onClick={async () => {
-                      setPdfEnCours(true);
-                      try {
-                        const contenu = await composerOffre(affaireId);
-                        telecharger(await pdfOffre(contenu, instance?.numero),
-                                    nomFichierOffre(contenu));
-                      } catch (e) { setErreur(e.message); }
-                      setPdfEnCours(false);
-                    }}
-                    style={{ flex: 1, textAlign: "center", padding: "11px",
-                             borderRadius: 11, cursor: "pointer", fontSize: 13,
-                             fontWeight: 700, border: `1.5px solid ${C.bleu}`,
-                             background: C.bleuClair, color: C.bleu }}>
-              {pdfEnCours ? "Génération…" : "📄 Télécharger le PDF"}
+          <>
+            {/* UN SEUL rendu de l'offre (décision D2) : ce qui s'imprime est
+                exactement ce qui s'affiche. Auparavant un second générateur PDF
+                produisait un document divergent — d'où le « document
+                secondaire » constaté. Le navigateur imprime le composant
+                Contrat, ou l'enregistre en PDF via sa propre boîte de dialogue. */}
+            <button onClick={() => window.print()} style={{
+              width: "100%", padding: "12px", borderRadius: 11, cursor: "pointer",
+              fontSize: 13.5, fontWeight: 700, border: `1.5px solid ${C.bleu}`,
+              background: C.bleuClair, color: C.bleu, marginTop: 10 }}>
+              🖨️ Imprimer / Enregistrer en PDF
             </button>
-            <button style={{ ...S.boutonLien, textAlign: "center",
-                             border: `1.5px solid ${C.bord}`, borderRadius: 11,
-                             padding: "11px 14px" }}
-                    onClick={() => window.print()}>
-              🖨️
-            </button>
-          </div>
+            <div style={{ fontSize: 11, color: C.fantome, marginTop: 6,
+                          textAlign: "center", lineHeight: 1.5 }}>
+              Copie exacte du document ci-dessus. Dans la boîte d'impression,
+              choisissez « Enregistrer au format PDF » comme destination.
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -168,7 +168,7 @@ export default function Contrat({ contenu, signature }) {
           <b style={{ color: C.encre }}>Planning.</b> Déménagement le{" "}
           {dateLongue(contenu.date_dem)}
           {contenu.heure_dem ? ` — arrivée prévue ${contenu.heure_dem}` : ""}.
-          {" "}Kilométrage offert. Offre valable {VALIDITE_JOURS_OUVRABLES} jours ouvrables.
+          {" "}Kilométrage offert. Offre valable {contenu.validite_jours ?? VALIDITE_JOURS_OUVRABLES} jours ouvrables.
         </div>
 
         {contenu.remarques && (

@@ -12,7 +12,7 @@
 import React, { useEffect, useState } from "react";
 import {
   obtenirAffaire, obtenirContact, obtenirInstance, obtenirOrganisation,
-  obtenirTextes, creerLienSignature,
+  obtenirTextes, creerLienSignature, urlConditionsCbd,
 } from "../lib/adaptateur.js";
 import { emailOffre, urlMailto } from "@domaine/communication/brief.js";
 import { genererCode } from "@domaine/portail/acces.js";
@@ -24,6 +24,10 @@ export default function Mail({ affaireId, retour, versOffre }) {
   const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState(null);
   const [lien, setLien] = useState(null);      // { code, url } une fois généré
+  // Durée de vie du code, décidée par l'ÉMETTEUR du devis (décision D3) :
+  // une offre pressée vit un jour, une offre de gros volume tient un mois.
+  const [validiteJours, setValiditeJours] = useState(30);
+  const [cbd, setCbd] = useState(null);        // URL signée des conditions
   const [enCours, setEnCours] = useState(false);
 
   useEffect(() => {
@@ -37,6 +41,7 @@ export default function Mail({ affaireId, retour, versOffre }) {
           obtenirTextes().catch(() => ({})),
         ]);
         setInstance(inst);
+        urlConditionsCbd().then(setCbd).catch(() => setCbd(null));
         const faits = affaire?.faits || {};
         setMail(emailOffre({
           client: affaire?.client || {},
@@ -73,17 +78,13 @@ export default function Mail({ affaireId, retour, versOffre }) {
         <div style={S.titre}>Mail — envoi de l'offre</div>
       </div>
 
-      {/* Signature en ligne — plus de pièce jointe. Le client lit l'offre et
-          les conditions sur la page de signature, puis approuve. */}
+      {/* Envoi au client : le code de signature ET les pièces jointes.
+          Les deux, pas l'un ou l'autre — le client veut pouvoir garder son
+          offre, et signer en ligne. */}
       <div style={S.carte}>
         <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
                       textTransform: "uppercase", letterSpacing: ".03em" }}>
           Signature en ligne
-        </div>
-        <div style={{ fontSize: 12, color: C.muet, lineHeight: 1.55, marginBottom: 10 }}>
-          L'offre et les conditions générales ne sont plus jointes au mail. Le
-          client les consulte en ligne et les approuve d'un « Lu et approuvé ».
-          Générez le code, il s'insère dans le message ci-dessous.
         </div>
 
         {!instance && (
@@ -94,18 +95,39 @@ export default function Mail({ affaireId, retour, versOffre }) {
         )}
 
         {instance && !lien && (
-          <button style={S.boutonPlein} disabled={enCours} onClick={async () => {
-            setEnCours(true); setErreur(null);
-            try {
-              const code = genererCode();
-              await creerLienSignature(affaireId, code, 30);
-              setLien({ code, url: `${location.origin}/?signer=`
-                + encodeURIComponent(code.replace(/-/g, "")) });
-            } catch (e) { setErreur(e.message); }
-            finally { setEnCours(false); }
-          }}>
-            {enCours ? "Génération…" : "Générer le code de signature"}
-          </button>
+          <>
+            <div style={{ fontSize: 12, color: C.muet, lineHeight: 1.55,
+                          marginBottom: 10 }}>
+              Le client lit l'offre en ligne, recopie « Lu et approuvé » et signe.
+              Choisissez la durée pendant laquelle ce code reste valable.
+            </div>
+            <label style={{ ...S.label, marginTop: 0 }}>Le code expire dans</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              {[[1, "1 jour"], [7, "1 semaine"], [15, "15 jours"], [30, "1 mois"]]
+                .map(([j, lib]) => (
+                <button key={j} onClick={() => setValiditeJours(j)} style={{
+                  padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+                  fontSize: 12.5, fontWeight: 700,
+                  border: `1.5px solid ${validiteJours === j ? C.bleu : C.bord}`,
+                  background: validiteJours === j ? "#E7EFFC" : C.blanc,
+                  color: validiteJours === j ? C.bleu : C.muet,
+                }}>{lib}</button>
+              ))}
+            </div>
+            <button style={S.boutonPlein} disabled={enCours} onClick={async () => {
+              setEnCours(true); setErreur(null);
+              try {
+                const code = genererCode();
+                await creerLienSignature(affaireId, code, validiteJours);
+                setLien({ code, jours: validiteJours,
+                  url: `${location.origin}/?signer=`
+                    + encodeURIComponent(code.replace(/-/g, "")) });
+              } catch (e) { setErreur(e.message); }
+              finally { setEnCours(false); }
+            }}>
+              {enCours ? "Génération…" : "Générer le code de signature"}
+            </button>
+          </>
         )}
 
         {lien && (
@@ -120,12 +142,46 @@ export default function Mail({ affaireId, retour, versOffre }) {
               {lien.code}
             </div>
             <div style={{ fontSize: 11, color: C.fantome, lineHeight: 1.5 }}>
-              Valable 30 jours, une seule utilisation. Notez-le : il ne sera plus
-              affiché en entier.
+              Valable {lien.jours === 1 ? "24 h" : `${lien.jours} jours`}, une
+              seule utilisation. Notez-le : il ne sera plus affiché en entier.
             </div>
           </div>
         )}
       </div>
+
+      {/* Pièces jointes : le client garde une copie de ce qu'il signe. Le
+          protocole mailto ne peut PAS porter de fichier — c'est une limite du
+          standard, pas un raccourci. On les ouvre donc pour que le bureau les
+          joigne à la main. */}
+      {instance && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 6,
+                        textTransform: "uppercase", letterSpacing: ".03em" }}>
+            Pièces jointes
+          </div>
+          <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5,
+                        marginBottom: 10 }}>
+            Ouvrez chaque document, enregistrez-le en PDF, puis joignez-le au
+            mail. Votre messagerie ne peut pas les recevoir automatiquement.
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button onClick={() => versOffre(affaireId)} style={pieceJointe}>
+              📄 L'offre
+            </button>
+            {cbd ? (
+              <a href={cbd} target="_blank" rel="noreferrer"
+                 style={{ ...pieceJointe, textDecoration: "none",
+                          display: "inline-flex", alignItems: "center" }}>
+                📋 Conditions générales
+              </a>
+            ) : (
+              <span style={{ ...pieceJointe, color: C.fantome, cursor: "default" }}>
+                📋 Conditions générales — non déposées
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* En-tête du mail */}
       <div style={S.carte}>
@@ -168,3 +224,9 @@ export default function Mail({ affaireId, retour, versOffre }) {
     </div>
   );
 }
+
+const pieceJointe = {
+  padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+  border: `1.5px solid ${C.bord}`, background: C.blanc, color: C.encre,
+  fontSize: 12.5, fontWeight: 700,
+};
