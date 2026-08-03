@@ -14,7 +14,8 @@ import {
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
-import { conflitsAffectation } from "@domaine/operations/missions.js";
+import { disponibiliteRessource, verdictMission }
+  from "@domaine/operations/missions.js";
 import { qualifierJour } from "@domaine/planning/jours-feries.js";
 import { hhmm, resumeHoraires, verifierHoraires, HEURE_DEFAUT }
   from "@domaine/operations/horaires.js";
@@ -91,21 +92,69 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
   }
 
   /** Le membre est-il déjà pris sur une AUTRE mission le même jour ? (C-20) */
-  function conflitPour(membreId, mission) {
-    const autres = missions
-      .filter((m) => m.id !== mission.id)
+  /**
+   * Disponibilité d'un MEMBRE pour une mission.
+   * Calculée en toutes circonstances — y compris s'il est déjà affecté ici :
+   * c'est ce qui rend un doublon visible au lieu de le masquer dès sa
+   * création (INC-19).
+   */
+  function dispoMembre(membreId, mission) {
+    const engagements = missions
       .filter((m) => (m.affectations || []).some((a) => a.utilisateur_id === membreId))
       .map((m) => ({ missionId: m.id, date: m.date }));
-    // Congés approuvés du membre : le domaine les qualifie avec la double
-    // affectation en un seul verdict (C-20).
     const congesMembre = conges
       .filter((c) => c.utilisateur_id === membreId)
       .map((c) => ({ debut: c.debut, fin: c.fin }));
-    return conflitsAffectation({
+    return disponibiliteRessource({
       date: mission.date, missionId: mission.id,
-      conges: congesMembre, affectations: autres,
+      conges: congesMembre, affectations: engagements,
     });
   }
+
+  /**
+   * Disponibilité d'un VÉHICULE. Aucun contrôle n'existait : un camion pouvait
+   * être posé sur deux chantiers le même jour sans que rien ne le signale.
+   */
+  function dispoCamion(camionId, mission) {
+    const engagements = missions
+      .filter((m) => (m.camions || []).includes(camionId))
+      .map((m) => ({ missionId: m.id, date: m.date }));
+    return disponibiliteRessource({
+      date: mission.date, missionId: mission.id, affectations: engagements,
+    });
+  }
+
+  /** Verdict d'ensemble d'une mission, pour l'alerte en tête de carte. */
+  function verdictDe(mission) {
+    const affectes = (mission.affectations || []).map((a) => a.utilisateur_id);
+    return verdictMission({
+      date: mission.date, missionId: mission.id,
+      membres: affectes.map((id) => ({
+        nom: (tousMembres.find((x) => x.id === id) || {}).nom || "Membre",
+        affectations: missions
+          .filter((m) => (m.affectations || []).some((a) => a.utilisateur_id === id))
+          .map((m) => ({ missionId: m.id, date: m.date })),
+        conges: conges.filter((c) => c.utilisateur_id === id)
+          .map((c) => ({ debut: c.debut, fin: c.fin })),
+      })),
+      vehicules: (mission.camions || []).map((id) => ({
+        nom: (flotte.find((v) => v.id === id) || {}).nom || "Véhicule",
+        type: "vehicule",
+        affectations: missions
+          .filter((m) => (m.camions || []).includes(id))
+          .map((m) => ({ missionId: m.id, date: m.date })),
+      })),
+    });
+  }
+
+  // Trois niveaux, trois couleurs. Le congé (rouge) dit « la personne n'est
+  // pas là » ; le doublon (orange) dit « elle est déjà prise ailleurs » — un
+  // avertissement, pas une interdiction : le bureau décide.
+  const COULEURS_DISPO = {
+    libre:        { bord: C.bord,   fond: C.blanc,   texte: C.encre, signe: "" },
+    double:       { bord: "#FDE68A", fond: "#FFFBEB", texte: "#92400E", signe: "⚠ " },
+    indisponible: { bord: "#F3C7C7", fond: "#FEF2F2", texte: C.rouge,  signe: "⛔ " },
+  };
 
   function choisir(missionId, type, id, nom, present) {
     setSelection((s) =>
@@ -294,6 +343,26 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
               </div>
             )}
 
+            {/* Alerte au niveau de la carte : sans elle, un conflit ne se voit
+                qu'en ouvrant le panneau d'affectation — donc jamais, une fois
+                l'équipe posée. C'est ce qui laissait passer les doublons. */}
+            {(() => {
+              const v = verdictDe(m);
+              if (v.ok) return null;
+              const t = COULEURS_DISPO[v.niveau];
+              return (
+                <div style={{ marginTop: 8, padding: "7px 10px", borderRadius: 9,
+                  background: t.fond, border: `1px solid ${t.bord}`,
+                  fontSize: 11.5, color: t.texte, fontWeight: 600,
+                  lineHeight: 1.45 }}>
+                  {t.signe}
+                  {v.problemes.map((p) =>
+                    `${p.type === "vehicule" ? "🚛 " : ""}${p.nom} · ${p.raison}`
+                  ).join(" — ")}
+                </div>
+              );
+            })()}
+
             {/* Les trois heures du matin. Posées par le bureau, lues par le
                 terrain. Aucune n'est devinée : ce qui manque reste vide. */}
             {!lectureSeule && m.type !== "visite" && (
@@ -378,10 +447,11 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                   })().map((mem) => {
                     const estAffecte = affectes.includes(mem.id);
                     const estArchive = mem.actif === false;
-                    const verdict = estAffecte ? null : conflitPour(mem.id, m);
-                    const conflit = verdict?.conflit;
-                    const raison = verdict?.enConge ? "congé"
-                                 : conflit ? "pris" : estArchive ? "archivé" : null;
+                    // Calculé MÊME si déjà affecté : sans ça, un doublon
+                    // disparaît de l'écran à l'instant où on le crée (INC-19).
+                    const dispo = dispoMembre(mem.id, m);
+                    const teinte = COULEURS_DISPO[dispo.niveau];
+                    const raison = dispo.raison || (estArchive ? "archivé" : null);
                     const choisi = selection?.missionId === m.id
                       && selection?.type === "membre" && selection?.id === mem.id;
                     return (
@@ -391,11 +461,18 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                         padding: "7px 12px", borderRadius: 999, cursor: "pointer",
                         fontSize: 12.5, fontWeight: 600,
                         outline: choisi ? `2px solid ${C.vert}` : "none",
-                        border: `1.5px solid ${estAffecte ? C.bleu : conflit ? "#F3C7C7" : C.bord}`,
-                        background: estAffecte ? "#E7EFFC" : conflit ? "#FEF2F2" : estArchive ? "#F1F5F9" : C.blanc,
-                        color: estAffecte ? C.bleu : conflit ? C.rouge : estArchive ? C.muet : C.encre,
+                        // Un membre affecté ET en doublon garde la teinte du
+                        // problème : c'est justement le cas qu'on veut voir.
+                        border: `1.5px solid ${dispo.conflit ? teinte.bord
+                                 : estAffecte ? C.bleu : C.bord}`,
+                        background: dispo.conflit ? teinte.fond
+                                  : estAffecte ? "#E7EFFC"
+                                  : estArchive ? "#F1F5F9" : C.blanc,
+                        color: dispo.conflit ? teinte.texte
+                             : estAffecte ? C.bleu
+                             : estArchive ? C.muet : C.encre,
                       }}>
-                        {estAffecte ? "✓ " : conflit ? "⚠ " : ""}{mem.nom}
+                        {estAffecte ? "✓ " : teinte.signe}{mem.nom}
                         {raison ? ` · ${raison}` : ""}
                       </button>
                     );
@@ -406,6 +483,10 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                   {flotte.map((v) => {
                     const present = (m.camions || []).includes(v.id);
+                    // Un camion ne peut pas être à deux chantiers à la fois :
+                    // aucun contrôle n'existait auparavant.
+                    const dispoV = dispoCamion(v.id, m);
+                    const teinteV = COULEURS_DISPO[dispoV.niveau];
                     const choisi = selection?.missionId === m.id
                       && selection?.type === "camion" && selection?.id === v.id;
                     return (
@@ -415,11 +496,15 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                           padding: "7px 12px", borderRadius: 999, cursor: "pointer",
                           fontSize: 12.5, fontWeight: 600,
                           outline: choisi ? `2px solid ${C.vert}` : "none",
-                          border: `1.5px solid ${present ? "#0F766E" : C.bord}`,
-                          background: present ? "#F0FDFA" : C.blanc,
-                          color: present ? "#0F766E" : C.encre,
+                          border: `1.5px solid ${dispoV.conflit ? teinteV.bord
+                                   : present ? "#0F766E" : C.bord}`,
+                          background: dispoV.conflit ? teinteV.fond
+                                    : present ? "#F0FDFA" : C.blanc,
+                          color: dispoV.conflit ? teinteV.texte
+                               : present ? "#0F766E" : C.encre,
                         }}>
-                        {present ? "✓ " : ""}🚛 {v.nom}
+                        {present ? "✓ " : teinteV.signe}🚛 {v.nom}
+                        {dispoV.raison ? ` · ${dispoV.raison}` : ""}
                       </button>
                     );
                   })}
