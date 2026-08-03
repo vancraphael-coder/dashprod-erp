@@ -80,3 +80,44 @@ test("articlesADemonter tolère un inventaire vide ou absent", () => {
   assert.deepEqual(articlesADemonter([]), []);
   assert.deepEqual(articlesADemonter(undefined), []);
 });
+
+// — Démontage et remontage : deux réalités distinctes (LOT 2) —
+import { articlesARemonter, articlesAvecRemarque }
+  from "../src/releve/volumetrie.js";
+
+test("démonter et remonter sont indépendants", () => {
+  const inv = [
+    { nom: "Armoire", quantite: 1, demont: true, remont: true },
+    // Part au garde-meuble : démontée, jamais remontée.
+    { nom: "Bibliothèque", quantite: 1, demont: true },
+    // Livrée en pièces détachées : remontée sans avoir été démontée.
+    { nom: "Lit neuf", quantite: 1, remont: true },
+    { nom: "Table basse", quantite: 1 },
+  ];
+  assert.deepEqual(articlesADemonter(inv).map((x) => x.nom),
+                   ["Armoire", "Bibliothèque"]);
+  assert.deepEqual(articlesARemonter(inv).map((x) => x.nom),
+                   ["Armoire", "Lit neuf"]);
+});
+
+test("un inventaire vide ou absent ne casse rien", () => {
+  assert.deepEqual(articlesARemonter([]), []);
+  assert.deepEqual(articlesARemonter(null), []);
+  assert.deepEqual(articlesAvecRemarque(undefined), []);
+});
+
+test("les remarques du métreur remontent, nettoyées", () => {
+  const inv = [
+    { nom: "Piano", piece: "Salon", remarque: "  Accès par la fenêtre  " },
+    { nom: "Canapé", piece: "Salon", remarque: "   " },
+    { nom: "Table", piece: "Cuisine" },
+  ];
+  const r = articlesAvecRemarque(inv);
+  assert.equal(r.length, 1, "une remarque vide n'en est pas une");
+  assert.equal(r[0].remarque, "Accès par la fenêtre");
+  assert.equal(r[0].piece, "Salon");
+});
+
+test("la quantité par défaut vaut 1", () => {
+  assert.equal(articlesARemonter([{ nom: "X", remont: true }])[0].quantite, 1);
+});
