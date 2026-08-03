@@ -315,12 +315,13 @@ conflit est rouge (`C.rouge`), alors qu'un « déjà pris » devrait se distingu
 d'un « en congé ». Aucun contrôle n'existe pour les véhicules. Traitement :
 LOT 4.
 
-### INC-20 · P1 · Deux rendus concurrents pour l'offre
+### INC-20 · ✅ CLOS le 2026-07-29 · Deux rendus concurrents pour l'offre
 `Contrat.jsx` (238 lignes, écran) et `lib/pdfOffre.js` (180 lignes,
 téléchargement) rendent le même document par deux chemins distincts : ils
 divergent par construction, et c'est pourquoi le PDF n'est pas la copie exacte
-de l'offre affichée. Contredit le verrou « une source de vérité, plusieurs
-sorties ». Traitement : LOT 3, décision D2.
+de l'offre affichée. Contredisait le verrou « une source de vérité, plusieurs
+sorties ». **Réglé (D2)** : `lib/pdfOffre.js` supprimé, le navigateur imprime
+le composant `Contrat`. Ce qui s'imprime EST ce qui s'affiche.
 
 ### INC-21 · P1 · ✅ CLOS le 2026-07-29 · Bouton « Clore le dossier » invisible
 `Facture.jsx` n'affichait ce bouton que si `affaire.etat === "paye"` — un état
@@ -340,6 +341,24 @@ dans Cout.jsx corrigée plus tôt. **Réglé** : suggestions issues du catalogue
 (`meubles_par_piece`), avec socle par défaut pour qu'une entreprise neuve soit
 utilisable immédiatement. Leçon : toute liste métier affichée dans un écran
 doit venir du domaine ou du paramétrage — jamais d'une constante d'écran.
+
+### INC-23 · P0 · ✅ CLOS le 2026-07-29 · Une offre signée pouvait être remplacée
+`cmd_instancier_offre` n'effectuait aucun contrôle : on pouvait instancier une
+nouvelle offre sur un dossier dont l'offre était déjà signée. Comme
+`obtenirInstance` retenait la PLUS RÉCENTE, la signature du client cessait
+d'apparaître — alors qu'elle restait en base. Problème de preuve, pas
+d'ergonomie. **Réglé (0066)** à deux niveaux : la commande refuse, et un
+trigger interdit de dé-signer ou d'altérer le contenu d'une instance signée,
+quel que soit le chemin. Le trigger est le vrai garde-fou — il tient même si
+une commande future oublie le contrôle. `obtenirInstance` privilégie désormais
+l'instance signée. Vérifié en base : les deux tentatives sont refusées.
+
+### INC-24 · P1 · ✅ CLOS le 2026-07-29 · `Number("")` vaut 0, encore
+En rendant la validité de l'offre paramétrable, un champ VIDE donnait
+`Number("") === 0`, borné à 1 → offre valable 24 h sans que personne l'ait
+demandé. **Cinquième occurrence** de ce piège (quatre fois en paie). Réglé en
+testant l'absence AVANT de convertir. Ce motif mérite un helper partagé
+(`nombreExplicite` existe déjà dans `rh/paie.js`) — à généraliser.
 
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·

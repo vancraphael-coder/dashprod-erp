@@ -27,7 +27,7 @@ Le découpage en lots, le registre de traçabilité de toutes les demandes et le
 quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
 porte plus que le lot en cours.
 
-**Lot en cours : LOT 3 — offre, signature et mail** (les quatre décisions D1→D4 sont
+**Lot en cours : LOT 4 — planning (doublons en orange, conflit véhicule)** (les quatre décisions D1→D4 sont
 tranchées ; plus aucun lot n'est bloqué).
 
 - [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),
@@ -38,10 +38,12 @@ tranchées ; plus aucun lot n'est bloqué).
 - [x] LOT 2 — ✅ 2026-07-29 : remarque par article, démonter/remonter
       distincts, meubles par pièce paramétrables, catalogue codé en dur
       supprimé (INC-22).
-- [ ] LOT 3 — offre/signature/mail : validité paramétrable, PDF = impression
-      navigateur de `Contrat` (D2, supprimer `lib/pdfOffre.js`), offre signée
-      verrouillée, un seul bouton de code (dans Mail), durée de code choisie
-      par l'émetteur (D3), pièces jointes rétablies à côté du code.
+- [x] LOT 3 — ✅ 2026-07-29 : validité paramétrable et figée, PDF =
+      impression navigateur (INC-20), offre signée verrouillée à deux niveaux
+      (INC-23), code uniquement dans Mail avec durée au choix, pièces jointes
+      rétablies.
+- [ ] LOT 4 — planning : doublons en orange (INC-19), conflit véhicule,
+      distinguer « en congé » (rouge) de « déjà pris » (orange).
 
 ## Jalon de lancement (avant tout EX)
 

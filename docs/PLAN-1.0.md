@@ -96,24 +96,30 @@ volumes de référence. Supprimé : les suggestions viennent désormais du
 catalogue, avec un socle par défaut pour qu'une entreprise neuve soit
 utilisable immédiatement.
 
-### LOT 3 — Offre, signature et mail *(la chaîne commerciale)*
+### LOT 3 — Offre, signature et mail ✅ FAIT le 2026-07-29
 - **Validité de l'offre paramétrable** (aujourd'hui `VALIDITE_JOURS_OUVRABLES
   = 10` en constante du domaine, invisible du bureau).
-- **PDF = copie exacte de l'offre** : il existe aujourd'hui **deux rendus
-  distincts** — `Contrat.jsx` (238 lignes, à l'écran) et `pdfOffre.js`
-  (180 lignes, au téléchargement). Deux rendus divergent par construction ;
-  un seul doit faire foi. → **Décision D2** sur la technique d'impression.
+- **PDF = copie exacte de l'offre** : `lib/pdfOffre.js` **supprimé** (D2).
+  Le navigateur imprime le composant `Contrat` — ce qui s'imprime EST ce qui
+  s'affiche, plus aucune divergence possible (INC-20 clos).
 - **Offre signée = signée définitivement** dans dossier/offre (le badge
   existe et lit `statut === 'signee'`, que la 0058 alimente enfin — à
   vérifier en manipulation, puis verrouiller l'écran contre toute
   régénération).
 - **Un seul bouton de code** : retirer celui de dossier/offre, garder celui
   de dossier/mail.
-- **Code de signature vivant** : il est aujourd'hui consommé à la signature
-  et l'ancien est révoqué dès qu'on en génère un nouveau. → **Décision D3**
-  sur la durée de vie voulue.
-- **Pièces jointes dans le mail** : rétablir l'offre et les CGV en pièces,
-  **à côté** du code de signature (les deux, pas l'un ou l'autre).
+- **Code de signature vivant** : durée choisie par l'émetteur (D3) — 1 jour,
+  1 semaine, 15 jours ou 1 mois, au moment de générer le code.
+- **Pièces jointes dans le mail** : offre et conditions générales rétablies,
+  **à côté** du code. Rappel de la limite réelle : le protocole `mailto` ne
+  peut pas porter de fichier — l'écran ouvre les documents pour que le bureau
+  les joigne, il ne fait pas semblant de les attacher.
+
+**Trouvé au passage** (INC-23) : `cmd_instancier_offre` ne vérifiait rien — on
+pouvait regénérer une offre sur un dossier déjà signé, et la signature
+disparaissait de l'affichage. Verrouillé à deux niveaux (0066), testé en base.
+Et `obtenirInstance` prenait la dernière instance plutôt que la signée : une
+signature pouvait être masquée par un document régénéré. Corrigé.
 
 ### LOT 4 — Planning *(la fiabilité de l'affectation)*
 - **Doublons en orange** : le verdict de conflit est calculé
@@ -174,12 +180,12 @@ correctifs.
 | 5 | Annuler une annulation ne fonctionne pas | 1 | ✅ corrigé (INC-18) |
 | 6 | Espace remarque sur les articles du relevé | 2 | ✅ fait |
 | 7 | 2ᵉ bouton remontage (démonter bleu / remonter vert) | 2 | ✅ fait |
-| 8 | Modifier la durée de validité de l'offre | 3 | à faire |
-| 9 | PDF = copie exacte de l'offre | 3 | vérifié : deux rendus distincts |
-| 10 | Offre signée apparaît signée définitivement | 3 | à vérifier puis verrouiller |
-| 11 | Supprimer le bouton code dans offre, garder dans mail | 3 | à faire |
-| 12 | Garder vivant un code de signature | 3 | à faire (D3) |
-| 13 | Lancer les pièces jointes dans le mail | 3 | à faire |
+| 8 | Modifier la durée de validité de l'offre | 3 | ✅ fait |
+| 9 | PDF = copie exacte de l'offre | 3 | ✅ fait |
+| 10 | Offre signée apparaît signée définitivement | 3 | ✅ fait |
+| 11 | Supprimer le bouton code dans offre, garder dans mail | 3 | ✅ fait |
+| 12 | Garder vivant un code de signature | 3 | ✅ fait |
+| 13 | Lancer les pièces jointes dans le mail | 3 | ✅ fait |
 | 14 | Articles dans chaque pièce du relevé (paramètres) | 2 | ✅ fait (EX-05) |
 | 15 | Page comptabilité + export compta pro | 6 | à faire (INC-04) |
 | 16 | Page notes/archive des modifications et décisions | 7 | à concevoir (D4) |
