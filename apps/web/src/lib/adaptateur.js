@@ -11,7 +11,8 @@ import { supabase, configPresente } from "./supabase.js";
 import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
 import { CGV_VERSION_COURANTE, cgv } from "@domaine/documents/cgv.js";
-import { volumeTotal, articlesADemonter } from "@domaine/releve/volumetrie.js";
+import { volumeTotal, articlesADemonter, articlesARemonter, articlesAvecRemarque }
+  from "@domaine/releve/volumetrie.js";
 import { briefMission } from "@domaine/communication/brief.js";
 
 const CLE = "dashprod-demo-v1";
@@ -839,6 +840,10 @@ export async function composerOffre(affaireId) {
     remarques: contact?.notes || "",
     volume_m3: volumeTotal(inventaire),
     a_demonter: articlesADemonter(inventaire),
+    // Remontage et remarques : posés au relevé, ils doivent atteindre l'offre
+    // que le client lit et signe — sinon le travail du métreur se perd.
+    a_remonter: articlesARemonter(inventaire),
+    remarques_articles: articlesAvecRemarque(inventaire),
     formule: faits.formule || "tarifaire",
     reduction: faits.remisePct
       ? { pct: faits.remisePct, motif: faits.remiseMotif || "promo" }
