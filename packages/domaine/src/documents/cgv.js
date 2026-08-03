@@ -91,8 +91,42 @@ export const PRESTATIONS_INCLUSES = Object.freeze([
   "Démontage et remontage du mobilier standard",
 ]);
 
-/** Validité commerciale de l'offre (mentionnée sur le document). */
+/**
+ * Validité commerciale de l'offre, en jours ouvrables — valeur par DÉFAUT.
+ *
+ * Réglable par entreprise (Paramètres → Textes des dossiers). Surtout : la
+ * valeur est FIGÉE dans le document au moment du gel. Une offre envoyée il y a
+ * trois semaines garde la validité qu'elle annonçait, même si le réglage a
+ * changé depuis — sinon on modifierait rétroactivement un engagement écrit.
+ */
 export const VALIDITE_JOURS_OUVRABLES = 10;
+
+/** Bornes acceptables : un jour minimum, un trimestre au plus. */
+export const VALIDITE_MIN = 1;
+export const VALIDITE_MAX = 90;
+
+/**
+ * Lit la validité réglée par l'entreprise (Paramètres → Textes des dossiers →
+ * Texte de l'offre → « Validité (jours) »), en retombant sur le défaut.
+ *
+ * La clé `validite_jours` existe déjà dans les textes et alimente la phrase de
+ * l'e-mail : on la réutilise plutôt que d'en créer une seconde. Deux réglages
+ * pour une même notion finiraient par se contredire — l'e-mail annoncerait
+ * 10 jours et le document 15.
+ */
+export function validiteJours(textes) {
+  // Piège déjà payé quatre fois sur la paie : Number("") et Number(null)
+  // valent 0, pas NaN. Un champ VIDE passerait donc pour « 0 jour », borné à
+  // 1 — une offre valable 24 h sans que personne l'ait demandé. On teste
+  // l'absence AVANT de convertir.
+  const brut = textes?.validite_jours;
+  if (brut === null || brut === undefined || String(brut).trim() === "") {
+    return VALIDITE_JOURS_OUVRABLES;
+  }
+  const v = Number(brut);
+  if (!Number.isFinite(v)) return VALIDITE_JOURS_OUVRABLES;
+  return Math.min(VALIDITE_MAX, Math.max(VALIDITE_MIN, Math.round(v)));
+}
 
 /** Acompte de réservation (CGV art. 1) — en pourcentage du TVAC. */
 export const ACOMPTE_PCT = 30;
