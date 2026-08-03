@@ -45,14 +45,13 @@ pas.
   étaient **sélectionnées mais jamais mappées** dans `listerMissions`
   (INC-16) → le bureau ne voyait jamais ce qu'il enregistrait.
 
-### LOT 1 — Intégrité du cycle de vie *(P0, avant tout le reste)*
+### LOT 1 — Intégrité du cycle de vie ✅ FAIT le 2026-07-29
 Le cœur du problème : deux commandes échouent **en silence** parce que
 `transition_interne` est tolérante et que personne ne lit son verdict.
 - **Facturer depuis « confirmé »** (INC-17) : `Dossier.jsx` autorise la
   facturation dès `confirme`, alors que la machine d'états n'accepte que
   `effectue → facture`. La transition échoue sans bruit : la facture existe,
-  le dossier reste « confirmé », le paiement s'enregistre. → **Décision D1**
-  requise avant de coder.
+  le dossier reste « confirmé », le paiement s'enregistre. → **D1 tranchée : séparer les cycles.**
 - **Annuler une annulation** (INC-18) : `cmd_reprendre_affaire` appelle
   `transition_interne(affaire, 'confirme')` depuis l'état `annule`, or
   `transition_permise` n'a **aucune** transition au départ de `annule`. Rien
@@ -61,9 +60,17 @@ Le cœur du problème : deux commandes échouent **en silence** parce que
   lit son booléen et échoue franchement s'il est faux. C'est la cause commune
   des deux bugs, et de ceux qu'on n'a pas encore vus.
 
-*Terminé quand* : impossible d'émettre une facture sur un dossier qui n'est
-pas dans un état facturable ; une annulation se reprend réellement ; aucun
-`transition_interne` sans verdict lu dans tout le code.
+**Livré** (0064 + 0065) : le cycle opérationnel s'arrête à `effectue → clos`
+et ne mène plus à la facturation ; l'état de l'argent est **dérivé** des
+factures et paiements (`etat_facturation`), donc impossible à désynchroniser ;
+`transition_exigee` échoue franchement là où `transition_interne` reste
+tolérante pour les cascades ; l'annulation **mémorise** l'état d'avant et la
+reprise y retourne. Deux badges distincts dans le dossier. Effet voulu : la
+facture d'acompte sur un dossier confirmé devient possible.
+
+**Trouvé au passage** : le bouton « Clore le dossier » attendait l'état
+`paye`, que rien n'atteignait — il était donc **invisible en permanence**
+(INC-21). Rattaché au solde réel + dossier effectué.
 
 ### LOT 2 — Le relevé *(l'outil du quotidien)*
 - Espace **remarque par article** (EX-04, partie manquante).
@@ -147,11 +154,11 @@ correctifs.
 
 | # | Demande de Raphaël | Lot | État |
 |---|---|---|---|
-| 1 | Un dossier peut être confirmé et payé en même temps | 1 | vérifié, cause trouvée (INC-17) |
+| 1 | Un dossier peut être confirmé et payé en même temps | 1 | ✅ corrigé (INC-17) |
 | 2 | Le bureau ne sait pas définir l'heure de départ des hommes | 0 | ✅ corrigé (INC-16) |
 | 3 | Conflits planning → écran blanc | 0 | ✅ corrigé (INC-15) |
 | 4 | Hommes/camions sélectionnés plusieurs fois pas en orange | 4 | vérifié (INC-19) |
-| 5 | Annuler une annulation ne fonctionne pas | 1 | vérifié, cause trouvée (INC-18) |
+| 5 | Annuler une annulation ne fonctionne pas | 1 | ✅ corrigé (INC-18) |
 | 6 | Espace remarque sur les articles du relevé | 2 | à faire |
 | 7 | 2ᵉ bouton remontage (démonter bleu / remonter vertical) | 2 | à faire |
 | 8 | Modifier la durée de validité de l'offre | 3 | à faire |
@@ -170,30 +177,25 @@ correctifs.
 
 Elles bloquent le début de leur lot — je ne les tranche pas à sa place.
 
-**D1 · Facturation et cycle de vie** *(LOT 1)* — trois voies :
-*(a)* on ne facture qu'à partir de `effectue` (strict, mais interdit la
-facture d'acompte avant le déménagement) ; *(b)* on autorise
-`confirme → facture` dans la machine d'états (l'acompte devient possible,
-mais l'état perd le sens « le déménagement a eu lieu ») ; *(c)* on sépare le
-cycle **facturation** du cycle **opérationnel** : le dossier garde son
-parcours, et « facturé / payé » se déduit des factures. *(c)* est le plus
-juste et cadre avec le modèle canonique ; c'est aussi le plus de travail.
+**D1 · Facturation et cycle de vie** — ✅ **TRANCHÉE : séparer les cycles.**
+Livrée dans le LOT 1 (0064).
 
-**D2 · Impression de l'offre** *(LOT 3)* — le PDF doit-il être *(a)* l'impression
-navigateur du composant `Contrat` (copie exacte garantie, mise en page moins
-maîtrisée) ou *(b)* un rendu PDF programmé qui **remplace** `Contrat` comme
-source unique (maîtrise fine, mais il faut réécrire l'écran par-dessus) ?
+**D2 · Impression de l'offre** — ✅ **TRANCHÉE : impression navigateur.**
+Le composant `Contrat` devient la source unique ; `lib/pdfOffre.js` sera
+supprimé (INC-20). À exécuter au LOT 3.
 
-**D3 · Durée de vie du code de signature** *(LOT 3)* — aujourd'hui : usage
-unique, révoqué à la signature, et l'ancien meurt dès qu'un nouveau est créé.
-Que veut dire « garder vivant » : réutilisable après signature ? plusieurs
-codes valides en parallèle ? pas d'expiration ? Le compromis sécurité est
-réel — un code qui vit indéfiniment protège moins un dossier.
+**D3 · Durée de vie du code de signature** — ✅ **TRANCHÉE : une clé par offre
+de prix, durée fixée par l'émetteur du devis, de J-1 à un mois.** À exécuter au
+LOT 3 : la durée devient un champ saisi à la génération (aujourd'hui figée à
+30 jours), et le code reste valide tant qu'il n'a pas expiré ou été signé.
 
-**D4 · Journal des décisions** *(LOT 7)* — périmètre v1 : notes libres
-attribuées, ou décisions structurées (sujet / décision / auteur / date /
-décision remplacée) ? Et qui peut écrire : tous les associés, ou une capacité
-dédiée ?
+**D4 · Journal des décisions** — ✅ **TRANCHÉE : journal d'ENREGISTREMENTS.**
+Pas un bloc-notes : la trace de tous les mouvements — ressources sur l'agenda
+(affectations, véhicules, partages), modifications de dossiers, décisions.
+Bonne nouvelle : la table `evenements` capte DÉJÀ tout cela en insertion seule
+depuis l'origine. Le LOT 7 devient donc surtout un **écran de lecture**
+(filtres par dossier, par personne, par période) plus quelques événements
+manquants à émettre — pas une nouvelle architecture.
 
 ## 5. Discipline de livraison
 

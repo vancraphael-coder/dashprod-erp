@@ -27,14 +27,16 @@ Le découpage en lots, le registre de traçabilité de toutes les demandes et le
 quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
 porte plus que le lot en cours.
 
-**Lot en cours : LOT 1 — intégrité du cycle de vie** (bloqué par la décision
-D1 de Raphaël).
+**Lot en cours : LOT 2 — le relevé** (les quatre décisions D1→D4 sont
+tranchées ; plus aucun lot n'est bloqué).
 
 - [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),
       corrigés le 2026-07-29, avec test statique d'imports.
-- [ ] LOT 1 — facturation depuis un état non facturable (INC-17), reprise
-      d'annulation (INC-18), et la règle « tout `transition_interne` lit son
-      verdict ».
+- [x] LOT 1 — ✅ 2026-07-29 : cycles séparés (0064), reprise d'annulation
+      réelle (0065), `transition_exigee`, deux badges, bouton de clôture
+      ressuscité (INC-21).
+- [ ] LOT 2 — relevé : remarque par article, boutons démonter/remonter
+      distincts, articles pré-remplis par pièce.
 
 ## Jalon de lancement (avant tout EX)
 

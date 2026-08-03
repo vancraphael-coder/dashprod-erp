@@ -288,22 +288,24 @@ bureau ne voyait donc jamais les heures qu'il venait d'enregistrer. **Réglé.**
 Leçon : dans l'adaptateur, `select` et mapping sont deux endroits — ajouter une
 colonne demande les deux.
 
-### INC-17 · P0 · Facture émise sur un dossier non facturable
+### INC-17 · ✅ CLOS le 2026-07-29 · Facture émise sur un dossier non facturable
 `Dossier.jsx` : `facturable = ["confirme","effectue","facture","paye"]`. Or
 `transition_permise` n'accepte que `effectue → facture`. Depuis `confirme`,
 `cmd_emettre_facture` appelle `transition_interne(affaire,'facture')` qui
 **renvoie false sans lever** : la facture est émise avec son numéro légal, le
 dossier reste « confirmé », et le paiement s'enregistre par-dessus. D'où le
 symptôme « confirmé et payé en même temps ». **Cause commune** avec INC-18 :
-personne ne lit le verdict de `transition_interne`. Traitement : LOT 1,
-décision D1.
+personne ne lit le verdict de `transition_interne`. **Réglé (0064)** : les deux cycles sont séparés ; `cmd_emettre_facture` ne
+transitionne plus rien et contrôle explicitement l'état ; l'argent est dérivé.
 
-### INC-18 · P0 · Annuler une annulation ne fait rien
+### INC-18 · ✅ CLOS le 2026-07-29 · Annuler une annulation ne fait rien
 `cmd_reprendre_affaire` (0045b) appelle
 `transition_interne(p_affaire,'confirme')` depuis l'état `annule`. Or
 `transition_permise` ne contient **aucune** paire au départ de `annule` : la
 transition échoue silencieusement, seul `archive_le` est remis à null, et la
-fonction renvoie un succès mensonger. Traitement : LOT 1.
+fonction renvoyait un succès mensonger. **Réglé (0064 + 0065)** : `annule` a
+des sorties, l'état d'avant est mémorisé et restauré, et `transition_exigee`
+lève au lieu de mentir.
 
 ### INC-19 · P1 · Double affectation invisible
 Dans `Planning.jsx` : `const verdict = estAffecte ? null : conflitPour(...)`.
@@ -319,6 +321,15 @@ téléchargement) rendent le même document par deux chemins distincts : ils
 divergent par construction, et c'est pourquoi le PDF n'est pas la copie exacte
 de l'offre affichée. Contredit le verrou « une source de vérité, plusieurs
 sorties ». Traitement : LOT 3, décision D2.
+
+### INC-21 · P1 · ✅ CLOS le 2026-07-29 · Bouton « Clore le dossier » invisible
+`Facture.jsx` n'affichait ce bouton que si `affaire.etat === "paye"` — un état
+qu'aucun dossier n'atteignait jamais (conséquence d'INC-17). La clôture était
+donc **impossible depuis l'origine**, sans que rien ne le signale. **Réglé** :
+condition rattachée au solde réel (cycle de facturation) ET à l'exécution du
+déménagement (cycle opérationnel). Leçon : une condition d'affichage qui
+dépend d'un état jamais atteint est un mort silencieux — les chercher en
+croisant les états produits et les états attendus.
 
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
