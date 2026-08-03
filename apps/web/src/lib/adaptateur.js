@@ -2153,6 +2153,29 @@ export async function listerTransmissions(factureId) {
   return data || [];
 }
 
+/**
+ * État de facturation d'un dossier — DÉRIVÉ des factures et paiements.
+ * Ne jamais le déduire de `affaires.etat` : depuis 0064 les deux cycles sont
+ * séparés, et c'est cette fonction qui fait foi pour l'argent.
+ */
+export async function etatFacturation(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("etat_facturation",
+      { p_affaire: affaireId });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  const d = lireDemo();
+  const fs = (d.factures || []).filter((f) => f.affaire_id === affaireId && f.emise);
+  const du = fs.reduce((t, f) => t + (f.type === "avoir" ? -f.tvac_centimes : f.tvac_centimes), 0);
+  const paye = fs.reduce((t, f) => t
+    + (f.paiements || []).reduce((s, p) => s + (p.montant_centimes || 0), 0), 0);
+  const etat = fs.length === 0 ? "non_facture"
+    : paye <= 0 ? "facture" : paye < du ? "partiellement_paye" : "paye";
+  return { etat, factures: fs.length, du_centimes: du, paye_centimes: paye,
+           solde_centimes: du - paye };
+}
+
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,

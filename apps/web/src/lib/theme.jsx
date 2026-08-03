@@ -27,6 +27,9 @@ if (typeof document !== "undefined" && !document.getElementById("polices-roovers
 }
 
 /** États d'affaire → libellé + couleur (Réf. 2, annexe F). */
+// ── Le CYCLE OPÉRATIONNEL : où en est le déménagement ────────────────────────
+// « facture » et « paye » n'en font plus partie (0064) : l'argent a son propre
+// cycle, dérivé des factures. Ils restent listés ici pour d'anciens dossiers.
 export const ETATS_UI = {
   brouillon: { libelle: "Brouillon", couleur: C.fantome },
   devis:     { libelle: "Devis",     couleur: C.muet },
@@ -41,6 +44,33 @@ export const ETATS_UI = {
   reporte:   { libelle: "Reporté",   couleur: C.ambre },
   annule:    { libelle: "Annulé",    couleur: C.rouge },
 };
+
+// ── Le CYCLE DE FACTURATION : où en est l'argent ─────────────────────────────
+// Dérivé en base par etat_facturation() — jamais stocké, donc jamais en
+// contradiction avec les factures réelles.
+export const ETATS_FACTURATION = {
+  non_facture:        { libelle: "Non facturé",  couleur: C.fantome },
+  facture:            { libelle: "Facturé",      couleur: C.ambre },
+  partiellement_paye: { libelle: "Partiel",      couleur: C.ambre },
+  paye:               { libelle: "Payé",         couleur: C.vert },
+};
+
+/**
+ * Badge de facturation. Volontairement distinct du badge d'état : un dossier
+ * a DEUX histoires — le déménagement et l'argent — et les confondre produisait
+ * des affichages absurdes (« confirmé et payé »).
+ */
+export function BadgeFacturation({ etat, discret = false }) {
+  const e = ETATS_FACTURATION[etat];
+  if (!e || (discret && etat === "non_facture")) return null;
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 700, color: e.couleur,
+      border: `1.5px solid ${e.couleur}`, background: "transparent",
+      borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap",
+    }}>{e.libelle}</span>
+  );
+}
 
 /** Zones de marge → couleur (Réf. 2 : rouge / vert / indigo premium). */
 export const ZONES_MARGE = {
