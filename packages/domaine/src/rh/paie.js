@@ -24,6 +24,8 @@
 // Ces deux règles sont stables. Le précompte, lui, n'est jamais deviné ici.
 // =============================================================================
 
+import { nombre as nombreExplicite } from "../noyau/nombres.js";
+
 // =============================================================================
 // SECTEUR DU DÉMÉNAGEMENT — SCP 140.05
 //
@@ -85,12 +87,6 @@ const c = (v) => Math.round(Number(v) || 0);
  * coût employeur trop bas, avec l'air d'être juste. L'erreur a été commise
  * deux fois dans ce fichier ; elle est désormais impossible.
  */
-function nombreExplicite(v) {
-  if (v === null || v === undefined) return NaN;
-  const s = typeof v === "string" ? v.trim() : v;
-  if (s === "") return NaN;
-  return Number(s);
-}
 const heuresValides = (h) => {
   const n = Number(h);
   return Number.isFinite(n) && n > 0 ? n : 0;
