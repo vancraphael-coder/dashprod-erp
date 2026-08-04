@@ -21,6 +21,7 @@ import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation } from "../lib
 import Fermetures from "./Fermetures.jsx";
 import Confidentialite from "./Confidentialite.jsx";
 import Comptabilite from "./Comptabilite.jsx";
+import Journal from "./Journal.jsx";
 import { identiteComplete, tauxTva } from "@domaine/organisation/identite.js";
 import Identite from "./Identite.jsx";
 import {
@@ -63,6 +64,9 @@ export default function Parametres({
   }
   if (ouvert === "comptabilite") {
     return <Comptabilite retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "journal") {
+    return <Journal retour={() => setOuvert(null)} />;
   }
 
   if (ouvert) {
@@ -135,6 +139,9 @@ export default function Parametres({
                 onClick={versTextes} />
 
         <Rubrique>Données</Rubrique>
+        <Entree icone="📖" titre="Journal"
+                resume="Tous les mouvements et les décisions, dans l'ordre. Rien ne s'y réécrit."
+                onClick={() => setOuvert("journal")} />
         <Entree icone="🔒" titre="Confidentialité & données"
                 resume="Conservation, suppression RGPD des données clients."
                 onClick={() => setOuvert("confidentialite")} />

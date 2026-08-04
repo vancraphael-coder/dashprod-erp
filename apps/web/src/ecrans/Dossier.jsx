@@ -30,7 +30,7 @@ function adrVide() {
            escalier: false };
 }
 
-export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail, versMateriel, modeTerrain }) {
+export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail, versMateriel, versJournal, modeTerrain }) {
   const [affaire, setAffaire] = useState(null);
   const [contact, setContact] = useState(null);
   const [org, setOrg] = useState(null);
@@ -459,6 +459,22 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         <button style={S.boutonPlein} onClick={enregistrer}>
           {sauve ? "✓ Dossier enregistré" : "Enregistrer le dossier"}
         </button>
+
+        {/* L'historique du dossier : qui a changé quoi, quand, et les
+            décisions consignées. En insertion seule — rien ne s'y réécrit. */}
+        {!modeTerrain && versJournal && (
+          <button onClick={() => versJournal(affaireId)} style={{
+            display: "flex", alignItems: "center", gap: 8, width: "100%",
+            marginTop: 10, padding: "11px 13px", borderRadius: 11,
+            cursor: "pointer", border: `1px solid ${C.bord}`,
+            background: C.blanc, textAlign: "left" }}>
+            <span>📖</span>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.encre }}>
+              Historique de ce dossier
+            </span>
+            <span style={{ fontSize: 11.5, color: C.fantome }}>Ouvrir</span>
+          </button>
+        )}
 
         {/* Désistement client : le chantier ne se fera pas, ou pas à cette
             date. Annuler ou reporter libère automatiquement l'équipe et les
