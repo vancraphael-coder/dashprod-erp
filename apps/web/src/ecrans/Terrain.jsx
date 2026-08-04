@@ -119,6 +119,10 @@ export default function Terrain({ profil, versConsult }) {
 }
 
 function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsult }) {
+  // Clôturer arrête le décompte de toute l'équipe : geste du chef d'équipe.
+  const caps = profil?.capacites || [];
+  const peutCloturer = caps.includes("cloturer_chantier")
+                    || caps.includes("gerer_planning");
   const estAujourdhui = mission.date === aujourdhui();
 
   // Le pointage vit dans la session « travail » : son début est le départ,
@@ -359,14 +363,25 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
             )}
           </div>
 
-          {/* TERMINER : la vraie fin. Clôt le chrono et fait passer le dossier
-              en « effectué » au bureau — la facture devient possible. */}
-          {!termine && depart && !cloture && (
+          {/* TERMINER : la vraie fin. Clôt le pointage de TOUTE l'équipe et
+              fait passer le dossier en « effectué » au bureau — la facture
+              devient possible. C'est pourquoi la base le réserve au chef
+              d'équipe (capacité `cloturer_chantier`) : on n'arrête pas le
+              décompte des autres. On masque le bouton plutôt que de laisser
+              un déménageur se heurter à un refus après coup. */}
+          {!termine && depart && !cloture && peutCloturer && (
             <button onClick={() => setCloture(true)} style={{
               width: "100%", padding: "12px", borderRadius: 11, marginBottom: 12,
               border: "none", cursor: "pointer", fontSize: 14, fontWeight: 800,
               background: "linear-gradient(135deg, #059669, #047857)", color: "#fff",
             }}>✓ Terminer le chantier</button>
+          )}
+          {!termine && depart && !peutCloturer && (
+            <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 10,
+              background: "#1E293B", fontSize: 12, color: "#94A3B8",
+              lineHeight: 1.45, textAlign: "center" }}>
+              Vos heures sont enregistrées. Le chef d'équipe clôture le chantier.
+            </div>
           )}
           {cloture && (
             <div style={{ marginBottom: 12 }}>

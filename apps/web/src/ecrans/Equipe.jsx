@@ -12,8 +12,13 @@ import {
   definirMetier, listerMembresSimples,
   listerEquipement, ajouterEquipement, changerEtatEquipement, archiverMembre,
   listerCapacitesMembre, definirCreationComplete, CAPACITES_DEVIS_COMPLET,
+  capacitesMembre, definirCapacite,
 } from "../lib/adaptateur.js";
 import { ROLES } from "@domaine/noyau/permissions.js";
+import {
+  capacitesTerrain, capacitesBureau, capacitesEffectives, origineCapacite,
+  resumeAcces,
+} from "@domaine/rh/capacites.js";
 import { C, S, Confirmation } from "../lib/theme.jsx";
 
 function DroitDevisComplet({ membreId }) {
@@ -279,12 +284,9 @@ export default function Equipe({ retour, integre }) {
 
             {ouvertIci && (
               <div style={{ marginTop: 10, borderTop: `1px solid ${C.bord}`, paddingTop: 8 }}>
-                {/* Rôles d'ACCÈS (permissions, S3) — informatif */}
-                {m.roles.length > 0 && (
-                  <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 8 }}>
-                    Accès : {m.roles.map((r) => LIBELLES_ROLE[r] || r).join(", ")}
-                  </div>
-                )}
+                {/* Autorisations : ce que le logiciel permet à ce membre.
+                    Distinct du métier terrain, qui décrit ce qu'il FAIT. */}
+                <Autorisations membre={m} />
 
                 {/* Métier TERRAIN — distinct des permissions (synthèse §4) */}
                 <label style={S.label}>Métier terrain</label>
@@ -363,6 +365,122 @@ export default function Equipe({ retour, integre }) {
         <div style={S.titre}>Équipe</div>
       </div>
       {contenu}
+    </div>
+  );
+}
+
+/**
+ * Ce qu'un membre a le droit de faire.
+ *
+ * Deux origines, et l'écran les distingue :
+ *   - accordé par son RÔLE : affiché, non décochable ici. Le retirer demande
+ *     de changer le rôle — un geste plus lourd, qui doit rester explicite.
+ *   - accordé PERSONNELLEMENT : décochable d'un clic.
+ *
+ * Les autorisations sensibles (argent, données de toute l'équipe) sont
+ * signalées : les accorder doit être un choix conscient, pas un clic distrait.
+ */
+function Autorisations({ membre }) {
+  const [etat, setEtat] = useState(null);
+  const [erreur, setErreur] = useState(null);
+  const [enCours, setEnCours] = useState(null);
+
+  async function charger() {
+    setErreur(null);
+    try { setEtat(await capacitesMembre(membre.id)); }
+    catch (e) { setErreur(e.message); }
+  }
+  useEffect(() => { charger(); }, [membre.id]);
+
+  async function basculer(cle, accorder) {
+    setEnCours(cle); setErreur(null);
+    try { await definirCapacite(membre.id, cle, accorder); await charger(); }
+    catch (e) { setErreur(e.message); }
+    finally { setEnCours(null); }
+  }
+
+  if (!etat) {
+    return (
+      <div style={{ fontSize: 11.5, color: C.fantome, marginBottom: 8 }}>
+        Chargement des autorisations…
+      </div>
+    );
+  }
+
+  const effectives = capacitesEffectives(etat);
+
+  const ligne = (c) => {
+    const origine = origineCapacite(etat, c.cle);
+    const actif = effectives.includes(c.cle);
+    const parRole = origine === "role" || origine === "role_et_individuelle";
+    return (
+      <div key={c.cle} style={{ display: "flex", gap: 10, alignItems: "flex-start",
+             padding: "8px 0", borderTop: `1px solid ${C.doux}` }}>
+        <button
+          onClick={() => !parRole && basculer(c.cle, !actif)}
+          disabled={parRole || enCours === c.cle}
+          title={parRole ? "Vient du rôle : changez le rôle pour la retirer"
+                         : actif ? "Retirer" : "Accorder"}
+          style={{
+            width: 34, height: 20, borderRadius: 999, flexShrink: 0, marginTop: 2,
+            border: "none", padding: 2, cursor: parRole ? "default" : "pointer",
+            background: actif ? (parRole ? C.muet : C.vert) : C.bord,
+            opacity: enCours === c.cle ? .5 : 1,
+            display: "flex", justifyContent: actif ? "flex-end" : "flex-start",
+          }}>
+          <span style={{ width: 16, height: 16, borderRadius: "50%",
+                         background: "#fff", display: "block" }} />
+        </button>
+        <span style={{ flex: 1 }}>
+          <span style={{ display: "block", fontSize: 12.5, fontWeight: 700,
+                         color: actif ? C.encre : C.muet }}>
+            {c.titre}
+            {c.sensible && (
+              <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700,
+                background: "#FFFBEB", color: "#92400E", borderRadius: 999,
+                padding: "1px 6px", border: "1px solid #FDE68A" }}>sensible</span>
+            )}
+          </span>
+          <span style={{ display: "block", fontSize: 11, color: C.fantome,
+                         lineHeight: 1.4, marginTop: 2 }}>
+            {c.detail}
+          </span>
+          {parRole && (
+            <span style={{ display: "block", fontSize: 10.5, color: C.muet,
+                           marginTop: 2 }}>
+              Vient de son rôle{(etat.roles || []).length
+                ? ` (${etat.roles.map((r) => LIBELLES_ROLE[r] || r).join(", ")})` : ""}
+            </span>
+          )}
+        </span>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ ...S.label, marginTop: 0 }}>Autorisations</label>
+      <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 2 }}>
+        {resumeAcces(etat)}
+      </div>
+
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.fantome,
+                    textTransform: "uppercase", letterSpacing: ".05em",
+                    marginTop: 10 }}>
+        Sur le chantier
+      </div>
+      {capacitesTerrain().map(ligne)}
+
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.fantome,
+                    textTransform: "uppercase", letterSpacing: ".05em",
+                    marginTop: 12 }}>
+        Au bureau
+      </div>
+      {capacitesBureau().map(ligne)}
+
+      {erreur && (
+        <div style={{ fontSize: 11.5, color: C.rouge, marginTop: 8 }}>{erreur}</div>
+      )}
     </div>
   );
 }
