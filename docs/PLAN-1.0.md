@@ -172,13 +172,31 @@ compromis s'auto-promouvrait ; un administrateur pourrait se verrouiller
 dehors), et le bouton « Terminer le chantier » est masqué pour qui n'a pas la
 capacité — plutôt que de le laisser se heurter à un refus après coup.
 
-### LOT 6 — Comptabilité *(nouvelle page)*
+### LOT 6 — Comptabilité ✅ FAIT le 2026-07-29
 Le moteur existe et est testé (CSV BOM Excel, journal des ventes PCMN belge,
 FEC français) mais **aucun écran ne l'appelle** (INC-04) : le livrable
 comptable est inatteignable.
-- Page **Comptabilité** : factures émises par période, totaux, TVA.
-- **Export compta pro** : CSV, journal des ventes, FEC.
-- Branche `listerFactures`, aujourd'hui orphelin.
+**Livré** : page Comptabilité (Paramètres → Comptabilité) avec période au
+**trimestre** par défaut — le rythme de la déclaration TVA belge — ou au mois
+ou à l'exercice. Récapitulatif TVA **ventilé par taux** (jamais globalement),
+avoirs déduits, détail facture par facture, et les trois exports :
+relevé CSV pour Excel, **journal des ventes** à double entrée aux comptes du
+PCMN belge, et **FEC** pour la France. L'équilibre débit/crédit du journal est
+vérifié AVANT de proposer le fichier.
+
+La pièce qui manquait n'était pas l'écran mais la **conversion** : le moteur
+consomme des factures canoniques, `listerFactures` rendait des lignes brutes.
+`facturesCanoniquesPeriode` fait le pont.
+
+**Trouvé au passage — le plus grave de tout le plan (INC-26)** : en production,
+**toutes** les lignes de facture ont `tva_pct` à NULL (colonne ajoutée après
+coup en 0049). Or `modele.js` testait `Number.isFinite(Number(tva_pct))` — et
+`Number(null)` vaut **0**, qui est fini. Chaque ligne sans taux se facturait
+donc à **0 % de TVA** : l'export comptable aurait déclaré **zéro TVA due**, et
+l'UBL Peppol serait parti faux. Sixième occurrence du même piège → helper
+partagé `packages/domaine/src/noyau/nombres.js`, adopté aussi par la paie et
+la validité d'offre. Un taux 0 % **voulu** (export hors UE) reste distinct de
+l'absence, et un test le verrouille.
 
 ### LOT 7 — Journal des décisions *(nouvelle page, à concevoir avec soin)*
 Page de notes et d'archive des modifications et décisions. Raphaël le signale
@@ -220,7 +238,7 @@ correctifs.
 | 12 | Garder vivant un code de signature | 3 | ✅ fait |
 | 13 | Lancer les pièces jointes dans le mail | 3 | ✅ fait |
 | 14 | Articles dans chaque pièce du relevé (paramètres) | 2 | ✅ fait (EX-05) |
-| 15 | Page comptabilité + export compta pro | 6 | à faire (INC-04) |
+| 15 | Page comptabilité + export compta pro | 6 | ✅ fait |
 | 16 | Page notes/archive des modifications et décisions | 7 | à concevoir (D4) |
 | 17 | Rapport chef d'équipe lié à un dossier | 8 | à faire (EX-10) |
 | 18 | Actions du terrain utiles + autorisées, liées à ressources/membre | 5 | ✅ fait |

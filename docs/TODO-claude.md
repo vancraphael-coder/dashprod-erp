@@ -27,7 +27,7 @@ Le découpage en lots, le registre de traçabilité de toutes les demandes et le
 quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
 porte plus que le lot en cours.
 
-**Lot en cours : LOT 6 — comptabilité (écran + export compta pro)** (les quatre décisions D1→D4 sont
+**Lot en cours : LOT 7 — journal d'enregistrements (D4)** (les quatre décisions D1→D4 sont
 tranchées ; plus aucun lot n'est bloqué).
 
 - [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),
@@ -48,8 +48,13 @@ tranchées ; plus aucun lot n'est bloqué).
 - [x] LOT 5 — ✅ 2026-07-29 : capacités terrain nommées et contrôlées
       (INC-25), chef d'équipe distinct du déménageur, catalogue lisible,
       autorisations réglables depuis la fiche membre.
-- [ ] LOT 6 — comptabilité : écran listant les factures émises par période,
-      exports CSV / journal des ventes PCMN / FEC (INC-04, moteur déjà testé).
+- [x] LOT 6 — ✅ 2026-07-29 : écran Comptabilité, trois exports (CSV, journal
+      PCMN, FEC), conversion canonique par période (INC-04). **INC-26** :
+      TVA à 0 % sur toutes les factures (Number(null)===0, 6ᵉ occurrence) —
+      helper partagé `noyau/nombres.js` créé et propagé.
+- [ ] LOT 7 — journal d'enregistrements : écran de lecture sur `evenements`
+      (filtres dossier / personne / période), plus les événements manquants
+      à émettre.
 
 ## Jalon de lancement (avant tout EX)
 

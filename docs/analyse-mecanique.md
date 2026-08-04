@@ -184,13 +184,13 @@ badge « ✓ Offre signée » de l'espace client et l'écran Offre lisent
 `statut = 'signee'`. Une offre signée par « Lu et approuvé » ne s'affichera
 jamais comme signée. **Réglé (0058)** : la signature client marque désormais l'instance `statut='signee', gele=true` ET inscrit une ligne dans `signatures` (canal `client_en_ligne`), comme le fait `cmd_signer_instance` au bureau. Prouvé par test réel.
 
-### INC-04 · P1 · Moteur comptable sans interface
+### INC-04 · ✅ CLOS le 2026-07-29 · Moteur comptable sans interface
 `facturation/exports.js` (CSV BOM, journal des ventes PCMN, **FEC**) n'est
 importé par **aucun écran**. Tout le livrable comptable de la phase 3 est
 inatteignable pour l'utilisateur. Corollaire : `listerFactures` (adaptateur)
-est orphelin — il n'existe aucune vue « toutes mes factures ». **Action** :
-écran « Comptabilité » (liste des factures émises par période + boutons
-CSV / journal / FEC).
+est orphelin — il n'existe aucune vue « toutes mes factures ». **Réglé** : écran Comptabilité (Paramètres →
+Comptabilité) + `facturesCanoniquesPeriode` dans l'adaptateur — la pièce
+réellement manquante était la conversion vers le modèle canonique, pas l'écran.
 
 ### INC-05 · P1 · Clôture de paie sans bouton
 0048 a créé `paie_periodes` ; l'adaptateur exporte `cloturerPeriodePaie` /
@@ -377,6 +377,25 @@ exactement les mêmes capacités qu'un déménageur. **Réglé (0067)** : capaci
 Leçon : lors de l'ajout d'un module (ici le pointage déclaré, 0060), vérifier
 que chaque nouvelle commande porte un contrôle — l'absence de contrôle ne
 produit aucune erreur, elle ne se voit qu'à l'audit.
+
+### INC-26 · P0 · ✅ CLOS le 2026-07-29 · TVA à 0 % sur toutes les factures
+En production, **toutes** les lignes de `facture_lignes` portent `tva_pct` à
+NULL : la colonne a été ajoutée en 0049 sur des lignes existantes. Or
+`modele.js` faisait `Number.isFinite(Number(tva_pct)) ? Number(tva_pct) : null`
+— et `Number(null)` vaut **0**, qui est fini. Chaque ligne sans taux devenait
+donc **0 %**. Conséquences si l'export était parti : déclaration TVA à zéro, et
+UBL Peppol émis avec 0 % de TVA. Le bug était invisible à l'écran (le TVAC
+affiché vient de `scenarios`, pas du modèle) et n'apparaissait qu'au moment de
+produire le journal comptable.
+
+**SIXIÈME occurrence** du piège `Number(null)/Number("") === 0` (4× paie,
+1× validité d'offre, 1× ici). **Réglé** par un helper partagé
+`packages/domaine/src/noyau/nombres.js` (`nombre`, `ouDefaut`, `estFourni`,
+`borne`), adopté par `modele.js`, `rh/paie.js` et `documents/cgv.js`. Un taux
+0 % **voulu** (export hors UE) reste distinct d'un taux absent — testé.
+Leçon définitive : ne jamais écrire `Number(v) || defaut` ni
+`Number.isFinite(Number(v))` sur une valeur qui peut manquer ; passer par
+`noyau/nombres.js`.
 
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
