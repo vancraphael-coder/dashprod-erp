@@ -2236,6 +2236,85 @@ export async function definirCapacite(membreId, capacite, accorder) {
   return { ok: true };
 }
 
+// ── COMPTABILITÉ : factures canoniques d'une période ──────────────────────
+// Le moteur d'export (CSV, journal PCMN, FEC) consomme des factures
+// CANONIQUES, pas les lignes brutes de la base. C'est cette conversion qui
+// manquait pour rendre le moteur atteignable — il était construit et testé,
+// mais aucun écran ne pouvait l'appeler.
+
+/**
+ * Les factures ÉMISES d'une période, au format canonique.
+ * Seules les factures émises comptent : un brouillon n'a pas de numéro légal
+ * et n'a rien à faire dans un journal comptable.
+ */
+export async function facturesCanoniquesPeriode({ debut, fin }) {
+  if (modeDonnees() !== "reel") {
+    const d = lireDemo();
+    return (d.factures || [])
+      .filter((f) => f.emise && f.date_emission >= debut && f.date_emission <= fin)
+      .map((f) => factureCanonique({
+        numero: f.numero, date_emission: f.date_emission, type: f.type || "facture",
+        acheteur: { nom: f.client || "Client" },
+        vendeur: { nom: "Démo" },
+        lignes: (f.lignes || []).map((l) => ligneCanonique({
+          libelle: l.libelle, quantite: 1,
+          prix_unitaire_centimes: l.montant_htva_centimes, tva_pct: 21,
+        })),
+      }));
+  }
+
+  const { data, error } = await supabase.from("factures")
+    .select("id, affaire_id, numero, type, date_emission, echeance, communication, "
+          + "devise, facture_lignes(libelle, quantite, unite, prix_unitaire_centimes, "
+          + "montant_htva_centimes, tva_pct), affaires(client_id)")
+    .eq("emise", true)
+    .gte("date_emission", debut)
+    .lte("date_emission", fin)
+    .order("date_emission");
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const org = await obtenirOrganisation();
+  const pf = org.parametres_facturation || {};
+
+  // Un seul appel pour tous les clients concernés, plutôt qu'un par facture.
+  const idsClients = [...new Set(data.map((f) => f.affaires?.client_id).filter(Boolean))];
+  let clients = [];
+  if (idsClients.length > 0) {
+    const { data: cs } = await supabase.from("clients")
+      .select("id, nom, societe, tva_num, fact_lignes, fact_cp, fact_ville, fact_pays")
+      .in("id", idsClients);
+    clients = cs || [];
+  }
+  const parId = new Map(clients.map((c) => [c.id, c]));
+
+  return data.map((f) => {
+    const c = parId.get(f.affaires?.client_id) || {};
+    return factureCanonique({
+      numero: f.numero,
+      date_emission: f.date_emission,
+      echeance: f.echeance,
+      devise: f.devise || org.devise_defaut || "EUR",
+      tva_pct_defaut: pf.tva_pct ?? 21,
+      communication: f.communication,
+      type: f.type === "avoir" ? "avoir" : "facture",
+      vendeur: { nom: org.nom_commercial || org.nom, tva: org.tva,
+                 rue: org.adresse, cp: org.cp, ville: org.ville,
+                 pays: org.pays || "BE", iban: org.iban },
+      acheteur: { nom: c.societe || c.nom, tva: c.tva_num,
+                  rue: c.fact_lignes, cp: c.fact_cp, ville: c.fact_ville,
+                  pays: c.fact_pays || "BE" },
+      lignes: (f.facture_lignes || []).map((l) => ligneCanonique({
+        libelle: l.libelle,
+        quantite: l.quantite ?? 1,
+        unite: l.unite || "pièce",
+        prix_unitaire_centimes: l.prix_unitaire_centimes ?? l.montant_htva_centimes,
+        tva_pct: l.tva_pct,
+      })),
+    });
+  });
+}
+
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,
