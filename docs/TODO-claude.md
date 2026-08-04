@@ -27,7 +27,7 @@ Le découpage en lots, le registre de traçabilité de toutes les demandes et le
 quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
 porte plus que le lot en cours.
 
-**Lot en cours : LOT 7 — journal d'enregistrements (D4)** (les quatre décisions D1→D4 sont
+**Lot en cours : LOT 8 — rapport chef d'équipe (EX-10)** (les quatre décisions D1→D4 sont
 tranchées ; plus aucun lot n'est bloqué).
 
 - [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),
@@ -52,9 +52,11 @@ tranchées ; plus aucun lot n'est bloqué).
       PCMN, FEC), conversion canonique par période (INC-04). **INC-26** :
       TVA à 0 % sur toutes les factures (Number(null)===0, 6ᵉ occurrence) —
       helper partagé `noyau/nombres.js` créé et propagé.
-- [ ] LOT 7 — journal d'enregistrements : écran de lecture sur `evenements`
-      (filtres dossier / personne / période), plus les événements manquants
-      à émettre.
+- [x] LOT 7 — ✅ 2026-07-29 : journalisation par trigger des écritures
+      directes, notes de décision en insertion seule, écran Journal (global et
+      par dossier), lecture réservée. INC-27 corrigé (trigger inerte).
+- [ ] LOT 8 — rapport chef d'équipe lié à un dossier (EX-10 : boucle d'écart
+      planifié → observé → validation Bureau → ajustement).
 
 ## Jalon de lancement (avant tout EX)
 

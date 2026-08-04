@@ -198,16 +198,35 @@ partagé `packages/domaine/src/noyau/nombres.js`, adopté aussi par la paie et
 la validité d'offre. Un taux 0 % **voulu** (export hors UE) reste distinct de
 l'absence, et un test le verrouille.
 
-### LOT 7 — Journal des décisions *(nouvelle page, à concevoir avec soin)*
-Page de notes et d'archive des modifications et décisions. Raphaël le signale
-lui-même : **possiblement plusieurs associés** — donc ce n'est pas un bloc-
-notes.
-Principes à tenir (à valider avant de coder) : **ajout seulement**, jamais de
-réécriture ; chaque entrée **attribuée** à son auteur et horodatée ; une
-décision peut être *remplacée* par une nouvelle qui la cite, pas effacée ;
-lecture par tous les associés. C'est le même esprit que le journal
-`evenements` — la traçabilité vaut par son caractère non réinscriptible.
-→ **Décision D4** sur le périmètre v1.
+### LOT 7 — Journal d'enregistrements ✅ FAIT le 2026-07-29
+**Livré** (0069 + 0070). D4 tranchée : journal d'ENREGISTREMENTS, pas
+bloc-notes.
+
+Ce qui manquait vraiment : `evenements` ne captait que les commandes `cmd_*`.
+Or l'application écrit **en direct** sur `affaires`, `clients`, `scenarios`,
+`paiements`, `vehicules`, `conges` — ces mouvements, précisément « les modifs
+dans les dossiers » demandées, ne laissaient **aucune trace**. Journalisés par
+**trigger** plutôt qu'en ajoutant un appel dans chaque fonction : un trigger ne
+s'oublie pas, et il couvre les écritures futures.
+
+- **notes de décision** dans le même journal, en insertion seule : une décision
+  se remplace par une nouvelle qui cite l'ancienne (`p_remplace`), les deux
+  restent lisibles. C'est ce qui permet, entre associés, de reconstituer une
+  position sans se disputer sur qui a modifié quoi ;
+- **lecture réservée** : le journal expose montants, salaires et droits — la
+  policy ouverte à toute l'organisation est refermée sur `gerer_referentiels`
+  ou `voir_prix` ;
+- **traduction en français** (`packages/domaine/src/noyau/journal.js`) :
+  « Dossier modifié — heure et équipe », pas `affaires UPDATE`. Six familles
+  colorées, regroupement par jour ;
+- accessible depuis **Paramètres → Journal** (tout) et depuis un dossier
+  (**Historique de ce dossier**, filtré).
+
+**Bug de ma main, trouvé au test réel (INC-27)** : la détection des champs
+modifiés comparait les NOMS de colonnes au lieu des paires clé/valeur —
+identiques des deux côtés, donc l'ensemble était toujours vide et **rien
+n'était jamais journalisé** sur les UPDATE. Le trigger était installé et ne
+levait aucune erreur : seul un test en base pouvait le révéler.
 
 ### LOT 8 — Rapport chef d'équipe *(nouvelle page, liée à un dossier)*
 Ce que le chef remonte du chantier, rattaché au dossier : déroulé, écarts
@@ -239,7 +258,7 @@ correctifs.
 | 13 | Lancer les pièces jointes dans le mail | 3 | ✅ fait |
 | 14 | Articles dans chaque pièce du relevé (paramètres) | 2 | ✅ fait (EX-05) |
 | 15 | Page comptabilité + export compta pro | 6 | ✅ fait |
-| 16 | Page notes/archive des modifications et décisions | 7 | à concevoir (D4) |
+| 16 | Page notes/archive des modifications et décisions | 7 | ✅ fait |
 | 17 | Rapport chef d'équipe lié à un dossier | 8 | à faire (EX-10) |
 | 18 | Actions du terrain utiles + autorisées, liées à ressources/membre | 5 | ✅ fait |
 

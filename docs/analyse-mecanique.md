@@ -397,6 +397,18 @@ Leçon définitive : ne jamais écrire `Number(v) || defaut` ni
 `Number.isFinite(Number(v))` sur une valeur qui peut manquer ; passer par
 `noyau/nombres.js`.
 
+### INC-27 · P1 · ✅ CLOS le 2026-07-29 · Trigger de journal silencieusement inerte
+Le trigger `journaliser_mouvement` (0069) détectait les champs modifiés par
+`select key from jsonb_each(to_jsonb(new)) except select key from
+jsonb_each(to_jsonb(old))`. En ne sélectionnant que `key`, l'EXCEPT comparait
+les **noms** de colonnes — identiques des deux côtés par construction. Le
+résultat était donc toujours vide, le trigger sortait par son retour anticipé,
+et **aucun UPDATE n'était journalisé**. Aucune erreur levée, trigger bien
+installé : invisible sans test réel. **Réglé (0070)** : comparaison sur la
+paire (clé, valeur) avec `is distinct from`, et `updated_at` exclu du bruit.
+Leçon : un trigger qui « ne fait rien » ne se distingue pas d'un trigger absent
+— toujours prouver son effet par une écriture réelle suivie d'une lecture.
+
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
 ✅ `visible_reseau` activé pour Roovers (annuaire peuplé) ·
