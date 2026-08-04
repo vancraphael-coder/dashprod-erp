@@ -365,6 +365,19 @@ demandé. **Cinquième occurrence** de ce piège (quatre fois en paie). Réglé 
 testant l'absence AVANT de convertir. Ce motif mérite un helper partagé
 (`nombreExplicite` existe déjà dans `rh/paie.js`) — à généraliser.
 
+### INC-25 · P0 · ✅ CLOS le 2026-07-29 · Terrain sans aucun contrôle d'accès
+Les quatre commandes terrain (`cmd_pointage_definir`, `cmd_pause_ajouter`,
+`cmd_pause_retirer`, `cmd_terminer_chantier`) ne vérifiaient **aucune**
+capacité — seulement l'appartenance à l'organisation. Tout membre pouvait
+déclarer des heures sur une mission où il n'était pas affecté et clôturer le
+chantier d'une autre équipe. Corollaire : le rôle `chef_equipe` portait
+exactement les mêmes capacités qu'un déménageur. **Réglé (0067)** : capacités
+`pointer_chantier` et `cloturer_chantier`, règle d'affectation
+(`est_affecte_mission`), bureau conservant la main via `gerer_planning`.
+Leçon : lors de l'ajout d'un module (ici le pointage déclaré, 0060), vérifier
+que chaque nouvelle commande porte un contrôle — l'absence de contrôle ne
+produit aucune erreur, elle ne se voit qu'à l'audit.
+
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
 ✅ `visible_reseau` activé pour Roovers (annuaire peuplé) ·

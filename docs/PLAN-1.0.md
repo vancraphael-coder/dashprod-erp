@@ -142,14 +142,35 @@ Corrections de fond :
 - **alerte au niveau de la carte** : sans ouvrir le panneau d'affectation, un
   conflit ne se voyait jamais une fois l'équipe posée.
 
-### LOT 5 — Membres et permissions
-- Recenser les **actions réellement utiles au terrain**, et lesquelles le
-  bureau autorise.
-- Les **rattacher à la page ressources/membre** : chaque membre montre ce
-  qu'il peut faire, et le bureau l'ouvre ou le ferme depuis là.
-- S'appuie sur l'existant (`utilisateur_capacites`, `role_capacites`,
-  `acteur_a_capacite`) — pas de nouveau mécanisme, un écran qui le rend
-  lisible. Prépare l'étage « plan » de l'horizon B sans le construire.
+### LOT 5 — Membres et permissions ✅ FAIT le 2026-07-29
+**Ce que l'audit a trouvé — et c'était plus grave que prévu (INC-25)** :
+**aucune** commande terrain ne vérifiait de capacité. `cmd_pointage_definir`,
+`cmd_pause_ajouter`, `cmd_pause_retirer` et `cmd_terminer_chantier` se
+contentaient de vérifier l'appartenance à l'organisation. N'importe quel
+membre pouvait donc déclarer des heures sur une mission où il n'était pas
+affecté, et **clôturer le chantier de quelqu'un d'autre** — donc arrêter le
+décompte de toute une équipe. Et `chef_equipe` avait exactement les mêmes
+capacités qu'un déménageur : le rôle existait sans rien signifier.
+
+**Livré** (0067 + 0068) :
+- deux capacités terrain nommées — `pointer_chantier` (déclarer SES heures) et
+  `cloturer_chantier` (le geste du chef : il arrête le décompte de tous) ;
+- la règle « on pointe là où l'on est affecté », le bureau (`gerer_planning`)
+  gardant la main partout pour corriger les oublis ;
+- le chef d'équipe se distingue enfin du déménageur ;
+- **catalogue lisible** (`packages/domaine/src/rh/capacites.js`) : chaque
+  autorisation porte une phrase de patron, pas une clé technique, et un
+  marqueur « sensible » pour celles qui touchent à l'argent ou aux données de
+  tous ;
+- **fiche membre** (Ressources → Équipe) : les autorisations s'affichent
+  groupées *sur le chantier* / *au bureau*, avec l'origine de chacune. Ce qui
+  vient du rôle est visible mais non décochable — le retirer demande de
+  changer le rôle, un geste qui doit rester explicite.
+
+Deux garde-fous : personne ne modifie ses **propres** droits (un compte
+compromis s'auto-promouvrait ; un administrateur pourrait se verrouiller
+dehors), et le bouton « Terminer le chantier » est masqué pour qui n'a pas la
+capacité — plutôt que de le laisser se heurter à un refus après coup.
 
 ### LOT 6 — Comptabilité *(nouvelle page)*
 Le moteur existe et est testé (CSV BOM Excel, journal des ventes PCMN belge,
@@ -202,7 +223,7 @@ correctifs.
 | 15 | Page comptabilité + export compta pro | 6 | à faire (INC-04) |
 | 16 | Page notes/archive des modifications et décisions | 7 | à concevoir (D4) |
 | 17 | Rapport chef d'équipe lié à un dossier | 8 | à faire (EX-10) |
-| 18 | Actions du terrain utiles + autorisées, liées à ressources/membre | 5 | à faire |
+| 18 | Actions du terrain utiles + autorisées, liées à ressources/membre | 5 | ✅ fait |
 
 ## 4. Décisions attendues de Raphaël
 

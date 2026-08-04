@@ -27,7 +27,7 @@ Le découpage en lots, le registre de traçabilité de toutes les demandes et le
 quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
 porte plus que le lot en cours.
 
-**Lot en cours : LOT 5 — membres et permissions** (les quatre décisions D1→D4 sont
+**Lot en cours : LOT 6 — comptabilité (écran + export compta pro)** (les quatre décisions D1→D4 sont
 tranchées ; plus aucun lot n'est bloqué).
 
 - [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),
@@ -45,8 +45,11 @@ tranchées ; plus aucun lot n'est bloqué).
 - [x] LOT 4 — ✅ 2026-07-29 : verdict à trois niveaux (libre / double orange /
       indisponible rouge), conflit véhicule ajouté, doublon visible même une
       fois l'affectation faite (INC-19), alerte sur la carte de mission.
-- [ ] LOT 5 — membres et permissions : recenser les actions utiles au terrain,
-      les rattacher à ressources/membre.
+- [x] LOT 5 — ✅ 2026-07-29 : capacités terrain nommées et contrôlées
+      (INC-25), chef d'équipe distinct du déménageur, catalogue lisible,
+      autorisations réglables depuis la fiche membre.
+- [ ] LOT 6 — comptabilité : écran listant les factures émises par période,
+      exports CSV / journal des ventes PCMN / FEC (INC-04, moteur déjà testé).
 
 ## Jalon de lancement (avant tout EX)
 
