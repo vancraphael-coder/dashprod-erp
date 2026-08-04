@@ -39,6 +39,7 @@ import Devis from "./ecrans/Devis.jsx";
 import Offre from "./ecrans/Offre.jsx";
 import Facture from "./ecrans/Facture.jsx";
 import Mail from "./ecrans/Mail.jsx";
+import Journal from "./ecrans/Journal.jsx";
 import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
@@ -140,7 +141,11 @@ function AppTerrain({ profil }) {
                      versReleve={aller.bind(null, "releve")} versMateriel={aller.bind(null, "materiel")}
                      versDevis={noop} versOffre={noop} versFacture={noop} versMail={noop}
                      modeTerrain={!edit} />;
-    } else if (route.ecran === "releve") {
+    } else if (route.ecran === "journal") {
+    // Le journal d'un dossier : filtré sur lui, mais c'est le même écran.
+    ecran = <Journal retour={retourDossier}
+                     entiteType="affaires" entiteId={route.affaireId} />;
+  } else if (route.ecran === "releve") {
       vue = <Releve affaireId={route.affaireId} retour={() => aller("dossier")} versDevis={noop} />;
     } else if (route.ecran === "materiel") {
       vue = <Materiel affaireId={route.affaireId} retour={() => aller("dossier")} />;
@@ -453,6 +458,7 @@ function App() {
     archivage: () => setRoute({ ecran: "archivage", affaireId: null }),
     textes: () => setRoute({ ecran: "textes", affaireId: null }),
     parametres: () => setRoute({ ecran: "parametres", affaireId: null }),
+    journal: (id) => setRoute({ ecran: "journal", affaireId: id }),
   };
   // Chaque entrée de nav est gardée, sans exception possible par oubli.
   const nav = Object.fromEntries(
@@ -485,7 +491,7 @@ function App() {
     ecran = <Dossier affaireId={route.affaireId} retour={nav.liste}
                      versReleve={nav.releve} versDevis={nav.devis}
                      versOffre={nav.offre} versFacture={nav.facture} versMail={nav.mail}
-                     versMateriel={nav.materiel} />;
+                     versMateriel={nav.materiel} versJournal={nav.journal} />;
   } else if (route.ecran === "releve") {
     ecran = <Releve affaireId={route.affaireId} retour={retourDossier} versDevis={nav.devis} />;
   } else if (route.ecran === "devis") {
