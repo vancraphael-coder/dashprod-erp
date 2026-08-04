@@ -16,6 +16,8 @@
 // et ce qui permet à chaque adaptateur de l'être indépendamment.
 // =============================================================================
 
+import { nombre } from "../noyau/nombres.js";
+
 const c = (v) => Math.round(Number(v) || 0);
 const vide = (v) => v == null || String(v).trim() === "";
 
@@ -41,7 +43,10 @@ export function ligne({ libelle, quantite = 1, unite = "pièce",
     quantite: quantiteValide,
     unite: String(unite || "pièce"),
     prix_unitaire_centimes: pu,
-    tva_pct: Number.isFinite(Number(tva_pct)) ? Number(tva_pct) : null,
+    // `nombre()` distingue « 0 % » (valeur voulue) de « pas de taux fourni ».
+    // Avec Number(), null devenait 0 — donc une ligne sans taux se facturait
+    // à 0 % de TVA, et l'export comptable déclarait zéro TVA due.
+    tva_pct: Number.isFinite(nombre(tva_pct)) ? nombre(tva_pct) : null,
     montant_htva_centimes: Math.round(quantiteValide * pu),
   };
 }
@@ -53,9 +58,11 @@ export function ligne({ libelle, quantite = 1, unite = "pièce",
 export function ventilationTva(lignes, tauxDefaut) {
   const par = new Map();
   for (const l of lignes || []) {
+    // `??` ne rattrape que null/undefined : c'est justement pourquoi tva_pct
+    // doit valoir null (et non 0) quand aucun taux n'a été fourni.
     const taux = l.tva_pct ?? tauxDefaut;
-    if (!Number.isFinite(Number(taux))) continue;
-    const cle = Number(taux);
+    if (!Number.isFinite(nombre(taux))) continue;
+    const cle = nombre(taux);
     const acc = par.get(cle) || { taux: cle, base_centimes: 0, tva_centimes: 0 };
     acc.base_centimes += c(l.montant_htva_centimes);
     par.set(cle, acc);
