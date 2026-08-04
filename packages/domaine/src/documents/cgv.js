@@ -17,6 +17,8 @@
 // CGV en sont le résumé lisible sur le document, elles ne la remplacent pas.
 // =============================================================================
 
+import { borne } from "../noyau/nombres.js";
+
 const CGV_V1 = Object.freeze([
   "1. Acompte & réservation. La date est réservée à réception d'un acompte de 30 %. Le solde est payable au plus tard le jour de la prestation, par virement (IBAN ci-dessous).",
   "2. Tarif horaire. Les heures sont décomptées du départ du dépôt jusqu'au retour, par tranche commencée. Le devis horaire est une estimation ; seules les heures réellement prestées sont facturées.",
@@ -115,17 +117,11 @@ export const VALIDITE_MAX = 90;
  * 10 jours et le document 15.
  */
 export function validiteJours(textes) {
-  // Piège déjà payé quatre fois sur la paie : Number("") et Number(null)
-  // valent 0, pas NaN. Un champ VIDE passerait donc pour « 0 jour », borné à
-  // 1 — une offre valable 24 h sans que personne l'ait demandé. On teste
-  // l'absence AVANT de convertir.
-  const brut = textes?.validite_jours;
-  if (brut === null || brut === undefined || String(brut).trim() === "") {
-    return VALIDITE_JOURS_OUVRABLES;
-  }
-  const v = Number(brut);
-  if (!Number.isFinite(v)) return VALIDITE_JOURS_OUVRABLES;
-  return Math.min(VALIDITE_MAX, Math.max(VALIDITE_MIN, Math.round(v)));
+  // `borne` s'appuie sur le helper partagé (noyau/nombres.js) : il distingue
+  // un champ VIDE d'un zéro voulu. Avec Number(), un champ vide donnait 0,
+  // borné à 1 — une offre valable 24 h sans que personne l'ait demandé.
+  return Math.round(borne(textes?.validite_jours, VALIDITE_JOURS_OUVRABLES,
+                          VALIDITE_MIN, VALIDITE_MAX));
 }
 
 /** Acompte de réservation (CGV art. 1) — en pourcentage du TVAC. */
