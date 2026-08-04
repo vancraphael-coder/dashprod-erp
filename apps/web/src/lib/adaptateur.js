@@ -2345,6 +2345,49 @@ export async function noterDecision(texte, { entiteType, entiteId, remplace } = 
   return data;
 }
 
+// ── Rapport de chantier et boucle d'écart (EX-10) ─────────────────────────
+// Le terrain CONSTATE, le bureau TRANCHE. Aucun montant ne circule depuis le
+// terrain : le prix se calcule au bureau, avec le barème.
+
+export async function lireRapport({ missionId, affaireId } = {}) {
+  const { data, error } = await supabase.rpc("cmd_rapport", {
+    p_mission: missionId || null, p_affaire: affaireId || null,
+  });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Le chef d'équipe rédige le déroulé du chantier. */
+export async function ecrireDeroule(missionId, deroule) {
+  const { data, error } = await supabase.rpc("cmd_rapport_deroule", {
+    p_mission: missionId, p_deroule: deroule || "",
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Le terrain déclare un écart : estimation de temps/volume, jamais un prix. */
+export async function declarerConstat(missionId, { nature, description,
+                                                   minutes, volume } = {}) {
+  const { data, error } = await supabase.rpc("cmd_constat_declarer", {
+    p_mission: missionId, p_nature: nature, p_description: description,
+    p_minutes: Math.round(Number(minutes) || 0),
+    p_volume: Number(volume) || 0,
+  });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.message);
+  return data;
+}
+
+/** Le bureau tranche : valide / refuse / ajuste. */
+export async function trancherConstat(constatId, decision, motif) {
+  const { data, error } = await supabase.rpc("cmd_constat_trancher", {
+    p_constat: constatId, p_decision: decision, p_motif: motif || null,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,
