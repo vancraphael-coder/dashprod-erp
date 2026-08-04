@@ -224,7 +224,7 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 | Ma paie lisible par le terrain | A | `LIVE` ✅ 28/07 | EX-12 |
 | Trois heures prévues (départ / déménagement / sur place) | A | `LIVE` ✅ 28/07 | EX-13 |
 | Garde « modifications non enregistrées » | A | `LIVE` ✅ 28/07 (toute navigation) | EX-14 |
-| Boucle d'écart terrain | A | `MISSING` | EX-10 |
+| Boucle d'écart terrain | A | `LIVE` ✅ 29/07 | EX-10 |
 | Article enrichi (chevron) | A | `PARTIAL` (demont seul ; pas de photo ✓) | EX-04 |
 | Meubles pré-remplis par pièce | A | `MISSING` (pièces : `LIVE`) | EX-05 |
 | Planning feux + trajet + véhicule | A | `PARTIAL` (conflits équipe `LIVE`) | EX-07 |
@@ -269,8 +269,10 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
   **toute** navigation est gardée, y compris les flèches retour des sous-pages
   (auparavant seule la barre d'onglets l'était) ; Relevé, Devis, Matériel,
   Coûts et Barème déclarent désormais leur état modifié.
-- **EX-10** boucle d'écart terrain — `VISION` validée · IMPACT: terrain,
-  bureau, devis complémentaire, facture · DEP: EX-02 souhaitable avant.
+- **EX-10** boucle d'écart terrain — ✅ `LIVE` (2026-07-29) · six natures de
+  constat, déclaration par tout membre affecté, arbitrage bureau
+  (valider/ajuster/refuser), impact cumulé en heures et volume · **aucun
+  montant ne circule depuis le terrain**.
 
 **Manipulation** *(tenu par Raphaël)* — la checklist complète du circuit vit
 dans LAUNCH_TRUTH §3 ; notation `✓ / ⚠ UX / ✗ / ?`.

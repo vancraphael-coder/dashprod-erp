@@ -27,7 +27,7 @@ Le découpage en lots, le registre de traçabilité de toutes les demandes et le
 quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
 porte plus que le lot en cours.
 
-**Lot en cours : LOT 8 — rapport chef d'équipe (EX-10)** (les quatre décisions D1→D4 sont
+**Lot en cours : LOT 9 — verrouillage 1.0 (manipulation complète)** (les quatre décisions D1→D4 sont
 tranchées ; plus aucun lot n'est bloqué).
 
 - [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),
@@ -55,8 +55,10 @@ tranchées ; plus aucun lot n'est bloqué).
 - [x] LOT 7 — ✅ 2026-07-29 : journalisation par trigger des écritures
       directes, notes de décision en insertion seule, écran Journal (global et
       par dossier), lecture réservée. INC-27 corrigé (trigger inerte).
-- [ ] LOT 8 — rapport chef d'équipe lié à un dossier (EX-10 : boucle d'écart
-      planifié → observé → validation Bureau → ajustement).
+- [x] LOT 8 — ✅ 2026-07-29 : rapport de chantier, six natures de constat,
+      boucle d'écart complète (EX-10), aucun montant depuis le terrain.
+- [ ] LOT 9 — verrouillage : manipulation complète (LAUNCH_TRUTH §3) sans
+      aucun ✗, puis gel des fonctionnalités avant le premier client payant.
 
 ## Jalon de lancement (avant tout EX)
 

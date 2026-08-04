@@ -228,11 +228,33 @@ identiques des deux côtés, donc l'ensemble était toujours vide et **rien
 n'était jamais journalisé** sur les UPDATE. Le trigger était installé et ne
 levait aucune erreur : seul un test en base pouvait le révéler.
 
-### LOT 8 — Rapport chef d'équipe *(nouvelle page, liée à un dossier)*
-Ce que le chef remonte du chantier, rattaché au dossier : déroulé, écarts
-constatés, incidents, réserves. C'est la brique **EX-10** (boucle d'écart
-planifié → observé → validation bureau) sous sa forme concrète. À faire après
-le LOT 5, dont il consomme les permissions.
+### LOT 8 — Rapport chef d'équipe ✅ FAIT le 2026-07-29
+**Livré** (0071) — la boucle EX-10 est fermée :
+
+```
+PLANIFIÉ → EXÉCUTÉ → RÉALITÉ OBSERVÉE → ÉCART → VALIDATION → AJUSTEMENT
+(bureau)   (terrain)     (terrain)      (terrain)  (bureau)    (bureau)
+```
+
+**Côté terrain** : le déroulé de la journée (chef d'équipe) et les écarts —
+six natures nommées : objet non prévu, accès difficile, temps supplémentaire,
+dommage, réserve, incident. Un bouton par nature, pas un formulaire à trous.
+Tout membre **affecté** peut constater un dommage sans attendre son chef ; seul
+le chef rédige le déroulé.
+
+**Côté bureau** (Dossier → Rapports de chantier) : trancher chaque écart —
+valider / ajuster / refuser, avec motif — et voir l'**impact cumulé** en heures
+et en volume, tous chantiers du dossier confondus.
+
+Le point qui tient tout, conforme au verrou n° 11 : **un constat ne porte
+aucun montant**. Le terrain estime un temps ou un volume ; le prix se calcule
+au bureau avec le barème. Une colonne de montant en base aurait été une
+invitation à court-circuiter le barème depuis un téléphone. Un test le
+verrouille.
+
+Les constats **non facturables** (dommage, réserve, incident) sont comptés à
+part : ils n'ajustent aucun prix mais engagent la responsabilité — les noyer
+dans la même liste serait la meilleure façon de les oublier.
 
 ### LOT 9 — Verrouillage 1.0
 Manipulation complète (`LAUNCH_TRUTH` §3) sans aucun `✗`, puis gel : plus de
@@ -259,7 +281,7 @@ correctifs.
 | 14 | Articles dans chaque pièce du relevé (paramètres) | 2 | ✅ fait (EX-05) |
 | 15 | Page comptabilité + export compta pro | 6 | ✅ fait |
 | 16 | Page notes/archive des modifications et décisions | 7 | ✅ fait |
-| 17 | Rapport chef d'équipe lié à un dossier | 8 | à faire (EX-10) |
+| 17 | Rapport chef d'équipe lié à un dossier | 8 | ✅ fait |
 | 18 | Actions du terrain utiles + autorisées, liées à ressources/membre | 5 | ✅ fait |
 
 ## 4. Décisions attendues de Raphaël
