@@ -19,6 +19,7 @@ import {
   etatPointage, verifierPointage, pausesValides,
 } from "@domaine/operations/pointage.js";
 import { resumeHoraires } from "@domaine/operations/horaires.js";
+import RapportChantier from "./RapportChantier.jsx";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
 import { adresseDepot } from "@domaine/organisation/identite.js";
@@ -362,6 +363,15 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
                 lineHeight: 1.45 }}>{erreur}</div>
             )}
           </div>
+
+          {/* Le rapport de chantier : ce que l'équipe remonte du terrain, et
+              surtout les écarts avec ce que le bureau avait prévu. Visible dès
+              le départ déclaré — un dommage se constate à l'arrivée, pas à la
+              fin. Tout membre affecté peut constater ; seul le chef rédige le
+              déroulé. */}
+          {depart && (
+            <RapportChantier mission={mission} peutRediger={peutCloturer} />
+          )}
 
           {/* TERMINER : la vraie fin. Clôt le pointage de TOUTE l'équipe et
               fait passer le dossier en « effectué » au bureau — la facture

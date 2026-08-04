@@ -30,7 +30,7 @@ function adrVide() {
            escalier: false };
 }
 
-export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail, versMateriel, versJournal, modeTerrain }) {
+export default function Dossier({ affaireId, retour, versReleve, versDevis, versOffre, versFacture, versMail, versMateriel, versJournal, versRapports, modeTerrain }) {
   const [affaire, setAffaire] = useState(null);
   const [contact, setContact] = useState(null);
   const [org, setOrg] = useState(null);
@@ -459,6 +459,22 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         <button style={S.boutonPlein} onClick={enregistrer}>
           {sauve ? "✓ Dossier enregistré" : "Enregistrer le dossier"}
         </button>
+
+        {/* Ce que le terrain a constaté sur place, et les écarts à trancher.
+            L'autre moitié de la boucle : le terrain observe, le bureau décide. */}
+        {!modeTerrain && versRapports && (
+          <button onClick={() => versRapports(affaireId)} style={{
+            display: "flex", alignItems: "center", gap: 8, width: "100%",
+            marginTop: 10, padding: "11px 13px", borderRadius: 11,
+            cursor: "pointer", border: `1px solid ${C.bord}`,
+            background: C.blanc, textAlign: "left" }}>
+            <span>🧰</span>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.encre }}>
+              Rapports de chantier
+            </span>
+            <span style={{ fontSize: 11.5, color: C.fantome }}>Ouvrir</span>
+          </button>
+        )}
 
         {/* L'historique du dossier : qui a changé quoi, quand, et les
             décisions consignées. En insertion seule — rien ne s'y réécrit. */}
