@@ -2315,6 +2315,36 @@ export async function facturesCanoniquesPeriode({ debut, fin }) {
   });
 }
 
+// ── Journal d'enregistrements ─────────────────────────────────────────────
+// Tous les mouvements de l'entreprise, en insertion seule. Rien ne s'y
+// réécrit : une décision se remplace par une nouvelle qui cite l'ancienne.
+
+export async function lireJournal({ depuis, jusqua, entiteType, entiteId,
+                                    acteur, limite } = {}) {
+  const { data, error } = await supabase.rpc("cmd_journal", {
+    p_depuis: depuis || null,
+    p_jusqua: jusqua || null,
+    p_entite_type: entiteType || null,
+    p_entite_id: entiteId || null,
+    p_acteur: acteur || null,
+    p_limite: limite || 200,
+  });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Consigne une décision — ce qu'aucune donnée ne révèle. */
+export async function noterDecision(texte, { entiteType, entiteId, remplace } = {}) {
+  const { data, error } = await supabase.rpc("cmd_noter_decision", {
+    p_texte: texte,
+    p_entite_type: entiteType || null,
+    p_entite_id: entiteId || null,
+    p_remplace: remplace || null,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,
