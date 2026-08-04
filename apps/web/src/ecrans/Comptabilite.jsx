@@ -1,0 +1,294 @@
+// =============================================================================
+// Écran — Comptabilité.
+//
+// Le moteur d'export existait, testé, depuis des semaines : CSV pour Excel,
+// journal des ventes à double entrée aux comptes du PCMN belge, et FEC pour
+// les clients qui opèrent en France. Mais AUCUN écran ne l'appelait — donc
+// le livrable comptable était inatteignable (INC-04).
+//
+// Cet écran est cette porte. Il suit le rythme réel du métier : on ne demande
+// pas « les factures de mardi », on demande un trimestre — celui de la
+// déclaration TVA belge, qui est donc le défaut.
+//
+// Rien n'est recalculé ici : les totaux viennent du modèle canonique, comme
+// le PDF et l'UBL. Une seule source, plusieurs sorties.
+// =============================================================================
+
+import React, { useEffect, useMemo, useState } from "react";
+import { facturesCanoniquesPeriode, obtenirOrganisation } from "../lib/adaptateur.js";
+import {
+  bornesPeriode, libellePeriode, trimestreCourant, recapitulatif, lotPret,
+} from "@domaine/facturation/periodes.js";
+import {
+  versCsv, journalCsv, versFec, journalVentes, equilibre, COMPTES_DEFAUT,
+} from "@domaine/facturation/exports.js";
+import { C, S, euros } from "../lib/theme.jsx";
+
+const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+              "août", "septembre", "octobre", "novembre", "décembre"];
+
+export default function Comptabilite({ retour }) {
+  const [periode, setPeriode] = useState(() => trimestreCourant());
+  const [factures, setFactures] = useState(null);
+  const [erreur, setErreur] = useState(null);
+  const [org, setOrg] = useState(null);
+
+  const bornes = useMemo(() => bornesPeriode(periode), [periode]);
+
+  useEffect(() => { obtenirOrganisation().then(setOrg).catch(() => setOrg(null)); }, []);
+
+  useEffect(() => {
+    if (!bornes) return;
+    let vivant = true;
+    setFactures(null); setErreur(null);
+    facturesCanoniquesPeriode(bornes)
+      .then((f) => vivant && setFactures(f))
+      .catch((e) => vivant && setErreur(e.message));
+    return () => { vivant = false; };
+  }, [bornes?.debut, bornes?.fin]);
+
+  const recap = useMemo(() => recapitulatif(factures || []), [factures]);
+  const verdict = useMemo(() => lotPret(factures || []), [factures]);
+
+  /** Contrôle d'équilibre du journal : une écriture déséquilibrée est rejetée
+   *  par tout cabinet. On le vérifie AVANT de proposer le fichier. */
+  const journalEquilibre = useMemo(() => {
+    if (!factures || factures.length === 0) return true;
+    try { return equilibre(journalVentes(factures, COMPTES_DEFAUT)); }
+    catch { return false; }
+  }, [factures]);
+
+  function telecharger(contenu, nom, type = "text/csv;charset=utf-8") {
+    const blob = new Blob([contenu], { type });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nom;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  const suffixe = `${periode.annee}-${periode.type === "trimestre" ? `T${periode.trimestre}`
+    : periode.type === "mois" ? String(periode.mois).padStart(2, "0") : "annuel"}`;
+
+  return (
+    <div style={S.page}>
+      <div style={S.entete}>
+        {retour && <button style={S.boutonLien} onClick={retour}>← Paramètres</button>}
+        <div style={S.titre}>Comptabilité</div>
+        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
+          Vos factures émises, et les fichiers pour votre comptable.
+        </div>
+      </div>
+
+      {/* Choix de la période. Le trimestre d'abord : c'est le rythme de la
+          déclaration TVA belge. */}
+      <div style={S.carte}>
+        <label style={{ ...S.label, marginTop: 0 }}>Période</label>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          {[["trimestre", "Trimestre"], ["mois", "Mois"], ["annee", "Exercice"]]
+            .map(([t, lib]) => (
+            <button key={t} onClick={() => setPeriode((p) => ({
+              ...p, type: t,
+              trimestre: p.trimestre || trimestreCourant().trimestre,
+              mois: p.mois || new Date().getMonth() + 1,
+            }))} style={onglet(periode.type === t)}>{lib}</button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select style={{ ...S.input, width: 110, margin: 0 }} value={periode.annee}
+                  onChange={(e) => setPeriode((p) => ({ ...p, annee: Number(e.target.value) }))}>
+            {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+
+          {periode.type === "trimestre" && (
+            <div style={{ display: "flex", gap: 6 }}>
+              {[1, 2, 3, 4].map((t) => (
+                <button key={t} onClick={() => setPeriode((p) => ({ ...p, trimestre: t }))}
+                        style={onglet(periode.trimestre === t, 44)}>T{t}</button>
+              ))}
+            </div>
+          )}
+
+          {periode.type === "mois" && (
+            <select style={{ ...S.input, flex: 1, minWidth: 130, margin: 0 }}
+                    value={periode.mois}
+                    onChange={(e) => setPeriode((p) => ({ ...p, mois: Number(e.target.value) }))}>
+              {MOIS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </select>
+          )}
+        </div>
+
+        {bornes && (
+          <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8 }}>
+            Du {bornes.debut} au {bornes.fin} · factures émises uniquement
+          </div>
+        )}
+      </div>
+
+      {erreur && (
+        <div style={{ ...S.carte, color: C.rouge, fontSize: 12.5 }}>{erreur}</div>
+      )}
+
+      {factures === null && !erreur && (
+        <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
+          Chargement…
+        </div>
+      )}
+
+      {factures && (
+        <>
+          {/* Récapitulatif TVA — ce que le comptable regarde en premier. */}
+          <div style={S.carte}>
+            <label style={{ ...S.label, marginTop: 0 }}>
+              {libellePeriode(periode)}
+            </label>
+            <Ligne l="Factures émises" v={recap.nb_factures} />
+            {recap.nb_avoirs > 0 && (
+              <Ligne l="Avoirs (déduits)" v={recap.nb_avoirs} />
+            )}
+            <Ligne l="Total HTVA" v={euros(recap.htva_centimes)} />
+
+            {recap.par_taux.map((t) => (
+              <Ligne key={t.taux} l={`TVA ${t.taux} % (base ${euros(t.base_centimes)})`}
+                     v={euros(t.tva_centimes)} discret />
+            ))}
+
+            <Ligne l="TVA due" v={euros(recap.tva_centimes)} gras />
+            <Ligne l="Total TVAC" v={euros(recap.tvac_centimes)} gras />
+
+            {recap.nb === 0 && (
+              <div style={{ fontSize: 12.5, color: C.muet, marginTop: 10,
+                            lineHeight: 1.5 }}>
+                Aucune facture émise sur cette période.
+              </div>
+            )}
+          </div>
+
+          {/* Ce qui empêcherait le comptable d'accepter le fichier. */}
+          {(verdict.bloquantes.length > 0 || !journalEquilibre) && (
+            <div style={{ margin: "0 16px 12px", padding: "11px 13px",
+                          borderRadius: 11, background: "#FEF2F2",
+                          border: "1px solid #FECACA", fontSize: 12,
+                          color: "#991B1B", lineHeight: 1.5 }}>
+              <b>À corriger avant de transmettre :</b>
+              {!journalEquilibre && (
+                <div style={{ marginTop: 4 }}>
+                  Le journal des ventes n'est pas équilibré (débit ≠ crédit).
+                </div>
+              )}
+              {verdict.bloquantes.map((x, i) => (
+                <div key={i} style={{ marginTop: 4 }}>{x.message}</div>
+              ))}
+            </div>
+          )}
+
+          {/* Exports. Trois formats, un seul modèle derrière. */}
+          {recap.nb > 0 && (
+            <div style={S.carte}>
+              <label style={{ ...S.label, marginTop: 0 }}>Export comptable</label>
+
+              <Export
+                titre="Relevé des factures (CSV)"
+                detail="Ouvrable dans Excel. Une ligne par facture, avec HTVA, TVA et TVAC."
+                onClick={() => telecharger(versCsv(factures),
+                  `factures-${suffixe}.csv`)} />
+
+              <Export
+                titre="Journal des ventes (CSV)"
+                detail={"Écritures à double entrée aux comptes du PCMN belge : débit "
+                      + "clients, crédit ventes et TVA par taux. C'est ce que le "
+                      + "cabinet importe."}
+                onClick={() => telecharger(journalCsv(factures, COMPTES_DEFAUT),
+                  `journal-ventes-${suffixe}.csv`)} />
+
+              <Export
+                titre="FEC (France)"
+                detail={"Fichier des Écritures Comptables, format légal français, "
+                      + "18 colonnes tabulées. Uniquement si vous opérez en France."}
+                onClick={() => telecharger(versFec(factures, {
+                  journalCode: "VE", journalLib: "Journal des ventes",
+                }), `FEC-${suffixe}.txt`, "text/plain;charset=utf-8")} />
+
+              <div style={{ fontSize: 11, color: C.fantome, marginTop: 10,
+                            lineHeight: 1.5 }}>
+                Ces fichiers reprennent les factures telles qu'elles ont été
+                émises. Ils ne remplacent pas votre comptable : ils lui
+                évitent de tout ressaisir.
+              </div>
+            </div>
+          )}
+
+          {/* Le détail, pour vérifier avant d'envoyer. */}
+          {recap.nb > 0 && (
+            <div style={S.carte}>
+              <label style={{ ...S.label, marginTop: 0 }}>Détail</label>
+              {factures.map((f) => (
+                <div key={f.numero} style={{ display: "flex", gap: 10,
+                       padding: "9px 0", borderTop: `1px solid ${C.doux}` }}>
+                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5,
+                                 color: f.type === "avoir" ? C.rouge : C.bleu,
+                                 fontWeight: 700, flexShrink: 0 }}>
+                    {f.numero}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 13, color: C.encre,
+                                   fontWeight: 600 }}>
+                      {f.acheteur?.nom || "—"}
+                    </span>
+                    <span style={{ display: "block", fontSize: 11, color: C.fantome }}>
+                      {f.date_emission}{f.type === "avoir" ? " · avoir" : ""}
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.encre,
+                                 flexShrink: 0 }}>
+                    {f.type === "avoir" ? "−" : ""}{euros(f.total.tvac_centimes)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <div style={{ height: 30 }} />
+    </div>
+  );
+}
+
+const onglet = (actif, largeur) => ({
+  padding: "8px 14px", borderRadius: 999, cursor: "pointer",
+  fontSize: 12.5, fontWeight: 700, width: largeur,
+  border: `1.5px solid ${actif ? C.bleu : C.bord}`,
+  background: actif ? "#E7EFFC" : C.blanc,
+  color: actif ? C.bleu : C.muet,
+});
+
+function Ligne({ l, v, gras, discret }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12,
+                  padding: gras ? "9px 0" : "6px 0",
+                  borderTop: `1px solid ${C.doux}` }}>
+      <span style={{ fontSize: discret ? 12 : 12.5,
+                     color: discret ? C.fantome : C.muet }}>{l}</span>
+      <span style={{ fontSize: gras ? 14 : 12.5, fontWeight: gras ? 800 : 600,
+                     color: C.encre, textAlign: "right" }}>{v}</span>
+    </div>
+  );
+}
+
+function Export({ titre, detail, onClick }) {
+  return (
+    <button onClick={onClick} style={{
+      display: "block", width: "100%", textAlign: "left", cursor: "pointer",
+      padding: "12px 13px", marginTop: 8, borderRadius: 11,
+      border: `1.5px solid ${C.bord}`, background: C.blanc }}>
+      <span style={{ display: "block", fontSize: 13.5, fontWeight: 700,
+                     color: C.encre }}>⬇ {titre}</span>
+      <span style={{ display: "block", fontSize: 11.5, color: C.muet,
+                     marginTop: 3, lineHeight: 1.45 }}>{detail}</span>
+    </button>
+  );
+}

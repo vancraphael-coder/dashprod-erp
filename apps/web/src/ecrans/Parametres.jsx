@@ -20,6 +20,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation } from "../lib/adaptateur.js";
 import Fermetures from "./Fermetures.jsx";
 import Confidentialite from "./Confidentialite.jsx";
+import Comptabilite from "./Comptabilite.jsx";
 import { identiteComplete, tauxTva } from "@domaine/organisation/identite.js";
 import Identite from "./Identite.jsx";
 import {
@@ -59,6 +60,9 @@ export default function Parametres({
   }
   if (ouvert === "confidentialite") {
     return <Confidentialite retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "comptabilite") {
+    return <Comptabilite retour={() => setOuvert(null)} />;
   }
 
   if (ouvert) {
@@ -119,6 +123,11 @@ export default function Parametres({
         <Entree icone="🗓️" titre="Fermetures de l'entreprise"
                 resume="Congé annuel collectif, ponts. S'affichent sur le planning avec les jours fériés."
                 onClick={() => setOuvert("fermetures")} />
+
+        <Rubrique>Comptabilité</Rubrique>
+        <Entree icone="📊" titre="Comptabilité"
+                resume="Factures émises par période, TVA, et les fichiers pour votre comptable."
+                onClick={() => setOuvert("comptabilite")} />
 
         <Rubrique>Documents</Rubrique>
         <Entree icone="📝" titre="Textes des dossiers"
