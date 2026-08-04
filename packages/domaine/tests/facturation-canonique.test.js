@@ -289,3 +289,34 @@ test("FEC : une facture mixte ventile ses taux", () => {
   // 1 client + 2 ventes + 2 TVA = 5 lignes.
   assert.equal(ec.length, 5);
 });
+
+// — Le taux de TVA absent ne doit JAMAIS devenir 0 % (LOT 6) —
+test("une ligne sans taux prend le taux par défaut, pas 0 %", () => {
+  // Cas réel : toutes les lignes de facture existantes ont tva_pct à NULL
+  // (colonne ajoutée après coup). Avec Number(), elles passaient à 0 % — donc
+  // l'export comptable déclarait ZÉRO TVA due, et l'UBL Peppol partait faux.
+  const f = base({ lignes: [
+    { libelle: "Déménagement", quantite: 1, prix_unitaire_centimes: 78000, tva_pct: null },
+  ] });
+  assert.equal(f.total.htva_centimes, 78000);
+  assert.equal(f.total.tva_centimes, 16380, "21 % appliqué");
+  assert.equal(f.total.tvac_centimes, 94380);
+});
+
+test("un taux 0 % VOULU est respecté — export hors UE", () => {
+  const f = base({ lignes: [
+    { libelle: "Livraison hors UE", quantite: 1, prix_unitaire_centimes: 78000, tva_pct: 0 },
+  ] });
+  assert.equal(f.total.tva_centimes, 0);
+  assert.equal(f.total.tvac_centimes, 78000);
+  assert.equal(f.ventilation_tva[0].taux, 0);
+});
+
+test("un taux absent et un taux nul ne se confondent pas dans la ventilation", () => {
+  const f = base({ lignes: [
+    { libelle: "Prestation", quantite: 1, prix_unitaire_centimes: 10000, tva_pct: null },
+    { libelle: "Hors UE",    quantite: 1, prix_unitaire_centimes: 10000, tva_pct: 0 },
+  ] });
+  const taux = f.ventilation_tva.map((t) => t.taux).sort((a, b) => a - b);
+  assert.deepEqual(taux, [0, 21], "deux taux distincts, pas un seul à 0");
+});
