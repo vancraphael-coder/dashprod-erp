@@ -2191,6 +2191,51 @@ export async function etatFacturation(affaireId) {
            solde_centimes: du - paye };
 }
 
+// ── Autorisations d'un membre ─────────────────────────────────────────────
+// On distingue ce qui vient du RÔLE de ce qui a été accordé personnellement :
+// seul le second se retire depuis la fiche, le premier demande de changer le
+// rôle du membre.
+
+export async function capacitesMembre(membreId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_capacites_membre",
+      { p_membre: membreId });
+    if (error) throw new Error(error.message);
+    return {
+      roles: data?.roles || [],
+      capacitesDesRoles: data?.capacites_des_roles || [],
+      capacitesIndividuelles: data?.capacites_individuelles || [],
+    };
+  }
+  const d = lireDemo();
+  const m = (d.membres || []).find((x) => x.id === membreId) || {};
+  return {
+    roles: m.roles || [],
+    capacitesDesRoles: m.capacitesDesRoles || [],
+    capacitesIndividuelles: m.capacitesIndividuelles || [],
+  };
+}
+
+/** Accorde (true) ou retire (false) une capacité individuelle. */
+export async function definirCapacite(membreId, capacite, accorder) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_definir_capacite", {
+      p_membre: membreId, p_capacite: capacite, p_accorder: !!accorder,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  const d = lireDemo();
+  const m = (d.membres || []).find((x) => x.id === membreId);
+  if (m) {
+    const set = new Set(m.capacitesIndividuelles || []);
+    accorder ? set.add(capacite) : set.delete(capacite);
+    m.capacitesIndividuelles = [...set];
+    ecrireDemo(d);
+  }
+  return { ok: true };
+}
+
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,
