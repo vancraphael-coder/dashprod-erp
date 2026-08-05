@@ -15,6 +15,7 @@
 
 import React from "react";
 import { cgv, PRESTATIONS_INCLUSES, VALIDITE_JOURS_OUVRABLES } from "@domaine/documents/cgv.js";
+import { nomAvecCivilite, formuleAppel } from "@domaine/crm/civilite.js";
 import { C, euros } from "../lib/theme.jsx";
 
 const NAVY = "#0F172A";
@@ -77,7 +78,12 @@ export default function Contrat({ contenu, signature }) {
 
       <div style={{ padding: 16 }}>
         <p style={{ margin: "0 0 4px", fontSize: 12.5 }}>
-          Madame, Monsieur <b>{cl.nom || "…"}</b>,
+          {/* La civilité vient du dossier client. Sans elle, on garde la
+              formule neutre « Madame, Monsieur » plutôt que de deviner le
+              genre d'un prénom — fragile et déplacé. */}
+          {formuleAppel(contenu.client_civilite) === "Bonjour,"
+            ? <>Madame, Monsieur <b>{cl.nom || "…"}</b>,</>
+            : <><b>{nomAvecCivilite(contenu.client_civilite, cl.nom || "…")}</b>,</>}
         </p>
         <p style={{ margin: "0 0 12px", fontSize: 12, color: C.muet }}>
           Nous avons le plaisir de vous adresser notre offre détaillée pour votre déménagement.

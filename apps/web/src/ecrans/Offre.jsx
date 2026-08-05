@@ -10,11 +10,12 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  obtenirAffaire, composerOffre, envoyerOffre, obtenirInstance,
+  obtenirAffaire, composerOffre, envoyerOffre, obtenirInstance, certificatSignature,
 } from "../lib/adaptateur.js";
 import { instanceIntacte } from "@domaine/documents/instances.js";
 import { ACOMPTE_PCT } from "@domaine/documents/cgv.js";
 import Contrat from "./Contrat.jsx";
+import CertificatSignature from "./CertificatSignature.jsx";
 import { C, S, euros } from "../lib/theme.jsx";
 
 const TYPE_PAR_FORMULE = {
@@ -27,12 +28,22 @@ export default function Offre({ affaireId, retour, versMail }) {
   const [apercu, setApercu] = useState(null);   // contenu composé, avant envoi
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
+  const [certificat, setCertificat] = useState(null);
+  const [voirCertificat, setVoirCertificat] = useState(false);
 
   async function recharger() {
     setAffaire(await obtenirAffaire(affaireId));
     const inst = await obtenirInstance(affaireId);
     setInstance(inst);
     if (!inst) setApercu(await composerOffre(affaireId));
+    // Le certificat n'existe que si le document a été signé. On l'ignore en
+    // silence sinon : ce n'est pas une erreur, c'est l'état normal d'une offre
+    // pas encore approuvée.
+    if (inst?.statut === "signee") {
+      certificatSignature(affaireId).then(setCertificat).catch(() => setCertificat(null));
+    } else {
+      setCertificat(null);
+    }
   }
   useEffect(() => { recharger(); }, [affaireId]);
 
@@ -173,7 +184,40 @@ export default function Offre({ affaireId, retour, versMail }) {
               Ce document ne peut plus être modifié ni remplacé. Pour repartir
               sur de nouvelles bases, reprenez le dossier depuis sa fiche.
             </div>
+            {certificat?.signe && (
+              <button onClick={() => setVoirCertificat((v) => !v)} style={{
+                width: "100%", marginTop: 10, padding: "10px", borderRadius: 9,
+                cursor: "pointer", border: "1.5px solid #065F46",
+                background: "#fff", color: "#065F46",
+                fontSize: 12.5, fontWeight: 700 }}>
+                {voirCertificat ? "Masquer" : "📜 Voir le certificat de signature"}
+              </button>
+            )}
           </div>
+        )}
+
+        {/* Le certificat : la preuve opposable. Un badge dans une application
+            ne se produit pas devant un juge — il faut un document qui
+            s'imprime et se relit seul. */}
+        {signee && certificat?.signe && voirCertificat && (
+          <>
+            <CertificatSignature certificat={certificat} />
+            {/* L'offre et le certificat portent la même classe imprimable :
+                l'impression produit donc les DEUX. C'est voulu — le document
+                signé et sa preuve forment un dossier complet, et les séparer
+                obligerait à les rapprocher plus tard. */}
+            <button className="no-print" onClick={() => window.print()} style={{
+              width: "100%", padding: "12px", borderRadius: 11, cursor: "pointer",
+              fontSize: 13.5, fontWeight: 700, border: `1.5px solid ${C.bleu}`,
+              background: C.bleuClair, color: C.bleu, marginBottom: 10 }}>
+              🖨️ Imprimer l'offre signée et son certificat
+            </button>
+            <div className="no-print" style={{ fontSize: 11, color: C.fantome,
+              margin: "0 16px 12px", lineHeight: 1.5, textAlign: "center" }}>
+              Conservez ce dossier : c'est ce qui se produit en cas de
+              contestation.
+            </div>
+          </>
         )}
 
         {instance && (
