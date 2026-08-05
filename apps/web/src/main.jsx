@@ -142,13 +142,7 @@ function AppTerrain({ profil }) {
                      versReleve={aller.bind(null, "releve")} versMateriel={aller.bind(null, "materiel")}
                      versDevis={noop} versOffre={noop} versFacture={noop} versMail={noop}
                      modeTerrain={!edit} />;
-    } else if (route.ecran === "rapports") {
-    ecran = <RapportsDossier affaireId={route.affaireId} retour={retourDossier} />;
-  } else if (route.ecran === "journal") {
-    // Le journal d'un dossier : filtré sur lui, mais c'est le même écran.
-    ecran = <Journal retour={retourDossier}
-                     entiteType="affaires" entiteId={route.affaireId} />;
-  } else if (route.ecran === "releve") {
+    } else if (route.ecran === "releve") {
       vue = <Releve affaireId={route.affaireId} retour={() => aller("dossier")} versDevis={noop} />;
     } else if (route.ecran === "materiel") {
       vue = <Materiel affaireId={route.affaireId} retour={() => aller("dossier")} />;
@@ -497,6 +491,12 @@ function App() {
                      versOffre={nav.offre} versFacture={nav.facture} versMail={nav.mail}
                      versMateriel={nav.materiel} versJournal={nav.journal}
                      versRapports={nav.rapports} />;
+  } else if (route.ecran === "rapports") {
+    ecran = <RapportsDossier affaireId={route.affaireId} retour={retourDossier} />;
+  } else if (route.ecran === "journal") {
+    // Le journal d'un dossier : filtré sur lui, mais c'est le même écran.
+    ecran = <Journal retour={retourDossier}
+                     entiteType="affaires" entiteId={route.affaireId} />;
   } else if (route.ecran === "releve") {
     ecran = <Releve affaireId={route.affaireId} retour={retourDossier} versDevis={nav.devis} />;
   } else if (route.ecran === "devis") {
