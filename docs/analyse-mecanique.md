@@ -409,6 +409,34 @@ paire (clé, valeur) avec `is distinct from`, et `updated_at` exclu du bruit.
 Leçon : un trigger qui « ne fait rien » ne se distingue pas d'un trigger absent
 — toujours prouver son effet par une écriture réelle suivie d'une lecture.
 
+### INC-28 · P0 · ✅ CLOS le 2026-08-04 · Routes posées dans la mauvaise coquille
+Les routes `rapports` et `journal` (LOT 7/8) ont été insérées dans `AppTerrain`
+au lieu de l'app bureau : ma substitution a mordu sur la PREMIÈRE occurrence de
+`route.ecran === "..."`. Elles y affectaient `ecran` et appelaient
+`retourDossier` — deux identifiants qui n'existent que dans la coquille bureau.
+Résultat : plantage à l'ouverture, côté bureau, des deux écrans. Build vert,
+tests verts. **Réglé** : routes déplacées, plus un **test statique**
+(`coherence-ecrans.test.js`) qui vérifie qu'`AppTerrain` n'assigne jamais
+`ecran` et que l'app bureau n'assigne jamais `vue`.
+Leçon : une substitution sur un motif présent plusieurs fois doit cibler son
+scope, pas sa première occurrence.
+
+### INC-29 · P0 · ✅ CLOS le 2026-08-04 · Variable utilisée hors de son scope
+`composerOffre` référençait `cli?.civilite` alors que `cli` n'était pas déclaré
+dans la fonction. Le build passe (Rollup ne bronche pas sur un identifiant
+libre) ; l'appel échoue à l'exécution — donc toute composition d'offre. Réglé
+en chargeant réellement le client, et couvert par le même test statique, dont
+l'efficacité a été **prouvée en réintroduisant le bug**.
+
+### INC-30 · P1 · ✅ CLOS le 2026-08-04 · Signature sans preuve exploitable
+Les éléments d'une signature opposable étaient tous enregistrés (nom, mention
+recopiée, horodatage serveur, empreinte SHA-256, canal) — mais rien ne les
+RESTITUAIT : le bureau ne voyait qu'un badge, et un badge ne se produit pas
+devant un juge. **Réglé (0072)** : `cmd_certificat_signature` assemble la
+preuve sans rien recalculer, et `CertificatSignature.jsx` la rend imprimable,
+articulée sur les quatre éléments qui font sa valeur (identité, consentement,
+date certaine, intégrité).
+
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
 ✅ `visible_reseau` activé pour Roovers (annuaire peuplé) ·
