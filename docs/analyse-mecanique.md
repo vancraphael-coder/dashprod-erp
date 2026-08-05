@@ -437,6 +437,19 @@ preuve sans rien recalculer, et `CertificatSignature.jsx` la rend imprimable,
 articulée sur les quatre éléments qui font sa valeur (identité, consentement,
 date certaine, intégrité).
 
+### INC-31 · P1 · ✅ CLOS le 2026-08-05 · Historique de dossier incomplet
+Le type d'entité des événements n'est pas homogène : les commandes `cmd_*`
+écrivent `'affaire'` (singulier), le trigger de journalisation écrit
+`'affaires'` (nom de la table, via `tg_table_name`). L'historique d'un dossier
+filtrait sur `'affaires'` : il ne montrait donc QUE les modifications directes
+et ratait toutes les transitions d'état, les documents et les factures — la
+moitié de l'histoire. **Réglé (0074)** : on ne filtre plus sur le type d'entité
+mais sur le DOSSIER RATTACHÉ, résolu par `evenement_affaire()` quelle que soit
+la nature de l'événement. Bénéfice de bord : une mission ou une facture
+apparaît désormais dans l'historique de son dossier, alors qu'elle ne porte pas
+son id. Leçon : deux conventions de nommage pour la même notion finissent
+toujours par se croiser dans un filtre.
+
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
 ✅ `visible_reseau` activé pour Roovers (annuaire peuplé) ·
