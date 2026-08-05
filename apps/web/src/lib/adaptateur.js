@@ -2329,13 +2329,15 @@ export async function facturesCanoniquesPeriode({ debut, fin }) {
 // Tous les mouvements de l'entreprise, en insertion seule. Rien ne s'y
 // réécrit : une décision se remplace par une nouvelle qui cite l'ancienne.
 
-export async function lireJournal({ depuis, jusqua, entiteType, entiteId,
+export async function lireJournal({ depuis, jusqua, affaireId,
                                     acteur, limite } = {}) {
+  // On filtre par DOSSIER, pas par type d'entité : une mission, un document ou
+  // une facture appartiennent au dossier même s'ils ne portent pas son id.
+  // Filtrer sur le type ratait la moitié de l'histoire.
   const { data, error } = await supabase.rpc("cmd_journal", {
     p_depuis: depuis || null,
     p_jusqua: jusqua || null,
-    p_entite_type: entiteType || null,
-    p_entite_id: entiteId || null,
+    p_affaire: affaireId || null,
     p_acteur: acteur || null,
     p_limite: limite || 200,
   });
