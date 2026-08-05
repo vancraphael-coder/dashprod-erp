@@ -816,10 +816,14 @@ export async function obtenirOrganisation() {
  * base (C-02). Tout ce qui s'imprime sur le contrat vient d'ici.
  */
 export async function composerOffre(affaireId) {
-  const [affaire, contact, inventaire, org, textes] = await Promise.all([
+  const [affaire, contact, inventaire, org, textes, cli] = await Promise.all([
     obtenirAffaire(affaireId), obtenirContact(affaireId),
     obtenirReleve(affaireId), obtenirOrganisation(),
     obtenirTextes().catch(() => ({})),
+    // La civilité vit sur le client : on la charge ici pour qu'elle atteigne
+    // le document. Sans dossier client, on continue sans — jamais d'échec du
+    // document pour un détail de forme.
+    obtenirClientFacturation(affaireId).catch(() => ({})),
   ]);
   const faits = affaire?.faits || {};
   const tvac = affaire?.tvac_centimes || 0;
@@ -849,6 +853,9 @@ export async function composerOffre(affaireId) {
     volume_m3: volumeTotal(inventaire),
     // Validité FIGÉE ici : le document garde ce qu'il annonçait le jour du gel.
     validite_jours: validiteJours(textes),
+    // La civilité voyage jusqu'au document : « M. et Mme Dupont » sur une
+    // offre que le couple va lire et signer.
+    client_civilite: cli?.civilite || null,
     a_demonter: articlesADemonter(inventaire),
     // Remontage et remarques : posés au relevé, ils doivent atteindre l'offre
     // que le client lit et signe — sinon le travail du métreur se perd.
@@ -1141,7 +1148,7 @@ export async function sauverEmballage(affaireId, emballage) {
 export async function obtenirClientFacturation(affaireId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("affaires")
-      .select("clients(id, nom, tel, email, societe, tva_num, fact_lignes, fact_cp, fact_ville, fact_pays)")
+      .select("clients(id, nom, tel, email, civilite, societe, tva_num, fact_lignes, fact_cp, fact_ville, fact_pays)")
       .eq("id", affaireId).single();
     if (error) throw error;
     return data?.clients || {};
@@ -1153,7 +1160,10 @@ export async function obtenirClientFacturation(affaireId) {
 
 /** Met à jour les données de facturation du client (édition depuis le dossier). */
 export async function sauverClientFacturation(affaireId, champs) {
-  const permis = ["societe", "tva_num", "fact_lignes", "fact_cp", "fact_ville", "fact_pays"];
+  // `civilite` fait partie de l'identité du client, pas de son adresse — mais
+  // elle s'édite au même endroit, avec les mêmes droits.
+  const permis = ["civilite", "societe", "tva_num", "fact_lignes", "fact_cp",
+                  "fact_ville", "fact_pays"];
   const propre = {};
   for (const k of permis) if (champs[k] !== undefined) propre[k] = champs[k] || null;
 
@@ -2384,6 +2394,18 @@ export async function trancherConstat(constatId, decision, motif) {
   const { data, error } = await supabase.rpc("cmd_constat_trancher", {
     p_constat: constatId, p_decision: decision, p_motif: motif || null,
   });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Certificat de signature — la preuve opposable, telle qu'enregistrée.
+ * N'invente ni ne recalcule rien : un certificat qui recalculerait quoi que ce
+ * soit ne prouverait rien.
+ */
+export async function certificatSignature(affaireId) {
+  const { data, error } = await supabase.rpc("cmd_certificat_signature",
+    { p_affaire: affaireId });
   if (error) throw new Error(error.message);
   return data;
 }
