@@ -132,9 +132,14 @@ PLAN → ORGANISATION → UTILISATEURS → RÔLES → MODULES → LIMITES → PE
 
 | Plan | Prix | Utilisateurs | Contenu | Statut |
 |---|---|---|---|---|
-| Starter | à trancher | à trancher | Clients · Devis · Planning | `DECISION` |
-| **Regular** | **360 €/mois HTVA** | **5 inclus** | Core complet (devis→Peppol, inventaire simple) | `DECISION` (confirmé sur le prix, limite à confirmer — la vitrine dit « illimités ») |
-| Pro / Group | à trancher | à trancher | Regular + modules avancés | `DECISION` |
+| Starter | 180 €/mois HTVA | 2 | Socle : dossiers, relevé, devis, offre, planning, terrain, véhicules, facturation | `LIVE` 05/08 |
+| **Regular** | **360 €/mois HTVA** | **5** | + signature en ligne, espace client, Peppol, comptabilité, rapports de chantier, paie, journal | `LIVE` 05/08 |
+| Pro | 720 €/mois HTVA | illimité | + international (livré) ; multi-dépôts et stockage 3D à venir | `LIVE` 05/08 |
+
+Grille détaillée et raisonnement commercial : **`docs/OFFRES.md`**.
+Contrainte appliquée en base (0075) : `org_a_module`, `exiger_module`,
+`limite_utilisateurs`. Le coût par utilisateur décroît à chaque palier
+(90 → 72 → dégressif) — condition vérifiée par un test.
 
 Modules d'expansion `VISION` : **Multi-Dépôts** (dépôts = entités complètes —
 équipes, véhicules, stocks, planning local, responsables — avec vue
@@ -230,7 +235,7 @@ plan × module × rôle × action sera écrite ICI avant toute implémentation.
 | Planning feux + trajet + véhicule | A | `PARTIAL` (conflits équipe `LIVE`) | EX-07 |
 | Exports comptables (UI) | A | moteur `LIVE`, écran `MISSING` | INC-04 |
 | Onboarding BCE vérifié | A/B | `MISSING` (format TVA `LIVE`) | EX-06 |
-| Plans / limites / 5 users | B | `MISSING` + vitrine `BROKEN` (« illimités ») | EX-01 |
+| Plans / limites / modules | B | `LIVE` ✅ 05/08 · vitrine encore `BROKEN` (« illimités ») | EX-01 |
 | Demandes client | C | `MISSING` | EX-03 |
 | Multi-Dépôts · Stockage 3D | B | `VISION` | EX-08 |
 | Listing international | B | `LIVE` mais **dans le Core** | EX-08 |

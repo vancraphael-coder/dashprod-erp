@@ -450,6 +450,17 @@ apparaît désormais dans l'historique de son dossier, alors qu'elle ne porte pa
 son id. Leçon : deux conventions de nommage pour la même notion finissent
 toujours par se croiser dans un filtre.
 
+### INC-32 · P0 · ✅ CLOS le 2026-08-05 · `create or replace` sans relire le corps
+En ajoutant le contrôle de limite d'utilisateurs (0075), `cmd_inviter_membre` a
+été réécrite en déléguant la création à `cmd_inviter_membre_interne` — une
+fonction qui n'existe pas. `create or replace` a ÉCRASÉ l'implémentation
+d'origine, qui n'était donc plus lisible pour la restaurer : elle a dû être
+reconstruite depuis `cmd_inviter_utilisateur`. L'invitation d'un membre aurait
+échoué à chaque appel. **Réglé (0076).**
+Leçon : ne jamais `create or replace` une fonction dont on n'a pas relu le
+corps. Pour ajouter un contrôle, le poser EN TÊTE d'une définition récupérée
+par `pg_get_functiondef` — pas réécrire de mémoire.
+
 ### Hors code (rappels d'état, pas des découvertes)
 ✅ Migrations 0050→0057 appliquées (vérifié en base le 2026-07-28) ·
 ✅ `visible_reseau` activé pour Roovers (annuaire peuplé) ·
