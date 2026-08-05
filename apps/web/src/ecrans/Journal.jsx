@@ -53,10 +53,11 @@ const heure = (iso) => {
   } catch { return ""; }
 };
 
-export default function Journal({ retour, entiteType, entiteId }) {
+export default function Journal({ retour, affaireId }) {
   const [entrees, setEntrees] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [famille, setFamille] = useState("tout");
+  const [sujetFiltre, setSujetFiltre] = useState(null);
   const [jours, setJours] = useState(30);
   const [note, setNote] = useState("");
   const [ecrit, setEcrit] = useState(false);
@@ -70,13 +71,19 @@ export default function Journal({ retour, entiteType, entiteId }) {
   async function charger() {
     setErreur(null);
     try {
-      setEntrees(await lireJournal({ depuis, entiteType, entiteId, limite: 400 }));
+      setEntrees(await lireJournal({ depuis, affaireId, limite: 400 }));
     } catch (e) { setErreur(e.message); setEntrees([]); }
   }
-  useEffect(() => { charger(); }, [depuis, entiteType, entiteId]);
+  useEffect(() => { charger(); }, [depuis, affaireId]);
 
-  const filtrees = useMemo(
-    () => filtrerParFamille(entrees || [], famille), [entrees, famille]);
+  const filtrees = useMemo(() => {
+    const parFamille = filtrerParFamille(entrees || [], famille);
+    // Filtre par sujet : on clique un nom de dossier pour ne voir que lui,
+    // sans quitter la vue d'ensemble.
+    return sujetFiltre
+      ? parFamille.filter((e) => e.sujet === sujetFiltre)
+      : parFamille;
+  }, [entrees, famille, sujetFiltre]);
   const groupes = useMemo(() => parJour(filtrees), [filtrees]);
 
   async function consigner() {
@@ -84,7 +91,8 @@ export default function Journal({ retour, entiteType, entiteId }) {
     if (t.length < 3) return;
     setEcrit(true); setErreur(null);
     try {
-      await noterDecision(t, { entiteType, entiteId });
+      await noterDecision(t, affaireId
+        ? { entiteType: "affaires", entiteId: affaireId } : {});
       setNote("");
       await charger();
     } catch (e) { setErreur(e.message); }
@@ -97,8 +105,8 @@ export default function Journal({ retour, entiteType, entiteId }) {
         {retour && <button style={S.boutonLien} onClick={retour}>← Retour</button>}
         <div style={S.titre}>Journal</div>
         <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
-          {entiteId ? "Tout ce qui s'est passé sur ce dossier."
-                    : "Tout ce qui bouge dans l'entreprise."}
+          {affaireId ? "Tout ce qui s'est passé sur ce dossier."
+                     : "Tout ce qui bouge dans l'entreprise."}
         </div>
       </div>
 
@@ -152,6 +160,21 @@ export default function Journal({ retour, entiteType, entiteId }) {
         ))}
       </div>
 
+      {sujetFiltre && (
+        <div style={{ margin: "0 16px 10px", padding: "9px 12px",
+          borderRadius: 10, background: "#E7EFFC", border: `1px solid ${C.bord}`,
+          display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ flex: 1, fontSize: 12.5, color: C.encre }}>
+            Filtré sur <b>{sujetFiltre}</b>
+          </span>
+          <button onClick={() => setSujetFiltre(null)} style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: C.bleu, fontSize: 12.5, fontWeight: 700 }}>
+            Voir tout
+          </button>
+        </div>
+      )}
+
       {erreur && (
         <div style={{ ...S.carte, color: C.rouge, fontSize: 12.5 }}>{erreur}</div>
       )}
@@ -196,6 +219,26 @@ export default function Journal({ retour, entiteType, entiteId }) {
                       lineHeight: 1.45 }}>
                       {phraseEvenement(e)}
                     </span>
+                    {/* Le sujet : DE QUOI parle cette ligne. Sans lui,
+                        « Dossier modifié — heure » est illisible dès qu'on a
+                        plus de trois clients. Masqué dans l'historique d'un
+                        dossier, où il serait répété à chaque ligne. */}
+                    {!affaireId && e.sujet && (
+                      <button
+                        onClick={() => setSujetFiltre(
+                          sujetFiltre === e.sujet ? null : e.sujet)}
+                        title={sujetFiltre === e.sujet
+                          ? "Voir tout" : `Ne voir que « ${e.sujet} »`}
+                        style={{ display: "inline-flex", alignItems: "center",
+                        gap: 5, marginTop: 3, padding: "2px 8px",
+                        cursor: "pointer", borderRadius: 999, background: ton.fond,
+                        border: `1px solid ${ton.trait}33` }}>
+                        <span aria-hidden="true" style={{ width: 6, height: 6,
+                          borderRadius: "50%", background: ton.trait }} />
+                        <span style={{ fontSize: 11, fontWeight: 700,
+                                       color: ton.texte }}>{e.sujet}</span>
+                      </button>
+                    )}
                     <span style={{ display: "block", fontSize: 11,
                                    color: C.fantome, marginTop: 2 }}>
                       {e.qui || "système"}
