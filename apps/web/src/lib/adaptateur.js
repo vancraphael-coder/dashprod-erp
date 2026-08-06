@@ -2450,6 +2450,7 @@ export async function creerMaSociete(champs) {
     p_tel: champs.tel || null,
     p_email: champs.email || null,
     p_nom_admin: champs.nomAdmin || null,
+    p_code: champs.code || null,
   });
   if (error) throw error;
   return data;
