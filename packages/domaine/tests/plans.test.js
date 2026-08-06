@@ -160,3 +160,91 @@ test("les limites d'utilisateurs correspondent à celles de la base", () => {
       `limite divergente pour ${p.cle}`);
   }
 });
+
+// — Périodicité, essai, changement d'offre —
+import {
+  REMISE_ANNUELLE_PCT, ESSAI_JOURS, ESSAI_PLAN, prixPeriode, finEssai,
+  essaiActif, joursEssaiRestants, exigencesChangement, selectionRecevable,
+} from "../src/commercial/plans.js";
+
+test("l'annuel remise 5 % sur douze mois", () => {
+  assert.equal(REMISE_ANNUELLE_PCT, 5);
+  const a = prixPeriode("regular", "annuel");
+  assert.equal(a.total_centimes, 410400, "360 × 12 = 4320 € − 5 % = 4104 €");
+  assert.equal(a.economie_centimes, 21600, "216 € économisés");
+  assert.equal(a.equivalent_mensuel_centimes, 34200);
+});
+
+test("le mensuel reste au prix affiché, sans remise", () => {
+  const m = prixPeriode("regular");
+  assert.equal(m.total_centimes, 36000);
+  assert.equal(m.economie_centimes, 0);
+});
+
+test("l'annuel est toujours moins cher que douze mensualités", () => {
+  for (const p of PLANS) {
+    const m = prixPeriode(p.cle).total_centimes * 12;
+    const a = prixPeriode(p.cle, "annuel").total_centimes;
+    assert.ok(a < m, `${p.cle} : l'annuel devrait être plus avantageux`);
+  }
+});
+
+test("l'essai dure 5 jours, sur l'offre Pro", () => {
+  assert.equal(ESSAI_JOURS, 5);
+  assert.equal(ESSAI_PLAN, "pro");
+  const fin = finEssai(new Date("2026-08-05T10:00:00"));
+  assert.equal(fin.toISOString().slice(0, 10), "2026-08-10");
+});
+
+test("l'essai expire proprement", () => {
+  const maintenant = new Date("2026-08-05T10:00:00");
+  assert.equal(essaiActif("2026-08-10T10:00:00", maintenant), true);
+  assert.equal(essaiActif("2026-08-01T10:00:00", maintenant), false);
+  assert.equal(essaiActif(null, maintenant), false);
+  assert.equal(joursEssaiRestants("2026-08-10T10:00:00", maintenant), 5);
+  assert.equal(joursEssaiRestants("2026-08-01T10:00:00", maintenant), 0);
+});
+
+// — Le changement d'offre : archiver, JAMAIS supprimer —
+test("monter d'offre ne demande aucun arbitrage", () => {
+  const r = exigencesChangement({ planActuel: "starter", planCible: "regular",
+                                  utilisateursActifs: 2 });
+  assert.equal(r.immediat, true);
+  assert.equal(r.montee, true);
+  assert.deepEqual(r.exigences, []);
+});
+
+test("redescendre avec trop d'utilisateurs EXIGE de désigner qui reste", () => {
+  const r = exigencesChangement({ planActuel: "regular", planCible: "starter",
+                                  utilisateursActifs: 4 });
+  assert.equal(r.immediat, false);
+  const e = r.exigences[0];
+  assert.equal(e.type, "utilisateurs");
+  assert.equal(e.a_conserver, 2);
+  assert.equal(e.a_archiver, 2);
+  assert.match(e.detail, /désignez 2 personnes/);
+});
+
+test("les modules perdus sont ANNONCÉS, mais ne demandent rien", () => {
+  // Leurs données restent : c'est ce qui permet de remonter sans rien perdre.
+  const r = exigencesChangement({ planActuel: "regular", planCible: "starter",
+                                  utilisateursActifs: 2 });
+  assert.ok(r.modules_perdus.includes("signature_client"));
+  assert.ok(r.modules_perdus.includes("peppol"));
+  assert.equal(r.immediat, true, "aucun arbitrage pour les modules");
+});
+
+test("Pro n'impose jamais de limite d'utilisateurs", () => {
+  const r = exigencesChangement({ planActuel: "regular", planCible: "pro",
+                                  utilisateursActifs: 50 });
+  assert.equal(r.immediat, true);
+});
+
+test("la sélection guide au lieu de refuser sèchement", () => {
+  const e = { a_conserver: 2 };
+  assert.equal(selectionRecevable(e, 3).ok, false);
+  assert.match(selectionRecevable(e, 3).message, /3 personnes pour 2 place/);
+  assert.equal(selectionRecevable(e, 1).ok, true);
+  assert.match(selectionRecevable(e, 1).message, /reste 1 place/);
+  assert.equal(selectionRecevable(e, 2).message, null);
+});
