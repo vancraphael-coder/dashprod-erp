@@ -226,3 +226,119 @@ export function coutParUtilisateur(clePlan) {
 export function planMinimalPour(cleModule) {
   return PLANS.find((p) => p.modules.includes(cleModule))?.cle || null;
 }
+
+// =============================================================================
+// PÉRIODICITÉ, ESSAI, ET CHANGEMENT D'OFFRE
+// =============================================================================
+
+/** Remise consentie pour un paiement annuel d'avance. */
+export const REMISE_ANNUELLE_PCT = 5;
+
+/** Durée de l'essai, et l'offre sur laquelle il porte. */
+export const ESSAI_JOURS = 5;
+export const ESSAI_PLAN = "pro";
+
+/**
+ * Prix d'une période. L'annuel se règle d'avance, remise déduite.
+ * On arrondit à l'euro : facturer 4 104,00 € plutôt que 4 103,99 € évite des
+ * questions inutiles.
+ */
+export function prixPeriode(clePlan, periodicite = "mensuel") {
+  const p = plan(clePlan);
+  if (!p) return null;
+  if (periodicite !== "annuel") {
+    return { periodicite: "mensuel", total_centimes: p.prix_centimes,
+             economie_centimes: 0, remise_pct: 0 };
+  }
+  const plein = p.prix_centimes * 12;
+  const total = Math.round(plein * (100 - REMISE_ANNUELLE_PCT) / 100 / 100) * 100;
+  return {
+    periodicite: "annuel",
+    total_centimes: total,
+    economie_centimes: plein - total,
+    remise_pct: REMISE_ANNUELLE_PCT,
+    equivalent_mensuel_centimes: Math.round(total / 12),
+  };
+}
+
+/** Fin d'un essai démarré à une date donnée. */
+export function finEssai(depuis = new Date(), jours = ESSAI_JOURS) {
+  const d = new Date(depuis);
+  d.setDate(d.getDate() + jours);
+  return d;
+}
+
+/** L'essai est-il encore en cours ? */
+export function essaiActif(finIso, maintenant = new Date()) {
+  if (!finIso) return false;
+  const f = new Date(finIso);
+  return !Number.isNaN(f.getTime()) && f > maintenant;
+}
+
+/** Jours restants d'essai, jamais négatif. */
+export function joursEssaiRestants(finIso, maintenant = new Date()) {
+  if (!essaiActif(finIso, maintenant)) return 0;
+  return Math.max(0, Math.ceil((new Date(finIso) - maintenant) / 86400000));
+}
+
+/**
+ * Ce qu'un changement d'offre EXIGE avant d'être appliqué.
+ *
+ * Principe posé par Raphaël, et qui structure tout : **on n'efface jamais de
+ * données**. Une entreprise qui redescend d'offre garde tout ; ce qui dépasse
+ * la nouvelle limite est ARCHIVÉ, pas supprimé. C'est précisément ce qui lui
+ * permettra de remonter plus tard sans avoir rien perdu.
+ *
+ * On ne choisit pas non plus à sa place : la fonction dit COMBIEN il faut
+ * archiver, l'écran laisse l'utilisateur désigner lesquels.
+ */
+export function exigencesChangement({ planActuel, planCible, utilisateursActifs }) {
+  const cible = plan(planCible);
+  if (!cible) return { possible: false, message: "Offre inconnue." };
+
+  const max = cible.utilisateurs;
+  const n = Number(utilisateursActifs) || 0;
+  const exigences = [];
+
+  if (max != null && n > max) {
+    exigences.push({
+      type: "utilisateurs",
+      titre: "Trop d'utilisateurs actifs",
+      detail: `L'offre ${cible.nom} comprend ${max} utilisateur`
+            + `${max > 1 ? "s" : ""}. Vous en avez ${n} en activité : `
+            + `désignez ${max} personne${max > 1 ? "s" : ""} à conserver.`,
+      a_conserver: max,
+      a_archiver: n - max,
+    });
+  }
+
+  // Les modules perdus ne demandent AUCUN arbitrage : leurs données restent
+  // en base, simplement inaccessibles. Elles reviennent telles quelles si
+  // l'entreprise remonte d'offre. On l'annonce plutôt que de le taire.
+  const perdus = (plan(planActuel)?.modules || [])
+    .filter((c) => !cible.modules.includes(c))
+    .filter((c) => module(c)?.livre);
+
+  return {
+    possible: true,
+    montee: (plan(planCible)?.prix_centimes || 0) > (plan(planActuel)?.prix_centimes || 0),
+    exigences,
+    modules_perdus: perdus,
+    // Rien à trancher : le changement s'applique directement.
+    immediat: exigences.length === 0,
+  };
+}
+
+/** Une sélection de personnes à conserver est-elle recevable ? */
+export function selectionRecevable(exigence, nbChoisis) {
+  const attendu = exigence?.a_conserver ?? 0;
+  const n = Number(nbChoisis) || 0;
+  if (n > attendu) {
+    return { ok: false,
+      message: `Vous avez désigné ${n} personnes pour ${attendu} place${attendu > 1 ? "s" : ""}.` };
+  }
+  if (n < attendu) {
+    return { ok: true, message: `Il reste ${attendu - n} place${attendu - n > 1 ? "s" : ""} disponible${attendu - n > 1 ? "s" : ""}.` };
+  }
+  return { ok: true, message: null };
+}
