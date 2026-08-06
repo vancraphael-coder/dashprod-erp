@@ -60,7 +60,7 @@ export default function Inscription({ email, onCreee }) {
       {/* Le choix — la frontière entre les deux publics. */}
       <div style={{ maxWidth: 620, margin: "0 auto", padding: "18px 20px 0",
                     display: "grid", gap: 12,
-                    gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))" }}>
         <button onClick={() => setVolet("societe")} className="v-carte v-carte-hover"
                 style={{ padding: 18, textAlign: "left", cursor: "pointer",
                          borderWidth: 2,

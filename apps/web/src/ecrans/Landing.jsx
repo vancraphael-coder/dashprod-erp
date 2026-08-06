@@ -98,7 +98,7 @@ export default function Landing({ onConnexion, onClient }) {
         </section>
 
         <section style={{ display: "grid", gap: 14, marginTop: 20,
-                          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                          gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))" }}>
           {POINTS.map((p) => (
             <div key={p.t} style={{ padding: 18, borderRadius: 14, background: C.blanc,
                                     border: `1px solid ${C.bord}`,

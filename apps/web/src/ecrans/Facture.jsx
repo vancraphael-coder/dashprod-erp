@@ -9,7 +9,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   obtenirAffaire, lignesFacturePour, emettreFacture, obtenirFacture, enregistrerPaiement,
-  cloreAffaire,
+  cloturerDossier,
   obtenirOrganisation, obtenirContact, obtenirFacturePourAffaire,
   obtenirClientFacturation,
 } from "../lib/adaptateur.js";
@@ -261,11 +261,11 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
           {cloture && (
             <div style={{ marginTop: 10, textAlign: "left" }}>
               <Confirmation
-                question="Clore ce dossier ? Il sera définitivement terminé (consultable, mais plus modifiable)."
+                question="Clôturer ce dossier ? La base vérifie d'abord les chantiers, les rapports, les écarts et le solde. Une fois clôturé, plus rien ne bouge."
                 action="Clore" couleur={C.encre}
                 onConfirmer={async () => {
                   try {
-                    await cloreAffaire(affaireId);
+                    await cloturerDossier(affaireId);
                     setClos(true); setCloture(false);
                     obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
                   } catch (e) { setErreur(e.message); setCloture(false); }

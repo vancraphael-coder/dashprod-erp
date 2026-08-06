@@ -10,13 +10,15 @@ import React, { useEffect, useMemo, useState, useRef} from "react";
 import {
   obtenirAffaire, enregistrerChiffrage,
   obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
-  obtenirOrganisation,
+  obtenirOrganisation, contexteMainOeuvre,
 } from "../lib/adaptateur.js";
 import { calculerScenario } from "@domaine/chiffrage/moteur.js";
 import { catalogueSupplements, supplementsRetenus, libelleLigne, UNITES_SUPPLEMENT }
   from "@domaine/chiffrage/supplements.js";
 import { BAREME_HORAIRE, TARIFS } from "@domaine/chiffrage/bareme.js";
 import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
+import { lignesMainOeuvre, coutMainOeuvre, mentionLignesRetirees, TON_HISTORIQUE }
+  from "@domaine/rh/main-oeuvre.js";
 import { C, S, ZONES_MARGE, euros, declarerModifs} from "../lib/theme.jsx";
 
 const FORMULES = [
@@ -40,7 +42,8 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   // vrai par la première modification réelle.
   const [touche, setTouche] = useState(false);
   const sauverRef = useRef(null);
-  const [equipe, setEquipe] = useState([]);     // membres pressentis {id, nom, taux}
+  const [equipe, setEquipe] = useState([]);     // lignes retenues (domaine)
+  const [equipeIds, setEquipeIds] = useState([]); // équipe pressentie brute
   const [ref, setRef] = useState(null);          // barème + tarifs configurés
   const [catalogue, setCatalogue] = useState([]);  // suppléments définis (Barème)
   const [selSup, setSelSup] = useState({});         // { cle: quantité } cochés
@@ -56,11 +59,17 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
       if (a?.couts) setCouts((c) => ({ ...c, ...a.couts }));
     });
     // Coût MO auto : équipe pressentie du dossier × leur taux horaire.
-    Promise.all([obtenirEquipeAffaire(affaireId), listerMembresSimples(), tauxMembres()])
-      .then(([ids, membres, taux]) => {
-        setEquipe(ids.map((id) => {
-          const m = membres.find((x) => x.id === id);
-          return { id, nom: m?.nom || id, taux: taux[id] || 0 };
+    // Les membres ARCHIVÉS sont chargés eux aussi : sans eux, un identifiant
+    // brut s'affichait à la place du nom dès qu'une personne quittait l'équipe.
+    Promise.all([obtenirEquipeAffaire(affaireId), listerMembresSimples(true),
+                 tauxMembres(), contexteMainOeuvre(affaireId)])
+      .then(([ids, membres, taux, ctx]) => {
+        setEquipeIds(ids);
+        setEquipe(lignesMainOeuvre({
+          equipeIds: ids, membres, taux,
+          ontTravaille: ctx.ontTravaille,
+          dossierClos: ctx.dossierClos,
+          missionTerminee: ctx.missionTerminee,
         }));
       }).catch(() => {});
     // Barème configuré (page Configuration) : le moteur l'accepte via ref.
@@ -79,10 +88,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
   // Coût main-d'œuvre PRÉVISIONNEL : somme des taux de l'équipe × heures prévues.
   // (Le coût réel avec le chrono se calcule sur le dossier confirmé.)
   const heuresMO = faits.formule === "emballage" ? (faits.heuresEmballage || 0) : (faits.heures || 0);
-  const coutMoAuto = useMemo(() => {
-    const sommeTaux = equipe.reduce((s, m) => s + (m.taux || 0), 0);
-    return Math.round(sommeTaux * heuresMO);
-  }, [equipe, heuresMO]);
+  const coutMoAuto = useMemo(() => coutMainOeuvre(equipe, heuresMO), [equipe, heuresMO]);
 
   // Injecte le coût MO calculé dans les coûts passés au moteur.
   const coutsEffectifs = useMemo(
@@ -338,18 +344,32 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
               </div>
             ) : (
               <>
-                {equipe.map((m) => (
-                  <div key={m.id} style={{ display: "flex", justifyContent: "space-between",
-                                           fontSize: 12, padding: "1px 0" }}>
-                    <span style={{ color: C.encre }}>
-                      {m.nom} <span style={{ color: C.fantome }}>
-                        · {m.taux || "?"} €/h × {heuresMO} h</span>
-                    </span>
-                    <span style={{ fontWeight: 600, color: C.encre }}>
-                      {euros(Math.round((m.taux || 0) * heuresMO * 100))}
-                    </span>
+                {equipe.map((m) => {
+                  const historique = m.ton === TON_HISTORIQUE;
+                  const couleur = historique ? C.ambre : C.encre;
+                  return (
+                    <div key={m.id} style={{ display: "flex", justifyContent: "space-between",
+                                             fontSize: 12, padding: "1px 0" }}>
+                      <span style={{ color: couleur }}>
+                        {m.nom}
+                        {m.retire && (
+                          <span style={{ color: C.ambre, fontSize: 10.5 }}> · retiré de l'équipe</span>
+                        )}
+                        <span style={{ color: C.fantome }}>
+                          {" "}· {m.tauxConnu ? `${m.taux} €/h` : "taux non renseigné"} × {heuresMO} h
+                        </span>
+                      </span>
+                      <span style={{ fontWeight: 600, color: couleur }}>
+                        {euros(Math.round(m.taux * heuresMO * 100))}
+                      </span>
+                    </div>
+                  );
+                })}
+                {mentionLignesRetirees(equipeIds, equipe) && (
+                  <div style={{ fontSize: 10.5, color: C.muet, marginTop: 5, lineHeight: 1.4 }}>
+                    {mentionLignesRetirees(equipeIds, equipe)}
                   </div>
-                ))}
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between",
                               borderTop: `1px solid ${C.bord}`, marginTop: 5, paddingTop: 5 }}>
                   <span style={{ fontSize: 12, fontWeight: 800, color: C.encre }}>Total MO</span>

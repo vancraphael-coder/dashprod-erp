@@ -17,11 +17,14 @@ import {
   listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
   validerDossierTerrain, obtenirInstance, confirmerAffaire, archiverAffaire,
   annulerAffaire, reporterAffaire, reprendreAffaire, etatFacturation,
+  exigencesCloture, cloturerDossier, rouvrirDossier,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
 import { adresseDepot } from "@domaine/organisation/identite.js";
 import { CIVILITES } from "@domaine/crm/civilite.js";
+import { synthese, verdict, pictoStatut, lignesBilan, mentionDerogation }
+  from "@domaine/crm/cloture.js";
 import { C, S, Badge, BadgeFacturation, euros, declarerModifs, Confirmation }
   from "../lib/theme.jsx";
 
@@ -515,6 +518,14 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </button>
         )}
 
+        {/* Clôture : la dernière étape du cycle. La check-list vient de la
+            base, pas de l'écran — ce qui s'affiche ici est exactement ce qui
+            sera vérifié au moment d'appuyer. */}
+        {!modeTerrain && ["effectue", "clos"].includes(affaire.etat) && (
+          <ZoneCloture affaire={affaire} affaireId={affaireId}
+                       onFait={() => obtenirAffaire(affaireId).then(setAffaire)} />
+        )}
+
         {/* Désistement client : le chantier ne se fera pas, ou pas à cette
             date. Annuler ou reporter libère automatiquement l'équipe et les
             camions du planning (les missions ouvertes sont annulées). */}
@@ -560,6 +571,179 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
  */
 const ANNULABLE = ["brouillon", "devis", "envoye", "confirme", "planifie", "en_cours", "reporte"];
 const REPORTABLE = ["envoye", "confirme", "planifie"];
+
+/**
+ * ZONE DE CLÔTURE — la fin du dossier, rendue vérifiable.
+ *
+ * Trois états possibles :
+ *  — le dossier est clôturé : on montre le bilan FIGÉ (jamais recalculé) et
+ *    le seul geste restant, rouvrir, qui exige un motif écrit ;
+ *  — tout est en ordre : un bouton, franc ;
+ *  — il manque quelque chose : la liste nommée, et la possibilité de passer
+ *    outre avec un motif — jamais en silence, jamais par défaut.
+ */
+function ZoneCloture({ affaire, affaireId, onFait }) {
+  const [exig, setExig] = useState(null);
+  const [motif, setMotif] = useState("");
+  const [mode, setMode] = useState(null); // null | "forcer" | "rouvrir"
+  const [erreur, setErreur] = useState(null);
+  const [enCours, setEnCours] = useState(false);
+
+  const clos = affaire.etat === "clos";
+
+  useEffect(() => {
+    if (clos) { setExig(null); return; }
+    exigencesCloture(affaireId).then(setExig).catch(() => setExig(null));
+  }, [affaireId, affaire.etat, clos]);
+
+  async function agir(fn) {
+    setEnCours(true); setErreur(null);
+    try { await fn(); setMode(null); setMotif(""); onFait(); }
+    catch (e) { setErreur(e.message || "Refusé"); }
+    finally { setEnCours(false); }
+  }
+
+  if (clos) {
+    const bilan = affaire.cloture_bilan;
+    const derog = mentionDerogation(bilan);
+    return (
+      <div style={{ ...S.carte, background: "#F1F5F9", border: `1px solid ${C.bord}` }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+          🔒 Dossier clôturé
+        </div>
+        <div style={{ fontSize: 12, color: C.muet, marginTop: 4, lineHeight: 1.5 }}>
+          Plus rien n'y bouge : ni les missions, ni les factures, ni les heures.
+          Le bilan ci-dessous a été figé ce jour-là ; il ne se recalcule pas.
+        </div>
+        {derog && (
+          <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 9,
+                        background: "#FFF7ED", border: "1px solid #FDE68A",
+                        fontSize: 11.5, color: "#92400E", lineHeight: 1.45 }}>
+            {derog}
+          </div>
+        )}
+        {lignesBilan(bilan).map(([l, v]) => (
+          <div key={l} style={{ display: "flex", justifyContent: "space-between",
+                                padding: "5px 0", fontSize: 12.5 }}>
+            <span style={{ color: C.muet }}>{l}</span>
+            <span style={{ fontWeight: 700, color: C.encre }}>{v}</span>
+          </div>
+        ))}
+
+        {mode !== "rouvrir" ? (
+          <button onClick={() => setMode("rouvrir")}
+                  style={{ ...S.boutonLien, color: C.muet, marginTop: 10 }}>
+            Rouvrir ce dossier
+          </button>
+        ) : (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
+              Pourquoi ? Le motif reste au journal, et la clôture précédente
+              est conservée avec son bilan.
+            </div>
+            <input value={motif} onChange={(e) => setMotif(e.target.value)}
+                   placeholder="Erreur de facturation constatée…"
+                   style={{ ...S.input }} />
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button disabled={!motif.trim() || enCours}
+                      onClick={() => agir(() => rouvrirDossier(affaireId, motif))}
+                      style={{ ...S.boutonPlein, flex: 1,
+                               opacity: motif.trim() ? 1 : 0.5 }}>
+                Rouvrir
+              </button>
+              <button onClick={() => { setMode(null); setMotif(""); }}
+                      style={{ ...S.boutonLien, color: C.muet }}>Annuler</button>
+            </div>
+          </div>
+        )}
+        {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 8 }}>{erreur}</div>}
+      </div>
+    );
+  }
+
+  if (!exig) return null;
+  const s = synthese(exig);
+
+  return (
+    <div style={{ ...S.carte, border: `1px solid ${C.bord}` }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+        Clôturer le dossier
+      </div>
+      <div style={{ fontSize: 12, color: C.muet, marginTop: 4, lineHeight: 1.5 }}>
+        {verdict(exig)}
+      </div>
+
+      <div style={{ marginTop: 10 }}>
+        {s.points.map((p) => {
+          const manque = p.statut === "manquant";
+          const couleur = p.statut === "ok" ? "#15803D"
+                        : manque && p.bloquant ? C.rouge
+                        : manque ? "#92400E" : C.fantome;
+          return (
+            <div key={p.cle} style={{ display: "flex", gap: 8, alignItems: "baseline",
+                                      padding: "4px 0", fontSize: 12.5 }}>
+              <span style={{ color: couleur, fontWeight: 800, width: 14 }}>
+                {pictoStatut(p.statut)}
+              </span>
+              <span style={{ flex: 1, color: manque ? C.encre : C.muet }}>
+                {p.libelle}
+                {p.detail && (
+                  <span style={{ display: "block", fontSize: 11, color: couleur, marginTop: 1 }}>
+                    {p.detail}
+                  </span>
+                )}
+              </span>
+              {manque && !p.bloquant && (
+                <span style={{ fontSize: 10.5, color: "#92400E" }}>réserve</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {s.peutCloturer && mode !== "forcer" && (
+        <button disabled={enCours}
+                onClick={() => agir(() => cloturerDossier(affaireId, null))}
+                style={{ ...S.boutonPlein, width: "100%", marginTop: 12,
+                         background: "linear-gradient(135deg, #0F172A, #334155)" }}>
+          🔒 Clôturer — le dossier deviendra définitif
+        </button>
+      )}
+
+      {s.peutForcer && mode !== "forcer" && (
+        <button onClick={() => setMode("forcer")}
+                style={{ ...S.boutonLien, color: C.muet, width: "100%",
+                         textAlign: "center", marginTop: 10 }}>
+          Clôturer malgré {s.nbBloquants} point{s.nbBloquants > 1 ? "s" : ""} — motif obligatoire
+        </button>
+      )}
+
+      {mode === "forcer" && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6, lineHeight: 1.45 }}>
+            Ce motif est inscrit dans le bilan figé et dans le journal. Il
+            expliquera, dans deux ans, pourquoi ce dossier a été clôturé
+            incomplet.
+          </div>
+          <input value={motif} onChange={(e) => setMotif(e.target.value)}
+                 placeholder="Client insolvable, créance passée en perte…"
+                 style={{ ...S.input }} />
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button disabled={!motif.trim() || enCours}
+                    onClick={() => agir(() => cloturerDossier(affaireId, motif))}
+                    style={{ ...S.boutonPlein, flex: 1, opacity: motif.trim() ? 1 : 0.5 }}>
+              Clôturer avec ce motif
+            </button>
+            <button onClick={() => { setMode(null); setMotif(""); }}
+                    style={{ ...S.boutonLien, color: C.muet }}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 8 }}>{erreur}</div>}
+    </div>
+  );
+}
 
 function ZoneDesistement({ affaire, affaireId, onFait }) {
   const [mode, setMode] = useState(null); // null | "reporter" | "annuler"

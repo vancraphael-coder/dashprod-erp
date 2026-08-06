@@ -292,7 +292,7 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
             )}
 
             <div style={{ display: "grid", gap: 8,
-                          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+                          gridTemplateColumns: "repeat(auto-fit, minmax(min(140px, 100%), 1fr))" }}>
               <Minuteur
                 titre="Départ" prevu={prevu.depart} valeur={saisie.depart}
                 pose={!!depart} accent="#22C55E"
