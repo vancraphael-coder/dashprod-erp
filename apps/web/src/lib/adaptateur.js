@@ -2524,18 +2524,157 @@ export async function reporterAffaire(affaireId, nouvelleDate, motif) {
   }
 }
 
-/** Clôture du dossier (payé → clos). Dernière étape du cycle. */
-export async function cloreAffaire(affaireId) {
+/**
+ * Contexte de la main-d'œuvre d'un dossier : ce qui décide qu'une ligne reste,
+ * disparaît, ou passe en orange. Trois faits, lus en base, jamais devinés.
+ *  — le dossier est-il clôturé ;
+ *  — une mission est-elle terminée ;
+ *  — qui a réellement été affecté (donc a travaillé).
+ */
+export async function contexteMainOeuvre(affaireId) {
   if (modeDonnees() === "reel") {
-    const { error } = await supabase.rpc("cmd_transition_affaire", {
-      p_affaire: affaireId, p_cible: "clos", p_contexte: {},
-    });
-    if (error) throw error;
-    return;
+    const { data: aff } = await supabase.from("affaires")
+      .select("etat").eq("id", affaireId).maybeSingle();
+    const { data: missions } = await supabase.from("missions")
+      .select("id, etat, mission_affectations(utilisateur_id)")
+      .eq("affaire_id", affaireId);
+    const liste = missions || [];
+    return {
+      dossierClos: aff?.etat === "clos",
+      missionTerminee: liste.some((m) => m.etat === "effectuee"),
+      ontTravaille: [...new Set(liste.flatMap(
+        (m) => (m.mission_affectations || []).map((a) => a.utilisateur_id)))],
+    };
   }
   const d = lireDemo();
   const a = (d.affaires || []).find((x) => x.id === affaireId);
-  if (a) { a.etat = "clos"; ecrireDemo(d); }
+  const miss = (d.missions || []).filter((m) => m.affaire_id === affaireId);
+  return {
+    dossierClos: a?.etat === "clos",
+    missionTerminee: miss.some((m) => m.etat === "effectuee"),
+    ontTravaille: a?.equipe || [],
+  };
+}
+
+// =============================================================================
+// CLÔTURE DU DOSSIER (0080) — dernière étape du cycle.
+//
+// `cloreAffaire` existait ici depuis des mois, appelée par personne, et
+// appuyait directement sur `cmd_transition_affaire` sans vérifier quoi que ce
+// soit. Elle est remplacée par un circuit en trois temps : on demande d'abord
+// ce qui manque, on clôture ensuite, et la base fige un bilan qui ne se
+// recalculera plus. Rouvrir reste possible — jamais en silence.
+// =============================================================================
+
+/** Ce qui manque avant de pouvoir clôturer. Ne modifie rien. */
+export async function exigencesCloture(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_exigences_cloture",
+      { p_affaire: affaireId });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  const etat = a?.etat || "brouillon";
+  const points = [
+    { cle: "etat", libelle: "Le chantier est terminé", bloquant: true,
+      statut: etat === "effectue" || etat === "clos" ? "ok" : "manquant" },
+  ];
+  const bloquants = points.filter((p) => p.bloquant && p.statut === "manquant").length;
+  return { affaire: affaireId, etat, points, bloquants,
+           peut_cloturer: bloquants === 0 && etat === "effectue",
+           peut_cloturer_avec_motif: etat === "effectue" };
+}
+
+/**
+ * Clôture. Sans motif, la base refuse dès qu'un point bloquant subsiste ; avec
+ * motif, elle accepte et inscrit la dérogation dans le bilan et le journal.
+ */
+export async function cloturerDossier(affaireId, motif = null) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_cloturer_dossier",
+      { p_affaire: affaireId, p_motif: motif });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  if (a) { a.etat = "clos"; a.cloture_le = new Date().toISOString(); ecrireDemo(d); }
+  return { statut: "CLOTURE", bilan: null };
+}
+
+/** Réouverture : le motif est obligatoire, côté base comme ici. */
+export async function rouvrirDossier(affaireId, motif) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_rouvrir_dossier",
+      { p_affaire: affaireId, p_motif: motif });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  if (a) { a.etat = "effectue"; a.cloture_le = null; ecrireDemo(d); }
+  return { statut: "ROUVERT" };
+}
+
+// =============================================================================
+// APPARTENANCE (0081) — une personne, plusieurs sociétés, jamais deux à la fois.
+//
+// Le jeton ne porte une société que lorsqu'elle est certaine : une seule
+// appartenance, ou un choix explicite. Après un choix, il FAUT rafraîchir la
+// session — sinon l'ancien jeton continue de désigner l'ancienne société, et
+// c'est lui qui commande le RLS.
+// =============================================================================
+
+export async function mesSocietes() {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.rpc("cmd_mes_societes");
+  if (error) throw error;
+  return data || [];
+}
+
+export async function choisirSociete(orgId) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_choisir_societe", { p_org: orgId });
+  if (error) throw error;
+  // Le choix ne vaut rien tant que le jeton ne le porte pas.
+  await supabase.auth.refreshSession();
+  return data;
+}
+
+/**
+ * Le membre devient client de sa propre société — avec une adresse PERSONNELLE,
+ * distincte de son accès entreprise. Les deux espaces n'ont aucun identifiant
+ * en commun : c'est la condition pour qu'ils ne se contaminent jamais (0082).
+ */
+export async function membreDevenirClient(membreId, emailPersonnel) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_membre_devenir_client",
+    { p_membre: membreId, p_email_client: emailPersonnel });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Retrait d'un membre. L'accès s'arrête ; la paie, les heures et l'historique
+ * restent — sinon la comptabilité d'un exercice clos deviendrait fausse le jour
+ * d'un départ.
+ */
+export async function retirerMembre(membreId, motif = null) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_retirer_membre",
+    { p_membre: membreId, p_motif: motif });
+  if (error) throw error;
+  return data;
+}
+
+/** Contrôle de cloisonnement, à relancer après toute migration. */
+export async function auditCloison() {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_audit_cloison");
+  if (error) throw error;
+  return data;
 }
 
 // =============================================================================
