@@ -29,6 +29,8 @@ import Profil from "./ecrans/Profil.jsx";
 import Landing from "./ecrans/vitrine/Landing.jsx";
 import PorteSociete from "./ecrans/vitrine/PorteSociete.jsx";
 import PorteClient from "./ecrans/vitrine/PorteClient.jsx";
+import { CGU, Confidentialite as ConfidentialitePublique, MentionsLegales }
+  from "./ecrans/vitrine/Legal.jsx";
 import Bienvenue from "./ecrans/Bienvenue.jsx";
 import EspaceClient from "./ecrans/EspaceClient.jsx";
 import SignatureOffre from "./ecrans/SignatureOffre.jsx";
@@ -302,7 +304,7 @@ function App() {
   const [pagePublique, setPagePublique] = useState(() => {
     try {
       const p = new URLSearchParams(location.search).get("page");
-      return ["societe", "client", "connexion"].includes(p) ? p : "accueil";
+      return ["societe", "client", "connexion", "cgu", "confidentialite", "mentions"].includes(p) ? p : "accueil";
     } catch { return "accueil"; }
   });
   const allerPublic = (page) => {
@@ -401,6 +403,9 @@ function App() {
       return <Connexion aller={allerPublic}
                         onConnecte={() => window.location.reload()} />;
     }
+    if (pagePublique === "cgu") return <CGU aller={allerPublic} />;
+    if (pagePublique === "confidentialite") return <ConfidentialitePublique aller={allerPublic} />;
+    if (pagePublique === "mentions") return <MentionsLegales aller={allerPublic} />;
     return <Landing aller={allerPublic} />;
   }
 
