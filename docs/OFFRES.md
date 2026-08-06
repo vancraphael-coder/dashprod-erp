@@ -18,11 +18,11 @@ Regular → Pro     : « j'ai plusieurs équipes, ou je fais de l'international 
 
 | | **Starter** | **Regular** | **Pro** |
 |---|---|---|---|
-| Prix HTVA/mois | **180 €** | **360 €** | **720 €** |
+| Prix HTVA/mois | **180 €** | **360 €** | **720 €** *(verrouillée)* |
 | Utilisateurs | 2 | 5 | illimité |
 | Coût par utilisateur | 90 € | 72 € | dégressif |
-| Promesse | Sortir du papier | Le circuit complet, du premier appel au paiement | Plusieurs équipes, l'international |
-| Pour qui | Le déménageur seul ou à deux, encore sur Excel | L'entreprise établie, bureau + équipes terrain | L'entreprise à plusieurs équipes, ou qui expédie à l'étranger |
+| Promesse | Sortir du papier | Le circuit complet, du premier appel au paiement | Plusieurs centres logistiques |
+| Pour qui | Le déménageur seul ou à deux, encore sur Excel | L'entreprise établie, bureau + équipes terrain | L'entreprise qui exploite plusieurs dépôts, chacun avec son gestionnaire |
 
 **Le coût par utilisateur décroît à chaque palier** — 90 € → 72 € → dégressif.
 C'est la condition d'une échelle qui tient : si monter en gamme coûtait plus
@@ -45,20 +45,34 @@ conditions · Planning d'équipe · Application terrain · Véhicules · Factura
 ### Regular ajoute
 **Signature en ligne** (+ certificat opposable) · **Espace client** ·
 **Facturation Peppol** · **Exports comptables** · **Rapports de chantier** ·
-**Préparation de paie** · **Journal et décisions**.
+**Préparation de paie** · **Journal et décisions** · **Déménagement
+international** (colisage, douane, poids taxable).
 
 Les deux arguments qui font vendre : la signature à distance supprime les
 relances pour un papier signé, et **Peppol est obligatoire en B2B belge depuis
 2026** — sans lui, on ne peut plus facturer une entreprise. Un déménageur qui
 travaille pour des sociétés n'a pas le choix.
 
-### Pro ajoute
-**Déménagement international** (livré) · Multi-dépôts *(à venir)* ·
-Stockage et garde-meubles *(à venir)*.
+### Pro — VERROUILLÉE (décision du 2026-08-05)
+**Centres logistiques** · **Gestionnaire de dépôt** · Stockage et
+garde-meubles. Aucun n'est construit.
 
-> Pro repose sur **au moins un module déjà livré** — l'international. Vendre
-> un palier qui ne contient que des promesses se paie très cher. Un test
-> l'interdit.
+> Pro est **annoncée mais pas souscriptible**. Ce qui la définit — plusieurs
+> centres, chacun avec ses équipes et son responsable, et la direction une vue
+> consolidée — reste à bâtir. Encaisser pour une promesse est le plus sûr moyen
+> de perdre un client au premier mois. Le verrou vit dans
+> `plan_souscriptible()` en base : c'est le seul endroit à changer pour
+> l'ouvrir.
+
+**Conséquence traitée** : l'international était dans Pro. Il est **livré et
+testé** ; le laisser dans une offre qu'on ne peut pas souscrire l'aurait rendu
+invendable. Il rejoint **Regular**, et pourra remonter si Pro s'ouvre — sa
+valeur propre, la logistique multi-sites, se suffit à elle-même.
+
+**Seconde conséquence** : l'essai porte désormais sur **Regular**, la meilleure
+offre souscriptible. Faire essayer une offre qu'on ne peut pas acheter ensuite
+ne crée que de la frustration. La constante suit automatiquement l'ouverture
+de Pro.
 
 ## Comment la contrainte s'applique
 

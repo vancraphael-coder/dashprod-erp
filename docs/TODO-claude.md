@@ -34,8 +34,11 @@ signature, civilité), voyant du journal (05/08), **grille commerciale +
 abonnement** (05/08 — EX-01 clos), **tri « à s'occuper »** des dossiers.
 
 Reste avant le verrouillage :
-- [ ] corriger la vitrine, qui promet encore « utilisateurs illimités »
-      (contredit Starter 2 / Regular 5) et n'affiche qu'un seul prix ;
+- [x] vitrine corrigée ✅ 05/08 : trois offres lues depuis `plans.js`, plus
+      aucun prix ni promesse en dur, garde-fou `vitrine-coherence.test.js`
+      (prouvé en réintroduisant « illimité ») ;
+- [ ] construire les CENTRES LOGISTIQUES et le rôle gestionnaire de dépôt —
+      c'est ce qui ouvrira l'offre Pro (`plan_souscriptible` en base) ;
 - [ ] brancher un prestataire de paiement (aucun encaissement construit). (les quatre décisions D1→D4 sont
 tranchées ; plus aucun lot n'est bloqué).
 
