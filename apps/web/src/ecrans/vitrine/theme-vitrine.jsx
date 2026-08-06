@@ -213,6 +213,12 @@ export function PiedPublic({ aller }) {
               <button style={pied.lien} onClick={() => aller("client")}>Suivre mon déménagement</button>
               <button style={pied.lien} onClick={() => aller("client")}>Signer une offre</button>
             </div>
+            <div>
+              <div style={pied.titre}>Légal</div>
+              <button style={pied.lien} onClick={() => aller("cgu")}>Conditions d'utilisation</button>
+              <button style={pied.lien} onClick={() => aller("confidentialite")}>Confidentialité</button>
+              <button style={pied.lien} onClick={() => aller("mentions")}>Mentions légales</button>
+            </div>
           </div>
         </div>
         <div style={{ borderTop: `1px solid ${V.bordNuit}`, marginTop: 26,
