@@ -21,7 +21,7 @@ import {
 } from "../lib/adaptateur.js";
 import {
   PLANS, plan, module, prixPeriode, gainSurPrecedent, modulesAVenir,
-  REMISE_ANNUELLE_PCT, ESSAI_JOURS, ESSAI_PLAN,
+  planDisponible, REMISE_ANNUELLE_PCT, ESSAI_JOURS, ESSAI_PLAN,
   joursEssaiRestants, selectionRecevable,
 } from "@domaine/commercial/plans.js";
 import { C, S, euros } from "../lib/theme.jsx";
@@ -125,10 +125,16 @@ export default function Abonnement({ retour }) {
         const estActuel = p.cle === actuel;
         const gains = gainSurPrecedent(p.cle);
         const aVenir = modulesAVenir(p.cle);
+        // Une offre peut être ANNONCÉE sans être vendable : Pro attend ses
+        // centres logistiques. On la montre — elle dit où va le produit — mais
+        // on ne l'encaisse pas.
+        const ouverte = planDisponible(p.cle);
         return (
           <div key={p.cle} style={{ ...S.carte,
             borderWidth: estActuel || cible === p.cle ? 2 : 1,
-            borderColor: estActuel ? C.vert : cible === p.cle ? C.bleu : C.bord }}>
+            borderColor: estActuel ? C.vert : cible === p.cle ? C.bleu : C.bord,
+            opacity: ouverte ? 1 : .72,
+            borderStyle: ouverte ? "solid" : "dashed" }}>
             <div style={{ display: "flex", justifyContent: "space-between",
                           alignItems: "baseline" }}>
               <span style={{ fontSize: 17, fontWeight: 800, color: C.encre }}>
@@ -138,6 +144,13 @@ export default function Abonnement({ retour }) {
                     color: C.vert, background: "#ECFDF5", borderRadius: 999,
                     padding: "2px 8px", border: "1px solid #A7F3D0" }}>
                     votre offre
+                  </span>
+                )}
+                {!ouverte && (
+                  <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 700,
+                    color: C.muet, background: "#F1F5F9", borderRadius: 999,
+                    padding: "2px 8px", border: `1px solid ${C.bord}` }}>
+                    bientôt
                   </span>
                 )}
               </span>
@@ -180,7 +193,15 @@ export default function Abonnement({ retour }) {
               </div>
             )}
 
-            {!estActuel && (
+            {!ouverte && (
+              <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10,
+                background: "#F8FAFC", border: `1px solid ${C.bord}`,
+                fontSize: 11.5, color: C.muet, lineHeight: 1.5 }}>
+                {plan(p.cle).verrou_motif}
+              </div>
+            )}
+
+            {!estActuel && ouverte && (
               <button onClick={() => choisir(p.cle)} style={{
                 width: "100%", marginTop: 12, padding: "11px", borderRadius: 10,
                 cursor: "pointer", fontSize: 13, fontWeight: 700,
