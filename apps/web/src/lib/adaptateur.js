@@ -801,6 +801,7 @@ export async function obtenirOrganisation() {
     const { data, error } = await supabase.from("organisations")
       .select("id, nom, nom_commercial, forme_juridique, tva, bce, adresse, cp, "
               + "ville, pays, tel, email, site_web, iban, devise_defaut, "
+              + "plan, periodicite, essai_fin, "
               + "parametres_facturation").single();
     if (error) throw new Error(
       "Organisation introuvable pour cette session. Contactez votre administrateur.");
@@ -2408,6 +2409,35 @@ export async function trancherConstat(constatId, decision, motif) {
 export async function certificatSignature(affaireId) {
   const { data, error } = await supabase.rpc("cmd_certificat_signature",
     { p_affaire: affaireId });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ── Abonnement : offre, périodicité, transition ───────────────────────────
+// Principe qui gouverne la descente d'offre : on n'efface JAMAIS de données.
+// Ce qui dépasse la nouvelle limite est archivé, donc réactivable — c'est ce
+// qui permet de remonter sans avoir rien perdu.
+
+export async function exigencesOffre(cible) {
+  const { data, error } = await supabase.rpc("cmd_exigences_offre", { p_cible: cible });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** `conserver` : identifiants des membres qui gardent leur accès. */
+export async function changerOffre(cible, { periodicite, conserver } = {}) {
+  const { data, error } = await supabase.rpc("cmd_changer_offre", {
+    p_cible: cible,
+    p_periodicite: periodicite || null,
+    p_conserver: conserver && conserver.length ? conserver : null,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function reactiverMembre(membreId) {
+  const { data, error } = await supabase.rpc("cmd_reactiver_membre",
+    { p_membre: membreId });
   if (error) throw new Error(error.message);
   return data;
 }
