@@ -22,6 +22,7 @@ import Fermetures from "./Fermetures.jsx";
 import Confidentialite from "./Confidentialite.jsx";
 import Comptabilite from "./Comptabilite.jsx";
 import Journal from "./Journal.jsx";
+import Abonnement from "./Abonnement.jsx";
 import { identiteComplete, tauxTva } from "@domaine/organisation/identite.js";
 import Identite from "./Identite.jsx";
 import {
@@ -67,6 +68,9 @@ export default function Parametres({
   }
   if (ouvert === "journal") {
     return <Journal retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "abonnement") {
+    return <Abonnement retour={() => setOuvert(null)} />;
   }
 
   if (ouvert) {
@@ -127,6 +131,11 @@ export default function Parametres({
         <Entree icone="🗓️" titre="Fermetures de l'entreprise"
                 resume="Congé annuel collectif, ponts. S'affichent sur le planning avec les jours fériés."
                 onClick={() => setOuvert("fermetures")} />
+
+        <Rubrique>Abonnement</Rubrique>
+        <Entree icone="💳" titre="Mon offre"
+                resume="Starter, Regular ou Pro. Facturation mensuelle ou annuelle."
+                onClick={() => setOuvert("abonnement")} />
 
         <Rubrique>Comptabilité</Rubrique>
         <Entree icone="📊" titre="Comptabilité"

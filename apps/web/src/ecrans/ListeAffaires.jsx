@@ -9,26 +9,43 @@ import React, { useEffect, useMemo, useState } from "react";
 import { listerAffaires } from "../lib/adaptateur.js";
 import { caSigne } from "@domaine/pilotage/finances.js";
 import { zoneMarge } from "@domaine/chiffrage/moteur.js";
+import { regrouperParHorizon, compteurUrgent } from "@domaine/crm/horizons.js";
 import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 
 // Le cycle ENTIER est filtrable : sans « facturé / payé / clos », la fin de
 // parcours était invisible depuis la liste ; sans « reporté / annulé », les
 // désistements aussi. La barre défile horizontalement sur mobile.
-const FILTRES = ["tous", "devis", "envoye", "confirme", "planifie", "en_cours",
-                 "effectue", "facture", "paye", "clos", "reporte", "annule"];
+// « À s'occuper » est le mode par DÉFAUT : c'est la question qu'on se pose en
+// ouvrant l'écran le matin. « Tous » reste accessible pour retrouver un vieux
+// dossier. Les états « facture » et « paye » ont disparu de la liste : depuis
+// la séparation des cycles (0064), ce ne sont plus des états du déménagement —
+// les proposer en filtre ne rendait jamais aucun résultat.
+const FILTRES = ["a_soccuper", "tous", "devis", "envoye", "confirme", "planifie",
+                 "en_cours", "effectue", "clos", "reporte", "annule"];
+const LIBELLES_FILTRE = { a_soccuper: "À s'occuper", tous: "Tous" };
 
 export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
   const [affaires, setAffaires] = useState([]);
   const [recherche, setRecherche] = useState("");
-  const [filtre, setFiltre] = useState("tous");
+  const [filtre, setFiltre] = useState("a_soccuper");
 
   useEffect(() => { listerAffaires().then(setAffaires); }, []);
 
   const visibles = useMemo(() => affaires
-    .filter((a) => filtre === "tous" || a.etat === filtre)
+    .filter((a) => filtre === "tous" || filtre === "a_soccuper" || a.etat === filtre)
     .filter((a) => !recherche ||
       (a.client?.nom || "").toLowerCase().includes(recherche.toLowerCase())),
   [affaires, recherche, filtre]);
+
+  // Regroupement par horizon : en retard / aujourd'hui / demain / cette
+  // semaine / semaines nommées / mois. Une liste plate ne dit pas ce qui presse.
+  const groupes = useMemo(() => regrouperParHorizon(visibles, {
+    // En mode « à s'occuper », les dossiers terminés sortent d'eux-mêmes.
+    // Sur un filtre d'état précis, on montre ce qui est demandé.
+    seulementActifs: filtre === "a_soccuper",
+  }), [visibles, filtre]);
+
+  const urgent = useMemo(() => compteurUrgent(affaires), [affaires]);
 
   // CA signé : le module Pilotage, pas un calcul local (une seule implémentation).
   const ca = useMemo(() => caSigne(
@@ -41,8 +58,16 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div style={S.titre}>Dossiers</div>
           <div style={{ fontSize: 12.5, color: C.muet }}>
-            CA signé&nbsp;
-            <b style={{ color: C.encre }}>{euros(ca)}</b>
+            {urgent.total > 0 ? (
+              <span style={{ color: urgent.retard > 0 ? C.rouge : C.bleu,
+                             fontWeight: 700 }}>
+                {urgent.retard > 0 && `${urgent.retard} en retard`}
+                {urgent.retard > 0 && urgent.aujourdhui > 0 && " · "}
+                {urgent.aujourdhui > 0 && `${urgent.aujourdhui} aujourd'hui`}
+              </span>
+            ) : (
+              <>CA signé&nbsp;<b style={{ color: C.encre }}>{euros(ca)}</b></>
+            )}
           </div>
         </div>
         <input
@@ -58,19 +83,37 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
               borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600,
               cursor: "pointer", whiteSpace: "nowrap",
             }}>
-              {f === "tous" ? "Tous" : (ETATS_UI[f]?.libelle || f)}
+              {LIBELLES_FILTRE[f] || ETATS_UI[f]?.libelle || f}
             </button>
           ))}
         </div>
       </div>
 
-      {visibles.length === 0 && (
-        <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
-          Aucun dossier — le bouton « + » en crée un.
+      {groupes.length === 0 && (
+        <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13,
+                      lineHeight: 1.5 }}>
+          {filtre === "a_soccuper"
+            ? "Rien à traiter. Tous vos dossiers sont à jour."
+            : "Aucun dossier — le bouton « + » en crée un."}
         </div>
       )}
 
-      {visibles.map((a) => (
+      {groupes.map((g) => (
+        <div key={g.cle}>
+          {/* L'en-tête d'horizon. Le retard se signale : c'est ce qui coûte. */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8,
+                        padding: "12px 20px 6px" }}>
+            <span style={{ fontSize: 12, fontWeight: 800,
+              textTransform: "uppercase", letterSpacing: ".05em",
+              color: g.cle === "retard" ? C.rouge
+                   : g.cle === "aujourdhui" ? C.bleu : C.fantome }}>
+              {g.titre}
+            </span>
+            <span style={{ fontSize: 11.5, color: C.fantome }}>
+              {g.dossiers.length}
+            </span>
+          </div>
+          {g.dossiers.map((a) => (
         <div key={a.id} style={{ ...S.carte, cursor: "pointer" }} onClick={() => ouvrirAffaire(a.id)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
@@ -108,6 +151,8 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
             </div>
           </div>
 
+        </div>
+          ))}
         </div>
       ))}
 
