@@ -5,6 +5,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   MODULES, PLANS, PLAN_DEFAUT, module, plan, modulesSocle, planOuvre,
+  planDisponible, plansDisponibles, meilleurPlanDisponible,
   modulesUtilisables, modulesAVenir, gainSurPrecedent, peutAjouterUtilisateur,
   prixMensuel, coutParUtilisateur, planMinimalPour,
 } from "../src/commercial/plans.js";
@@ -83,17 +84,31 @@ test("Peppol n'est pas dans Starter — c'est ce qui force le B2B à monter", ()
   assert.equal(planOuvre("regular", "peppol"), true);
 });
 
-test("l'international est réservé à Pro", () => {
-  assert.equal(planOuvre("regular", "international"), false);
-  assert.equal(planOuvre("pro", "international"), true);
-  assert.equal(planMinimalPour("international"), "pro");
+test("l'international est vendu dès Regular tant que Pro est verrouillée", () => {
+  // Il est LIVRÉ et testé : le laisser dans une offre qu'on ne peut pas
+  // souscrire le rendrait invendable.
+  assert.equal(planOuvre("regular", "international"), true);
+  assert.equal(planMinimalPour("international"), "regular");
 });
 
-test("Pro apporte au moins un module DÉJÀ LIVRÉ — sinon il est invendable", () => {
-  const nouveautes = gainSurPrecedent("pro").filter((c) => module(c)?.livre);
-  assert.ok(nouveautes.length > 0,
-    "Pro ne doit pas reposer uniquement sur des promesses");
-  assert.ok(nouveautes.includes("international"));
+test("une offre VENDUE ne repose jamais uniquement sur des promesses", () => {
+  // La règle vaut pour ce qu'on encaisse. Pro est annoncée mais VERROUILLÉE
+  // précisément parce que ce qui la définit n'est pas construit — c'est la
+  // manière honnête de tenir la règle plutôt que de la contourner.
+  for (const p of plansDisponibles()) {
+    if (PLANS.indexOf(p) === 0) continue;
+    const nouveautes = gainSurPrecedent(p.cle).filter((c) => module(c)?.livre);
+    assert.ok(nouveautes.length > 0,
+      `${p.cle} est vendue sans apporter un seul module livré`);
+  }
+  assert.equal(planDisponible("pro"), false, "Pro ne doit pas être souscriptible");
+  assert.ok(plan("pro").verrou_motif, "et le motif du verrou doit être dit");
+});
+
+test("Pro n'apporte que du non-livré — d'où le verrou", () => {
+  const livres = gainSurPrecedent("pro").filter((c) => module(c)?.livre);
+  assert.deepEqual(livres, [],
+    "si Pro gagnait un module livré, elle devrait être ouverte à la vente");
 });
 
 test("ce qui n'est pas livré est séparé de ce qui l'est", () => {
@@ -141,11 +156,12 @@ test("la grille du domaine correspond à celle de la base (0075)", () => {
               "flotte", "facturation"],
     regular: ["crm", "releve", "devis", "offre", "planning", "terrain",
               "flotte", "facturation", "signature_client", "espace_client",
-              "peppol", "comptabilite", "rapport_chantier", "paie", "journal"],
+              "peppol", "comptabilite", "rapport_chantier", "paie", "journal",
+              "international"],
     pro: ["crm", "releve", "devis", "offre", "planning", "terrain",
           "flotte", "facturation", "signature_client", "espace_client",
           "peppol", "comptabilite", "rapport_chantier", "paie", "journal",
-          "international", "multi_depots", "stockage_3d"],
+          "international", "multi_depots", "gestionnaire_depot", "stockage_3d"],
   };
   for (const p of PLANS) {
     assert.deepEqual([...p.modules].sort(), [...EN_BASE[p.cle]].sort(),
@@ -189,9 +205,12 @@ test("l'annuel est toujours moins cher que douze mensualités", () => {
   }
 });
 
-test("l'essai dure 5 jours, sur l'offre Pro", () => {
+test("l'essai dure 5 jours, sur la meilleure offre SOUSCRIPTIBLE", () => {
   assert.equal(ESSAI_JOURS, 5);
-  assert.equal(ESSAI_PLAN, "pro");
+  // Faire essayer une offre verrouillée serait une impasse : le client ne
+  // pourrait pas la souscrire à la fin. La constante suit l'ouverture de Pro.
+  assert.equal(ESSAI_PLAN, meilleurPlanDisponible());
+  assert.equal(planDisponible(ESSAI_PLAN), true);
   const fin = finEssai(new Date("2026-08-05T10:00:00"));
   assert.equal(fin.toISOString().slice(0, 10), "2026-08-10");
 });
