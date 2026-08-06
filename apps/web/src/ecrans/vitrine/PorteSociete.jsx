@@ -12,6 +12,9 @@
 
 import React, { useState } from "react";
 import { connecterAvecGoogle } from "../../lib/supabase.js";
+import {
+  PLANS, plan, ESSAI_JOURS, ESSAI_PLAN,
+} from "@domaine/commercial/plans.js";
 import { V, MONO, NavPublique, PiedPublic, BoutonGoogle, Etiquette }
   from "./theme-vitrine.jsx";
 
@@ -22,8 +25,11 @@ const ETAPES = [
   { t: "Travaillez", d: "Premier relevé, premier devis, première offre signée en ligne. Le jour même." },
 ];
 
+// Ce que l'essai ouvre réellement. La liste vient de l'offre d'essai, pas
+// d'un texte figé : promettre « utilisateurs illimités » alors que Regular en
+// compte 5 était une contre-vérité que le client découvrait au deuxième
+// collaborateur invité.
 const INCLUS = [
-  "Utilisateurs illimités — bureau et équipes terrain",
   "Devis, offres et signature « Lu et approuvé » en ligne",
   "Planning : missions, congés, fermetures, jours fériés",
   "Facturation + envoi Peppol (obligation B2B belge 2026)",
@@ -92,11 +98,21 @@ export default function PorteSociete({ aller }) {
                   boxShadow: "0 24px 60px rgba(37,99,235,.14)" }}>
               <div style={{ display: "flex", justifyContent: "space-between",
                             alignItems: "baseline" }}>
-                <span className="v-display" style={{ fontSize: 44 }}>360 €</span>
-                <span style={{ fontSize: 12.5, color: V.muet }}>HTVA / mois</span>
+                <span className="v-display" style={{ fontSize: 44 }}>
+                  {ESSAI_JOURS} jours
+                </span>
+                <span style={{ fontSize: 12.5, color: V.muet }}>offerts</span>
               </div>
-              <div style={{ fontSize: 12.5, color: V.muet, marginTop: 2 }}>
-                Par entreprise. Tout inclus, sans engagement.
+              <div style={{ fontSize: 12.5, color: V.muet, marginTop: 2,
+                            lineHeight: 1.5 }}>
+                Essai complet de l'offre {plan(ESSAI_PLAN)?.nom}, sans carte
+                bancaire. Ensuite, à partir de{" "}
+                <b style={{ color: V.encre }}>
+                  {Math.round(PLANS[0].prix_centimes / 100)} € HTVA / mois
+                </b>{" "}
+                — {PLANS[0].utilisateurs} utilisateurs, puis{" "}
+                {Math.round(plan("regular").prix_centimes / 100)} € pour{" "}
+                {plan("regular").utilisateurs}.
               </div>
 
               <ul style={{ margin: "18px 0 0", padding: 0, listStyle: "none",

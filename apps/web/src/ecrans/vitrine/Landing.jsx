@@ -13,6 +13,10 @@
 // =============================================================================
 
 import React from "react";
+import {
+  PLANS, plan, module, prixPeriode, gainSurPrecedent, modulesAVenir,
+  planDisponible, REMISE_ANNUELLE_PCT, ESSAI_JOURS, ESSAI_PLAN,
+} from "@domaine/commercial/plans.js";
 import { V, MONO, NavPublique, PiedPublic, Etiquette } from "./theme-vitrine.jsx";
 
 const MODULES = [
@@ -186,23 +190,23 @@ export default function Landing({ aller }) {
                       gap: 36, alignItems: "center",
                       gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
           <div>
-            <Etiquette numero="1 tarif" libelle="pas de surprise" />
+            <Etiquette numero="3 offres" libelle="vous montez quand vous grandissez" />
             <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
                                                margin: "14px 0 0" }}>
-              Un abonnement. Tout inclus.
+              Une offre par taille d'entreprise.
             </h2>
             <p style={{ fontSize: 15, color: V.muet, lineHeight: 1.6,
                         margin: "12px 0 0", maxWidth: "48ch" }}>
-              Pas de module en option, pas de prix par utilisateur, pas de palier.
-              Toute votre équipe, tous les modules, toutes les mises à jour.
+              Un prix par entreprise, pas par utilisateur. Vous changez d'offre
+              quand votre équipe grandit — et vos données vous suivent : rien
+              n'est jamais supprimé si vous redescendez.
             </p>
             <ul style={{ margin: "18px 0 0", padding: 0, listStyle: "none",
                          display: "grid", gap: 9 }}>
-              {["Utilisateurs illimités, équipe et bureau",
-                "Devis, signature en ligne, planning, chantier, facturation",
-                "Facturation électronique Peppol (obligation B2B 2026)",
+              {[`${ESSAI_JOURS} jours d'essai, sans carte bancaire`,
+                `Mensuel sans engagement, ou annuel remisé de ${REMISE_ANNUELLE_PCT} %`,
                 "Vos données cloisonnées, hébergées en Europe",
-                "Export international : colisage, douane, poids taxable"].map((x) => (
+                "Exportables à tout moment, même après résiliation"].map((x) => (
                 <li key={x} style={{ display: "flex", gap: 10, fontSize: 14,
                                      color: V.encre }}>
                   <span style={{ color: V.route, fontWeight: 800 }}>✓</span>{x}
@@ -210,30 +214,101 @@ export default function Landing({ aller }) {
               ))}
             </ul>
           </div>
-          <div style={{ justifySelf: "center", width: "min(340px, 100%)" }}>
-            <div className="v-carte" style={{ padding: 28, textAlign: "center",
-                  borderWidth: 2, borderColor: V.route,
-                  boxShadow: "0 24px 60px rgba(37,99,235,.16)" }}>
-              <div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 600,
-                            letterSpacing: ".1em", color: V.muet }}>
-                ABONNEMENT MENSUEL
-              </div>
-              <div style={{ margin: "14px 0 4px" }}>
-                <span className="v-display" style={{ fontSize: 56 }}>360 €</span>
-              </div>
-              <div style={{ fontSize: 13, color: V.muet }}>
-                HTVA / mois / entreprise
-              </div>
-              <button className="v-btn v-btn-plein" style={{ width: "100%", marginTop: 22 }}
-                      onClick={() => aller("societe")}>
-                Créer ma société
-              </button>
-              <div style={{ fontSize: 11.5, color: V.brume, marginTop: 12,
-                            lineHeight: 1.5 }}>
-                Sans engagement de durée. Vos données restent les vôtres,
-                exportables à tout moment.
-              </div>
-            </div>
+
+          <div style={{ display: "grid", gap: 14,
+                        gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                        gridColumn: "1 / -1" }}>
+            {PLANS.map((p) => {
+              const ouverte = planDisponible(p.cle);
+              const gains = gainSurPrecedent(p.cle).filter((c) => module(c)?.livre);
+              const aVenir = modulesAVenir(p.cle);
+              const vedette = p.recommande && ouverte;
+              return (
+                <div key={p.cle} className="v-carte" style={{ padding: 22,
+                  borderWidth: vedette ? 2 : 1,
+                  borderColor: vedette ? V.route : undefined,
+                  borderStyle: ouverte ? "solid" : "dashed",
+                  opacity: ouverte ? 1 : .74,
+                  boxShadow: vedette ? "0 24px 60px rgba(37,99,235,.16)" : undefined }}>
+
+                  <div style={{ display: "flex", alignItems: "baseline",
+                                justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 600,
+                      letterSpacing: ".1em", color: V.muet,
+                      textTransform: "uppercase" }}>{p.nom}</span>
+                    {vedette && (
+                      <span style={{ fontSize: 10.5, fontWeight: 700,
+                        color: V.route, background: "#EFF6FF", borderRadius: 999,
+                        padding: "2px 8px" }}>le plus choisi</span>
+                    )}
+                    {!ouverte && (
+                      <span style={{ fontSize: 10.5, fontWeight: 700,
+                        color: V.muet, background: "#F1F5F9", borderRadius: 999,
+                        padding: "2px 8px" }}>bientôt</span>
+                    )}
+                  </div>
+
+                  <div style={{ margin: "12px 0 2px" }}>
+                    <span className="v-display" style={{ fontSize: 38 }}>
+                      {Math.round(p.prix_centimes / 100)} €
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: V.muet }}>
+                    HTVA / mois · {p.utilisateurs ?? "sans limite d'"}
+                    {p.utilisateurs ? ` utilisateur${p.utilisateurs > 1 ? "s" : ""}` : "utilisateurs"}
+                  </div>
+                  <div style={{ fontSize: 13, color: V.encre, marginTop: 10,
+                                lineHeight: 1.5, fontWeight: 600 }}>
+                    {p.promesse}
+                  </div>
+                  <div style={{ fontSize: 12, color: V.muet, marginTop: 4,
+                                lineHeight: 1.5 }}>
+                    {p.pour}
+                  </div>
+
+                  <ul style={{ margin: "14px 0 0", padding: 0, listStyle: "none",
+                               display: "grid", gap: 6 }}>
+                    {PLANS.indexOf(p) === 0 ? (
+                      <li style={{ fontSize: 12.5, color: V.encre, display: "flex", gap: 8 }}>
+                        <span style={{ color: V.route, fontWeight: 800 }}>✓</span>
+                        Dossiers, relevé, devis, offre, planning, terrain,
+                        véhicules et facturation
+                      </li>
+                    ) : (
+                      <li style={{ fontSize: 11.5, color: V.muet, marginBottom: 2 }}>
+                        Tout {PLANS[PLANS.indexOf(p) - 1].nom}, plus :
+                      </li>
+                    )}
+                    {gains.map((c) => (
+                      <li key={c} style={{ fontSize: 12.5, color: V.encre,
+                                           display: "flex", gap: 8 }}>
+                        <span style={{ color: V.route, fontWeight: 800 }}>✓</span>
+                        {module(c).titre}
+                      </li>
+                    ))}
+                    {aVenir.map((c) => (
+                      <li key={c} style={{ fontSize: 12, color: V.brume,
+                                           display: "flex", gap: 8 }}>
+                        <span>◦</span>{module(c).titre}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {ouverte ? (
+                    <button className={vedette ? "v-btn v-btn-plein" : "v-btn v-btn-blanc"}
+                            style={{ width: "100%", marginTop: 18 }}
+                            onClick={() => aller("societe")}>
+                      {`Essayer ${ESSAI_JOURS} jours`}
+                    </button>
+                  ) : (
+                    <div style={{ fontSize: 11.5, color: V.muet, marginTop: 18,
+                                  lineHeight: 1.5 }}>
+                      {plan(p.cle).verrou_motif}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
