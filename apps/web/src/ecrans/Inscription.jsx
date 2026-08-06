@@ -20,12 +20,12 @@ import { V, MONO, Logo, Etiquette } from "./vitrine/theme-vitrine.jsx";
 
 export default function Inscription({ email, onCreee }) {
   const [volet, setVolet] = useState(null);   // null | "societe" | "client"
-  const [f, setF] = useState({ nom: "", nomAdmin: "", bce: "", tva: "", tel: "" });
+  const [f, setF] = useState({ nom: "", nomAdmin: "", bce: "", tva: "", tel: "", code: "" });
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
 
   const tvaOk = tvaBelgeValide(f.tva);
-  const pret = f.nom.trim().length > 1 && tvaOk;
+  const pret = f.nom.trim().length > 1 && tvaOk && f.code.trim().length > 3;
 
   async function creer() {
     setErreur(null); setEnCours(true);
@@ -94,10 +94,23 @@ export default function Inscription({ email, onCreee }) {
         <div style={{ maxWidth: 620, margin: "0 auto", padding: "16px 20px 0" }}>
           <div className="v-carte" style={{ padding: 24 }}>
             <Etiquette numero="2 min" libelle="base vierge, à vous" />
+
+            {/* Lancement fermé : le code est exigé côté base. On l'affiche en
+                tête pour que ce ne soit pas une surprise au moment de valider. */}
+            <label style={{ ...label, marginTop: 18 }}>
+              Code d'invitation <span style={{ color: "#DC2626" }}>*</span>
+            </label>
+            <input style={{ ...champ, fontFamily: MONO, letterSpacing: ".05em" }}
+                   value={f.code} placeholder="DP-XXXXXXXX" autoFocus
+                   onChange={(e) => setF((x) => ({ ...x, code: e.target.value.toUpperCase() }))} />
+            <div style={{ fontSize: 11.5, color: V.muet, marginTop: 4, lineHeight: 1.45 }}>
+              Dashprod ouvre par vagues. Ce code vous a été transmis par l'équipe.
+            </div>
+
             <label style={{ ...label, marginTop: 18 }}>
               Nom de la société <span style={{ color: "#DC2626" }}>*</span>
             </label>
-            <input style={champ} value={f.nom} autoFocus
+            <input style={champ} value={f.nom}
                    placeholder="Déménagements Dupont SRL"
                    onChange={(e) => setF((x) => ({ ...x, nom: e.target.value }))} />
 
