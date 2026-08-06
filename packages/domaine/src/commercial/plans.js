@@ -72,9 +72,13 @@ export const MODULES = Object.freeze([
   { cle: "international", titre: "Déménagement international", livre: true,
     valeur: "Inventaire numéroté colis par colis, liste de colisage douanière, "
           + "poids taxable maritime et aérien calculés juste." },
-  { cle: "multi_depots", titre: "Multi-dépôts", livre: false,
-    valeur: "Chaque dépôt ses équipes, ses véhicules, son planning — et la "
-          + "direction une vue consolidée." },
+  { cle: "multi_depots", titre: "Centres logistiques", livre: false,
+    valeur: "Plusieurs centres, chacun ses équipes, ses véhicules et son "
+          + "planning. Un gestionnaire par dépôt, et la direction une vue "
+          + "consolidée sur l'ensemble." },
+  { cle: "gestionnaire_depot", titre: "Gestionnaire de dépôt", livre: false,
+    valeur: "Un responsable par centre : il pilote son planning et ses équipes "
+          + "sans voir ni toucher aux autres dépôts." },
   { cle: "stockage_3d", titre: "Stockage et garde-meubles", livre: false,
     valeur: "Plan du dépôt, zones, emplacements : où est le mobilier de qui." },
 ]);
@@ -120,9 +124,14 @@ export const PLANS = Object.freeze([
     promesse: "Le circuit complet, du premier appel au paiement",
     pour: "L'entreprise établie, avec une équipe bureau et une ou deux équipes "
         + "terrain.",
+    // L'international a rejoint Regular : tant que Pro est verrouillé, le
+    // laisser là-haut rendrait un module LIVRÉ et testé invendable. Il
+    // remontera si Pro s'ouvre avec sa propre valeur — la logistique
+    // multi-sites, qui se suffit à elle-même.
     modules: [...modulesSocle(), "signature_client", "espace_client", "peppol",
-              "comptabilite", "rapport_chantier", "paie", "journal"],
-    motif_montee: "Plusieurs équipes, ou des déménagements à l'international.",
+              "comptabilite", "rapport_chantier", "paie", "journal",
+              "international"],
+    motif_montee: "Plusieurs centres logistiques, chacun son gestionnaire.",
     recommande: true,
   },
   {
@@ -130,13 +139,22 @@ export const PLANS = Object.freeze([
     nom: "Pro",
     prix_centimes: 72000,
     utilisateurs: null,
-    promesse: "Plusieurs équipes, l'international",
-    pour: "L'entreprise qui tourne avec plusieurs équipes, ou qui expédie à "
-        + "l'étranger.",
+    promesse: "Plusieurs centres logistiques",
+    pour: "L'entreprise qui exploite plusieurs dépôts, chacun avec ses équipes "
+        + "et son gestionnaire.",
     modules: [...modulesSocle(), "signature_client", "espace_client", "peppol",
               "comptabilite", "rapport_chantier", "paie", "journal",
-              "international", "multi_depots", "stockage_3d"],
+              "international", "multi_depots", "gestionnaire_depot",
+              "stockage_3d"],
     motif_montee: null,   // dernier palier
+
+    // VERROUILLÉE temporairement (décision de Raphaël, 05/08/2026). Ce qui la
+    // définit — plusieurs centres logistiques avec un gestionnaire par dépôt —
+    // n'est pas construit. On l'annonce sans la vendre : encaisser pour une
+    // promesse est le plus sûr moyen de perdre un client au premier mois.
+    disponible: false,
+    verrou_motif: "Les centres logistiques et les gestionnaires de dépôt sont "
+                + "en construction. Cette offre ouvrira quand ils seront prêts.",
   },
 ]);
 
@@ -146,6 +164,26 @@ export function plan(cle) {
 
 /** Le plan par défaut d'une organisation sans plan défini. */
 export const PLAN_DEFAUT = "regular";
+
+/** Une offre peut être annoncée sans être souscriptible. */
+export function planDisponible(clePlan) {
+  return plan(clePlan)?.disponible !== false;
+}
+
+/** Les offres réellement souscriptibles, dans l'ordre. */
+export function plansDisponibles() {
+  return PLANS.filter((p) => p.disponible !== false);
+}
+
+/**
+ * La meilleure offre SOUSCRIPTIBLE. L'essai porte dessus : promettre un essai
+ * sur une offre verrouillée serait une impasse — le client ne pourrait pas la
+ * souscrire à la fin.
+ */
+export function meilleurPlanDisponible() {
+  const dispo = plansDisponibles();
+  return dispo[dispo.length - 1]?.cle || PLAN_DEFAUT;
+}
 
 /** Ce plan ouvre-t-il ce module ? */
 export function planOuvre(clePlan, cleModule) {
@@ -236,7 +274,13 @@ export const REMISE_ANNUELLE_PCT = 5;
 
 /** Durée de l'essai, et l'offre sur laquelle il porte. */
 export const ESSAI_JOURS = 5;
-export const ESSAI_PLAN = "pro";
+/**
+ * L'essai porte sur la meilleure offre SOUSCRIPTIBLE — aujourd'hui Regular,
+ * puisque Pro est verrouillée. Faire essayer une offre qu'on ne peut pas
+ * acheter ensuite ne crée que de la frustration. La constante suit
+ * automatiquement l'ouverture de Pro.
+ */
+export const ESSAI_PLAN = meilleurPlanDisponible();
 
 /**
  * Prix d'une période. L'annuel se règle d'avance, remise déduite.
