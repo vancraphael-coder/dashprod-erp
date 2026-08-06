@@ -55,7 +55,7 @@ export default function PorteSociete({ aller }) {
         <section style={{ maxWidth: 1080, margin: "0 auto",
                           padding: "clamp(44px, 7vw, 84px) 20px 20px",
                           display: "grid", gap: 44,
-                          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+                          gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
           <div className="v-lever">
             <Etiquette numero="PORTE A" libelle="entreprises" />
             <h1 className="v-display" style={{ fontSize: "clamp(30px, 4.4vw, 48px)",
@@ -152,7 +152,7 @@ export default function PorteSociete({ aller }) {
         <section style={{ maxWidth: 1080, margin: "0 auto",
                           padding: "clamp(30px, 5vw, 56px) 20px" }}>
           <div style={{ display: "grid", gap: 14,
-                        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                        gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))" }}>
             {[["Fait pour le métier", "Relevé par pièce, monte-meubles, suppléments piano ou cave : le vocabulaire du déménagement, pas un CRM déguisé."],
               ["Conforme d'origine", "Peppol pour le B2B, « Lu et approuvé » opposable pour les offres, conservation légale des factures : la conformité est dans l'outil."],
               ["Vos données, chez vous", "Cloisonnement par entreprise imposé au niveau de la base. Vos clients et vos marges ne sortent pas de chez vous."]].map(([t, d]) => (

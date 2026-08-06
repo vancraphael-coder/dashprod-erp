@@ -48,7 +48,7 @@ export default function Landing({ aller }) {
         <div style={{ maxWidth: 1080, margin: "0 auto",
                       padding: "clamp(56px, 9vw, 110px) 20px clamp(48px, 7vw, 90px)",
                       display: "grid", gap: 44, alignItems: "center",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+                      gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
           <div className="v-lever">
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8,
                           fontFamily: MONO, fontSize: 12, fontWeight: 600,
@@ -131,7 +131,7 @@ export default function Landing({ aller }) {
       <section style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(40px, 6vw, 70px) 20px 10px" }}>
         <div style={{ display: "grid", gap: 16,
-                      gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+                      gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
           <Porte
             etiquette="PORTE A" titre="Créer ma société"
             texte="Votre entreprise de déménagement sur Dashprod : base vierge, vos barèmes, vos équipes. Opérationnel aujourd'hui."
@@ -162,7 +162,7 @@ export default function Landing({ aller }) {
           </p>
         </div>
         <div style={{ display: "grid", gap: 14, marginTop: 30,
-                      gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))" }}>
+                      gridTemplateColumns: "repeat(auto-fit, minmax(min(270px, 100%), 1fr))" }}>
           {MODULES.map((m) => (
             <article key={m.n} className="v-carte v-carte-hover" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center",
@@ -188,7 +188,7 @@ export default function Landing({ aller }) {
         <div style={{ maxWidth: 1080, margin: "0 auto",
                       padding: "clamp(44px, 6vw, 70px) 20px", display: "grid",
                       gap: 36, alignItems: "center",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+                      gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))" }}>
           <div>
             <Etiquette numero="3 offres" libelle="vous montez quand vous grandissez" />
             <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
@@ -216,7 +216,7 @@ export default function Landing({ aller }) {
           </div>
 
           <div style={{ display: "grid", gap: 14,
-                        gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))",
                         gridColumn: "1 / -1" }}>
             {PLANS.map((p) => {
               const ouverte = planDisponible(p.cle);

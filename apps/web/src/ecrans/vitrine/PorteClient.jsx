@@ -45,7 +45,7 @@ export default function PorteClient({ aller, onSigner }) {
         <section style={{ maxWidth: 1080, margin: "0 auto",
                           padding: "clamp(44px, 7vw, 84px) 20px 24px",
                           display: "grid", gap: 44,
-                          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+                          gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
           <div className="v-lever">
             <Etiquette numero="PORTE C" libelle="particuliers" />
             <h1 className="v-display" style={{ fontSize: "clamp(30px, 4.4vw, 48px)",
