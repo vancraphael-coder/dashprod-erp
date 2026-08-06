@@ -6,6 +6,17 @@
     <title>Dashprod ERP</title>
     <style>
       * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      /*
+        AUCUN BLANC SUR LES CÔTÉS.
+        Sur un téléphone étroit, il suffit d'UN élément plus large que l'écran
+        (une colonne de grille à largeur fixe, une image, un mot insécable)
+        pour que la page devienne défilable horizontalement : le fond de la
+        page s'arrête alors à la largeur de l'écran et laisse une bande claire
+        sur la droite. La cause est corrigée à la source (les grilles utilisent
+        `minmax(min(Npx, 100%), 1fr)`), ces règles sont la ceinture de sécurité.
+      */
+      html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+      img, svg, video, canvas { max-width: 100%; height: auto; }
       html, body { margin: 0; background: #F1F5FB; }
       /* iOS zoome les champs sous 16px : on impose 16 pour éviter le saut. */
       input, select, textarea { font-family: system-ui, sans-serif; font-size: 16px; color: #0F172A; }
