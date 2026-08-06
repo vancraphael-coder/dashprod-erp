@@ -9,7 +9,8 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { sessionCourante, configPresente, deconnecter } from "./lib/supabase.js";
-import { modeDonnees, reclamerInvitation, monProfil } from "./lib/adaptateur.js";
+import { modeDonnees, reclamerInvitation, monProfil, mesSocietes, choisirSociete }
+  from "./lib/adaptateur.js";
 import { C, Icone, gardeModifs, Confirmation } from "./lib/theme.jsx";
 import Connexion from "./ecrans/Connexion.jsx";
 import Diagnostic from "./ecrans/Diagnostic.jsx";
@@ -338,6 +339,9 @@ function App() {
   const [client, setClient] = useState(null);
   const [profil, setProfil] = useState(null);
   const [nonInvite, setNonInvite] = useState(null);
+  // Plusieurs sociétés, aucun choix : le jeton ne porte AUCUNE organisation.
+  // C'est voulu — deviner serait la pire des réponses (0081).
+  const [aChoisir, setAChoisir] = useState(null);
   const [charge, setCharge] = useState(false);
   const [route, setRoute] = useState({ ecran: "liste", affaireId: null });
   const [gardeEnAttente, setGardeEnAttente] = useState(null); // () => void — navigation différée
@@ -349,6 +353,16 @@ function App() {
         try {
           await reclamerInvitation();
           const p = await monProfil();
+          if (!p) {
+            // Le jeton peut être sans organisation parce que la personne
+            // appartient à PLUSIEURS sociétés et n'en a désigné aucune.
+            const societes = await mesSocietes().catch(() => []);
+            if (societes.length > 1) {
+              setAChoisir(societes);
+              setCharge(true);
+              return;
+            }
+          }
           if (p) {
             // Déménageur : il a une organisation.
             setProfil(p);
@@ -388,6 +402,11 @@ function App() {
                         onConnecte={() => window.location.reload()} />;
     }
     return <Landing aller={allerPublic} />;
+  }
+
+  // Plusieurs sociétés : on demande laquelle, on ne choisit pas à sa place.
+  if (configPresente && aChoisir) {
+    return <ChoixSociete societes={aChoisir} />;
   }
 
   // Espace client : e-mail authentifié reconnu comme client. Priorité sur toute
@@ -587,3 +606,65 @@ function App() {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
+
+/**
+ * CHOIX DE LA SOCIÉTÉ — quand une même personne travaille pour plusieurs.
+ *
+ * Tant qu'aucune n'est désignée, le jeton n'en porte AUCUNE : rien n'est
+ * lisible, et c'est la bonne réponse. Deviner (prendre « la première ») ferait
+ * apparaître les données d'une société dans la session d'une autre — la seule
+ * faute qui ne se rattrape pas.
+ *
+ * Le choix ne prend effet qu'après rafraîchissement du jeton : c'est lui, et
+ * lui seul, que le RLS écoute.
+ */
+function ChoixSociete({ societes }) {
+  const [enCours, setEnCours] = React.useState(null);
+  const [erreur, setErreur] = React.useState(null);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#F1F5FB", display: "flex",
+                  alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 420, background: "#fff",
+                    borderRadius: 16, padding: 24,
+                    boxShadow: "0 10px 30px -12px rgba(15,23,42,.25)" }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#0F172A" }}>
+          Dans quelle société travaillez-vous&nbsp;?
+        </div>
+        <div style={{ fontSize: 13, color: "#64748B", marginTop: 6, lineHeight: 1.5 }}>
+          Votre compte est rattaché à plusieurs sociétés. Vous n'en ouvrez
+          qu'une à la fois — les données ne se croisent jamais.
+        </div>
+        <div style={{ marginTop: 16 }}>
+          {societes.map((s) => (
+            <button key={s.org_id} disabled={Boolean(enCours)}
+              onClick={async () => {
+                setEnCours(s.org_id); setErreur(null);
+                try { await choisirSociete(s.org_id); window.location.reload(); }
+                catch (e) { setErreur(e.message || "Impossible"); setEnCours(null); }
+              }}
+              style={{ display: "block", width: "100%", textAlign: "left",
+                       marginTop: 8, padding: "13px 15px", borderRadius: 12,
+                       border: "1.5px solid #E2E8F0", background: "#fff",
+                       cursor: "pointer" }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: "#0F172A" }}>{s.nom}</div>
+              {s.role_principal && (
+                <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 2 }}>
+                  {s.role_principal.replace(/_/g, " ")}
+                </div>
+              )}
+              {enCours === s.org_id && (
+                <div style={{ fontSize: 11.5, color: "#2563EB", marginTop: 4 }}>
+                  Ouverture…
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+        {erreur && (
+          <div style={{ fontSize: 12.5, color: "#DC2626", marginTop: 10 }}>{erreur}</div>
+        )}
+      </div>
+    </div>
+  );
+}
