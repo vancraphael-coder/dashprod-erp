@@ -81,13 +81,50 @@ Points de contrôle en base (migration 0075) : `org_a_module()`,
 nécessaire** : « disponible à partir de l'offre Regular » est une proposition
 commerciale, « accès refusé » est une impasse.
 
+## Facturation et essai — tranchés le 2026-08-05
+
+**Périodicité** : mensuelle, ou annuelle **remisée de 5 %**. Sur Regular,
+l'annuel revient à 4 104 € au lieu de 4 320 € — 216 € économisés, soit
+342 €/mois. Un test vérifie que l'annuel est toujours plus avantageux que
+douze mensualités, sur les trois offres.
+
+**Essai** : **5 jours sur l'offre Pro**. On montre le meilleur, pas le socle.
+Techniquement, `plan` n'est pas modifié pendant l'essai : c'est
+`plan_effectif()` qui renvoie `pro` tant que `essai_fin` court. À l'échéance,
+l'entreprise retrouve son offre réelle **sans qu'aucune écriture n'ait à être
+défaite** — donc sans risque de rester bloquée dans un état intermédiaire.
+
+## Le changement d'offre — et le principe qui le gouverne
+
+> **On ne supprime jamais de données. C'est ce qui aide à remonter.**
+
+Une entreprise qui redescend garde **tout**. Ce qui dépasse la nouvelle limite
+est **archivé** (`actif = false`), jamais effacé : les comptes, leurs heures,
+leurs affectations et leur historique restent intacts. Réactiver suffit.
+
+Un logiciel qui punit la descente en détruisant des données perd le client
+deux fois : à la descente, et à la remontée qu'il ne fera pas.
+
+**Monter** ne demande aucun arbitrage. **Redescendre** en dépassant la limite
+ouvre une page de transition qui :
+
+1. annonce les **modules perdus** — sans rien demander : leurs données restent
+   en base, simplement inaccessibles, et redeviennent lisibles si l'entreprise
+   remonte ;
+2. fait **désigner qui conserve son accès**. Le système ne choisit jamais à la
+   place du client : trancher soi-même qui perd son compte serait la pire des
+   automatisations. La commande `cmd_changer_offre` REFUSE tant que le choix
+   n'est pas fait.
+
+Deux garde-fous : on ne peut pas désigner plus de personnes qu'il n'y a de
+places, et **l'administrateur ne peut pas se retirer lui-même** — sinon plus
+personne ne pourrait remonter d'offre ensuite.
+
 ## Décisions qui restent à Raphaël
 
-1. **Les prix de Starter et Pro** (180 € et 720 €). Regular est fixé à 360 €.
-   La contrainte à respecter : coût par utilisateur strictement décroissant.
-2. **Engagement et facturation** : mensuel sans engagement, ou remise à
-   l'année ? Rien n'est construit là-dessus.
-3. **Période d'essai** : combien de jours, et sur quelle offre ? Non construit.
-4. **Le passage d'offre** : qui le déclenche, et que se passe-t-il si une
-   entreprise redescend avec 4 utilisateurs vers Starter (limite 2) ? Le code
-   refuse aujourd'hui l'ajout, pas la descente — à trancher.
+1. **Confirmer 180 € et 720 €** (Regular fixé à 360 €). Contrainte à respecter :
+   coût par utilisateur strictement décroissant.
+2. **Le paiement lui-même** : aucun encaissement n'est construit. Il faudra
+   choisir un prestataire (Stripe, Mollie…) et décider ce qui se passe à
+   l'échéance impayée — suspension ou simple relance.
+3. **Qui déclenche l'essai** : automatique à l'inscription, ou sur demande ?

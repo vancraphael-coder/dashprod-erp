@@ -27,7 +27,16 @@ Le découpage en lots, le registre de traçabilité de toutes les demandes et le
 quatre décisions attendues vivent dans **`docs/PLAN-1.0.md`**. Cette liste ne
 porte plus que le lot en cours.
 
-**Lot en cours : LOT 9 — verrouillage 1.0 (manipulation complète)** (les quatre décisions D1→D4 sont
+**Lot en cours : LOT 9 — verrouillage 1.0 (manipulation complète)**
+
+Fait hors lots depuis : correctifs du 04/08 (routes bureau, certificat de
+signature, civilité), voyant du journal (05/08), **grille commerciale +
+abonnement** (05/08 — EX-01 clos), **tri « à s'occuper »** des dossiers.
+
+Reste avant le verrouillage :
+- [ ] corriger la vitrine, qui promet encore « utilisateurs illimités »
+      (contredit Starter 2 / Regular 5) et n'affiche qu'un seul prix ;
+- [ ] brancher un prestataire de paiement (aucun encaissement construit). (les quatre décisions D1→D4 sont
 tranchées ; plus aucun lot n'est bloqué).
 
 - [x] LOT 0 — écran blanc du planning (INC-15) + heures non mappées (INC-16),

@@ -136,6 +136,11 @@ PLAN → ORGANISATION → UTILISATEURS → RÔLES → MODULES → LIMITES → PE
 | **Regular** | **360 €/mois HTVA** | **5** | + signature en ligne, espace client, Peppol, comptabilité, rapports de chantier, paie, journal | `LIVE` 05/08 |
 | Pro | 720 €/mois HTVA | illimité | + international (livré) ; multi-dépôts et stockage 3D à venir | `LIVE` 05/08 |
 
+Facturation mensuelle ou **annuelle −5 %** · **5 jours d'essai sur Pro**
+(`plan_effectif()`, sans modifier l'offre réelle) · descente d'offre avec
+page de transition : **archivage, jamais suppression** — c'est ce qui permet
+de remonter sans rien perdre (0077).
+
 Grille détaillée et raisonnement commercial : **`docs/OFFRES.md`**.
 Contrainte appliquée en base (0075) : `org_a_module`, `exiger_module`,
 `limite_utilisateurs`. Le coût par utilisateur décroît à chaque palier
