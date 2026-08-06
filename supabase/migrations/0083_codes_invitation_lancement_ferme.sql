@@ -1,0 +1,5 @@
+-- 0083 — Lancement fermé : création de société sur code d'invitation.
+-- Table reglages_plateforme (interrupteur inscription_ouverte, défaut false),
+-- table codes_invitation (usage unique, tracé), cmd_creer_ma_societe + p_code,
+-- cmd_generer_codes (réservé capacité éditeur). Voir base pour le corps exact.
+-- Appliqué le 2026-08-06.

@@ -1,0 +1,5 @@
+-- 0085 — Durcissement pré-lancement.
+-- Toutes les cmd_* : revoke public + anon, grant authenticated. Seules
+-- cmd_offre_apercu et cmd_offre_signer restent ouvertes à anon (portail
+-- signature sans compte). Les tables d'éditeur sont documentées (linter 0008
+-- attendu). Appliqué en deux temps (0085 + 0085b) le 2026-08-06.

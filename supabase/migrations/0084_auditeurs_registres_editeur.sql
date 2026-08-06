@@ -1,0 +1,3 @@
+-- 0084 — cmd_audit_cloison tolère les registres éditeur (reglages_plateforme,
+-- codes_invitation, appartenance_active) : RLS + revoke total, aucune fuite,
+-- l'absence d'org_id/policy y est voulue. Évite les faux positifs.
