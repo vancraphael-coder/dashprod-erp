@@ -74,6 +74,14 @@ export const GROUPES_TEXTES = Object.freeze([
     champs: [],
   },
   {
+    cle: "mails",
+    icone: "📨",
+    titre: "Modèles de mails",
+    resume: "Confirmation, envoi de devis, relance, facture, rappel, remerciement — et vos propres modèles.",
+    mails: true,
+    champs: [],
+  },
+  {
     cle: "cbd",
     icone: "📎",
     titre: "Conditions générales C.B.D.",
