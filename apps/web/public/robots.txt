@@ -1,0 +1,14 @@
+# Dashprod — la vitrine est indexable, l'application ne l'est pas.
+# Les écrans applicatifs vivent derrière ?page=… et derrière l'authentification :
+# on demande à Google de ne pas les explorer.
+
+User-agent: *
+Allow: /$
+Allow: /?page=cgu
+Allow: /?page=confidentialite
+Allow: /?page=mentions
+Disallow: /?page=societe
+Disallow: /?page=client
+Disallow: /?page=connexion
+
+Sitemap: https://dashprod.com/sitemap.xml
