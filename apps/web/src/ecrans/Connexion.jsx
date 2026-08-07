@@ -7,7 +7,7 @@
 
 import React, { useState } from "react";
 import { supabase, configPresente, connecterAvecGoogle } from "../lib/supabase.js";
-import { V, NavPublique, PiedPublic, BoutonGoogle, Etiquette }
+import { V, NavPublique, PiedPublic, BoutonGoogle, Etiquette, LogoComplet }
   from "./vitrine/theme-vitrine.jsx";
 
 export default function Connexion({ onConnecte, aller }) {
@@ -49,7 +49,7 @@ export default function Connexion({ onConnecte, aller }) {
                      padding: "clamp(30px, 6vw, 60px) 20px" }}>
         <div className="v-lever" style={{ width: "min(400px, 100%)" }}>
           <div style={{ textAlign: "center", marginBottom: 18 }}>
-            <Etiquette numero="PORTE B" libelle="votre compte" />
+            <LogoComplet hauteur={44} />
           </div>
           <div className="v-carte" style={{ padding: "28px 26px" }}>
             <h1 className="v-display" style={{ fontSize: 26, margin: 0 }}>
