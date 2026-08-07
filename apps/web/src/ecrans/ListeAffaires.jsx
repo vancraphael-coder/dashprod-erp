@@ -106,6 +106,7 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
             <span style={{ fontSize: 12, fontWeight: 800,
               textTransform: "uppercase", letterSpacing: ".05em",
               color: g.cle === "retard" ? C.rouge
+                   : g.cle === "a_cloturer" ? C.ambre
                    : g.cle === "aujourdhui" ? C.bleu : C.fantome }}>
               {g.titre}
             </span>
@@ -123,6 +124,30 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#6D28D9",
                   background: "#F5F3FF", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
                   à valider
+                </span>
+              )}
+              {a.etat === "effectue" && a.litiges_ouverts > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#DC2626",
+                  background: "#FEF2F2", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                  {a.litiges_ouverts} litige{a.litiges_ouverts > 1 ? "s" : ""}
+                </span>
+              )}
+              {a.etat === "effectue" && !a.litiges_ouverts && a.solde_centimes > 0 && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#B45309",
+                  background: "#FFFBEB", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                  impayé
+                </span>
+              )}
+              {a.etat === "effectue" && !a.litiges_ouverts && !a.solde_centimes && !a.a_facture && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#B45309",
+                  background: "#FFFBEB", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                  à facturer
+                </span>
+              )}
+              {a.etat === "effectue" && !a.litiges_ouverts && !a.solde_centimes && a.a_facture && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#15803D",
+                  background: "#F0FDF4", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                  prêt à clôturer
                 </span>
               )}
               <Badge etat={a.etat} />

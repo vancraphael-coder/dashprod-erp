@@ -9,26 +9,32 @@
 // Les textes viennent de Compte → Textes ; le formatage du domaine (emailOffre).
 // =============================================================================
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   obtenirAffaire, obtenirContact, obtenirInstance, obtenirOrganisation,
   obtenirTextes, creerLienSignature, urlConditionsCbd,
 } from "../lib/adaptateur.js";
 import { emailOffre, urlMailto } from "@domaine/communication/brief.js";
+import { mailsEffectifs, remplirJetons } from "@domaine/communication/mails.js";
 import { genererCode } from "@domaine/portail/acces.js";
 import { C, S } from "../lib/theme.jsx";
 
 export default function Mail({ affaireId, retour, versOffre }) {
-  const [mail, setMail] = useState(null);
+  const [mailOffre, setMailOffre] = useState(null);  // l'email d'offre (circuit signature)
   const [instance, setInstance] = useState(null);
   const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState(null);
   const [lien, setLien] = useState(null);      // { code, url } une fois généré
-  // Durée de vie du code, décidée par l'ÉMETTEUR du devis (décision D3) :
-  // une offre pressée vit un jour, une offre de gros volume tient un mois.
   const [validiteJours, setValiditeJours] = useState(30);
   const [cbd, setCbd] = useState(null);        // URL signée des conditions
   const [enCours, setEnCours] = useState(false);
+
+  // Modèles de mails et sélection. "offre" = l'email d'offre historique
+  // (avec signature en ligne et pièces jointes) ; les autres clés viennent
+  // des modèles réglés dans Compte → Textes → Modèles de mails.
+  const [modeles, setModeles] = useState([]);
+  const [choix, setChoix] = useState("offre");
+  const [contexte, setContexte] = useState(null);   // jetons à remplir
 
   useEffect(() => {
     (async () => {
@@ -42,8 +48,27 @@ export default function Mail({ affaireId, retour, versOffre }) {
         ]);
         setInstance(inst);
         urlConditionsCbd().then(setCbd).catch(() => setCbd(null));
+        setModeles(mailsEffectifs(textes));
+
         const faits = affaire?.faits || {};
-        setMail(emailOffre({
+        const famille = String(affaire?.client?.nom || "").trim().split(/\s+/).pop() || "";
+        const dateLongue = contact?.date
+          ? new Date(contact.date + "T00:00:00").toLocaleDateString("fr-BE",
+              { weekday: "long", day: "numeric", month: "long" })
+          : "";
+        setContexte({
+          client: affaire?.client?.nom || "", famille,
+          organisation: org?.nom_commercial || org?.nom || "",
+          date: dateLongue,
+          montant: affaire?.tvac_centimes
+            ? (affaire.tvac_centimes / 100).toLocaleString("fr-BE",
+                { style: "currency", currency: "EUR" }) : "",
+          reference: affaire?.reference || affaire?.numero || "",
+          signataire: org?.nom || "",
+          email: affaire?.client?.email || "",
+        });
+
+        setMailOffre(emailOffre({
           client: affaire?.client || {},
           signee: inst?.statut === "signee",
           charges: contact?.charges || [], decharges: contact?.decharges || [],
@@ -53,13 +78,25 @@ export default function Mail({ affaireId, retour, versOffre }) {
           date: contact?.date, heure: contact?.heure,
           remarques: contact?.notes,
           organisation: org,
-          textes,                       // modèles réglés dans Compte → Textes
+          textes,
           lienSignature: lien?.url || null,
           codeSignature: lien?.code || null,
         }));
       } catch (e) { setErreur(e.message); }
     })();
   }, [affaireId, lien]);
+
+  // Le mail réellement affiché : l'offre, ou un modèle rempli avec le contexte.
+  const mail = useMemo(() => {
+    if (choix === "offre") return mailOffre;
+    const m = modeles.find((x) => x.cle === choix);
+    if (!m || !contexte) return null;
+    return {
+      a: contexte.email || "",
+      objet: remplirJetons(m.objet, contexte),
+      corps: remplirJetons(m.corps, contexte),
+    };
+  }, [choix, mailOffre, modeles, contexte]);
 
   async function copier() {
     const texte = `À : ${mail.a}\nObjet : ${mail.objet}\n\n${mail.corps}`;
@@ -68,19 +105,45 @@ export default function Mail({ affaireId, retour, versOffre }) {
     setTimeout(() => setCopie(false), 2000);
   }
 
-  if (!mail) return null;
+  if (!mail && choix === "offre") return null;
   const signee = instance?.statut === "signee";
+  const estOffre = choix === "offre";
 
   return (
     <div style={S.page}>
       <div style={S.entete}>
         <button style={S.boutonLien} onClick={retour}>← Dossier</button>
-        <div style={S.titre}>Mail — envoi de l'offre</div>
+        <div style={S.titre}>Mail</div>
       </div>
 
-      {/* Envoi au client : le code de signature ET les pièces jointes.
-          Les deux, pas l'un ou l'autre — le client veut pouvoir garder son
-          offre, et signer en ligne. */}
+      {/* Choix du modèle : l'offre (circuit signature) ou un modèle réglé dans
+          les paramètres. Le contenu se remplit tout seul avec les données du
+          dossier. */}
+      <div style={S.carte}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
+                      textTransform: "uppercase", letterSpacing: ".03em" }}>
+          Quel mail envoyer
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button onClick={() => setChoix("offre")} style={puce(estOffre)}>
+            📄 Offre de prix
+          </button>
+          {modeles.map((m) => (
+            <button key={m.cle} onClick={() => setChoix(m.cle)} style={puce(choix === m.cle)}>
+              {m.origine === "sur_mesure" ? "✏️ " : ""}{m.titre}
+            </button>
+          ))}
+        </div>
+        {!estOffre && (
+          <div style={{ fontSize: 11, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
+            Modèle rempli avec les données du dossier. Modifiable dans
+            Compte → Textes → Modèles de mails.
+          </div>
+        )}
+      </div>
+
+      {/* Signature en ligne — seulement pour l'offre. */}
+      {estOffre && (
       <div style={S.carte}>
         <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
                       textTransform: "uppercase", letterSpacing: ".03em" }}>
@@ -148,50 +211,26 @@ export default function Mail({ affaireId, retour, versOffre }) {
           </div>
         )}
       </div>
-
-      {/* Pièces jointes : le client garde une copie de ce qu'il signe. Le
-          protocole mailto ne peut PAS porter de fichier — c'est une limite du
-          standard, pas un raccourci. On les ouvre donc pour que le bureau les
-          joigne à la main. */}
-      {instance && (
-        <div style={S.carte}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 6,
-                        textTransform: "uppercase", letterSpacing: ".03em" }}>
-            Pièces jointes
-          </div>
-          <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5,
-                        marginBottom: 10 }}>
-            Ouvrez chaque document, enregistrez-le en PDF, puis joignez-le au
-            mail. Votre messagerie ne peut pas les recevoir automatiquement.
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={() => versOffre(affaireId)} style={pieceJointe}>
-              📄 L'offre
-            </button>
-            {cbd ? (
-              <a href={cbd} target="_blank" rel="noreferrer"
-                 style={{ ...pieceJointe, textDecoration: "none",
-                          display: "inline-flex", alignItems: "center" }}>
-                📋 Conditions générales
-              </a>
-            ) : (
-              <span style={{ ...pieceJointe, color: C.fantome, cursor: "default" }}>
-                📋 Conditions générales — non déposées
-              </span>
-            )}
-          </div>
-        </div>
       )}
+
+      {/* PIÈCES JOINTES — le « hook » de fluidité.
+          mailto ne peut pas porter de fichier (limite du standard). On rend
+          donc le geste aussi fluide que possible : chaque pièce s'ouvre en un
+          tap, prête à être enregistrée puis glissée dans le mail. Le bloc
+          s'adapte au modèle choisi — l'offre a ses deux PJ, un autre mail peut
+          n'en avoir aucune. */}
+      <PiecesJointes choix={choix} instance={instance} cbd={cbd}
+        versOffre={() => versOffre(affaireId)} />
 
       {/* En-tête du mail */}
       <div style={S.carte}>
         <div style={{ display: "grid", gridTemplateColumns: "56px 1fr", rowGap: 7, fontSize: 12.5 }}>
           <span style={{ color: C.muet, fontWeight: 700 }}>À</span>
-          <span style={{ color: mail.a ? C.encre : C.rouge }}>
-            {mail.a || "aucun email client — complétez la fiche"}
+          <span style={{ color: mail?.a ? C.encre : C.rouge }}>
+            {mail?.a || "aucun email client — complétez la fiche"}
           </span>
           <span style={{ color: C.muet, fontWeight: 700 }}>Objet</span>
-          <span style={{ color: C.encre }}>{mail.objet}</span>
+          <span style={{ color: C.encre }}>{mail?.objet}</span>
         </div>
       </div>
 
@@ -199,7 +238,7 @@ export default function Mail({ affaireId, retour, versOffre }) {
       <div style={{ ...S.carte, maxHeight: 320, overflowY: "auto" }}>
         <pre style={{ margin: 0, fontFamily: "inherit", fontSize: 13, color: C.encre,
                       whiteSpace: "pre-wrap", lineHeight: 1.65 }}>
-          {mail.corps}
+          {mail?.corps}
         </pre>
       </div>
 
@@ -211,7 +250,7 @@ export default function Mail({ affaireId, retour, versOffre }) {
           border: `1.5px solid ${C.bord}`, background: "#fff",
           fontSize: 13.5, fontWeight: 700, color: C.encre,
         }}>{copie ? "✓ Copié" : "📋 Copier"}</button>
-        <a href={urlMailto(mail)} style={{
+        <a href={mail ? urlMailto(mail) : "#"} style={{
           flex: 1, padding: "13px", borderRadius: 12, textAlign: "center",
           textDecoration: "none", background: C.bleu, color: "#fff",
           fontSize: 13.5, fontWeight: 700,
@@ -219,10 +258,64 @@ export default function Mail({ affaireId, retour, versOffre }) {
       </div>
       <div style={{ margin: "10px 16px 0", fontSize: 11, color: C.fantome,
                     textAlign: "center", lineHeight: 1.5 }}>
-        Joignez le PDF de l'offre dans votre application mail avant l'envoi.
+        {estOffre
+          ? "Joignez le PDF de l'offre dans votre application mail avant l'envoi."
+          : "Ajoutez vos pièces jointes dans votre application mail si nécessaire."}
+      </div>
+      <div style={{ height: 32 }} />
+    </div>
+  );
+}
+
+/**
+ * Le bloc pièces jointes, dépendant du modèle choisi. Pour l'offre : les deux
+ * documents (offre + conditions). Pour un autre mail : rien d'imposé, mais on
+ * ouvre quand même l'accès à l'offre et aux conditions, souvent utiles.
+ */
+function PiecesJointes({ choix, instance, cbd, versOffre }) {
+  const estOffre = choix === "offre";
+  // Un modèle « facture » ou « rappel » n'a pas l'offre à joindre ; on n'affiche
+  // le bloc que quand il y a quelque chose d'utile à proposer.
+  if (estOffre && !instance) return null;
+
+  return (
+    <div style={S.carte}>
+      <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 6,
+                    textTransform: "uppercase", letterSpacing: ".03em" }}>
+        Pièces jointes
+      </div>
+      <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 10 }}>
+        Ouvrez chaque document, enregistrez-le en PDF, puis joignez-le au mail.
+        Votre messagerie ne peut pas les recevoir automatiquement.
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {instance && (
+          <button onClick={versOffre} style={pieceJointe}>📄 L'offre</button>
+        )}
+        {cbd ? (
+          <a href={cbd} target="_blank" rel="noreferrer"
+             style={{ ...pieceJointe, textDecoration: "none",
+                      display: "inline-flex", alignItems: "center" }}>
+            📋 Conditions générales
+          </a>
+        ) : (
+          <span style={{ ...pieceJointe, color: C.fantome, cursor: "default" }}>
+            📋 Conditions générales — non déposées
+          </span>
+        )}
       </div>
     </div>
   );
+}
+
+function puce(actif) {
+  return {
+    padding: "8px 13px", borderRadius: 999, cursor: "pointer",
+    fontSize: 12.5, fontWeight: 700,
+    border: `1.5px solid ${actif ? C.bleu : C.bord}`,
+    background: actif ? "#E7EFFC" : C.blanc,
+    color: actif ? C.bleu : C.muet,
+  };
 }
 
 const pieceJointe = {

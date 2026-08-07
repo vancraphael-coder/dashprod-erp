@@ -12,6 +12,7 @@ import {
   obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
   obtenirOrganisation, contexteMainOeuvre,
   litigesAffaire, ouvrirLitige, avancerLitige, resoudreLitige, scenarioRetenu,
+  etatFacturation,
 } from "../lib/adaptateur.js";
 import { calculerScenario } from "@domaine/chiffrage/moteur.js";
 import { catalogueSupplements, supplementsRetenus, libelleLigne, UNITES_SUPPLEMENT }
@@ -497,9 +498,8 @@ function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peu
     etatFacturation(affaireId).then(setFacturation).catch(() => setFacturation(null));
   }, [affaireId]);
 
-  // Main-d'œuvre réelle : somme des lignes retenues × heures (déjà calculée
-  // pour l'onglet Estimation, on la réutilise pour ne pas diverger).
-  const moEuros = coutMainOeuvre(equipe, heuresMO) / 100;
+  // Main-d'œuvre réelle : coutMainOeuvre renvoie déjà des EUROS (taux €/h × h).
+  const moEuros = coutMainOeuvre(equipe, heuresMO);
   const reel = {
     mainOeuvre: moEuros,
     carburant: coutsReels.carburantEuros,
