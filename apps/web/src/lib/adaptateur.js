@@ -2679,6 +2679,62 @@ export async function auditCloison() {
 }
 
 // =============================================================================
+// LITIGES (0086) — impayé, dégât/assurance, contestation. Un circuit chacun.
+// Tant qu'un litige est ouvert, la clôture est bloquée (sauf dérogation).
+// =============================================================================
+
+export async function litigesAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_litiges_affaire", { p_affaire: affaireId });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const liste = (d.litiges || []).filter((l) => l.affaire_id === affaireId);
+  return { ouverts: liste.filter((l) => l.statut === "ouvert").length,
+           enjeu_ouvert_centimes: 0, liste };
+}
+
+export async function ouvrirLitige(affaireId, { type, titre, montantCentimes, description, reference }) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_ouvrir_litige", {
+    p_affaire: affaireId, p_type: type, p_titre: titre || null,
+    p_montant_centimes: montantCentimes ?? null,
+    p_description: description || null, p_reference: reference || null });
+  if (error) throw error;
+  return data;
+}
+
+export async function avancerLitige(litigeId, etape, note) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_avancer_litige",
+    { p_litige: litigeId, p_etape: etape, p_note: note || null });
+  if (error) throw error;
+  return data;
+}
+
+export async function resoudreLitige(litigeId, issue, resolution) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_resoudre_litige",
+    { p_litige: litigeId, p_issue: issue, p_resolution: resolution || null });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Le scénario retenu d'un dossier : le « prévu » du calcul définitif.
+ * Lu séparément parce que l'écran Devis recompose le scénario en direct, mais le
+ * calcul définitif veut le montant ARRÊTÉ, celui qui a été retenu et facturé.
+ */
+export async function scenarioRetenu(affaireId) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.from("scenarios")
+    .select("resultats").eq("affaire_id", affaireId).eq("retenu", true).maybeSingle();
+  if (error) throw error;
+  return data?.resultats || null;
+}
+
+// =============================================================================
 // TEXTES DU BUREAU — modèles de l'email d'offre (Compte → Textes).
 // Stockés dans organisations.parametres_textes (jsonb). Le domaine applique
 // ses valeurs par défaut pour toute clé absente : un réglage partiel suffit.
