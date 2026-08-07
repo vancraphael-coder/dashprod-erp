@@ -47,7 +47,7 @@ update reglages_plateforme set valeur = 'true' where cle = 'inscription_ouverte'
 
 ## 3 — Domaine, HTTPS, DNS, e-mails  🟡 (console, je ne peux pas le faire)
 
-- 🟡 **Domaine** : ajouter `dashprod.be` (et `www`) dans Vercel → Domains.
+- 🟡 **Domaine** : ajouter `dashprod.com` (et `www`) dans Vercel → Domains.
 - 🟡 **HTTPS** : automatique chez Vercel une fois le domaine validé.
 - 🟡 **DNS** : chez ton registrar, les enregistrements que Vercel indique
   (A / CNAME).
