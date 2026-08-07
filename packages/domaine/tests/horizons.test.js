@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  ETATS_ACTIFS, ETATS_CLOS, lundiDe, libelleSemaine, horizon, aSOccuper,
+  ETATS_ACTIFS, ETATS_CLOS, lundiDe, libelleSemaine, horizon, aSOccuper, rangCloture,
   regrouperParHorizon, compteurUrgent,
 } from "../src/crm/horizons.js";
 
@@ -62,10 +62,41 @@ test("un dossier clos ou annulé ne s'occupe plus", () => {
   for (const e of ETATS_ACTIFS) assert.equal(aSOccuper({ etat: e }), true);
 });
 
+test("un dossier effectué reste à s'occuper : reste à facturer, encaisser, clôturer", () => {
+  assert.equal(aSOccuper({ etat: "effectue" }), true);
+  // effectué n'est plus rangé parmi les états qui ferment le dossier.
+  assert.equal(ETATS_CLOS.includes("effectue"), false);
+});
+
 test("les états morts facture/paye ne sont plus considérés actifs", () => {
   // Depuis la séparation des cycles (0064), ce ne sont plus des états.
   assert.equal(ETATS_ACTIFS.includes("facture"), false);
   assert.equal(ETATS_ACTIFS.includes("paye"), false);
+});
+
+test("les dossiers effectués forment leur propre groupe « À clôturer », en tête", () => {
+  const groupes = regrouperParHorizon([
+    A("2026-08-01", "effectue"), A("2026-08-20", "confirme"),
+  ], { maintenant: new Date("2026-08-07T12:00:00") });
+  assert.equal(groupes[0].cle, "a_cloturer", "le groupe à clôturer passe devant");
+  assert.equal(groupes[0].dossiers.length, 1);
+  // Un dossier effectué à date passée ne tombe pas dans « En retard ».
+  assert.ok(!groupes.some((g) => g.cle === "retard"));
+});
+
+test("dans « À clôturer », le litige prime sur l'impayé, l'impayé sur le reste", () => {
+  const litige = { id: "L", etat: "effectue", litiges_ouverts: 1, solde_centimes: 0, a_facture: true };
+  const impaye = { id: "I", etat: "effectue", litiges_ouverts: 0, solde_centimes: 50000, a_facture: true };
+  const aFacturer = { id: "F", etat: "effectue", litiges_ouverts: 0, solde_centimes: 0, a_facture: false };
+  const pret = { id: "P", etat: "effectue", litiges_ouverts: 0, solde_centimes: 0, a_facture: true };
+  const g = regrouperParHorizon([pret, aFacturer, impaye, litige],
+    { maintenant: new Date("2026-08-07T12:00:00") })[0];
+  assert.deepEqual(g.dossiers.map((d) => d.id), ["L", "I", "F", "P"]);
+});
+
+test("rangCloture : un dossier prêt à clôturer est tout en bas", () => {
+  assert.equal(rangCloture({ litiges_ouverts: 0, solde_centimes: 0, a_facture: true }), 0);
+  assert.ok(rangCloture({ litiges_ouverts: 1 }) > rangCloture({ solde_centimes: 999 }));
 });
 
 // — Regroupement —

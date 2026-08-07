@@ -25,10 +25,11 @@ function fichiers(dossier, ext, acc = []) {
   return acc;
 }
 
-/** Tous les noms exportés par le domaine. */
+/** Tous les noms exportés par le domaine ET par l'adaptateur. */
 function exportsDomaine() {
   const noms = new Set();
-  for (const f of fichiers(SRC_DOMAINE, ".js")) {
+  const sources = [...fichiers(SRC_DOMAINE, ".js"), join(SRC_APP, "lib/adaptateur.js")];
+  for (const f of sources) {
     const src = readFileSync(f, "utf8");
     for (const m of src.matchAll(/^export\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/gm)) {
       noms.add(m[1]);
