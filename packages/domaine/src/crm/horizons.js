@@ -23,12 +23,23 @@
 // =============================================================================
 
 /** États pour lesquels un dossier appelle encore une action. */
+// États où le déménagement n'est pas encore accompli : il y a un chantier à
+// mener. « effectue » n'y est PAS — le chantier est fait — mais le dossier n'en
+// est pas fini pour autant : il reste à facturer, encaisser, et clôturer.
 export const ETATS_ACTIFS = Object.freeze([
   "brouillon", "devis", "envoye", "confirme", "planifie", "en_cours", "reporte",
 ]);
 
-/** États qui ferment le dossier : plus rien à s'occuper. */
-export const ETATS_CLOS = Object.freeze(["effectue", "clos", "annule"]);
+// Un dossier « effectué » a fini son chantier mais garde une suite administrative
+// (facture, encaissement, litiges, clôture). Il reste donc « à s'occuper » tant
+// qu'il n'est pas réellement clos ou annulé. RÈGLE : un dossier ne peut être
+// clos que payé ET sans litige ouvert (vérifiée en base par cmd_exigences_cloture,
+// migration 0086) ; « payé » peut exister sans « effectué », et n'est pas un état
+// du déménagement mais du cycle de facturation.
+export const ETATS_SUITE_ADMIN = Object.freeze(["effectue"]);
+
+/** États qui ferment vraiment le dossier : plus rien à s'occuper. */
+export const ETATS_CLOS = Object.freeze(["clos", "annule"]);
 
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
               "août", "septembre", "octobre", "novembre", "décembre"];
@@ -113,7 +124,30 @@ export function horizon(dateIso, maintenant = new Date()) {
  * date est proche.
  */
 export function aSOccuper(affaire) {
-  return ETATS_ACTIFS.includes(affaire?.etat);
+  const e = affaire?.etat;
+  // Actif (chantier à mener) OU en suite administrative (effectué mais pas
+  // encore payé/clôturé). Un dossier ne quitte « à s'occuper » qu'une fois clos
+  // ou annulé.
+  return ETATS_ACTIFS.includes(e) || ETATS_SUITE_ADMIN.includes(e);
+}
+
+/**
+ * Priorité d'un dossier « à clôturer » : plus le nombre est haut, plus ça
+ * presse. Un litige ouvert domine tout (il bloque ET engage un risque) ; vient
+ * ensuite l'impayé (l'argent dehors), puis l'absence de facture (rien n'a été
+ * demandé). Un dossier prêt à clôturer (facturé, payé, sans litige) descend en
+ * bas : il ne demande qu'un dernier geste.
+ */
+export function rangCloture(a) {
+  if (!a) return 0;
+  const litiges = Number(a.litiges_ouverts) || 0;
+  const solde = Number(a.solde_centimes) || 0;
+  const facture = a.a_facture === true;
+  let r = 0;
+  if (litiges > 0) r += 1000 + Math.min(litiges, 9);
+  if (solde > 0) r += 100;
+  if (!facture) r += 10;
+  return r;
 }
 
 /**
@@ -131,6 +165,19 @@ export function regrouperParHorizon(affaires, {
 
   for (const a of affaires || []) {
     if (seulementActifs && !aSOccuper(a)) continue;
+
+    // Un dossier effectué a fini son chantier : il ne se range pas par date de
+    // déménagement (passée) mais dans un groupe « À clôturer », en tête, où
+    // remontent d'abord les impayés et les litiges — ce qui empêche la clôture.
+    if (ETATS_SUITE_ADMIN.includes(a.etat)) {
+      const cle = "a_cloturer";
+      if (!groupes.has(cle)) {
+        groupes.set(cle, { cle, titre: "À clôturer", rang: -1, dossiers: [] });
+      }
+      groupes.get(cle).dossiers.push(a);
+      continue;
+    }
+
     const h = horizon(dateDe(a), maintenant);
     if (!groupes.has(h.cle)) {
       groupes.set(h.cle, { ...h, dossiers: [] });
@@ -139,8 +186,13 @@ export function regrouperParHorizon(affaires, {
   }
 
   // Dans chaque groupe, la date la plus proche d'abord ; un dossier sans date
-  // se range par nom, faute de mieux.
+  // se range par nom, faute de mieux. EXCEPTION : le groupe « À clôturer » se
+  // trie par ce qui bloque la clôture — litige, puis impayé, puis à facturer.
   for (const g of groupes.values()) {
+    if (g.cle === "a_cloturer") {
+      g.dossiers.sort((x, y) => rangCloture(y) - rangCloture(x));
+      continue;
+    }
     g.dossiers.sort((x, y) => {
       const dx = dateDe(x), dy = dateDe(y);
       if (dx && dy) return String(dx).localeCompare(String(dy));
