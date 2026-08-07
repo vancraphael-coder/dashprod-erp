@@ -22,8 +22,8 @@ const EDITEUR = {
   formeJuridique: "{{SRL / SA / …}}",
   bce: "{{BE 0XXX.XXX.XXX}}",
   siege: "{{adresse du siège social}}",
-  emailContact: "{{contact@dashprod.be}}",
-  emailDpo: "{{privacy@dashprod.be}}",
+  emailContact: "{{contact@dashprod.com}}",
+  emailDpo: "{{privacy@dashprod.com}}",
   hebergeur: "Supabase (bases de données) et Vercel (application), infrastructures situées dans l'Union européenne",
 };
 

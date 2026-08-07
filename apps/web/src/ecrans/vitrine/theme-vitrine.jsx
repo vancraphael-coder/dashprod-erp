@@ -138,14 +138,26 @@ export function Etiquette({ numero, libelle, sombre = false, style }) {
 export function Logo({ sombre = false, taille = 34 }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-      <span style={{ width: taille, height: taille, borderRadius: 9,
-        background: V.route, color: "#fff", display: "grid", placeItems: "center",
-        fontFamily: DISPLAY, fontVariationSettings: '"wdth" 122',
-        fontSize: taille * .55, fontWeight: 800,
-        boxShadow: "0 4px 14px rgba(37,99,235,.35)" }}>D</span>
+      <img src={sombre ? "/dashprod-marque-sombre.png" : "/dashprod-marque.png"}
+           alt="Dashprod" width={taille} height={taille}
+           style={{ width: taille, height: taille, objectFit: "contain",
+                    display: "block" }} />
       <span className="v-display" style={{ fontSize: taille * .56,
         color: sombre ? "#fff" : V.encre }}>Dashprod</span>
     </span>
+  );
+}
+
+/**
+ * Logo complet (icône + « DASHPROD » + baseline), image unique.
+ * Pour les endroits où l'on veut la marque en grand : hero, écran de connexion.
+ * À poser sur fond clair (le texte de l'image est bleu foncé).
+ */
+export function LogoComplet({ hauteur = 48 }) {
+  return (
+    <img src="/dashprod-logo.png" alt="Dashprod — ERP Logistique, Transport, Grand Public"
+         style={{ height: hauteur, width: "auto", maxWidth: "100%",
+                  objectFit: "contain", display: "inline-block" }} />
   );
 }
 
