@@ -1,0 +1,4 @@
+-- 0087 — cmd_suites_administratives() : pour chaque dossier effectué, son solde
+-- dû, le nombre de litiges ouverts et s'il est facturé. Sert à trier la pile
+-- « À clôturer » (litige > impayé > à facturer > prêt). Lecture seule.
+-- Le corps exact est en base ; résumé ici pour référence.
