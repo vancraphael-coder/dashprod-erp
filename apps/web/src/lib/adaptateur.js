@@ -86,6 +86,20 @@ export async function listerClients() {
 
 /** Liste les affaires avec leur client (pour la liste des dossiers). */
 export async function listerAffaires() {
+  // Résumé des suites administratives (solde dû, litiges) pour les dossiers
+  // effectués : ce qui décide de l'ordre dans le groupe « À clôturer ».
+  let suites = {};
+  if (modeDonnees() === "reel") {
+    try {
+      const { data } = await supabase.rpc("cmd_suites_administratives");
+      suites = data || {};
+    } catch { suites = {}; }
+  }
+  const enrichir = (a) => {
+    const s = suites[a.id];
+    return s ? { ...a, solde_centimes: s.solde_centimes,
+                 litiges_ouverts: s.litiges_ouverts, a_facture: s.facture } : a;
+  };
   // Tri métier : le bureau vit dans l'ordre chronologique des CHANTIERS
   // (date souhaitée), les dossiers sans date en fin, puis créations récentes.
   const trier = (liste) => liste.sort((x, y) => {
@@ -108,19 +122,19 @@ export async function listerAffaires() {
       // n'affichaient jamais aucun montant).
       const retenu = (a.scenarios || []).find((sc) => sc.retenu) || (a.scenarios || [])[0];
       const r = retenu?.resultats || {};
-      return {
+      return enrichir({
         id: a.id, etat: a.etat, formule: a.formule, creeLe: a.created_at,
         date_souhaitee: a.date_souhaitee || null,
         client: a.clients,
         tvac_centimes: r.tvac_centimes ?? null,
         marge_pct: r.marge_pct ?? null,
         faits: null, couts: null,
-      };
+      });
     }));
   }
   const d = lireDemo();
   return trier(d.affaires
-    .map((a) => ({
+    .map((a) => enrichir({
       ...a,
       client: d.clients.find((c) => c.id === a.clientId),
       date_souhaitee: a.contact?.date || null,
