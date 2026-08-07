@@ -151,7 +151,7 @@ function AppTerrain({ profil }) {
       vue = <Materiel affaireId={route.affaireId} retour={() => aller("dossier")} />;
     } else if (route.ecran === "devis") {
       vue = <Devis affaireId={route.affaireId} retour={() => aller("dossier")}
-                   versOffre={() => aller("offre")} />;
+                   versOffre={() => aller("offre")} versFacture={() => aller("facture")} />;
     } else if (route.ecran === "offre") {
       vue = <Offre affaireId={route.affaireId} retour={() => aller("dossier")} />;
     } else if (route.ecran === "mail") {
@@ -525,7 +525,7 @@ function App() {
   } else if (route.ecran === "devis") {
     ecran = <Devis affaireId={route.affaireId} retour={retourDossier}
                    versOffre={nav.offre} versReleve={nav.releve}
-                   peutVoirPrix={peutVoirPrix} />;
+                   versFacture={nav.facture} peutVoirPrix={peutVoirPrix} />;
   } else if (route.ecran === "offre") {
     ecran = <Offre affaireId={route.affaireId} retour={retourDossier}
                    versMail={nav.mail} />;
