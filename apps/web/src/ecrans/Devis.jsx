@@ -11,6 +11,7 @@ import {
   obtenirAffaire, enregistrerChiffrage,
   obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
   obtenirOrganisation, contexteMainOeuvre,
+  litigesAffaire, ouvrirLitige, avancerLitige, resoudreLitige, scenarioRetenu,
 } from "../lib/adaptateur.js";
 import { calculerScenario } from "@domaine/chiffrage/moteur.js";
 import { catalogueSupplements, supplementsRetenus, libelleLigne, UNITES_SUPPLEMENT }
@@ -19,6 +20,9 @@ import { BAREME_HORAIRE, TARIFS } from "@domaine/chiffrage/bareme.js";
 import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
 import { lignesMainOeuvre, coutMainOeuvre, mentionLignesRetirees, TON_HISTORIQUE }
   from "@domaine/rh/main-oeuvre.js";
+import { calculDefinitif, euroCentimes } from "@domaine/pilotage/calcul-definitif.js";
+import { CIRCUITS, typesLitige, libelleType, libelleEtape, couleurType,
+         etapeSuivante, issues as issuesLitige, progression } from "@domaine/crm/litige.js";
 import { C, S, ZONES_MARGE, euros, declarerModifs} from "../lib/theme.jsx";
 
 const FORMULES = [
@@ -27,8 +31,9 @@ const FORMULES = [
   { cle: "forfait", libelle: "Forfait" },
 ];
 
-export default function Devis({ affaireId, retour, versOffre, versReleve, peutVoirPrix = true }) {
+export default function Devis({ affaireId, retour, versOffre, versReleve, versFacture, peutVoirPrix = true }) {
   const [affaire, setAffaire] = useState(null);
+  const [onglet, setOnglet] = useState("estimation");
   const [org, setOrg] = useState(null);
   const [faits, setFaits] = useState({
     formule: "tarifaire", nbDemenageurs: 3, heures: 6, nbCamions: 1,
@@ -154,6 +159,31 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
           )}
         </div>
       </div>
+
+      {/* Deux lectures du même dossier : l'ESTIMATION (ce qu'on chiffre pour le
+          client) et le CALCUL DÉFINITIF (prévu / réel / facturé, une fois le
+          chantier fait). Le second ne s'ouvre pleinement qu'après coup. */}
+      <div style={{ display: "flex", gap: 4, margin: "0 16px 12px",
+                    background: "#EEF2F8", borderRadius: 12, padding: 4 }}>
+        {[["estimation", "Estimation"], ["definitif", "Calcul définitif"]].map(([cle, lib]) => (
+          <button key={cle} onClick={() => setOnglet(cle)}
+            style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: "none",
+                     cursor: "pointer", fontSize: 13, fontWeight: 700,
+                     background: onglet === cle ? C.blanc : "transparent",
+                     color: onglet === cle ? C.encre : C.muet,
+                     boxShadow: onglet === cle ? "0 1px 3px rgba(15,23,42,.1)" : "none" }}>
+            {lib}
+          </button>
+        ))}
+      </div>
+
+      {onglet === "definitif" ? (
+        <CalculDefinitif affaireId={affaireId} affaire={affaire}
+          coutsReels={couts} equipe={equipe} heuresMO={heuresMO}
+          peutVoirPrix={peutVoirPrix} versFacture={versFacture} />
+      ) : (
+      <>
+      {/* ── ONGLET ESTIMATION ─────────────────────────────────────────────── */}
 
       {/* Chiffrage impossible (barème incomplet, saisie invalide) : on le dit
           clairement au lieu de laisser des blocs vides. */}
@@ -444,6 +474,301 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, peutVo
           </button>
         )}
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+const BTN_PETIT = { padding: "6px 11px", borderRadius: 8, border: "none",
+                    cursor: "pointer", fontSize: 12, fontWeight: 700 };
+
+// ONGLET CALCUL DÉFINITIF — prévu vs réel vs facturé, et les litiges.
+// Vue de bilan : lit, compare, alerte. La saisie des coûts réels reste dans
+// l'onglet Estimation ; ici on regarde le résultat une fois le chantier fait.
+// =============================================================================
+function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peutVoirPrix, versFacture }) {
+  const [prevu, setPrevu] = useState(null);
+  const [facturation, setFacturation] = useState(null);
+
+  useEffect(() => {
+    scenarioRetenu(affaireId).then(setPrevu).catch(() => setPrevu(null));
+    etatFacturation(affaireId).then(setFacturation).catch(() => setFacturation(null));
+  }, [affaireId]);
+
+  // Main-d'œuvre réelle : somme des lignes retenues × heures (déjà calculée
+  // pour l'onglet Estimation, on la réutilise pour ne pas diverger).
+  const moEuros = coutMainOeuvre(equipe, heuresMO) / 100;
+  const reel = {
+    mainOeuvre: moEuros,
+    carburant: coutsReels.carburantEuros,
+    materiel: coutsReels.materielEuros,
+    divers: coutsReels.diversEuros,
+    peages: coutsReels.peagesEuros,
+  };
+
+  const calc = calculDefinitif({
+    prevuTvacCentimes: prevu?.tvac_centimes ?? null,
+    prevuHtvaCentimes: prevu?.htva_centimes ?? null,
+    reel: peutVoirPrix ? reel : null,
+    facturation,
+  });
+
+  const col = calc.colonnes;
+  const TON = { rouge: C.rouge, ambre: C.ambre, muet: C.muet };
+
+  return (
+    <div>
+      {/* Les trois colonnes */}
+      <div style={S.carte}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 10 }}>
+          Prévu · Réel · Facturé
+        </div>
+        <div style={{ display: "grid",
+                      gridTemplateColumns: "repeat(3, minmax(min(90px,100%), 1fr))",
+                      gap: 8 }}>
+          <Colonne titre="Prévu" sousTitre="devis retenu"
+            valeur={euroCentimes(col.prevu.tvac)} connu={col.prevu.connu} accent="#64748B" />
+          <Colonne titre="Réel" sousTitre={peutVoirPrix ? "coûts constatés" : "confidentiel"}
+            valeur={peutVoirPrix ? euroCentimes(col.reel.total) : "•••"}
+            connu={col.reel.connu} accent="#0F172A" />
+          <Colonne titre="Facturé" sousTitre={ETATS_FACT_LIB[col.facture.etat] || ""}
+            valeur={euroCentimes(col.facture.du)} connu={col.facture.connu} accent={C.bleu} />
+        </div>
+
+        {/* Marges — seulement pour qui voit les prix */}
+        {peutVoirPrix && (
+          <div style={{ marginTop: 12, borderTop: `1px solid ${C.bord}`, paddingTop: 10 }}>
+            <LigneMarge libelle="Marge réelle" aide="facturé − coûts réels"
+              valeur={euroCentimes(calc.marges.reelle_centimes)}
+              pct={calc.marges.reelle_pct}
+              positif={calc.marges.reelle_centimes >= 0} />
+            {calc.marges.ecart_devis_centimes != null && (
+              <LigneMarge libelle="Écart au devis" aide="facturé − prévu"
+                valeur={euroCentimes(calc.marges.ecart_devis_centimes)}
+                positif={calc.marges.ecart_devis_centimes >= 0} />
+            )}
+          </div>
+        )}
+
+        {/* Alertes factuelles */}
+        {calc.alertes.map((a, i) => (
+          <div key={i} style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.45,
+                                color: TON[a.ton] || C.muet }}>
+            {a.ton === "rouge" ? "⚠ " : a.ton === "ambre" ? "• " : ""}{a.texte}
+          </div>
+        ))}
+
+        {facturation && facturation.factures === 0 && versFacture && (
+          <button style={{ ...S.boutonLien, width: "100%", textAlign: "center", marginTop: 10 }}
+                  onClick={() => versFacture(affaireId)}>
+            Établir la facture →
+          </button>
+        )}
+      </div>
+
+      {/* Litiges */}
+      <Litiges affaireId={affaireId} affaire={affaire} />
+    </div>
+  );
+}
+
+function Colonne({ titre, sousTitre, valeur, connu, accent }) {
+  return (
+    <div style={{ background: "#F8FAFC", border: `1px solid ${C.bord}`,
+                  borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: accent,
+                    textTransform: "uppercase", letterSpacing: ".03em" }}>{titre}</div>
+      <div style={{ fontSize: 9.5, color: C.fantome, marginBottom: 6, minHeight: 12 }}>{sousTitre}</div>
+      <div style={{ fontSize: 14.5, fontWeight: 800,
+                    color: connu ? C.encre : C.fantome }}>{valeur}</div>
+    </div>
+  );
+}
+
+function LigneMarge({ libelle, aide, valeur, pct, positif }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                  padding: "3px 0" }}>
+      <span style={{ fontSize: 12.5, color: C.encre }}>
+        {libelle} <span style={{ fontSize: 10.5, color: C.fantome }}>· {aide}</span>
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 800,
+                     color: positif ? "#15803D" : C.rouge }}>
+        {valeur}{pct != null ? ` · ${pct}%` : ""}
+      </span>
+    </div>
+  );
+}
+
+const ETATS_FACT_LIB = {
+  non_facture: "non facturé", facture: "facturé",
+  partiellement_paye: "partiel", paye: "payé",
+};
+
+// ── LITIGES ────────────────────────────────────────────────────────────────
+function Litiges({ affaireId, affaire }) {
+  const [donnees, setDonnees] = useState(null);
+  const [ouvre, setOuvre] = useState(false);
+
+  const recharger = () => litigesAffaire(affaireId).then(setDonnees).catch(() => setDonnees(null));
+  useEffect(() => { recharger(); }, [affaireId]);
+
+  const liste = donnees?.liste || [];
+  const clos = affaire?.etat === "clos";
+
+  return (
+    <div style={S.carte}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+          Litiges
+          {donnees?.ouverts > 0 && (
+            <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: C.rouge,
+                           border: `1.5px solid ${C.rouge}`, borderRadius: 999, padding: "1px 8px" }}>
+              {donnees.ouverts} en cours
+            </span>
+          )}
+        </div>
+        {!clos && !ouvre && (
+          <button style={{ ...S.boutonLien, fontSize: 12 }} onClick={() => setOuvre(true)}>
+            + Ouvrir un litige
+          </button>
+        )}
+      </div>
+
+      <div style={{ fontSize: 11.5, color: C.muet, marginTop: 3, lineHeight: 1.4 }}>
+        Un litige ouvert (impayé, dégât, contestation) empêche la clôture du
+        dossier tant qu'il n'est pas résolu.
+      </div>
+
+      {ouvre && <FormLitige affaireId={affaireId}
+        onFait={() => { setOuvre(false); recharger(); }}
+        onAnnuler={() => setOuvre(false)} />}
+
+      {liste.length === 0 && !ouvre && (
+        <div style={{ fontSize: 12, color: C.fantome, marginTop: 10 }}>
+          Aucun litige sur ce dossier.
+        </div>
+      )}
+
+      {liste.map((l) => (
+        <LigneLitige key={l.id} litige={l} clos={clos} onFait={recharger} />
+      ))}
+    </div>
+  );
+}
+
+function FormLitige({ affaireId, onFait, onAnnuler }) {
+  const [type, setType] = useState("impaye");
+  const [titre, setTitre] = useState("");
+  const [montant, setMontant] = useState("");
+  const [description, setDescription] = useState("");
+  const [reference, setReference] = useState("");
+  const [erreur, setErreur] = useState(null);
+  const [enCours, setEnCours] = useState(false);
+
+  async function creer() {
+    setEnCours(true); setErreur(null);
+    try {
+      await ouvrirLitige(affaireId, {
+        type, titre, description, reference,
+        montantCentimes: montant ? Math.round(parseFloat(montant.replace(",", ".")) * 100) : null,
+      });
+      onFait();
+    } catch (e) { setErreur(e.message || "Refusé"); setEnCours(false); }
+  }
+
+  return (
+    <div style={{ marginTop: 10, padding: 12, background: "#F8FAFC",
+                  border: `1px solid ${C.bord}`, borderRadius: 10 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+        {typesLitige().map((t) => (
+          <button key={t.cle} onClick={() => setType(t.cle)}
+            style={{ padding: "5px 10px", borderRadius: 8, fontSize: 12, cursor: "pointer",
+                     border: `1.5px solid ${type === t.cle ? t.couleur : C.bord}`,
+                     background: type === t.cle ? t.couleur : C.blanc,
+                     color: type === t.cle ? "#fff" : C.encre, fontWeight: 600 }}>
+            {t.libelle}
+          </button>
+        ))}
+      </div>
+      <input style={{ ...S.input, marginBottom: 6 }} value={titre}
+             onChange={(e) => setTitre(e.target.value)}
+             placeholder="Intitulé (ex. Canapé rayé au déchargement)" />
+      <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+        <input style={{ ...S.input, flex: 1 }} value={montant} inputMode="decimal"
+               onChange={(e) => setMontant(e.target.value)} placeholder="Montant € (enjeu)" />
+        <input style={{ ...S.input, flex: 1 }} value={reference}
+               onChange={(e) => setReference(e.target.value)} placeholder="Réf. (n° sinistre…)" />
+      </div>
+      <textarea style={{ ...S.input, minHeight: 44, resize: "vertical" }} value={description}
+                onChange={(e) => setDescription(e.target.value)} placeholder="Détails" />
+      {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 6 }}>{erreur}</div>}
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <button style={{ ...S.boutonPlein, flex: 1 }} disabled={enCours} onClick={creer}>
+          Ouvrir le litige
+        </button>
+        <button style={{ ...S.boutonLien, color: C.muet }} onClick={onAnnuler}>Annuler</button>
+      </div>
+    </div>
+  );
+}
+
+function LigneLitige({ litige, clos, onFait }) {
+  const [note, setNote] = useState("");
+  const [enCours, setEnCours] = useState(false);
+  const ouvert = litige.statut === "ouvert";
+  const suivante = etapeSuivante(litige.type, litige.etape);
+  const couleur = couleurType(litige.type);
+
+  async function agir(fn) {
+    setEnCours(true);
+    try { await fn(); setNote(""); onFait(); } finally { setEnCours(false); }
+  }
+
+  return (
+    <div style={{ marginTop: 10, padding: 11, borderRadius: 10,
+                  border: `1px solid ${ouvert ? couleur + "55" : C.bord}`,
+                  background: ouvert ? couleur + "0D" : "#F8FAFC" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: C.encre }}>
+          {litige.titre || libelleType(litige.type)}
+        </span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: couleur }}>
+          {libelleType(litige.type)}
+        </span>
+      </div>
+      <div style={{ fontSize: 11.5, color: C.muet, marginTop: 3 }}>
+        {ouvert ? `Étape : ${libelleEtape(litige.type, litige.etape)}`
+                : (litige.statut === "resolu" ? "✓ Résolu" : "Abandonné")}
+        {litige.montant_centimes ? ` · ${euroCentimes(litige.montant_centimes)}` : ""}
+        {litige.reference ? ` · réf. ${litige.reference}` : ""}
+      </div>
+      {litige.resolution && (
+        <div style={{ fontSize: 11.5, color: C.muet, marginTop: 3, fontStyle: "italic" }}>
+          {litige.resolution}
+        </div>
+      )}
+
+      {ouvert && !clos && (
+        <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {suivante && (
+            <button style={{ ...BTN_PETIT, background: couleur, color: "#fff" }}
+              disabled={enCours}
+              onClick={() => agir(() => avancerLitige(litige.id, suivante.cle, note))}>
+              → {suivante.libelle}
+            </button>
+          )}
+          {issuesLitige(litige.type).map((is) => (
+            <button key={is.cle} disabled={enCours}
+              style={{ ...BTN_PETIT, background: is.cle === "resolu" ? "#15803D" : "#64748B", color: "#fff" }}
+              onClick={() => agir(() => resoudreLitige(litige.id, is.cle, note))}>
+              {is.libelle}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

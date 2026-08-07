@@ -19,6 +19,11 @@ import {
   urlConditionsCbd, televerserConditionsCbd, modeDonnees,
 } from "../lib/adaptateur.js";
 import { emailOffre } from "@domaine/communication/brief.js";
+import {
+  mailsEffectifs, mailEffectif, ecrireMailPerso, ecrireMailSurMesure,
+  supprimerMailSurMesure, remplirJetons, JETONS_MAIL, EXEMPLE_MAIL,
+  MODELES_MAIL_DEFAUT,
+} from "@domaine/communication/mails.js";
 import { articlesCgv, renumeroter, cgv, CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
 import {
   GROUPES_TEXTES, DEFAUTS_PAR_GROUPE, lireGroupe, ecrireGroupe,
@@ -52,6 +57,12 @@ export default function TextesDossiers({ retour }) {
   const groupe = ouvert ? GROUPES_TEXTES.find((g) => g.cle === ouvert) : null;
 
   if (groupe) {
+    if (groupe.mails) {
+      return (
+        <PageMails stockes={stockes} org={org}
+          onStockes={setStockes} retour={() => setOuvert(null)} />
+      );
+    }
     return (
       <SousPage
         groupe={groupe} stockes={stockes} org={org}
@@ -347,6 +358,186 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// =============================================================================
+// PAGE DES MODÈLES DE MAILS
+//
+// Liste tous les modèles effectifs (livrés + personnalisés + sur mesure), ouvre
+// un éditeur pour chacun, et permet de créer un modèle vierge à enregistrer.
+// Tout passe par le domaine ; cet écran ne décide rien, il montre et confie.
+// =============================================================================
+function PageMails({ stockes, org, onStockes, retour }) {
+  const [edite, setEdite] = useState(null);   // { cle } | { nouveau: true } | null
+  const [erreur, setErreur] = useState(null);
+
+  const modeles = mailsEffectifs(stockes);
+
+  const contexte = { ...EXEMPLE_MAIL, organisation: org?.nom_commercial || org?.nom || EXEMPLE_MAIL.organisation };
+
+  async function persister(nouveauStockes) {
+    setErreur(null);
+    try {
+      await sauverTextes(nouveauStockes);
+      onStockes(nouveauStockes);
+      setEdite(null);
+    } catch (e) { setErreur(e.message || "Enregistrement impossible"); }
+  }
+
+  if (edite) {
+    const modele = edite.nouveau ? null : mailEffectif(stockes, edite.cle);
+    return (
+      <EditeurMail
+        modele={modele} contexte={contexte}
+        onEnregistrer={(champs) => {
+          if (edite.nouveau) {
+            persister(ecrireMailSurMesure(stockes, champs).stockes);
+          } else if (modele.origine === "sur_mesure") {
+            persister(ecrireMailSurMesure(stockes, { ...champs, cle: modele.cle }).stockes);
+          } else {
+            persister(ecrireMailPerso(stockes, modele.cle,
+              { objet: champs.objet, corps: champs.corps }));
+          }
+        }}
+        onSupprimer={modele?.origine === "sur_mesure"
+          ? () => persister(supprimerMailSurMesure(stockes, modele.cle)) : null}
+        onReinitialiser={modele?.personnalise
+          ? () => persister(ecrireMailPerso(stockes, modele.cle, { objet: "", corps: "" })) : null}
+        onAnnuler={() => setEdite(null)}
+      />
+    );
+  }
+
+  return (
+    <div style={S.page}>
+      <div style={S.entete}>
+        <button style={S.boutonLien} onClick={retour}>← Textes</button>
+        <div style={S.titre}>Modèles de mails</div>
+        <div style={{ fontSize: 12, color: C.muet, marginTop: 2, lineHeight: 1.5 }}>
+          Les envois courants d'une entreprise de déménagement. Réécrivez-les à
+          votre voix, ou créez les vôtres. Dashprod n'envoie rien : ces textes
+          préparent vos mails, vous les envoyez avec votre messagerie.
+        </div>
+      </div>
+
+      <div style={{ padding: "0 16px 24px" }}>
+        <button onClick={() => setEdite({ nouveau: true })}
+          style={{ ...carteBouton, borderStyle: "dashed", justifyContent: "center",
+                   color: C.bleu, fontWeight: 700, fontSize: 13.5 }}>
+          + Nouveau modèle vierge
+        </button>
+
+        {modeles.map((m) => (
+          <button key={m.cle} onClick={() => setEdite({ cle: m.cle })} style={carteBouton}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>
+              {m.origine === "sur_mesure" ? "✏️" : "📨"}
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
+                {m.titre}
+              </span>
+              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2,
+                             lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis",
+                             whiteSpace: "nowrap" }}>
+                {m.objet}
+              </span>
+              <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5,
+                             fontWeight: 700, padding: "2px 7px", borderRadius: 20,
+                             background: m.origine === "sur_mesure" ? "#EDE9FE"
+                                       : m.personnalise ? C.bleuClair : C.doux,
+                             color: m.origine === "sur_mesure" ? "#6D28D9"
+                                  : m.personnalise ? C.bleu : C.fantome }}>
+                {m.origine === "sur_mesure" ? "modèle à vous"
+                  : m.personnalise ? "personnalisé" : "modèle par défaut"}
+              </span>
+            </span>
+            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
+          </button>
+        ))}
+      </div>
+
+      {erreur && <div style={{ margin: "0 16px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
+    </div>
+  );
+}
+
+function EditeurMail({ modele, contexte, onEnregistrer, onSupprimer, onReinitialiser, onAnnuler }) {
+  const [titre, setTitre] = useState(modele?.titre || "");
+  const [objet, setObjet] = useState(modele?.objet || "");
+  const [corps, setCorps] = useState(modele?.corps || "");
+  const surMesure = !modele || modele.origine === "sur_mesure";
+
+  const apercuObjet = remplirJetons(objet, contexte);
+  const apercuCorps = remplirJetons(corps, contexte);
+  const pret = objet.trim() && corps.trim() && (!surMesure || titre.trim());
+
+  return (
+    <div style={S.page}>
+      <div style={S.entete}>
+        <button style={S.boutonLien} onClick={onAnnuler}>← Modèles</button>
+        <div style={S.titre}>{modele ? modele.titre : "Nouveau modèle"}</div>
+      </div>
+
+      <div style={{ padding: "0 16px 24px" }}>
+        {surMesure && (
+          <>
+            <label style={S.label}>Nom du modèle</label>
+            <input style={S.input} value={titre} onChange={(e) => setTitre(e.target.value)}
+                   placeholder="Ex. Rappel garde-meuble" />
+          </>
+        )}
+
+        <label style={{ ...S.label, marginTop: 12 }}>Objet</label>
+        <input style={S.input} value={objet} onChange={(e) => setObjet(e.target.value)}
+               placeholder="Objet du mail" />
+
+        <label style={{ ...S.label, marginTop: 12 }}>Corps du message</label>
+        <textarea style={{ ...S.input, minHeight: 200, resize: "vertical",
+                           fontFamily: "inherit", lineHeight: 1.5 }}
+                  value={corps} onChange={(e) => setCorps(e.target.value)}
+                  placeholder="Bonjour {famille}, …" />
+
+        <div style={{ marginTop: 8, fontSize: 11, color: C.muet, lineHeight: 1.6 }}>
+          Insérez ces repères, remplacés à l'envoi :{" "}
+          {Object.entries(JETONS_MAIL).map(([j, aide]) => (
+            <span key={j} title={aide} style={{ display: "inline-block", marginRight: 6,
+              fontFamily: "monospace", background: C.doux, borderRadius: 5,
+              padding: "1px 5px", color: C.encre }}>{j}</span>
+          ))}
+        </div>
+
+        {/* Aperçu avec l'exemple */}
+        <div style={{ marginTop: 16, padding: 14, borderRadius: 12,
+                      background: "#F8FAFC", border: `1px solid ${C.bord}` }}>
+          <div style={{ ...sousTitre, marginBottom: 6 }}>Aperçu</div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>{apercuObjet || "—"}</div>
+          <div style={{ fontSize: 12.5, color: C.encre, marginTop: 8, whiteSpace: "pre-wrap",
+                        lineHeight: 1.55 }}>{apercuCorps || "—"}</div>
+        </div>
+
+        <button style={{ ...S.boutonPlein, marginTop: 16, opacity: pret ? 1 : 0.5 }}
+                disabled={!pret}
+                onClick={() => onEnregistrer({ titre, objet, corps })}>
+          Enregistrer
+        </button>
+
+        {onReinitialiser && (
+          <button onClick={onReinitialiser}
+                  style={{ ...S.boutonLien, display: "block", width: "100%",
+                           marginTop: 10, fontWeight: 600 }}>
+            Revenir au texte par défaut
+          </button>
+        )}
+        {onSupprimer && (
+          <button onClick={onSupprimer}
+                  style={{ ...S.boutonLien, display: "block", width: "100%",
+                           marginTop: 10, fontWeight: 600, color: C.rouge }}>
+            Supprimer ce modèle
+          </button>
+        )}
+      </div>
     </div>
   );
 }

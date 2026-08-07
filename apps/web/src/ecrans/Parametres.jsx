@@ -144,7 +144,7 @@ export default function Parametres({
 
         <Rubrique>Documents</Rubrique>
         <Entree icone="📝" titre="Textes des dossiers"
-                resume="Email d'offre, PDF d'offre, conditions générales."
+                resume="Mails, email et PDF d'offre, conditions générales."
                 onClick={versTextes} />
 
         <Rubrique>Données</Rubrique>
