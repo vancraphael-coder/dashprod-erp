@@ -133,6 +133,20 @@ export function urlItineraire(charges, decharges, depot = null) {
 }
 
 /**
+ * Itinéraire vers UNE adresse depuis la position de l'appareil. Le terrain veut
+ * « m'y conduire », pas la tournée complète : origin laissé vide, Google Maps
+ * part de la position courante du téléphone. Renvoie null si l'adresse manque.
+ */
+export function urlVersAdresse(a) {
+  if (!a) return null;
+  const dest = [a.adresse, [a.code_postal, a.ville].filter(Boolean).join(" ")]
+    .filter(Boolean).join(", ").trim();
+  if (!dest) return null;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}` +
+         `&travelmode=driving`;
+}
+
+/**
  * Compose l'email d'envoi d'offre (alignement page 07 §2 — format du modèle).
  * @param {object} p
  * @param {{nom: string, email?: string}} p.client
