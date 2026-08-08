@@ -71,15 +71,26 @@ test("les trois phases proposent une seule action évidente", () => {
   assert.equal(avant.phase, "avant");
   assert.match(avant.action, /départ/i);
 
-  const encours = etatPointage(T("08:00"), null, [], T("10:00"));
+  const encours = etatPointage(T("08:00"), null);
   assert.equal(encours.phase, "encours");
   assert.equal(encours.encours, true);
   assert.match(encours.action, /arrivée/i);
+  // En cours, AUCUNE durée n'est calculée : on ne projette pas l'horloge.
+  assert.equal(encours.secondes, null,
+    "tant que l'arrivée manque, la durée reste indéfinie — pas d'extrapolation");
 
   const fini = etatPointage(T("08:00"), T("16:00"));
   assert.equal(fini.phase, "termine");
   assert.equal(fini.action, null);
   assert.equal(fini.encours, false);
+  assert.equal(fini.secondes, 8 * 3600, "départ + arrivée posés : durée définie");
+});
+
+test("le total ne se calcule que sur des heures définies (départ ET arrivée)", () => {
+  // C'est le cœur de la correction : sans arrivée, pas de total, même si le
+  // départ est connu depuis des heures.
+  assert.equal(etatPointage(T("08:00"), null).secondes, null);
+  assert.equal(etatPointage(T("08:00"), T("11:30")).secondes, 3.5 * 3600);
 });
 
 // — Contrôles de saisie —
