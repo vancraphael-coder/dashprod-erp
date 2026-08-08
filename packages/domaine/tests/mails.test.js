@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   MODELES_MAIL_DEFAUT, EXEMPLE_MAIL, remplirJetons, mailsEffectifs, mailEffectif,
+  pieceMail, ecrirePieceMail,
   ecrireMailPerso, ecrireMailSurMesure, supprimerMailSurMesure,
 } from "../src/communication/mails.js";
 
@@ -86,4 +87,25 @@ test("personnalisations et modèles propres coexistent", () => {
   assert.equal(eff.filter((m) => m.personnalise).length, 1);
   assert.equal(eff.filter((m) => m.origine === "sur_mesure").length, 1);
   assert.equal(eff.length, MODELES_MAIL_DEFAUT.length + 1);
+});
+
+test("relation mail↔pdf : pièce par défaut selon le modèle", () => {
+  assert.equal(pieceMail({}, "envoi_devis"), "offre");
+  assert.equal(pieceMail({}, "envoi_facture"), "facture");
+  assert.equal(pieceMail({}, "confirmation_demenagement"), "releve");
+  assert.equal(pieceMail({}, "remerciement"), "aucun");
+});
+
+test("relation mail↔pdf : l'organisation peut réassigner la pièce", () => {
+  let s = ecrirePieceMail({}, "remerciement", "facture");
+  assert.equal(pieceMail(s, "remerciement"), "facture");
+  // remettre le défaut efface la surcharge
+  s = ecrirePieceMail(s, "remerciement", "aucun");
+  assert.equal((s.mails.pieces || {}).remerciement, undefined);
+});
+
+test("mailsEffectifs expose la pièce jointe de chaque modèle", () => {
+  const eff = mailsEffectifs({});
+  const devis = eff.find((m) => m.cle === "envoi_devis");
+  assert.equal(devis.piece, "offre");
 });
