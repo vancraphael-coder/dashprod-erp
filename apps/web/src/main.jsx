@@ -146,9 +146,11 @@ function AppTerrain({ profil }) {
                      versDevis={noop} versOffre={noop} versFacture={noop} versMail={noop}
                      modeTerrain={!edit} />;
     } else if (route.ecran === "releve") {
-      vue = <Releve affaireId={route.affaireId} retour={() => aller("dossier")} versDevis={noop} />;
+      vue = <Releve affaireId={route.affaireId} retour={() => aller("dossier")} versDevis={noop}
+                    modeTerrain={!edit} />;
     } else if (route.ecran === "materiel") {
-      vue = <Materiel affaireId={route.affaireId} retour={() => aller("dossier")} />;
+      vue = <Materiel affaireId={route.affaireId} retour={() => aller("dossier")}
+                      modeTerrain={!edit} />;
     } else if (route.ecran === "devis") {
       vue = <Devis affaireId={route.affaireId} retour={() => aller("dossier")}
                    versOffre={() => aller("offre")} versFacture={() => aller("facture")} />;
@@ -178,10 +180,12 @@ function AppTerrain({ profil }) {
           </span>
         </div>
 
-        {/* Consultation : mêmes pages que le bureau, interactions gelées —
-            seule la navigation (barre du bas) reste active. Le relevé
-            complétable par le chef fera l'objet d'un mode dédié (à venir). */}
-        <div style={edit ? undefined : { pointerEvents: "none" }}>{vue}</div>
+        {/* Consultation : gel des interactions, sauf le matériel (le chef y
+            saisit le repris). Le relevé reste gelé DANS L'ENSEMBLE, mais son
+            chevron réactive localement le pointeur (pointerEvents:auto) : le
+            chef déroule pour lire une remarque, sans rien pouvoir modifier. */}
+        <div style={(edit || route.ecran === "materiel")
+                    ? undefined : { pointerEvents: "none" }}>{vue}</div>
 
         {/* Sous-navigation du parcours */}
         <div style={{
