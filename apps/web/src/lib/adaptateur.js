@@ -1147,8 +1147,8 @@ export async function obtenirEmballage(affaireId) {
 /** Sauve le matériel d'emballage d'un dossier. */
 export async function sauverEmballage(affaireId, emballage) {
   if (modeDonnees() === "reel") {
-    const { error } = await supabase.from("affaires")
-      .update({ emballage }).eq("id", affaireId);
+    const { error } = await supabase.rpc("cmd_emballage_definir",
+      { p_affaire: affaireId, p_emballage: emballage });
     if (error) throw error;
     return;
   }
