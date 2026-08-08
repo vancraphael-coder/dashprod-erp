@@ -16,10 +16,25 @@ import { volumeTotal, articlesADemonter, articlesARemonter, articlesAvecRemarque
 import { briefMission } from "@domaine/communication/brief.js";
 
 const CLE = "dashprod-demo-v1";
+const CLE_DEMO_FORCEE = "dashprod-demo-forcee";
 
 import { tauxTva } from "@domaine/organisation/identite.js";
+
+/** Force la session en mode démo (découverte via compte Google, quota vérifié). */
+export function activerDemoForcee() {
+  try { sessionStorage.setItem(CLE_DEMO_FORCEE, "1"); } catch { /* privé */ }
+}
+export function demoForceeActive() {
+  try { return sessionStorage.getItem(CLE_DEMO_FORCEE) === "1"; } catch { return false; }
+}
+export function quitterDemoForcee() {
+  try { sessionStorage.removeItem(CLE_DEMO_FORCEE); localStorage.removeItem(CLE); } catch { /* privé */ }
+}
+
 /** Mode courant des données. */
 export function modeDonnees() {
+  // Démo forcée : découverte sur données fictives même si la base est configurée.
+  if (demoForceeActive()) return "demo";
   return configPresente ? "reel" : "demo";
 }
 
@@ -2241,6 +2256,28 @@ export async function messagesVerifier(affaireId) {
   return data;
 }
 
+/** Boîte de réception : toutes les conversations du bureau, regroupées par dossier. */
+export async function conversations() {
+  const { data, error } = await supabase.rpc("cmd_conversations");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Le client dépose une note (1–5) + un avis rapide sur son dossier. */
+export async function deposerAvis(affaireId, note, commentaire) {
+  const { data, error } = await supabase.rpc("cmd_avis_deposer",
+    { p_affaire: affaireId, p_note: note, p_commentaire: commentaire || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Avis publics d'une organisation (moyenne + derniers), pour la landing. */
+export async function avisPublics(orgId) {
+  const { data, error } = await supabase.rpc("cmd_avis_publics", { p_org: orgId });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 /** Annuaire public : aucun compte requis, seules les entreprises opt-in sortent. */
 export async function reseauDemenageurs() {
   const { data, error } = await supabase.rpc("cmd_reseau_demenageurs");
@@ -3149,4 +3186,27 @@ export async function televerserConditionsCbd(fichier) {
   const { error } = await supabase.storage.from("documents")
     .upload(chemin, fichier, { upsert: true, contentType: "application/pdf" });
   if (error) throw error;
+}
+
+// =============================================================================
+// DÉMO plafonnée par compte Google (2 essais). Le décompte est serveur ; la
+// démo elle-même tourne sur le magasin local (aucune donnée d'entreprise).
+// =============================================================================
+
+/** Combien d'essais de démo restent à ce compte Google. */
+export async function demoEtat() {
+  const { data, error } = await supabase.rpc("cmd_demo_etat");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Démarre un essai de démo : vérifie et décompte côté serveur, puis bascule la
+ * session en mode démo local. Renvoie l'autorisation. Si refusé, ne bascule pas.
+ */
+export async function demoDemarrer() {
+  const { data, error } = await supabase.rpc("cmd_demo_essai");
+  if (error) throw new Error(error.message);
+  if (data?.autorise) activerDemoForcee();
+  return data;
 }
