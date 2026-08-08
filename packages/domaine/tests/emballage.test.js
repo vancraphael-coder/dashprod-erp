@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  CATALOGUE_EMBALLAGE, resumeEmballage, fournituresOffre,
+  CATALOGUE_EMBALLAGE, resumeEmballage, fournituresOffre, valoriserEmballage,
 } from "../src/stocks/emballage.js";
 import { utiliseCalcule } from "../src/stocks/stock.js";
 
@@ -59,4 +59,25 @@ test("fournituresOffre : l'utilisé (déduit) alimente l'offre, pluriel accordé
 test("fournituresOffre : tout repris → liste vide", () => {
   assert.deepEqual(fournituresOffre({ std: { e: 10, r: 10 } }), []);
   assert.deepEqual(fournituresOffre(null), []);
+});
+
+test("valoriserEmballage : dénomination + coût + montant du consommé", () => {
+  const fournitures = [
+    { cle: "std", nom: "Carton standard", unite: "pièce", cout_centimes: 150 },
+    { cle: "livre", nom: "Carton livre", unite: "pièce", cout_centimes: 180 },
+  ];
+  const r = valoriserEmballage({ std: { e: 30, r: 10 }, livre: { e: 5, r: 5 } }, fournitures);
+  assert.equal(r.lignes.length, 1, "seul le consommé > 0 est valorisé");
+  assert.equal(r.lignes[0].nom, "Carton standard");
+  assert.equal(r.lignes[0].quantite, 20);
+  assert.equal(r.lignes[0].cout_unitaire_centimes, 150);
+  assert.equal(r.lignes[0].montant_centimes, 3000);
+  assert.equal(r.total_centimes, 3000);
+});
+
+test("valoriserEmballage : article sans prix au catalogue → coût 0", () => {
+  const r = valoriserEmballage({ x: { e: 4, r: 0 } }, []);
+  assert.equal(r.lignes[0].quantite, 4);
+  assert.equal(r.lignes[0].cout_unitaire_centimes, 0);
+  assert.equal(r.total_centimes, 0);
 });
