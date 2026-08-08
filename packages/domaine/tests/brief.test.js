@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  briefMission, urlItineraire, urlWhatsApp, emailOffre, urlMailto,
+  briefMission, urlItineraire, urlVersAdresse, urlWhatsApp, emailOffre, urlMailto,
 } from "../src/communication/brief.js";
 
 const BASE = {
@@ -173,4 +173,17 @@ test("brief : aucune identité d'entreprise codée en dur", () => {
                           "Rue Neutre 1, 1000 Bruxelles");
   assert.equal(u.includes("Jodoigne"), false);
   assert.equal(urlItineraire([{ adresse: "A" }], [{ adresse: "B" }]), null);
+});
+
+test("urlVersAdresse : itinéraire vers une adresse, sans origin (position du tel)", () => {
+  const u = urlVersAdresse({ adresse: "Rue de la Loi 16", code_postal: "1000", ville: "Bruxelles" });
+  assert.match(u, /destination=Rue%20de%20la%20Loi%2016%2C%201000%20Bruxelles/);
+  assert.doesNotMatch(u, /origin=/, "origin vide : Maps part de la position courante");
+  assert.match(u, /travelmode=driving/);
+});
+
+test("urlVersAdresse : null si aucune adresse", () => {
+  assert.equal(urlVersAdresse(null), null);
+  assert.equal(urlVersAdresse({ adresse: "" }), null);
+  assert.equal(urlVersAdresse({ ville: "" }), null);
 });
