@@ -98,7 +98,8 @@ export async function listerAffaires() {
   const enrichir = (a) => {
     const s = suites[a.id];
     return s ? { ...a, solde_centimes: s.solde_centimes,
-                 litiges_ouverts: s.litiges_ouverts, a_facture: s.facture } : a;
+                 litiges_ouverts: s.litiges_ouverts, a_facture: s.facture,
+                 missions_terrain_en_attente: s.missions_terrain_en_attente } : a;
   };
   // Tri métier : le bureau vit dans l'ordre chronologique des CHANTIERS
   // (date souhaitée), les dossiers sans date en fin, puis créations récentes.
@@ -1935,14 +1936,68 @@ export async function terminerChantier(missionId) {
   const m = (d.missions || []).find((x) => x.id === missionId);
   if (m) {
     (m.sessions || []).forEach((s) => { if (!s.fin) s.fin = new Date().toISOString(); });
-    m.etat = "effectuee";
-    const a = (d.affaires || []).find((x) => x.id === m.affaire_id);
-    const toutesFinies = (d.missions || [])
-      .filter((x) => x.affaire_id === m.affaire_id)
-      .every((x) => !["planifiee", "en_cours"].includes(x.etat));
-    if (a && toutesFinies) a.etat = "effectue";
+    // Le terrain INDIQUE : terminee_terrain. Le bureau confirmera.
+    m.etat = "terminee_terrain";
     ecrireDemo(d);
   }
+}
+
+// =============================================================================
+// RÉCONCILIATION TERRAIN → BUREAU (0088)
+// Le chef indique (terminerChantier → terminee_terrain), le bureau tranche.
+// =============================================================================
+
+/** Le bureau confirme un chantier terminé sur le terrain → mission effectuée. */
+export async function confirmerMission(missionId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_confirmer_mission", { p_mission: missionId });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) {
+    m.etat = "effectuee";
+    const a = (d.affaires || []).find((x) => x.id === m.affaire_id);
+    const toutes = (d.missions || []).filter((x) => x.affaire_id === m.affaire_id)
+      .every((x) => !["planifiee", "en_cours", "terminee_terrain"].includes(x.etat));
+    if (a && toutes) a.etat = "effectue";
+    ecrireDemo(d);
+    return { dossier_effectue: Boolean(a && toutes) };
+  }
+  return null;
+}
+
+/** Le bureau renvoie le chantier au terrain : ce n'est pas fini. */
+export async function renvoyerChantier(missionId, motif) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_renvoyer_chantier",
+      { p_mission: missionId, p_motif: motif || null });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) { m.etat = "en_cours"; ecrireDemo(d); }
+  return { statut: "RENVOYE_TERRAIN" };
+}
+
+/** État de réconciliation d'un dossier (missions en attente / confirmées). */
+export async function reconciliationAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_reconciliation_affaire",
+      { p_affaire: affaireId });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const miss = (d.missions || []).filter((x) => x.affaire_id === affaireId && x.etat !== "annulee");
+  return {
+    en_attente_bureau: miss.filter((x) => x.etat === "terminee_terrain").length,
+    confirmees: miss.filter((x) => x.etat === "effectuee").length,
+    encore_ouvertes: miss.filter((x) => ["planifiee", "en_cours"].includes(x.etat)).length,
+    missions: miss.map((x) => ({ id: x.id, type: x.type, date: x.date, etat: x.etat })),
+  };
 }
 
 // ── Capacités individuelles (droits par membre, ex. création de devis) ────────
