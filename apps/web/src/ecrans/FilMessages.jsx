@@ -161,9 +161,10 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme })
       <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "flex-end" }}>
         <button onClick={() => fichierRef.current && fichierRef.current.click()}
           disabled={chargePiece} title="Joindre une image ou un PDF"
-          style={{ padding: "12px 12px", borderRadius: 10, cursor: "pointer",
-                   border: `1.5px solid ${C.bord}`, background: "#fff",
-                   fontSize: 16, color: C.muet }}>
+          style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 12,
+                   cursor: "pointer", border: `1px solid ${C.bord}`,
+                   background: S.input.background, fontSize: 17, color: C.muet,
+                   display: "flex", alignItems: "center", justifyContent: "center" }}>
           {chargePiece ? "…" : "📎"}
         </button>
         <input ref={fichierRef} type="file" multiple hidden
@@ -171,9 +172,12 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme })
           onChange={(e) => e.target.files.length && ajouterFichiers([...e.target.files])} />
         <textarea value={texte} onChange={(e) => setTexte(e.target.value)}
           placeholder="Écrire un message…" rows={2}
-          style={{ ...S.input, flex: 1, minHeight: 44, resize: "vertical" }} />
+          style={{ ...S.input, flex: 1, minWidth: 0, height: 44, minHeight: 44,
+                   maxHeight: 140, lineHeight: 1.4, paddingTop: 11, paddingBottom: 11,
+                   resize: "vertical" }} />
         <button onClick={envoyer} disabled={envoi || (!texte.trim() && pieces.length === 0)}
-          style={{ ...S.boutonPlein, padding: "12px 16px",
+          style={{ ...S.boutonPlein, flexShrink: 0, width: "auto", height: 44,
+                   padding: "0 18px",
                    opacity: envoi || (!texte.trim() && pieces.length === 0) ? 0.5 : 1 }}>
           {envoi ? "…" : "Envoyer"}
         </button>

@@ -229,15 +229,55 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
         <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>{groupe.resume}</div>
       </div>
 
+      {/* Guide : dire clairement ce que la personne est en train de régler et
+          où ça se retrouve. Un exemple concret, pas des réglages abstraits. */}
+      {groupe.champs.length > 0 && (
+        <div style={{ ...S.carte, background: "#F0F7FF", border: "1px solid #BFDBFE" }}>
+          <div style={{ fontSize: 12.5, color: "#1E40AF", lineHeight: 1.5 }}>
+            {groupe.cle === "pdf"
+              ? "Réglez les titres et libellés du PDF d'offre. Laissez un champ vide pour garder le texte proposé. L'exemple ci-dessous montre le rendu."
+              : "Réécrivez les phrases de votre mail d'offre à votre voix. Chaque champ garde le texte proposé tant que vous ne le remplacez pas — l'exemple en bas se met à jour en direct."}
+          </div>
+        </div>
+      )}
+
+      {/* L'exemple d'abord : on voit le résultat, puis on modifie. */}
+      {apercu && (
+        <div style={S.carte}>
+          <div style={sousTitre}>Ce que verra votre client</div>
+          <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
+            Objet : <span style={{ color: C.encre, fontWeight: 700 }}>{apercu.objet}</span>
+          </div>
+          <pre style={{
+            margin: 0, padding: 12, borderRadius: 10, background: "#F8FAFC",
+            border: `1px solid ${C.bord}`, fontSize: 12, lineHeight: 1.55,
+            color: C.encre, whiteSpace: "pre-wrap",
+            fontFamily: "ui-monospace, monospace",
+          }}>{apercu.corps}</pre>
+        </div>
+      )}
+
       {groupe.champs.length > 0 && (
         <div style={S.carte}>
-          {groupe.champs.map((ch) => (
-            <div key={ch.cle} style={{ marginBottom: 10 }}>
-              <label style={S.label}>
+          <div style={sousTitre}>À modifier</div>
+          {groupe.champs.map((ch) => {
+            const modifie = String(valeurs[ch.cle] ?? "") !== ""
+              && String(valeurs[ch.cle] ?? "") !== String(defauts[ch.cle] ?? "");
+            return (
+            <div key={ch.cle} style={{ marginBottom: 12 }}>
+              <label style={{ ...S.label, display: "flex", alignItems: "center", gap: 6 }}>
                 {ch.label}
                 {ch.aide && (
-                  <span style={{ fontWeight: 500, color: C.fantome, marginLeft: 6 }}>
+                  <span style={{ fontWeight: 500, color: C.fantome, textTransform: "none",
+                                 letterSpacing: 0 }}>
                     {ch.aide}
+                  </span>
+                )}
+                {modifie && (
+                  <span style={{ marginLeft: "auto", fontSize: 9.5, fontWeight: 700,
+                    color: C.bleu, background: "#E7EFFC", borderRadius: 20,
+                    padding: "1px 7px", textTransform: "none", letterSpacing: 0 }}>
+                    modifié
                   </span>
                 )}
               </label>
@@ -255,23 +295,16 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
                          ch.nombre ? (e.target.value === "" ? "" : Number(e.target.value))
                                    : e.target.value)} />
               )}
+              {/* Le texte proposé, visible comme point de départ. */}
+              {!ch.nombre && String(defauts[ch.cle] ?? "").trim() && (
+                <div style={{ fontSize: 10.5, color: C.fantome, marginTop: 3,
+                              lineHeight: 1.4 }}>
+                  Proposé : {String(defauts[ch.cle])}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
-
-      {apercu && (
-        <div style={S.carte}>
-          <div style={sousTitre}>Aperçu (exemple)</div>
-          <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
-            Objet : <span style={{ color: C.encre, fontWeight: 700 }}>{apercu.objet}</span>
-          </div>
-          <pre style={{
-            margin: 0, padding: 12, borderRadius: 10, background: "#F8FAFC",
-            border: `1px solid ${C.bord}`, fontSize: 12, lineHeight: 1.55,
-            color: C.encre, whiteSpace: "pre-wrap",
-            fontFamily: "ui-monospace, monospace",
-          }}>{apercu.corps}</pre>
+            );
+          })}
         </div>
       )}
 
@@ -316,7 +349,9 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
       {groupe.fichier && (
         <div style={S.carte}>
           <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 8 }}>
-            PDF joint à chaque offre envoyée au client, à côté de l'offre elle-même.
+            Document PDF que vous pourrez joindre à vos mails (conditions
+            générales, brochure…). Vous choisissez à quels modèles l'associer
+            dans « Modèles de mails ».
           </div>
           {cbd === undefined ? null : cbd ? (
             <div style={{ display: "flex", alignItems: "center",
@@ -324,7 +359,7 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
                           borderRadius: 10, background: "#ECFDF5",
                           border: "1px solid #A7F3D0" }}>
               <span style={{ fontSize: 12.5, fontWeight: 700, color: "#065F46" }}>
-                ✓ Conditions déposées
+                ✓ PDF déposé
               </span>
               <a href={cbd} target="_blank" rel="noreferrer"
                  style={{ fontSize: 12.5, fontWeight: 700, color: C.bleu }}>Ouvrir</a>
@@ -332,7 +367,7 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
           ) : (
             <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFFBEB",
                           border: "1px solid #FDE68A", fontSize: 12.5, color: "#92400E" }}>
-              Aucun document déposé — les offres partiront sans les conditions.
+              Aucun PDF déposé pour l'instant.
             </div>
           )}
           {modeDonnees() === "reel" && (
