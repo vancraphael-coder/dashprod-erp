@@ -1,0 +1,7 @@
+-- 0099 — Inventaire des caisses du client, PRIVÉ.
+-- Table caisses_client (numero, piece_dest, adresse_id, contenu, fragile).
+-- RLS : SEUL le client (par e-mail) accède à ses caisses (contenu compris).
+--   Aucune politique de lecture pour le bureau → contenu inatteignable côté org.
+-- cmd_caisse_definir / cmd_caisse_supprimer / cmd_caisses_client (contenu).
+-- cmd_caisses_plan(affaire) : vue BUREAU = numéro → pièce → adresse, SANS
+--   contenu. Prouvé : bureau voit 0 ligne en accès direct. Corps en base.
