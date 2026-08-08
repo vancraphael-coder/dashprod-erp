@@ -2184,20 +2184,54 @@ export async function messagesFil(affaireId) {
   return data;
 }
 
-/** Le bureau écrit au client. */
-export async function messageBureau(affaireId, corps) {
+/** Le bureau écrit au client (avec pièces jointes éventuelles). */
+export async function messageBureau(affaireId, corps, pieces = []) {
   const { data, error } = await supabase.rpc("cmd_message_bureau",
-    { p_affaire: affaireId, p_corps: corps });
+    { p_affaire: affaireId, p_corps: corps, p_pieces: pieces });
   if (error) throw new Error(error.message);
   return data;
 }
 
-/** Le client répond depuis son espace. */
-export async function messageClient(affaireId, corps) {
+/** Le client répond depuis son espace (avec pièces jointes éventuelles). */
+export async function messageClient(affaireId, corps, pieces = []) {
   const { data, error } = await supabase.rpc("cmd_message_client",
-    { p_affaire: affaireId, p_corps: corps });
+    { p_affaire: affaireId, p_corps: corps, p_pieces: pieces });
   if (error) throw new Error(error.message);
   return data;
+}
+
+/**
+ * Téléverse une pièce jointe de message et renvoie ses métadonnées + empreinte.
+ * L'empreinte SHA-256 est calculée sur le contenu : elle entre dans le hash du
+ * message (registre probant) et permet de vérifier que le fichier n'a pas bougé.
+ * Formats acceptés : images et PDF, ≤ 10 Mo.
+ */
+export async function televerserPieceMessage(affaireId, file) {
+  const OK = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+  if (!OK.includes(file.type)) throw new Error("Format non accepté (images ou PDF).");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Fichier trop lourd (10 Mo max).");
+
+  const buf = await file.arrayBuffer();
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  const empreinte = Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  const nomSain = file.name.replace(/[^\w.\-]/g, "_").slice(-80);
+  const chemin = `messages/${affaireId}/${empreinte.slice(0, 16)}_${nomSain}`;
+
+  const { error } = await supabase.storage.from("documents")
+    .upload(chemin, file, { contentType: file.type, upsert: true });
+  if (error) throw new Error(error.message);
+
+  return { chemin, nom: file.name, type: file.type, taille: file.size, empreinte };
+}
+
+/** URL signée (temporaire) pour lire une pièce jointe. */
+export async function urlPieceMessage(chemin) {
+  const { data, error } = await supabase.storage.from("documents")
+    .createSignedUrl(chemin, 300);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
 }
 
 /** Vérifie l'intégrité de la chaîne (bureau) — preuve d'inaltérabilité. */
