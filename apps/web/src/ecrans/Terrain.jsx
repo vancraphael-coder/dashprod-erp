@@ -134,13 +134,11 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
   const arrivee = travail.fin ? new Date(travail.fin) : null;
   const pauses = (mission.sessions || []).filter((x) => x.type === "pause");
 
-  const [tic, setTic] = useState(Date.now());
   const [saisie, setSaisie] = useState({ depart: "", arrivee: "" });
   const [nouvellePause, setNouvellePause] = useState(null);
   const [erreur, setErreur] = useState(null);
-  const timer = useRef(null);
 
-  const etat = etatPointage(depart, arrivee, pauses, new Date(tic));
+  const etat = etatPointage(depart, arrivee, pauses);
 
   // Les heures prévues par le bureau. Rien n'est calculé ni deviné : ce que le
   // bureau n'a pas renseigné reste vide.
@@ -150,14 +148,8 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
     arrivee: mission.heure_arrivee_prevue,
   });
 
-  // Le compteur ne « mesure » rien : il projette l'heure courante depuis le
-  // départ déclaré. Il ne tourne que tant qu'aucune arrivée n'est posée.
-  useEffect(() => {
-    if (etat.encours) {
-      timer.current = setInterval(() => setTic(Date.now()), 30000);
-      return () => clearInterval(timer.current);
-    }
-  }, [etat.encours]);
+  // Aucun compteur qui tourne : on n'affiche une durée que lorsque départ ET
+  // arrivée sont déclarés. Rien n'est extrapolé depuis l'horloge système.
 
   // Les champs suivent ce qui est enregistré, tant qu'on n'y touche pas.
   useEffect(() => {
@@ -260,8 +252,14 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
               <div style={{ fontSize: 34, fontWeight: 800, color: "#fff",
                 fontFamily: "ui-monospace, monospace", letterSpacing: ".02em",
                 marginTop: 2 }}>
-                {formaterDuree(etat.secondes)}
+                {etat.secondes != null ? formaterDuree(etat.secondes)
+                  : etat.encours ? `depuis ${heureDe(depart)}` : "—:—"}
               </div>
+              {etat.encours && (
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3, lineHeight: 1.4 }}>
+                  La durée sera calculée une fois l'arrivée déclarée.
+                </div>
+              )}
               {pauses.length > 0 && (
                 <div style={{ fontSize: 11.5, color: "#94A3B8", marginTop: 2 }}>
                   pauses déduites

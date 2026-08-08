@@ -19,6 +19,7 @@ import {
   annulerAffaire, reporterAffaire, reprendreAffaire, etatFacturation,
   exigencesCloture, cloturerDossier, rouvrirDossier,
   reconciliationAffaire, confirmerMission, renvoyerChantier,
+  prerequisEffectue, marquerEffectue,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -519,6 +520,13 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </button>
         )}
 
+        {/* Passer « en cours » à « effectué » : action du bureau, avec les
+            prérequis affichés (validés / manquants) pour savoir ce qui bloque. */}
+        {!modeTerrain && affaire.etat === "en_cours" && (
+          <ZoneMarquerEffectue affaireId={affaireId}
+                               onFait={() => obtenirAffaire(affaireId).then(setAffaire)} />
+        )}
+
         {/* Réconciliation terrain → bureau : le chef d'équipe a remonté des
             chantiers, le bureau confirme (ou renvoie). C'est ici, et seulement
             ici, que le dossier devient officiellement « effectué ». */}
@@ -602,6 +610,81 @@ const REPORTABLE = ["envoye", "confirme", "planifie"];
  * On n'affiche cette zone que lorsqu'il y a quelque chose à réconcilier : des
  * chantiers en attente, ou tout juste confirmés.
  */
+/**
+ * ZONE « MARQUER EFFECTUÉ » — le bureau fait passer le dossier de « en cours »
+ * à « effectué ». Le bouton n'est actif que si tous les prérequis sont verts ;
+ * sinon, la liste montre exactement ce qui est validé et ce qui manque.
+ */
+function ZoneMarquerEffectue({ affaireId, onFait }) {
+  const [pre, setPre] = useState(null);
+  const [erreur, setErreur] = useState(null);
+  const [enCours, setEnCours] = useState(false);
+
+  useEffect(() => {
+    prerequisEffectue(affaireId).then(setPre).catch(() => setPre(null));
+  }, [affaireId]);
+
+  if (!pre) return null;
+
+  async function marquer() {
+    setEnCours(true); setErreur(null);
+    try { await marquerEffectue(affaireId); onFait(); }
+    catch (e) { setErreur(e.message || "Refusé"); setEnCours(false); }
+  }
+
+  return (
+    <div style={{ ...S.carte, border: `1px solid ${C.bord}` }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+        Marquer le dossier effectué
+      </div>
+      <div style={{ fontSize: 12, color: C.muet, marginTop: 4, lineHeight: 1.5 }}>
+        {pre.peut_effectuer
+          ? "Tout est prêt : le chantier peut être déclaré effectué."
+          : "Quelques points à régler avant de pouvoir déclarer le dossier effectué."}
+      </div>
+
+      <div style={{ marginTop: 10 }}>
+        {(pre.points || []).map((p) => {
+          const ok = p.statut === "ok";
+          return (
+            <div key={p.cle} style={{ display: "flex", gap: 8, alignItems: "baseline",
+                                      padding: "5px 0" }}>
+              <span style={{ fontSize: 13, flexShrink: 0,
+                             color: ok ? "#15803D" : C.ambre }}>
+                {ok ? "✓" : "○"}
+              </span>
+              <span style={{ flex: 1 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600,
+                               color: ok ? C.encre : C.encre }}>{p.libelle}</span>
+                {p.detail && (
+                  <span style={{ display: "block", fontSize: 11, color: C.muet, marginTop: 1 }}>
+                    {p.detail}
+                  </span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 8 }}>{erreur}</div>}
+
+      <button disabled={!pre.peut_effectuer || enCours} onClick={marquer}
+              style={{ ...S.boutonPlein, width: "100%", marginTop: 12,
+                       opacity: pre.peut_effectuer ? 1 : 0.5,
+                       background: pre.peut_effectuer
+                         ? "linear-gradient(135deg, #059669, #047857)" : "#94A3B8" }}>
+        {enCours ? "…" : "✓ Marquer effectué"}
+      </button>
+      {!pre.peut_effectuer && (
+        <div style={{ fontSize: 10.5, color: C.fantome, textAlign: "center", marginTop: 6 }}>
+          Le bouton s'activera une fois les points ci-dessus validés.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ZoneReconciliation({ affaire, affaireId, onFait }) {
   const [recon, setRecon] = useState(null);
   const [renvoi, setRenvoi] = useState(null);   // mission en cours de renvoi
