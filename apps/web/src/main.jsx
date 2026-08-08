@@ -9,7 +9,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { sessionCourante, configPresente, deconnecter } from "./lib/supabase.js";
-import { modeDonnees, reclamerInvitation, monProfil, mesSocietes, choisirSociete }
+import { modeDonnees, demoForceeActive, quitterDemoForcee, reclamerInvitation, monProfil, mesSocietes, choisirSociete }
   from "./lib/adaptateur.js";
 import { C, Icone, gardeModifs, Confirmation } from "./lib/theme.jsx";
 import Connexion from "./ecrans/Connexion.jsx";
@@ -46,17 +46,27 @@ import Journal from "./ecrans/Journal.jsx";
 import RapportsDossier from "./ecrans/RapportsDossier.jsx";
 import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
+import Conversations from "./ecrans/Conversations.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
 function BandeauDemo({ versDiagnostic }) {
   if (modeDonnees() !== "demo") return null;
+  const forcee = demoForceeActive();
   return (
     <div style={{ background: "#7C3AED", color: "#fff", fontSize: 12, fontWeight: 600,
                   textAlign: "center", padding: "7px 10px" }}>
       Mode démonstration — base non branchée, données locales.{" "}
-      <button onClick={versDiagnostic} style={{ background: "none", border: "none",
-        color: "#fff", textDecoration: "underline", cursor: "pointer",
-        fontSize: 12, fontWeight: 700 }}>Diagnostic</button>
+      {forcee ? (
+        <button onClick={() => { quitterDemoForcee(); location.reload(); }}
+          style={{ background: "none", border: "none", color: "#fff",
+            textDecoration: "underline", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+          Quitter la démo
+        </button>
+      ) : (
+        <button onClick={versDiagnostic} style={{ background: "none", border: "none",
+          color: "#fff", textDecoration: "underline", cursor: "pointer",
+          fontSize: 12, fontWeight: 700 }}>Diagnostic</button>
+      )}
     </div>
   );
 }
@@ -66,6 +76,7 @@ function BarreNav({ actif, aller, peutGererEquipe }) {
   const items = [
     ["liste", "dossiers", "Dossiers"],
     ["planning", "planning", "Planning"],
+    ["conversations", "mail", "Messages"],
     ...(peutGererEquipe ? [["equipe", "ressources", "Ressources"]] : []),
     ["compte", "compte", "Compte"],
   ];
@@ -476,6 +487,7 @@ function App() {
     mail: (id) => setRoute({ ecran: "mail", affaireId: id }),
     materiel: (id) => setRoute({ ecran: "materiel", affaireId: id }),
     planning: () => setRoute({ ecran: "planning", affaireId: null }),
+    conversations: () => setRoute({ ecran: "conversations", affaireId: null }),
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
     compte: () => setRoute({ ecran: "compte", affaireId: null }),
     diagnostic: () => setRoute({ ecran: "diagnostic", affaireId: null }),
@@ -493,7 +505,7 @@ function App() {
       [cle, (...args) => naviguerAvecGarde(() => fn(...args))]));
   const retourDossier = () => nav.dossier(route.affaireId);
 
-  const RACINES = ["liste", "planning", "equipe", "compte"];
+  const RACINES = ["liste", "planning", "conversations", "equipe", "compte"];
   let ecran;
   if (route.ecran === "diagnostic") {
     ecran = (
@@ -514,6 +526,8 @@ function App() {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
     ecran = <Planning ouvrirDossier={nav.dossier} />;
+  } else if (route.ecran === "conversations") {
+    ecran = <Conversations ouvrirDossier={nav.dossier} />;
   } else if (route.ecran === "dossier") {
     ecran = <Dossier affaireId={route.affaireId} retour={nav.liste}
                      versReleve={nav.releve} versDevis={nav.devis}
