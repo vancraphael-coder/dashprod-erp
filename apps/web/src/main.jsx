@@ -179,7 +179,8 @@ function AppTerrain({ profil }) {
         </div>
 
         {/* Consultation : mêmes pages que le bureau, interactions gelées —
-            seule la navigation (barre du bas) reste active. */}
+            seule la navigation (barre du bas) reste active. Le relevé
+            complétable par le chef fera l'objet d'un mode dédié (à venir). */}
         <div style={edit ? undefined : { pointerEvents: "none" }}>{vue}</div>
 
         {/* Sous-navigation du parcours */}
