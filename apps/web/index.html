@@ -46,6 +46,11 @@
       html, body { margin: 0; background: #F1F5FB; }
       /* iOS zoome les champs sous 16px : on impose 16 pour éviter le saut. */
       input, select, textarea { font-family: system-ui, sans-serif; font-size: 16px; color: #0F172A; }
+      /* Le clavier doit rester visible partout, y compris sur fond de nuit. */
+      :focus-visible { outline: 2px solid #FFB627; outline-offset: 2px; border-radius: 6px; }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+      }
       input:focus, select:focus, textarea:focus {
         outline: none; border-color: #2563EB !important;
         box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
