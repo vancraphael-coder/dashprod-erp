@@ -1,0 +1,4 @@
+-- 0093 — cmd_emballage_definir(affaire, emballage) : écriture ciblée du matériel
+-- d'emballage (colonne affaires.emballage uniquement). Autorise le terrain
+-- (pointer_chantier) et le bureau (gerer_planning/creer_affaire) sans ouvrir
+-- tout le dossier à l'écriture. Corps exact en base. Appliqué le 2026-08-08.
