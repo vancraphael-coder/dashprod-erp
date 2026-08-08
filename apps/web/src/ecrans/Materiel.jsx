@@ -18,7 +18,7 @@ import { obtenirCatalogues } from "../lib/adaptateur.js";
 import { catalogue } from "@domaine/stocks/catalogues.js";
 import { C, S, declarerModifs} from "../lib/theme.jsx";
 
-export default function Materiel({ affaireId, retour }) {
+export default function Materiel({ affaireId, retour, modeTerrain }) {
   const [affaire, setAffaire] = useState(null);
   const [emballage, setEmballage] = useState({});
   const [sauve, setSauve] = useState(false);
@@ -79,7 +79,9 @@ export default function Materiel({ affaireId, retour }) {
   return (
     <div style={S.page}>
       <div style={S.entete}>
-        <button style={S.boutonLien} onClick={retour}>← Dossier</button>
+        {!modeTerrain && (
+          <button style={S.boutonLien} onClick={retour}>← Dossier</button>
+        )}
         <div style={S.titre}>Matériel — {affaire?.client?.nom || "…"}</div>
         <div style={{ fontSize: 11.5, color: C.muet, marginTop: 2 }}>
           Enlevé du dépôt · Utilisé chez le client · Repris au retour
@@ -121,26 +123,41 @@ export default function Materiel({ affaireId, retour }) {
             const ligne = resume.lignes.find((l) => l.cle === a.cle)
               || { cle: a.cle, e: 0, u: 0, r: 0, ecart: 0, coherent: true };
             const enEcart = ligne.e > 0 && !ligne.coherent;
+            const brut = emballage[a.cle] || {};
             return (
               <React.Fragment key={a.cle}>
                 <div style={{ fontSize: 13, color: C.encre,
                               fontWeight: enEcart ? 700 : 500 }}>
                   {a.nom}
                   {enEcart && (
-                    <span style={{ color: C.rouge, fontSize: 11 }}> · −{ligne.ecart}</span>
+                    <span style={{ color: C.rouge, fontSize: 11 }}> · reprise &gt; sortie</span>
                   )}
                 </div>
-                {["e", "u", "r"].map((col) => (
-                  <input
-                    key={col} inputMode="numeric" style={{
-                      ...S.input, padding: "8px 4px", textAlign: "center",
-                      borderColor: enEcart ? "#FECACA" : C.bord,
-                    }}
-                    value={(emballage[a.cle] || {})[col] ?? ""}
-                    placeholder="0"
-                    onChange={(e) => maj(a.cle, col, e.target.value)}
-                  />
-                ))}
+
+                {/* Enl. — saisi (dépôt). Gelé pour le terrain (consultation). */}
+                <input inputMode="numeric" disabled={modeTerrain} style={{
+                  ...S.input, padding: "8px 4px", textAlign: "center",
+                  borderColor: enEcart ? "#FECACA" : C.bord,
+                  background: modeTerrain ? "#F1F5F9" : undefined,
+                  color: modeTerrain ? C.muet : undefined,
+                }} value={brut.e ?? ""} placeholder="0"
+                  onChange={(e) => maj(a.cle, "e", e.target.value)} />
+
+                {/* Util. — CALCULÉ : enl. − rep. Jamais saisi, toujours lu. */}
+                <div style={{ padding: "8px 4px", textAlign: "center", fontSize: 13,
+                              fontWeight: 700, color: C.encre, background: "#F8FAFC",
+                              borderRadius: 8, border: `1px solid ${C.doux}` }}>
+                  {ligne.u}
+                </div>
+
+                {/* Rep. — saisi par le chef sur le terrain (ce qu'il rapporte).
+                    Éditable même en consultation : c'est SA saisie. */}
+                <input inputMode="numeric" style={{
+                  ...S.input, padding: "8px 4px", textAlign: "center",
+                  borderColor: enEcart ? "#FECACA" : (modeTerrain ? C.ambre : C.bord),
+                  ...(modeTerrain ? { pointerEvents: "auto" } : null),
+                }} value={brut.r ?? ""} placeholder="0"
+                  onChange={(e) => maj(a.cle, "r", e.target.value)} />
               </React.Fragment>
             );
           })}

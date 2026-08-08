@@ -25,7 +25,7 @@ import { C, S, declarerModifs} from "../lib/theme.jsx";
 
 function uid() { return "i" + Math.random().toString(36).slice(2, 9); }
 
-export default function Releve({ affaireId, retour, versDevis }) {
+export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
   const [affaire, setAffaire] = useState(null);
   const [inv, setInv] = useState([]);
   const [piece, setPiece] = useState("Salon");
@@ -155,7 +155,9 @@ export default function Releve({ affaireId, retour, versDevis }) {
   return (
     <div style={S.page}>
       <div style={S.entete}>
-        <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
+        {!modeTerrain && (
+          <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div style={S.titre}>Relevé — {affaire?.client?.nom || "…"}</div>
           <div style={{ textAlign: "right" }}>
@@ -285,7 +287,11 @@ export default function Releve({ affaireId, retour, versDevis }) {
                           aria-label={ouvertIci ? "Replier" : "Options"}
                           style={{ ...btnQ, width: 26, borderColor: "transparent",
                                    background: "transparent", color: C.muet,
-                                   fontSize: 12 }}>
+                                   fontSize: 12,
+                                   // En consultation terrain, tout est gelé sauf
+                                   // ce chevron : le chef déroule pour lire la
+                                   // remarque, sans rien pouvoir modifier.
+                                   ...(modeTerrain ? { pointerEvents: "auto" } : null) }}>
                     {ouvertIci ? "▾" : "▸"}
                   </button>
                   <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: C.encre }}>
@@ -327,6 +333,22 @@ export default function Releve({ affaireId, retour, versDevis }) {
                 {ouvertIci && (
                   <div style={{ marginTop: 8, paddingTop: 8,
                                 borderTop: `1px solid ${C.bord}` }}>
+                    {modeTerrain ? (
+                      /* Terrain : lecture seule. Le chef déroule pour voir ce
+                         qui a été noté, il ne modifie pas le relevé. */
+                      <div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {it.demont && <span style={puceLecture(C.bleu)}>🔧 À démonter</span>}
+                          {it.remont && <span style={puceLecture(C.vert)}>🔩 À remonter</span>}
+                        </div>
+                        <div style={{ marginTop: it.demont || it.remont ? 6 : 0,
+                          fontSize: 12.5, color: it.remarque ? C.encre : C.fantome,
+                          lineHeight: 1.45 }}>
+                          {it.remarque || "Aucune remarque."}
+                        </div>
+                      </div>
+                    ) : (
+                    <>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={() => basculerDemontage(it.id)}
                         style={{ ...btnOption,
@@ -350,6 +372,8 @@ export default function Releve({ affaireId, retour, versDevis }) {
                         padding: "8px 10px", borderRadius: 8, fontSize: 12.5,
                         border: `1px solid ${C.bord}`, background: "#fff",
                         color: C.encre, outline: "none" }} />
+                    </>
+                    )}
                   </div>
                 )}
               </div>
@@ -392,3 +416,9 @@ const btnVol = {
   border: "none", background: "none", cursor: "pointer", color: "#64748B",
   fontWeight: 700, fontSize: 14, lineHeight: 1, padding: "0 4px",
 };
+
+/** Pastille de lecture seule (consultation terrain) : un état, pas un bouton. */
+const puceLecture = (couleur) => ({
+  fontSize: 11, fontWeight: 700, color: couleur,
+  background: couleur + "18", borderRadius: 999, padding: "3px 9px",
+});

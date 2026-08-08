@@ -19,6 +19,7 @@ import {
   etatPointage, verifierPointage, pausesValides,
 } from "@domaine/operations/pointage.js";
 import { resumeHoraires } from "@domaine/operations/horaires.js";
+import { couleurTypeMission, libelleTypeMission } from "@domaine/operations/missions.js";
 import RapportChantier from "./RapportChantier.jsx";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlVersAdresse } from "@domaine/communication/brief.js";
@@ -208,7 +209,7 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
 
   return (
     <div style={{ ...S.carte,
-      borderLeft: `4px solid ${estAujourdhui ? C.vert : C.bleu}` }}>
+      borderLeft: `4px solid ${couleurTypeMission(mission.type)}` }}>
       {/* Bandeau à valider */}
       {enAttente && (
         <div style={{ margin: "-4px 0 8px", padding: "5px 9px", borderRadius: 8,
@@ -218,16 +219,24 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
       )}
 
       <div onClick={onToggle} style={{ cursor: "pointer" }}>
-        {estAujourdhui && (
-          <div style={{ fontSize: 10.5, fontWeight: 800, color: C.vert,
-            textTransform: "uppercase", letterSpacing: ".05em" }}>Aujourd'hui</div>
-        )}
-        <div style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {estAujourdhui && (
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: C.vert,
+              textTransform: "uppercase", letterSpacing: ".05em" }}>Aujourd'hui</span>
+          )}
+          {/* Type de chantier : déménagement vert, visite bleu. */}
+          <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase",
+            letterSpacing: ".04em", padding: "2px 8px", borderRadius: 999,
+            color: couleurTypeMission(mission.type),
+            background: couleurTypeMission(mission.type) + "1A" }}>
+            {libelleTypeMission(mission.type)}
+          </span>
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: C.encre, marginTop: 3 }}>
           {mission.client || "—"}
         </div>
         <div style={{ fontSize: 12.5, color: C.muet, textTransform: "capitalize" }}>
           {dateLongue(mission.date)}{mission.heure ? ` · ${(mission.heure || "").slice(0, 5)}` : ""}
-          {mission.type === "emballage" ? " · emballage" : ""}
         </div>
       </div>
 
