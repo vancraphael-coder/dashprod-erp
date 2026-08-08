@@ -1,0 +1,8 @@
+-- 0096 — MAILPROD : pièces jointes (image, PDF) au registre probant.
+-- Colonne messages_dossier.pieces (jsonb : [{chemin,nom,type,taille,empreinte}]).
+-- poser_message + cmd_message_bureau/client + cmd_messages_fil + cmd_messages_verifier
+--   étendus : l'empreinte SHA-256 de chaque pièce entre dans le hash du message
+--   → la chaîne couvre aussi les fichiers (falsifier une pièce casse la chaîne).
+-- Storage : helper peut_acceder_message_fichier + policies msg_fichier_lecture/
+--   ecriture sur bucket 'documents', préfixe messages/<affaire_id>/... (bureau
+--   via org, client via e-mail). Corps exact en base. Appliqué le 2026-08-08.
