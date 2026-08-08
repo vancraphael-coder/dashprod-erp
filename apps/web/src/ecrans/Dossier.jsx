@@ -19,7 +19,7 @@ import {
   annulerAffaire, reporterAffaire, reprendreAffaire, etatFacturation,
   exigencesCloture, cloturerDossier, rouvrirDossier,
   reconciliationAffaire, confirmerMission, renvoyerChantier,
-  prerequisEffectue, marquerEffectue,
+  prerequisEffectue, marquerEffectue, caissesPlan,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -544,6 +544,12 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
                               onFait={() => obtenirAffaire(affaireId).then(setAffaire)} />
         )}
 
+        {/* Plan de pose des caisses : le client a numéroté ses caisses et dit
+            où chacune va (pièce de la nouvelle adresse). On n'affiche QUE ce
+            plan — jamais le contenu, qui reste privé au client. Utile au
+            terrain pour déposer chaque caisse au bon endroit. */}
+        <PlanCaisses affaireId={affaireId} />
+
         {/* Clôture : la dernière étape du cycle. La check-list vient de la
             base, pas de l'écran — ce qui s'affiche ici est exactement ce qui
             sera vérifié au moment d'appuyer. */}
@@ -690,6 +696,43 @@ function ZoneMarquerEffectue({ affaireId, onFait }) {
           Le bouton s'activera une fois les points ci-dessus validés.
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Plan de pose des caisses (vue bureau/terrain). Le client numérote ses caisses
+ * et indique la pièce de destination ; on affiche numéro → pièce → adresse,
+ * jamais le contenu (privé). Rien ne s'affiche s'il n'y a pas de caisse.
+ */
+function PlanCaisses({ affaireId }) {
+  const [plan, setPlan] = useState(null);
+  useEffect(() => { caissesPlan(affaireId).then(setPlan).catch(() => setPlan([])); }, [affaireId]);
+  if (!plan || plan.length === 0) return null;
+
+  return (
+    <div style={S.carte}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 2 }}>
+        Plan de pose des caisses
+      </div>
+      <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 8, lineHeight: 1.45 }}>
+        Numéroté par le client. Le contenu reste privé — on ne voit que la
+        destination.
+      </div>
+      {plan.map((c) => (
+        <div key={c.numero} style={{ display: "flex", justifyContent: "space-between",
+              alignItems: "baseline", padding: "6px 0",
+              borderTop: `1px solid ${C.doux}` }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.encre }}>
+            n°{c.numero}
+            {c.fragile && <span style={{ color: "#DC2626", fontSize: 11 }}> · fragile</span>}
+          </span>
+          <span style={{ fontSize: 12.5, color: C.encre, textAlign: "right" }}>
+            {c.piece_dest || "pièce ?"}
+            {c.adresse && <span style={{ color: C.muet }}> · {c.adresse}</span>}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

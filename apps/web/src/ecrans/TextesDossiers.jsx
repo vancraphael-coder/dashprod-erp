@@ -22,8 +22,14 @@ import { emailOffre } from "@domaine/communication/brief.js";
 import {
   mailsEffectifs, mailEffectif, ecrireMailPerso, ecrireMailSurMesure,
   supprimerMailSurMesure, remplirJetons, JETONS_MAIL, EXEMPLE_MAIL,
-  MODELES_MAIL_DEFAUT,
+  MODELES_MAIL_DEFAUT, DOCUMENTS_ATTACHABLES, pieceMail, ecrirePieceMail,
 } from "@domaine/communication/mails.js";
+
+/** Libellé court d'un document joint (pour la pastille). */
+function libellePiece(cle) {
+  const d = DOCUMENTS_ATTACHABLES.find((x) => x.cle === cle);
+  return d ? d.titre.replace(/ \(PDF\)| —.*/, "") : cle;
+}
 import { articlesCgv, renumeroter, cgv, CGV_VERSION_COURANTE } from "@domaine/documents/cgv.js";
 import {
   GROUPES_TEXTES, DEFAUTS_PAR_GROUPE, lireGroupe, ecrireGroupe,
@@ -391,6 +397,12 @@ function PageMails({ stockes, org, onStockes, retour }) {
     return (
       <EditeurMail
         modele={modele} contexte={contexte}
+        piece={pieceMail(stockes, edite.cle || "")}
+        onPiece={async (doc) => {
+          if (!edite.cle) return;   // un nouveau modèle : la pièce se règle après sa création
+          const s = ecrirePieceMail(stockes, edite.cle, doc);
+          try { await sauverTextes(s); onStockes(s); } catch (e) { setErreur(e.message); }
+        }}
         onEnregistrer={(champs) => {
           if (edite.nouveau) {
             persister(ecrireMailSurMesure(stockes, champs).stockes);
@@ -452,6 +464,13 @@ function PageMails({ stockes, org, onStockes, retour }) {
                 {m.origine === "sur_mesure" ? "modèle à vous"
                   : m.personnalise ? "personnalisé" : "modèle par défaut"}
               </span>
+              {m.piece && m.piece !== "aucun" && (
+                <span style={{ display: "inline-block", marginTop: 6, marginLeft: 6,
+                               fontSize: 10.5, fontWeight: 700, padding: "2px 7px",
+                               borderRadius: 20, background: "#ECFDF5", color: "#065F46" }}>
+                  📎 {libellePiece(m.piece)}
+                </span>
+              )}
             </span>
             <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
           </button>
@@ -463,10 +482,11 @@ function PageMails({ stockes, org, onStockes, retour }) {
   );
 }
 
-function EditeurMail({ modele, contexte, onEnregistrer, onSupprimer, onReinitialiser, onAnnuler }) {
+function EditeurMail({ modele, contexte, piece, onPiece, onEnregistrer, onSupprimer, onReinitialiser, onAnnuler }) {
   const [titre, setTitre] = useState(modele?.titre || "");
   const [objet, setObjet] = useState(modele?.objet || "");
   const [corps, setCorps] = useState(modele?.corps || "");
+  const [pieceSel, setPieceSel] = useState(piece || "aucun");
   const surMesure = !modele || modele.origine === "sur_mesure";
 
   const apercuObjet = remplirJetons(objet, contexte);
@@ -492,6 +512,18 @@ function EditeurMail({ modele, contexte, onEnregistrer, onSupprimer, onReinitial
         <label style={{ ...S.label, marginTop: 12 }}>Objet</label>
         <input style={S.input} value={objet} onChange={(e) => setObjet(e.target.value)}
                placeholder="Objet du mail" />
+
+        {/* Relation mail ↔ pdf : le document joint quand on envoie ce mail. */}
+        <label style={{ ...S.label, marginTop: 12 }}>Document joint</label>
+        <select style={S.input} value={pieceSel}
+                onChange={(e) => { setPieceSel(e.target.value); onPiece?.(e.target.value); }}>
+          {DOCUMENTS_ATTACHABLES.map((d) => (
+            <option key={d.cle} value={d.cle}>{d.titre}</option>
+          ))}
+        </select>
+        <div style={{ fontSize: 11, color: C.muet, marginTop: 4, lineHeight: 1.5 }}>
+          Le PDF proposé automatiquement quand vous préparez ce mail dans un dossier.
+        </div>
 
         <label style={{ ...S.label, marginTop: 12 }}>Corps du message</label>
         <textarea style={{ ...S.input, minHeight: 200, resize: "vertical",

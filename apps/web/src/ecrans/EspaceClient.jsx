@@ -14,6 +14,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   clientDossiers, clientInventaire, clientOffres, clientFactures, deposerAvis,
+  caissesClient, definirCaisse, supprimerCaisse,
   reseauDemenageurs,
 } from "../lib/adaptateur.js";
 import { deconnecter } from "../lib/supabase.js";
@@ -35,6 +36,7 @@ const jour = (iso) => {
 const ONGLETS = [
   ["dossier", "Mon dossier"],
   ["inventaire", "Mes meubles"],
+  ["caisses", "Mes caisses"],
   ["offres", "Mes offres"],
   ["factures", "Mes factures"],
   ["messages", "Messages"],
@@ -72,6 +74,7 @@ export default function EspaceClient({ client }) {
 
       {onglet === "dossier"    && <Dossiers />}
       {onglet === "inventaire" && <Inventaire />}
+      {onglet === "caisses"    && <Caisses />}
       {onglet === "offres"     && <Offres />}
       {onglet === "factures"   && <Factures />}
       {onglet === "messages"   && <Messages />}
@@ -520,6 +523,169 @@ function AvisDossier({ affaireId }) {
       <button onClick={envoyer}
         style={{ ...S.boutonPlein, marginTop: 8 }}>Envoyer mon avis</button>
     </div>
+  );
+}
+
+/**
+ * MES CAISSES — inventaire privé. Le client note ce qu'il range dans chaque
+ * caisse (le déménageur ne le verra jamais) et, surtout, à quelle pièce de sa
+ * nouvelle adresse la caisse est destinée. Côté bureau, seul ce plan de pose
+ * (numéro → pièce → adresse) est visible — jamais le contenu.
+ */
+function Caisses() {
+  const { chargement, donnees, erreur } = useCharge(clientDossiers);
+  const dossiers = donnees || [];
+  const [choisi, setChoisi] = useState(null);
+
+  if (chargement) return <Etat chargement />;
+  if (erreur) return <Etat erreur={erreur} />;
+  if (dossiers.length === 0) return <Etat vide="Aucun dossier." />;
+
+  const dossier = dossiers.length === 1 ? dossiers[0]
+    : dossiers.find((d) => d.affaire_id === choisi);
+
+  if (!dossier) {
+    return (
+      <>
+        <div style={{ fontSize: 12.5, color: C.muet, marginBottom: 10 }}>
+          Choisissez le déménagement concerné :
+        </div>
+        {dossiers.map((d) => (
+          <button key={d.affaire_id} onClick={() => setChoisi(d.affaire_id)}
+            style={{ ...S.carte, width: "100%", textAlign: "left", cursor: "pointer" }}>
+            {d.entreprise?.nom || "Déménagement"} · {d.reference}
+          </button>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {dossiers.length > 1 && (
+        <button style={{ ...S.boutonLien, paddingLeft: 0, marginBottom: 6 }}
+                onClick={() => setChoisi(null)}>← Mes déménagements</button>
+      )}
+      <CaissesDossier dossier={dossier} />
+    </>
+  );
+}
+
+function CaissesDossier({ dossier }) {
+  const affaireId = dossier.affaire_id;
+  const [caisses, setCaisses] = useState(null);
+  const [erreur, setErreur] = useState(null);
+  const [form, setForm] = useState(null);   // caisse en cours d'édition
+  // Les adresses de déchargement (nouvelles adresses) proposées.
+  const decharges = (dossier.adresses || []).filter((a) => a.role === "decharge" || a.sens === "decharge");
+
+  async function recharger() {
+    try { setCaisses(await caissesClient(affaireId)); }
+    catch (e) { setErreur(e.message); setCaisses([]); }
+  }
+  useEffect(() => { recharger(); }, [affaireId]);
+
+  function nouvelle() {
+    const nums = (caisses || []).map((c) => c.numero);
+    const prochain = nums.length ? Math.max(...nums) + 1 : 1;
+    setForm({ numero: prochain, piece_dest: "", adresse_id: decharges[0]?.id || null,
+              contenu: "", fragile: false });
+  }
+
+  async function enregistrer() {
+    setErreur(null);
+    try { await definirCaisse(affaireId, form); setForm(null); await recharger(); }
+    catch (e) { setErreur(e.message); }
+  }
+  async function supprimer(numero) {
+    try { await supprimerCaisse(affaireId, numero); await recharger(); }
+    catch (e) { setErreur(e.message); }
+  }
+
+  return (
+    <>
+      <div style={{ ...S.carte, background: "#F0F9FF", border: "1px solid #BAE6FD" }}>
+        <div style={{ fontSize: 12.5, color: "#075985", lineHeight: 1.5 }}>
+          🔒 Cette liste est <b>privée</b>. Votre déménageur ne voit que le numéro
+          de caisse et la pièce de destination — jamais son contenu.
+        </div>
+      </div>
+
+      {erreur && <div style={{ fontSize: 12.5, color: C.rouge, marginBottom: 8 }}>{erreur}</div>}
+
+      {caisses == null && <Etat chargement />}
+      {caisses && caisses.length === 0 && !form && (
+        <div style={{ ...S.carte, textAlign: "center", color: C.fantome, fontSize: 13 }}>
+          Aucune caisse pour l'instant.
+        </div>
+      )}
+
+      {(caisses || []).map((c) => (
+        <div key={c.numero} style={S.carte}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
+              Caisse n°{c.numero}
+              {c.fragile && <span style={{ color: "#DC2626", fontSize: 12 }}> · fragile</span>}
+            </span>
+            <span style={{ fontSize: 12, color: C.bleu, fontWeight: 700 }}>
+              {c.piece_dest || "pièce ?"}
+            </span>
+          </div>
+          {c.adresse && <div style={{ fontSize: 11.5, color: C.muet }}>→ {c.adresse}</div>}
+          {c.contenu && (
+            <div style={{ fontSize: 12.5, color: C.encre, marginTop: 6,
+                          whiteSpace: "pre-wrap" }}>{c.contenu}</div>
+          )}
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+            <button style={{ ...S.boutonLien, paddingLeft: 0 }}
+                    onClick={() => setForm({ ...c })}>Modifier</button>
+            <button style={{ ...S.boutonLien, color: C.rouge }}
+                    onClick={() => supprimer(c.numero)}>Supprimer</button>
+          </div>
+        </div>
+      ))}
+
+      {form ? (
+        <div style={S.carte}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
+            Caisse n°{form.numero}
+          </div>
+          <label style={{ ...S.label, marginTop: 0 }}>Pièce de destination</label>
+          <input style={S.input} value={form.piece_dest}
+                 placeholder="Chambre 1, Cuisine, Bureau…"
+                 onChange={(e) => setForm({ ...form, piece_dest: e.target.value })} />
+          {decharges.length > 1 && (
+            <>
+              <label style={S.label}>Nouvelle adresse</label>
+              <select style={S.input} value={form.adresse_id || ""}
+                      onChange={(e) => setForm({ ...form, adresse_id: e.target.value || null })}>
+                {decharges.map((a) => (
+                  <option key={a.id} value={a.id}>{a.adresse}</option>
+                ))}
+              </select>
+            </>
+          )}
+          <label style={S.label}>Contenu (privé)</label>
+          <textarea style={{ ...S.input, minHeight: 60, resize: "vertical" }}
+                    value={form.contenu} placeholder="Ce que vous rangez dans cette caisse…"
+                    onChange={(e) => setForm({ ...form, contenu: e.target.value })} />
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10,
+                          fontSize: 13, color: C.encre, cursor: "pointer" }}>
+            <input type="checkbox" checked={form.fragile}
+                   onChange={(e) => setForm({ ...form, fragile: e.target.checked })} />
+            Fragile
+          </label>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button style={S.boutonPlein} onClick={enregistrer}>Enregistrer</button>
+            <button style={{ ...S.boutonLien }} onClick={() => setForm(null)}>Annuler</button>
+          </div>
+        </div>
+      ) : (
+        <button style={{ ...S.boutonPlein, marginTop: 4 }} onClick={nouvelle}>
+          + Ajouter une caisse
+        </button>
+      )}
+    </>
   );
 }
 

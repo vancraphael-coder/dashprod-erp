@@ -294,7 +294,9 @@ export default function Mail({ affaireId, retour, versOffre }) {
           s'adapte au modèle choisi — l'offre a ses deux PJ, un autre mail peut
           n'en avoir aucune. */}
       <PiecesJointes choix={choix} instance={instance} cbd={cbd}
-        versOffre={() => versOffre(affaireId)} />
+        versOffre={() => versOffre(affaireId)}
+        piece={choix === "offre" ? "offre"
+               : (modeles.find((x) => x.cle === choix) || {}).piece} />
 
       {/* En-tête du mail */}
       <div style={S.carte}>
@@ -380,11 +382,19 @@ export default function Mail({ affaireId, retour, versOffre }) {
  * documents (offre + conditions). Pour un autre mail : rien d'imposé, mais on
  * ouvre quand même l'accès à l'offre et aux conditions, souvent utiles.
  */
-function PiecesJointes({ choix, instance, cbd, versOffre }) {
+function PiecesJointes({ choix, instance, cbd, versOffre, piece }) {
   const estOffre = choix === "offre";
-  // Un modèle « facture » ou « rappel » n'a pas l'offre à joindre ; on n'affiche
-  // le bloc que quand il y a quelque chose d'utile à proposer.
-  if (estOffre && !instance) return null;
+  const doc = estOffre ? "offre" : piece;   // document associé à ce modèle
+  // Rien à proposer si le modèle n'a aucun document lié (ou offre pas encore figée).
+  if (doc === "aucun" || !doc) return null;
+  if (doc === "offre" && !instance) return null;
+
+  const LIB = { offre: "L'offre", facture: "La facture", releve: "Le relevé (liste sans volume)" };
+  const OUVERTURE = {
+    offre: "Ouvrez l'offre, enregistrez-la en PDF, puis joignez-la au mail.",
+    facture: "Ouvrez la facture du dossier, enregistrez-la en PDF, puis joignez-la.",
+    releve: "Ouvrez le relevé (Aperçu / PDF), enregistrez-le, puis joignez-le.",
+  };
 
   return (
     <div style={S.carte}>
@@ -393,14 +403,19 @@ function PiecesJointes({ choix, instance, cbd, versOffre }) {
         Pièces jointes
       </div>
       <div style={{ fontSize: 11.5, color: C.muet, lineHeight: 1.5, marginBottom: 10 }}>
-        Ouvrez chaque document, enregistrez-le en PDF, puis joignez-le au mail.
-        Votre messagerie ne peut pas les recevoir automatiquement.
+        {OUVERTURE[doc] || "Ouvrez le document, enregistrez-le en PDF, puis joignez-le au mail."}
+        {" "}Votre messagerie ne peut pas les recevoir automatiquement.
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {instance && (
-          <button onClick={versOffre} style={pieceJointe}>📄 L'offre</button>
+        {doc === "offre" && instance && (
+          <button onClick={versOffre} style={pieceJointe}>📄 {LIB.offre}</button>
         )}
-        {cbd ? (
+        {doc !== "offre" && (
+          <span style={{ ...pieceJointe, color: C.encre, cursor: "default" }}>
+            📄 {LIB[doc] || "Document"} — à ouvrir depuis le dossier
+          </span>
+        )}
+        {doc === "offre" && (cbd ? (
           <a href={cbd} target="_blank" rel="noreferrer"
              style={{ ...pieceJointe, textDecoration: "none",
                       display: "inline-flex", alignItems: "center" }}>
@@ -410,7 +425,7 @@ function PiecesJointes({ choix, instance, cbd, versOffre }) {
           <span style={{ ...pieceJointe, color: C.fantome, cursor: "default" }}>
             📋 Conditions générales — non déposées
           </span>
-        )}
+        ))}
       </div>
     </div>
   );
