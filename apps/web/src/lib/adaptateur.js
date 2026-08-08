@@ -2278,6 +2278,41 @@ export async function avisPublics(orgId) {
   return data;
 }
 
+// ── Inventaire des caisses (privé au client) ─────────────────────────────────
+// Le client remplit le contenu de ses caisses (intime) ; le bureau ne voit que
+// le plan de pose : numéro → pièce → adresse, jamais le contenu.
+
+/** Le client lit SES caisses (contenu compris). */
+export async function caissesClient(affaireId) {
+  const { data, error } = await supabase.rpc("cmd_caisses_client", { p_affaire: affaireId });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Le client enregistre/mets à jour une caisse. */
+export async function definirCaisse(affaireId, caisse) {
+  const { data, error } = await supabase.rpc("cmd_caisse_definir", {
+    p_affaire: affaireId, p_numero: caisse.numero, p_piece: caisse.piece_dest || null,
+    p_adresse: caisse.adresse_id || null, p_contenu: caisse.contenu || null,
+    p_fragile: Boolean(caisse.fragile) });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Le client supprime une caisse. */
+export async function supprimerCaisse(affaireId, numero) {
+  const { error } = await supabase.rpc("cmd_caisse_supprimer",
+    { p_affaire: affaireId, p_numero: numero });
+  if (error) throw new Error(error.message);
+}
+
+/** Le bureau lit le PLAN DE POSE : numéro → pièce → adresse (sans contenu). */
+export async function caissesPlan(affaireId) {
+  const { data, error } = await supabase.rpc("cmd_caisses_plan", { p_affaire: affaireId });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 /** Annuaire public : aucun compte requis, seules les entreprises opt-in sortent. */
 export async function reseauDemenageurs() {
   const { data, error } = await supabase.rpc("cmd_reseau_demenageurs");
