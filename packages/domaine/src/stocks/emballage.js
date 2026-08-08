@@ -83,3 +83,34 @@ export function fournituresOffre(emballage, catalogue = CATALOGUE_EMBALLAGE) {
     .map((x) => `${x.u} ${x.u > 1 ? (x.a.pluriel || x.a.nom.toLowerCase())
                                   : x.a.nom.toLowerCase()}`);
 }
+
+/**
+ * Valorise le matériel d'emballage consommé : pour chaque article utilisé
+ * (util. = enl. − rep.), sa dénomination et son coût unitaire, puis le montant.
+ * Le prix vient du catalogue « fournitures » (cout_centimes). C'est ce qui doit
+ * être retranscrit sur l'offre / la facture : dénomination + coût, pas juste un
+ * total opaque.
+ *
+ * @param {Object} emballage  état E/U/R par clé d'article
+ * @param {{cle,nom,unite,cout_centimes}[]} fournitures  catalogue avec prix
+ * @returns {{lignes: {cle,nom,unite,quantite,cout_unitaire_centimes,montant_centimes}[],
+ *            total_centimes: number}}
+ */
+export function valoriserEmballage(emballage, fournitures) {
+  const src = emballage || {};
+  const prix = new Map((fournitures || []).map((f) => [f.cle, f]));
+  const lignes = [];
+  for (const [cle, v] of Object.entries(src)) {
+    const u = utiliseCalcule(Number(v?.e) || 0, Number(v?.r) || 0);
+    if (u <= 0) continue;
+    const f = prix.get(cle);
+    const cu = Number(f?.cout_centimes) || 0;
+    lignes.push({
+      cle, nom: f?.nom || cle, unite: f?.unite || "pièce",
+      quantite: u, cout_unitaire_centimes: cu,
+      montant_centimes: Math.round(u * cu),
+    });
+  }
+  lignes.sort((a, b) => b.montant_centimes - a.montant_centimes);
+  return { lignes, total_centimes: lignes.reduce((t, l) => t + l.montant_centimes, 0) };
+}
