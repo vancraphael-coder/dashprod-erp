@@ -33,6 +33,54 @@ export const JETONS_MAIL = Object.freeze({
  * Les modèles livrés. `cle` sert d'identifiant stable ; ne jamais la changer,
  * une société peut avoir personnalisé le modèle sur cette clé.
  */
+/**
+ * Documents PDF que le bureau peut joindre à un mail. Chacun est produit
+ * ailleurs (offre/contrat, facture, relevé sans volume) ; ici on ne référence
+ * que le TYPE de document, la génération reste côté écran.
+ */
+export const DOCUMENTS_ATTACHABLES = Object.freeze([
+  { cle: "aucun", titre: "Aucune pièce jointe" },
+  { cle: "offre", titre: "Offre / contrat (PDF)" },
+  { cle: "facture", titre: "Facture (PDF)" },
+  { cle: "releve", titre: "Relevé — liste sans volume (PDF)" },
+]);
+
+/**
+ * Association PAR DÉFAUT entre un modèle de mail et le document à y joindre.
+ * C'est le lien « mail ↔ pdf » : envoyer le devis joint l'offre, envoyer la
+ * facture joint la facture, etc. Réglable par l'organisation (voir piecesMail).
+ */
+export const PIECES_MAIL_DEFAUT = Object.freeze({
+  confirmation_visite: "aucun",
+  envoi_devis: "offre",
+  relance_devis: "offre",
+  confirmation_demenagement: "releve",
+  envoi_facture: "facture",
+  rappel_paiement: "facture",
+  remerciement: "aucun",
+});
+
+/**
+ * Le document joint à un modèle, en tenant compte de la config de l'org.
+ * `stockes.mails.pieces` = { [cle]: "offre"|"facture"|"releve"|"aucun" }.
+ */
+export function pieceMail(stockes, cle) {
+  const conf = ((stockes || {}).mails || {}).pieces || {};
+  return conf[cle] || PIECES_MAIL_DEFAUT[cle] || "aucun";
+}
+
+/** Enregistre le document à joindre pour un modèle (config paramètres). */
+export function ecrirePieceMail(stockes, cle, document) {
+  const base = { ...(stockes || {}) };
+  const mails = { ...(base.mails || {}) };
+  const pieces = { ...(mails.pieces || {}) };
+  if (!document || document === (PIECES_MAIL_DEFAUT[cle] || "aucun")) delete pieces[cle];
+  else pieces[cle] = document;
+  mails.pieces = pieces;
+  base.mails = mails;
+  return base;
+}
+
 export const MODELES_MAIL_DEFAUT = Object.freeze([
   {
     cle: "confirmation_visite",
@@ -172,12 +220,14 @@ export function mailsEffectifs(stockes) {
     ...(perso[m.cle] || {}),
     origine: "livre",
     personnalise: Boolean(perso[m.cle]),
+    piece: pieceMail(stockes, m.cle),
   }));
 
   const propres = surMesure
     .filter((m) => m && m.cle)
     .map((m) => ({ titre: m.titre || "Sans titre", objet: m.objet || "",
-                   corps: m.corps || "", cle: m.cle, origine: "sur_mesure" }));
+                   corps: m.corps || "", cle: m.cle, origine: "sur_mesure",
+                   piece: pieceMail(stockes, m.cle) }));
 
   return [...livres, ...propres];
 }
