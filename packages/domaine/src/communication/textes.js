@@ -84,8 +84,8 @@ export const GROUPES_TEXTES = Object.freeze([
   {
     cle: "cbd",
     icone: "📎",
-    titre: "Conditions générales C.B.D.",
-    resume: "Le PDF joint à chaque offre, à côté de l'offre elle-même.",
+    titre: "PDF joint",
+    resume: "Le document PDF joint aux mails (conditions, brochure…).",
     fichier: true,
     champs: [],
   },
