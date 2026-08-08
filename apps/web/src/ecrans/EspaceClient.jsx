@@ -20,6 +20,7 @@ import { deconnecter } from "../lib/supabase.js";
 import { manifeste, manifestePret, packingListCsv }
   from "@domaine/releve/inventaire-export.js";
 import { C, S } from "../lib/theme.jsx";
+import FilMessages from "./FilMessages.jsx";
 
 const eur = (c) => c == null ? "—"
   : (c / 100).toFixed(2).replace(".", ",") + " €";
@@ -36,6 +37,7 @@ const ONGLETS = [
   ["inventaire", "Mes meubles"],
   ["offres", "Mes offres"],
   ["factures", "Mes factures"],
+  ["messages", "Messages"],
   ["reseau", "Déménageurs"],
 ];
 
@@ -72,6 +74,7 @@ export default function EspaceClient({ client }) {
       {onglet === "inventaire" && <Inventaire />}
       {onglet === "offres"     && <Offres />}
       {onglet === "factures"   && <Factures />}
+      {onglet === "messages"   && <Messages />}
       {onglet === "reseau"     && <Reseau />}
 
       <div style={{ margin: "18px 16px 30px", textAlign: "center" }}>
@@ -359,6 +362,56 @@ function Factures() {
         ))}
       </>
     </Etat>
+  );
+}
+
+function Messages() {
+  const { chargement, donnees, erreur } = useCharge(clientDossiers);
+  const dossiers = donnees || [];
+  const [ouvert, setOuvert] = useState(null);   // affaire_id du fil ouvert
+
+  if (chargement) return (
+    <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
+      Chargement…
+    </div>
+  );
+  if (erreur) return <div style={{ ...S.carte, color: C.rouge, fontSize: 12.5 }}>{erreur}</div>;
+  if (dossiers.length === 0) return (
+    <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
+      Aucun dossier — pas encore de messagerie.
+    </div>
+  );
+
+  // Un seul dossier : on ouvre le fil directement.
+  const seul = dossiers.length === 1 ? dossiers[0] : null;
+  const actif = seul || dossiers.find((d) => d.affaire_id === ouvert);
+
+  if (actif) {
+    return (
+      <div style={S.carte}>
+        {!seul && (
+          <button style={{ ...S.boutonLien, paddingLeft: 0, marginBottom: 6 }}
+                  onClick={() => setOuvert(null)}>← Mes dossiers</button>
+        )}
+        <FilMessages affaireId={actif.affaire_id} cote="client" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {dossiers.map((d) => (
+        <button key={d.affaire_id} onClick={() => setOuvert(d.affaire_id)}
+          style={{ ...S.carte, width: "100%", textAlign: "left", cursor: "pointer",
+                   border: `1px solid ${C.bord}`, display: "flex",
+                   justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: C.encre }}>
+            {d.titre || d.reference || "Mon déménagement"}
+          </span>
+          <span style={{ color: C.fantome }}>›</span>
+        </button>
+      ))}
+    </>
   );
 }
 

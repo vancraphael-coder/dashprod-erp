@@ -19,6 +19,7 @@ import { emailOffre, urlMailto } from "@domaine/communication/brief.js";
 import { mailsEffectifs, remplirJetons } from "@domaine/communication/mails.js";
 import { genererCode } from "@domaine/portail/acces.js";
 import { C, S } from "../lib/theme.jsx";
+import FilMessages from "./FilMessages.jsx";
 
 export default function Mail({ affaireId, retour, versOffre }) {
   const [mailOffre, setMailOffre] = useState(null);  // l'email d'offre (circuit signature)
@@ -38,6 +39,7 @@ export default function Mail({ affaireId, retour, versOffre }) {
   // des modèles réglés dans Compte → Textes → Modèles de mails.
   const [modeles, setModeles] = useState([]);
   const [choix, setChoix] = useState("offre");
+  const [sousOnglet, setSousOnglet] = useState("composer");
   const [contexte, setContexte] = useState(null);   // jetons à remplir
 
   useEffect(() => {
@@ -135,6 +137,33 @@ export default function Mail({ affaireId, retour, versOffre }) {
         <div style={S.titre}>Mail</div>
       </div>
 
+      {/* Sous-onglets : composer un mail classique, ou Mailprod — la messagerie
+          tracée avec le client (bidirectionnelle, probante). */}
+      <div style={{ display: "flex", gap: 4, margin: "0 16px 12px",
+                    background: "#EEF2F8", borderRadius: 12, padding: 4 }}>
+        {[["composer", "Composer"], ["mailprod", "Mailprod"]].map(([cle, lib]) => (
+          <button key={cle} onClick={() => setSousOnglet(cle)}
+            style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: "none",
+                     cursor: "pointer", fontSize: 13, fontWeight: 700,
+                     background: sousOnglet === cle ? "#fff" : "transparent",
+                     color: sousOnglet === cle ? C.encre : C.muet,
+                     boxShadow: sousOnglet === cle ? "0 1px 3px rgba(15,23,42,.1)" : "none" }}>
+            {lib}
+          </button>
+        ))}
+      </div>
+
+      {sousOnglet === "mailprod" ? (
+        <div style={S.carte}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 8,
+                        textTransform: "uppercase", letterSpacing: ".03em" }}>
+            Mailprod · messagerie tracée
+          </div>
+          <FilMessages affaireId={affaireId} cote="entreprise"
+            amorce={contexte ? recapDossier(contexte) : null} />
+        </div>
+      ) : (
+      <>
       {/* Choix du modèle : l'offre (circuit signature) ou un modèle réglé dans
           les paramètres. Le contenu se remplit tout seul avec les données du
           dossier. */}
@@ -339,6 +368,8 @@ export default function Mail({ affaireId, retour, versOffre }) {
       </div>
 
       <div style={{ height: 32 }} />
+      </>
+      )}
     </div>
   );
 }
@@ -472,4 +503,16 @@ function Minuteur({ echeance }) {
       ⏳ {texte} · échéance {fin}
     </div>
   );
+}
+
+/** Récap du dossier à reprendre dans un message client (bouton mailprod). */
+function recapDossier(ctx) {
+  const l = [];
+  if (ctx.date) l.push(`Date prévue : ${ctx.date}`);
+  if (ctx.montant) l.push(`Montant : ${ctx.montant}`);
+  if (ctx.reference) l.push(`Référence : ${ctx.reference}`);
+  if (l.length === 0) return null;
+  return `Bonjour ${ctx.famille || ""},\n\nRécapitulatif de votre dossier :\n`
+    + l.map((x) => `• ${x}`).join("\n")
+    + `\n\nN'hésitez pas si vous avez la moindre question.`;
 }
