@@ -3,7 +3,7 @@ import {
   messagesFil, messageBureau, messageClient,
   televerserPieceMessage, urlPieceMessage,
 } from "../lib/adaptateur.js";
-import { C, S } from "../lib/theme.jsx";
+import { C as C0, S as S0 } from "../lib/theme.jsx";
 
 /**
  * MAILPROD — fil de messages probant, partagé entre le bureau et l'espace
@@ -13,7 +13,11 @@ import { C, S } from "../lib/theme.jsx";
  * @param {string} affaireId
  * @param {"entreprise"|"client"} cote  qui utilise l'écran (détermine la commande d'envoi)
  */
-export default function FilMessages({ affaireId, cote, amorce, modeles }) {
+export default function FilMessages({ affaireId, cote, amorce, modeles, theme }) {
+  // Le fil sert deux mondes : le bureau (thème clair) et l'espace client
+  // (thème de nuit). On accepte donc un thème injecté plutôt que d'en figer un.
+  const C = theme?.C || C0;
+  const S = theme?.S || S0;
   const [messages, setMessages] = useState(null);
   const [texte, setTexte] = useState("");
   const [envoi, setEnvoi] = useState(false);
@@ -210,9 +214,9 @@ function PieceJointe({ piece, clair }) {
   return (
     <button onClick={ouvrir} disabled={ouverture} style={{
       display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer",
-      border: `1px solid ${clair ? "rgba(255,255,255,.4)" : C.bord}`,
+      border: `1px solid ${clair ? "rgba(255,255,255,.4)" : C0.bord}`,
       background: clair ? "rgba(255,255,255,.15)" : "#fff",
-      color: clair ? "#fff" : C.encre, borderRadius: 8, padding: "6px 9px",
+      color: clair ? "#fff" : C0.encre, borderRadius: 8, padding: "6px 9px",
       fontSize: 12, fontWeight: 600, maxWidth: "100%" }}>
       {estImage ? "🖼️" : "📄"} {ouverture ? "Ouverture…" : raccourciNom(piece.nom)}
     </button>

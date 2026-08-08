@@ -20,7 +20,8 @@ import {
 import { deconnecter } from "../lib/supabase.js";
 import { manifeste, manifestePret, packingListCsv }
   from "@domaine/releve/inventaire-export.js";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, CT, FC, Eyebrow, LigneRoute, Compteur, HaloPhares }
+  from "./theme-client.jsx";
 import FilMessages from "./FilMessages.jsx";
 
 const eur = (c) => c == null ? "—"
@@ -46,31 +47,51 @@ const ONGLETS = [
 export default function EspaceClient({ client }) {
   const [onglet, setOnglet] = useState("dossier");
 
+  // La nuit doit couvrir toute la page, pas seulement la colonne centrale.
+  useEffect(() => {
+    const avant = document.body.style.background;
+    document.body.style.background = CT.nuit;
+    return () => { document.body.style.background = avant; };
+  }, []);
+
   return (
     <div style={S.page}>
-      <div style={S.entete}>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: C.bleu }}>
-          Gestion de votre déménagement
-        </div>
-        <div style={S.titre}>{client?.nom || "Votre espace"}</div>
-        <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
-          {client?.dossiers > 1
-            ? `${client.dossiers} dossiers`
-            : "Votre déménagement"}
+      {/* En-tête : la nuit avant le départ, halo de phares en fond. */}
+      <div style={{ position: "relative", overflow: "hidden",
+                    padding: "26px 18px 18px", borderBottom: `1px solid ${C.bord}` }}>
+        <HaloPhares />
+        <div style={{ position: "relative" }}>
+          <Eyebrow couleur={CT.phare}>Votre convoi</Eyebrow>
+          <div style={{ ...S.titre, fontSize: 30, marginTop: 8 }}>
+            {client?.nom || "Votre espace"}
+          </div>
+          <div style={{ fontSize: 13, color: C.muet, marginTop: 6 }}>
+            {client?.dossiers > 1
+              ? `${client.dossiers} déménagements en cours`
+              : "Tout ce qui concerne votre déménagement, au même endroit."}
+          </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 6, overflowX: "auto",
-                    padding: "0 16px 10px" }}>
-        {ONGLETS.map(([cle, lib]) => (
-          <button key={cle} onClick={() => setOnglet(cle)} style={{
-            padding: "7px 13px", borderRadius: 999, whiteSpace: "nowrap",
-            cursor: "pointer", fontSize: 12.5, fontWeight: 700,
-            border: `1.5px solid ${onglet === cle ? C.bleu : C.bord}`,
-            background: onglet === cle ? "#E7EFFC" : C.blanc,
-            color: onglet === cle ? C.bleu : C.muet }}>{lib}</button>
-        ))}
+      {/* Navigation : rail en mono, soulignement ambré sur l'onglet actif. */}
+      <div style={{ display: "flex", gap: 18, overflowX: "auto",
+                    padding: "14px 18px 0", borderBottom: `1px solid ${C.bord}`,
+                    scrollbarWidth: "none" }}>
+        {ONGLETS.map(([cle, lib]) => {
+          const actif = onglet === cle;
+          return (
+            <button key={cle} onClick={() => setOnglet(cle)} style={{
+              padding: "0 0 12px", background: "none", border: "none",
+              borderBottom: `2px solid ${actif ? CT.phare : "transparent"}`,
+              whiteSpace: "nowrap", cursor: "pointer",
+              fontFamily: FC, fontSize: 11, fontWeight: 700,
+              letterSpacing: ".1em", textTransform: "uppercase",
+              color: actif ? C.encre : C.muet }}>{lib}</button>
+          );
+        })}
       </div>
+
+      <div style={{ height: 16 }} />
 
       {onglet === "dossier"    && <Dossiers />}
       {onglet === "inventaire" && <Inventaire />}
@@ -139,39 +160,63 @@ function Dossiers() {
     <Etat chargement={chargement} erreur={erreur}
           vide={dossiers.length === 0 && "Aucun dossier pour le moment."}>
       <>
-        {dossiers.map((d) => (
+        {dossiers.map((d) => {
+          const charges = (d.adresses || []).filter((a) => a.role === "charge");
+          const decharges = (d.adresses || []).filter((a) => a.role !== "charge");
+          return (
           <div key={d.affaire_id} style={S.carte}>
             <div style={{ display: "flex", justifyContent: "space-between",
-                          alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
-                {d.entreprise?.nom || "Déménageur"}
+                          alignItems: "baseline", gap: 10 }}>
+              <Eyebrow>{d.entreprise?.nom || "Déménageur"}</Eyebrow>
+              <span style={{ fontFamily: FC, fontSize: 10.5, color: C.fantome }}>
+                {d.reference}
               </span>
-              <span style={{ fontSize: 11.5, color: C.fantome }}>{d.reference}</span>
             </div>
-            <L l="Date souhaitée" v={jour(d.date_souhaitee)} />
-            <L l="Visite technique" v={jour(d.date_visite)} />
 
-            {(d.adresses || []).map((a, i) => (
-              <div key={i} style={{ padding: "9px 0",
-                                    borderTop: `1px solid ${C.doux}` }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.bleu,
-                              textTransform: "uppercase", letterSpacing: ".04em" }}>
-                  {a.role === "charge" ? "Chargement" : "Déchargement"}
+            {/* Le chiffre qu'on vient chercher en ouvrant l'application. */}
+            <Compteur date={d.date_souhaitee} />
+
+            {/* Le trajet : d'où l'on part, où l'on arrive. */}
+            {(charges.length > 0 || decharges.length > 0) && (
+              <div style={{ display: "flex", alignItems: "stretch", gap: 12,
+                            marginTop: 20, paddingTop: 16,
+                            borderTop: `1px solid ${C.doux}` }}>
+                <div style={{ flex: 1 }}>
+                  <Eyebrow>Départ</Eyebrow>
+                  {charges.map((a, i) => <Lieu key={i} a={a} />)}
+                  {charges.length === 0 && <Lieu vide />}
                 </div>
-                <div style={{ fontSize: 13.5, color: C.encre, marginTop: 2 }}>
-                  {a.adresse}
-                </div>
-                <div style={{ fontSize: 12, color: C.muet }}>
-                  {[a.code_postal, a.ville].filter(Boolean).join(" ")}
-                  {a.etage ? ` · étage ${a.etage}` : ""}
+                <div aria-hidden style={{ display: "flex", alignItems: "center",
+                                          color: CT.phare, fontSize: 18 }}>→</div>
+                <div style={{ flex: 1 }}>
+                  <Eyebrow couleur={CT.aube}>Arrivée</Eyebrow>
+                  {decharges.map((a, i) => <Lieu key={i} a={a} />)}
+                  {decharges.length === 0 && <Lieu vide />}
                 </div>
               </div>
-            ))}
+            )}
 
+            {/* Signature : la route, avec le convoi à son étape réelle. */}
+            <div style={{ marginTop: 20, paddingTop: 16,
+                          borderTop: `1px solid ${C.doux}` }}>
+              <Eyebrow>Où en est votre déménagement</Eyebrow>
+              <div style={{ height: 10 }} />
+              <LigneRoute etat={d.etat} />
+            </div>
+
+            {d.date_visite && (
+              <div style={{ fontSize: 12.5, color: C.muet, marginTop: 4 }}>
+                Visite technique le {jour(d.date_visite)}
+              </div>
+            )}
             {d.entreprise?.tel && (
-              <div style={{ fontSize: 12, color: C.muet, marginTop: 8 }}>
-                Contact : {d.entreprise.tel}
-              </div>
+              <a href={`tel:${d.entreprise.tel}`} style={{
+                display: "inline-block", marginTop: 14, textDecoration: "none",
+                fontFamily: FC, fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em",
+                color: CT.phare, border: `1px solid ${C.bord}`, borderRadius: 999,
+                padding: "8px 14px" }}>
+                APPELER {d.entreprise.tel}
+              </a>
             )}
 
             {/* Avis : proposé quand le déménagement est effectué. Note + mot. */}
@@ -179,9 +224,28 @@ function Dossiers() {
               <AvisDossier affaireId={d.affaire_id} />
             )}
           </div>
-        ))}
+          );
+        })}
       </>
     </Etat>
+  );
+}
+
+/** Une adresse du trajet, ou son absence, dite simplement. */
+function Lieu({ a, vide }) {
+  if (vide) return (
+    <div style={{ fontSize: 13, color: C.fantome, marginTop: 6 }}>À préciser</div>
+  );
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ fontSize: 13.5, color: C.encre, fontWeight: 600, lineHeight: 1.35 }}>
+        {a.adresse}
+      </div>
+      <div style={{ fontSize: 12, color: C.muet }}>
+        {[a.code_postal, a.ville].filter(Boolean).join(" ")}
+        {a.etage ? ` · étage ${a.etage}` : ""}
+      </div>
+    </div>
   );
 }
 
@@ -341,8 +405,9 @@ function Offres() {
             </div>
             {o.signee && (
               <div style={{ marginTop: 10, padding: "7px 11px", borderRadius: 8,
-                            background: "#ECFDF5", border: "1px solid #A7F3D0",
-                            fontSize: 11.5, fontWeight: 700, color: "#065F46",
+                            background: "rgba(52,211,153,.10)",
+                            border: "1px solid rgba(52,211,153,.35)",
+                            fontSize: 11.5, fontWeight: 700, color: CT.menthe,
                             display: "inline-block" }}>
                 ✓ Offre signée
               </div>
@@ -393,7 +458,7 @@ function Factures() {
             <L l="Échéance" v={jour(x.echeance)} />
             {x.communication && (
               <div style={{ marginTop: 8, padding: "9px 11px", borderRadius: 9,
-                            background: "#F8FAFC", border: `1px solid ${C.bord}` }}>
+                            background: "#0D1424", border: `1px solid ${C.bord}` }}>
                 <div style={{ fontSize: 10.5, color: C.fantome, fontWeight: 700,
                               textTransform: "uppercase", letterSpacing: ".04em" }}>
                   Communication structurée
@@ -448,7 +513,7 @@ function Messages() {
           <button style={{ ...S.boutonLien, paddingLeft: 0, marginBottom: 6 }}
                   onClick={() => setOuvert(null)}>← Mes dossiers</button>
         )}
-        <FilMessages affaireId={actif.affaire_id} cote="client" />
+        <FilMessages affaireId={actif.affaire_id} cote="client" theme={{ C, S }} />
       </div>
     );
   }
@@ -496,8 +561,8 @@ function AvisDossier({ affaireId }) {
 
   if (envoye) return (
     <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10,
-                  background: "#F0FDF4", border: "1px solid #A7F3D0",
-                  fontSize: 12.5, color: "#065F46" }}>
+                  background: "rgba(52,211,153,.10)", border: "1px solid rgba(52,211,153,.35)",
+                  fontSize: 12.5, color: CT.menthe }}>
       Merci pour votre avis {"★".repeat(note)}
     </div>
   );
@@ -604,8 +669,9 @@ function CaissesDossier({ dossier }) {
 
   return (
     <>
-      <div style={{ ...S.carte, background: "#F0F9FF", border: "1px solid #BAE6FD" }}>
-        <div style={{ fontSize: 12.5, color: "#075985", lineHeight: 1.5 }}>
+      <div style={{ ...S.carte, background: "rgba(167,139,250,.10)",
+                    border: "1px solid rgba(167,139,250,.35)" }}>
+        <div style={{ fontSize: 12.5, color: "#C9BCFF", lineHeight: 1.5 }}>
           🔒 Cette liste est <b>privée</b>. Votre déménageur ne voit que le numéro
           de caisse et la pièce de destination — jamais son contenu.
         </div>
