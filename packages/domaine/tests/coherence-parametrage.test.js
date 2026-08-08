@@ -75,7 +75,8 @@ import { resumeEmballage, fournituresOffre } from "../src/stocks/emballage.js";
 
 test("resumeEmballage calcule sur le catalogue qu'on lui donne", () => {
   const perso = [{ cle: "carton_standard", nom: "Carton standard" }];
-  const r = resumeEmballage({ carton_standard: { e: 10, u: 7, r: 3 } }, perso);
+  // util. se déduit désormais de enl. − rep. : 10 − 3 = 7.
+  const r = resumeEmballage({ carton_standard: { e: 10, r: 3 } }, perso);
   assert.equal(r.lignes.length, 1);
   assert.equal(r.lignes[0].cle, "carton_standard");
   assert.equal(r.lignes[0].u, 7);
@@ -96,7 +97,8 @@ test("un catalogue vide retombe sur le catalogue du domaine", () => {
 
 test("fournituresOffre tolère un article sans pluriel", () => {
   const perso = [{ cle: "x", nom: "Housse spéciale" }];
-  const t = fournituresOffre({ x: { u: 3 } }, perso);
+  // util. déduit : 3 sorties, 0 reprise → 3 utilisés.
+  const t = fournituresOffre({ x: { e: 3, r: 0 } }, perso);
   assert.equal(t.length, 1);
   assert.match(t[0], /^3 /);
 });

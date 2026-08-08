@@ -9,6 +9,7 @@ import {
 } from "../src/operations/chrono.js";
 import {
   transitionMissionPermise, estEnConge, conflitsAffectation, remplacantsDisponibles,
+  couleurTypeMission, libelleTypeMission,
 } from "../src/operations/missions.js";
 
 // --- Chrono ------------------------------------------------------------------
@@ -184,4 +185,16 @@ test("une mission sans problème est déclarée ok", () => {
     vehicules: [{ nom: "Iveco", affectations: [{ missionId: M1, date: JOUR }] }] });
   assert.equal(v.ok, true);
   assert.equal(v.niveau, "libre");
+});
+
+test("type de mission : déménagement vert, visite bleu", () => {
+  assert.equal(couleurTypeMission("demenagement"), "#16A34A");
+  assert.equal(couleurTypeMission("visite"), "#2563EB");
+  assert.equal(libelleTypeMission("demenagement"), "Déménagement");
+  assert.equal(libelleTypeMission("visite"), "Visite");
+});
+
+test("type de mission inconnu : couleur neutre, libellé de repli", () => {
+  assert.equal(couleurTypeMission("autre"), "#64748B");
+  assert.equal(libelleTypeMission(null), "Chantier");
 });
