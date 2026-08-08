@@ -1,0 +1,5 @@
+-- 0094 — Persistance du code signature + journal manuel des mails.
+-- cmd_acces_actif(affaire) : lit l'accès signature actif (échéance, indice 4
+--   derniers, statut). Le code complet n'est jamais relisible (haché).
+-- Colonne affaires.mails_envoyes (jsonb) + cmd_journaliser_mail(affaire, modele,
+--   objet) : trace manuelle des mails envoyés. Corps exact en base.
