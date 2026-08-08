@@ -13,6 +13,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   obtenirAffaire, obtenirContact, obtenirInstance, obtenirOrganisation,
   obtenirTextes, creerLienSignature, urlConditionsCbd,
+  accesActif, journalMails, marquerMailEnvoye,
 } from "../lib/adaptateur.js";
 import { emailOffre, urlMailto } from "@domaine/communication/brief.js";
 import { mailsEffectifs, remplirJetons } from "@domaine/communication/mails.js";
@@ -28,6 +29,9 @@ export default function Mail({ affaireId, retour, versOffre }) {
   const [validiteJours, setValiditeJours] = useState(30);
   const [cbd, setCbd] = useState(null);        // URL signée des conditions
   const [enCours, setEnCours] = useState(false);
+  const [acces, setAcces] = useState(null);    // accès signature actif (persistant)
+  const [raccourci, setRaccourci] = useState(false);  // insérer le rappel dans le mail
+  const [journal, setJournal] = useState([]);  // récap des mails envoyés (manuel)
 
   // Modèles de mails et sélection. "offre" = l'email d'offre historique
   // (avec signature en ligne et pièces jointes) ; les autres clés viennent
@@ -46,6 +50,10 @@ export default function Mail({ affaireId, retour, versOffre }) {
           obtenirOrganisation().catch(() => ({})),
           obtenirTextes().catch(() => ({})),
         ]);
+        // Persistance : l'accès signature actif et le journal des mails
+        // survivent au rechargement — ils viennent de la base, pas de l'état.
+        accesActif(affaireId).then(setAcces).catch(() => setAcces({ actif: false }));
+        journalMails(affaireId).then(setJournal).catch(() => setJournal([]));
         setInstance(inst);
         urlConditionsCbd().then(setCbd).catch(() => setCbd(null));
         setModeles(mailsEffectifs(textes));
@@ -88,15 +96,26 @@ export default function Mail({ affaireId, retour, versOffre }) {
 
   // Le mail réellement affiché : l'offre, ou un modèle rempli avec le contexte.
   const mail = useMemo(() => {
-    if (choix === "offre") return mailOffre;
-    const m = modeles.find((x) => x.cle === choix);
-    if (!m || !contexte) return null;
-    return {
-      a: contexte.email || "",
-      objet: remplirJetons(m.objet, contexte),
-      corps: remplirJetons(m.corps, contexte),
-    };
-  }, [choix, mailOffre, modeles, contexte]);
+    let base;
+    if (choix === "offre") base = mailOffre;
+    else {
+      const m = modeles.find((x) => x.cle === choix);
+      if (!m || !contexte) return null;
+      base = { a: contexte.email || "",
+               objet: remplirJetons(m.objet, contexte),
+               corps: remplirJetons(m.corps, contexte) };
+    }
+    if (!base) return null;
+
+    // Raccourci texte rapide : le rappel du code de signature et de son échéance,
+    // ajouté au corps à la demande du bureau. Le code complet n'est présent que
+    // si on vient de le générer (lien) ; sinon on met l'indice et l'échéance.
+    if (raccourci && estOffreChoix(choix)) {
+      const rappel = texteRappelSignature(lien, acces);
+      if (rappel) base = { ...base, corps: `${base.corps}\n\n${rappel}` };
+    }
+    return base;
+  }, [choix, mailOffre, modeles, contexte, raccourci, lien, acces]);
 
   async function copier() {
     const texte = `À : ${mail.a}\nObjet : ${mail.objet}\n\n${mail.corps}`;
@@ -157,12 +176,54 @@ export default function Mail({ affaireId, retour, versOffre }) {
           </button>
         )}
 
-        {instance && !lien && (
+        {/* Un accès ACTIF existe (persistant, relu au chargement) : on affiche
+            le minuteur et l'échéance. Le code complet n'est plus lisible — seul
+            l'indice survit. Si on vient de le créer, on montre le code une fois. */}
+        {instance && acces?.actif && (
+          <div style={{ padding: "10px 12px", borderRadius: 10,
+                        background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+            {lien ? (
+              <>
+                <div style={{ fontSize: 11.5, color: "#065F46", fontWeight: 700 }}>
+                  Code de signature (notez-le, il ne sera plus affiché en entier)
+                </div>
+                <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 18,
+                              fontWeight: 800, color: C.encre, textAlign: "center",
+                              letterSpacing: ".1em", padding: "6px 0" }}>
+                  {lien.code}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 11.5, color: "#065F46", fontWeight: 700 }}>
+                Code actif · se termine par <b>{acces.indice}</b>
+              </div>
+            )}
+            <Minuteur echeance={acces.expire_le} />
+            {/* Raccourci texte rapide : insère code + échéance dans le mail. */}
+            <button onClick={() => setRaccourci(true)}
+                    style={{ ...S.boutonLien, paddingLeft: 0, fontSize: 12, marginTop: 4 }}>
+              ⤵ Insérer le rappel dans le mail
+            </button>
+          </div>
+        )}
+
+        {instance && acces && !acces.actif && (
+          <div style={{ fontSize: 12, color: C.muet, lineHeight: 1.5, marginBottom: 10 }}>
+            {acces.signe ? "✓ Déjà signé par le client."
+              : acces.expire ? "Le code précédent a expiré."
+              : acces.revoque ? "Le code précédent a été révoqué."
+              : "Aucun code actif."}
+            {" "}Vous pouvez en générer un nouveau.
+          </div>
+        )}
+
+        {instance && (!acces || !acces.actif) && (
           <>
             <div style={{ fontSize: 12, color: C.muet, lineHeight: 1.55,
                           marginBottom: 10 }}>
               Le client lit l'offre en ligne, recopie « Lu et approuvé » et signe.
-              Choisissez la durée pendant laquelle ce code reste valable.
+              Choisissez le nombre de jours : le code expirera ce jour-là, à
+              l'heure d'aujourd'hui.
             </div>
             <label style={{ ...S.label, marginTop: 0 }}>Le code expire dans</label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -185,30 +246,13 @@ export default function Mail({ affaireId, retour, versOffre }) {
                 setLien({ code, jours: validiteJours,
                   url: `${location.origin}/?signer=`
                     + encodeURIComponent(code.replace(/-/g, "")) });
+                accesActif(affaireId).then(setAcces).catch(() => {});
               } catch (e) { setErreur(e.message); }
               finally { setEnCours(false); }
             }}>
               {enCours ? "Génération…" : "Générer le code de signature"}
             </button>
           </>
-        )}
-
-        {lien && (
-          <div style={{ padding: "10px 12px", borderRadius: 10,
-                        background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
-            <div style={{ fontSize: 11.5, color: "#065F46", fontWeight: 700 }}>
-              Code inséré dans le message
-            </div>
-            <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 18,
-                          fontWeight: 800, color: C.encre, textAlign: "center",
-                          letterSpacing: ".1em", padding: "6px 0" }}>
-              {lien.code}
-            </div>
-            <div style={{ fontSize: 11, color: C.fantome, lineHeight: 1.5 }}>
-              Valable {lien.jours === 1 ? "24 h" : `${lien.jours} jours`}, une
-              seule utilisation. Notez-le : il ne sera plus affiché en entier.
-            </div>
-          </div>
         )}
       </div>
       )}
@@ -262,6 +306,38 @@ export default function Mail({ affaireId, retour, versOffre }) {
           ? "Joignez le PDF de l'offre dans votre application mail avant l'envoi."
           : "Ajoutez vos pièces jointes dans votre application mail si nécessaire."}
       </div>
+
+      {/* Journal manuel : le bureau marque ce qu'il a réellement envoyé. */}
+      <div style={{ margin: "16px 16px 0" }}>
+        <button onClick={async () => {
+          try {
+            await marquerMailEnvoye(affaireId,
+              { modele: choix, objet: mail?.objet || "" });
+            journalMails(affaireId).then(setJournal).catch(() => {});
+          } catch (e) { setErreur(e.message); }
+        }} style={{ ...S.boutonLien, paddingLeft: 0, fontSize: 12.5, fontWeight: 700 }}>
+          ✓ Marquer ce mail comme envoyé
+        </button>
+
+        {journal.length > 0 && (
+          <div style={{ marginTop: 8, padding: 12, borderRadius: 12,
+                        background: "#F8FAFC", border: `1px solid ${C.bord}` }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.encre,
+                          textTransform: "uppercase", letterSpacing: ".03em",
+                          marginBottom: 6 }}>
+              Mails envoyés
+            </div>
+            {journal.slice().reverse().map((e, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between",
+                                    fontSize: 12, color: C.muet, padding: "3px 0" }}>
+                <span style={{ color: C.encre }}>{libelleModele(e.modele)}</span>
+                <span>{dateCourte(e.le)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div style={{ height: 32 }} />
     </div>
   );
@@ -323,3 +399,77 @@ const pieceJointe = {
   border: `1.5px solid ${C.bord}`, background: C.blanc, color: C.encre,
   fontSize: 12.5, fontWeight: 700,
 };
+
+// ── Helpers signature / journal ──────────────────────────────────────────────
+function estOffreChoix(choix) { return choix === "offre"; }
+
+function libelleModele(cle) {
+  const M = { offre: "Offre de prix", confirmation_visite: "Confirmation de visite",
+    envoi_devis: "Envoi du devis", relance_devis: "Relance", envoi_facture: "Facture",
+    rappel_paiement: "Rappel de paiement", remerciement: "Remerciement",
+    confirmation_demenagement: "Confirmation" };
+  return M[cle] || cle || "Mail";
+}
+
+function dateCourte(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("fr-BE",
+      { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
+}
+
+/** Texte du rappel inséré dans le mail : code (si connu) + échéance. */
+function texteRappelSignature(lien, acces) {
+  const ech = acces?.expire_le ? dateEcheanceLongue(acces.expire_le) : null;
+  if (lien?.code) {
+    return `Pour signer votre offre en ligne : rendez-vous sur ${lien.url}\n`
+      + `Votre code : ${lien.code}`
+      + (ech ? `\nCe code est valable jusqu'au ${ech}.` : "");
+  }
+  if (acces?.actif) {
+    return `Pour rappel, votre code de signature (se terminant par ${acces.indice}) `
+      + `reste valable${ech ? ` jusqu'au ${ech}` : ""}.`;
+  }
+  return null;
+}
+
+function dateEcheanceLongue(iso) {
+  try {
+    return new Date(iso).toLocaleDateString("fr-BE",
+      { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
+}
+
+/**
+ * Minuteur d'échéance : combien de temps reste-t-il avant l'expiration du code.
+ * Rafraîchi chaque minute. Journalier — au-delà d'un jour, on compte en jours ;
+ * le dernier jour, en heures ; la dernière heure, en minutes.
+ */
+function Minuteur({ echeance }) {
+  const [maintenant, setMaintenant] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setMaintenant(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
+  if (!echeance) return null;
+  const reste = new Date(echeance).getTime() - maintenant;
+  const fin = new Date(echeance).toLocaleDateString("fr-BE",
+    { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  let texte, couleur;
+  if (reste <= 0) { texte = "expiré"; couleur = C.rouge; }
+  else {
+    const jours = Math.floor(reste / 86400000);
+    const heures = Math.floor(reste / 3600000);
+    const minutes = Math.floor(reste / 60000);
+    if (jours >= 1) { texte = `${jours} jour${jours > 1 ? "s" : ""} restant${jours > 1 ? "s" : ""}`; couleur = "#065F46"; }
+    else if (heures >= 1) { texte = `${heures} h restantes`; couleur = "#B45309"; }
+    else { texte = `${minutes} min restantes`; couleur = C.rouge; }
+  }
+  return (
+    <div style={{ fontSize: 11, color: couleur, marginTop: 4, fontWeight: 600 }}>
+      ⏳ {texte} · échéance {fin}
+    </div>
+  );
+}
