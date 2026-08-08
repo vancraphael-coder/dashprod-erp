@@ -2171,6 +2171,42 @@ export const clientInventaire = () => rpcClient("cmd_client_inventaire");
 export const clientOffres     = () => rpcClient("cmd_client_offres");
 export const clientFactures   = () => rpcClient("cmd_client_factures");
 
+// =============================================================================
+// MAILPROD — messagerie probante client ↔ bureau, attachée à un dossier.
+// Registre immuable et chaîné (0095) : chaque message est horodaté serveur,
+// attribué, et inaltérable. Utilisable comme trace en cas de litige.
+// =============================================================================
+
+/** Lit le fil d'un dossier (bureau ou client selon la session) et marque lu. */
+export async function messagesFil(affaireId) {
+  const { data, error } = await supabase.rpc("cmd_messages_fil", { p_affaire: affaireId });
+  if (error) throw new Error(error.message || "Accès refusé.");
+  return data;
+}
+
+/** Le bureau écrit au client. */
+export async function messageBureau(affaireId, corps) {
+  const { data, error } = await supabase.rpc("cmd_message_bureau",
+    { p_affaire: affaireId, p_corps: corps });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Le client répond depuis son espace. */
+export async function messageClient(affaireId, corps) {
+  const { data, error } = await supabase.rpc("cmd_message_client",
+    { p_affaire: affaireId, p_corps: corps });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Vérifie l'intégrité de la chaîne (bureau) — preuve d'inaltérabilité. */
+export async function messagesVerifier(affaireId) {
+  const { data, error } = await supabase.rpc("cmd_messages_verifier", { p_affaire: affaireId });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 /** Annuaire public : aucun compte requis, seules les entreprises opt-in sortent. */
 export async function reseauDemenageurs() {
   const { data, error } = await supabase.rpc("cmd_reseau_demenageurs");
