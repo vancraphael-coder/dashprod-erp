@@ -13,7 +13,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  clientDossiers, clientInventaire, clientOffres, clientFactures,
+  clientDossiers, clientInventaire, clientOffres, clientFactures, deposerAvis,
   reseauDemenageurs,
 } from "../lib/adaptateur.js";
 import { deconnecter } from "../lib/supabase.js";
@@ -169,6 +169,11 @@ function Dossiers() {
               <div style={{ fontSize: 12, color: C.muet, marginTop: 8 }}>
                 Contact : {d.entreprise.tel}
               </div>
+            )}
+
+            {/* Avis : proposé quand le déménagement est effectué. Note + mot. */}
+            {(d.etat === "effectue" || d.etat === "clos") && (
+              <AvisDossier affaireId={d.affaire_id} />
             )}
           </div>
         ))}
@@ -469,6 +474,55 @@ function Messages() {
  *   [gadget, V2].
  * Permissions : LECTURE PUBLIQUE. Aucune donnée personnelle exposée.
  */
+/**
+ * Avis rapide : note en étoiles + un mot, déposé par le client sur un dossier
+ * effectué. Une note peut être révisée (upsert côté base).
+ */
+function AvisDossier({ affaireId }) {
+  const [note, setNote] = useState(0);
+  const [mot, setMot] = useState("");
+  const [envoye, setEnvoye] = useState(false);
+  const [erreur, setErreur] = useState(null);
+
+  async function envoyer() {
+    if (!note) { setErreur("Choisissez une note."); return; }
+    setErreur(null);
+    try { await deposerAvis(affaireId, note, mot); setEnvoye(true); }
+    catch (e) { setErreur(e.message); }
+  }
+
+  if (envoye) return (
+    <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10,
+                  background: "#F0FDF4", border: "1px solid #A7F3D0",
+                  fontSize: 12.5, color: "#065F46" }}>
+      Merci pour votre avis {"★".repeat(note)}
+    </div>
+  );
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.doux}` }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.encre, marginBottom: 6 }}>
+        Comment s'est passé votre déménagement ?
+      </div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 8 }}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} onClick={() => setNote(n)}
+            style={{ border: "none", background: "none", cursor: "pointer",
+                     fontSize: 26, lineHeight: 1, padding: 0,
+                     color: n <= note ? "#F59E0B" : "#D1D5DB" }}>★</button>
+        ))}
+      </div>
+      <textarea value={mot} onChange={(e) => setMot(e.target.value)}
+        placeholder="Un mot sur votre expérience (facultatif)…" rows={2}
+        style={{ ...S.input, width: "100%", boxSizing: "border-box",
+                 resize: "vertical", minHeight: 40 }} />
+      {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 6 }}>{erreur}</div>}
+      <button onClick={envoyer}
+        style={{ ...S.boutonPlein, marginTop: 8 }}>Envoyer mon avis</button>
+    </div>
+  );
+}
+
 function Reseau() {
   const { chargement, donnees, erreur } = useCharge(reseauDemenageurs);
   const liste = donnees || [];

@@ -5,8 +5,9 @@
 // Habillée aux couleurs de la vitrine ; la logique n'a pas bougé.
 // =============================================================================
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase, configPresente, connecterAvecGoogle } from "../lib/supabase.js";
+import { demoDemarrer, activerDemoForcee } from "../lib/adaptateur.js";
 import { V, NavPublique, PiedPublic, BoutonGoogle, Etiquette, LogoComplet }
   from "./vitrine/theme-vitrine.jsx";
 
@@ -15,6 +16,50 @@ export default function Connexion({ onConnecte, aller }) {
   const [mdp, setMdp] = useState("");
   const [erreur, setErreur] = useState(null);
   const [enCours, setEnCours] = useState(false);
+  const [demoEnCours, setDemoEnCours] = useState(false);
+  const [demoMsg, setDemoMsg] = useState(null);
+
+  // Si on revient d'un login Google déclenché pour la démo, on reprend l'essai.
+  useEffect(() => {
+    let actif = true;
+    (async () => {
+      try {
+        if (sessionStorage.getItem("dashprod-demo-intention") !== "1") return;
+        const { data } = await supabase.auth.getSession();
+        if (!data?.session) return;               // pas encore connecté
+        sessionStorage.removeItem("dashprod-demo-intention");
+        setDemoEnCours(true);
+        const r = await demoDemarrer();
+        if (!actif) return;
+        if (r?.autorise) onConnecte?.();
+        else setDemoMsg(r?.message || "Limite de démonstration atteinte.");
+      } catch (e) { setDemoMsg(e.message); }
+      finally { if (actif) setDemoEnCours(false); }
+    })();
+    return () => { actif = false; };
+  }, []);
+
+  async function lancerDemo() {
+    setDemoMsg(null); setErreur(null);
+    if (!configPresente) {
+      // Base absente : la démo locale marche déjà telle quelle.
+      activerDemoForcee(); onConnecte?.(); return;
+    }
+    setDemoEnCours(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data?.session) {
+        // Pas connecté : on passe par Google, on reprendra l'essai au retour.
+        sessionStorage.setItem("dashprod-demo-intention", "1");
+        await connecterAvecGoogle();
+        return;
+      }
+      const r = await demoDemarrer();
+      if (r?.autorise) onConnecte?.();
+      else setDemoMsg(r?.message || "Limite de démonstration atteinte.");
+    } catch (e) { setDemoMsg(e.message); }
+    finally { setDemoEnCours(false); }
+  }
 
   async function seConnecter() {
     setErreur(null);
@@ -119,6 +164,23 @@ export default function Connexion({ onConnecte, aller }) {
               </button>
             </div>
           )}
+
+          {/* Découverte en démonstration : données fictives, aucune donnée
+              d'entreprise à saisir. Plafonné à 2 essais par compte Google. */}
+          <div style={{ textAlign: "center", marginTop: 18 }}>
+            <button onClick={lancerDemo} disabled={demoEnCours}
+                    style={{ background: "none", border: `1px solid ${V.bord}`,
+                             borderRadius: 10, padding: "10px 16px", cursor: "pointer",
+                             color: V.encre, fontSize: 13, fontWeight: 700 }}>
+              {demoEnCours ? "Préparation…" : "🎬 Découvrir en démonstration"}
+            </button>
+            <div style={{ fontSize: 11, color: V.brume, marginTop: 6, lineHeight: 1.5 }}>
+              Données fictives, sans engagement. 2 essais par compte Google.
+            </div>
+            {demoMsg && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "#991B1B" }}>{demoMsg}</div>
+            )}
+          </div>
         </div>
       </main>
 
