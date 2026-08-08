@@ -1,0 +1,6 @@
+-- 0092 — Le bureau valide les heures réelles (dans « Calcul définitif »).
+-- Colonnes missions.heures_validees_le / heures_validees_par.
+-- cmd_valider_heures(mission, depart?, arrivee?) : corrige au besoin la session
+--   travail puis marque les heures validées (bureau uniquement).
+-- cmd_heures_affaire(affaire) : heures de chaque mission + état de validation,
+--   pour le cadran du calcul définitif. Corps exact en base.
