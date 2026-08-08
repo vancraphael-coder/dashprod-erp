@@ -17,6 +17,7 @@ import React, { useEffect, useState } from "react";
 import { lireRapport, ecrireDeroule, declarerConstat } from "../lib/adaptateur.js";
 import { NATURES, nature, constatValide, syntheseRapport }
   from "@domaine/operations/rapport-chantier.js";
+import { heureDe, secondesTravail, formaterDuree } from "@domaine/operations/pointage.js";
 import { C } from "../lib/theme.jsx";
 
 const ETIQUETTE_ETAT = {
@@ -81,6 +82,11 @@ export default function RapportChantier({ mission, peutRediger }) {
                     marginBottom: 10 }}>
         Rapport de chantier
       </div>
+
+      {/* Les heures du chantier, remontées par le terrain. Lecture seule ici :
+          elles viennent du pointage (départ / arrivée). Une durée n'apparaît
+          que si les deux sont saisies — sinon on montre ce qui est connu. */}
+      <CadranHeures sessions={mission.sessions} />
 
       {/* Déroulé — la phrase du chef, pas un formulaire. */}
       {peutRediger ? (
@@ -222,3 +228,41 @@ const champSombre = {
   border: "1.5px solid #475569", background: "#0F172A", color: "#fff",
   fontSize: 13, fontFamily: "inherit", resize: "vertical",
 };
+
+/**
+ * Cadran des heures du chantier, en lecture. Les valeurs viennent du pointage
+ * terrain. Aucune durée n'est projetée depuis l'horloge : elle n'apparaît que
+ * si départ ET arrivée sont saisis (mêmes règles que le compteur terrain).
+ */
+function CadranHeures({ sessions }) {
+  const travail = (sessions || []).find((x) => (x.type || "travail") === "travail") || {};
+  const depart = travail.debut ? new Date(travail.debut) : null;
+  const arrivee = travail.fin ? new Date(travail.fin) : null;
+  const pauses = (sessions || []).filter((x) => x.type === "pause")
+    .map((p) => ({ debut: p.debut ? new Date(p.debut) : null,
+                   fin: p.fin ? new Date(p.fin) : null }));
+  const duree = depart && arrivee ? secondesTravail(depart, arrivee, pauses) : null;
+
+  const Case = ({ libelle, valeur, fort }) => (
+    <div style={{ flex: 1, textAlign: "center", padding: "6px 4px" }}>
+      <div style={{ fontSize: 9.5, color: "#64748B", textTransform: "uppercase",
+                    letterSpacing: ".04em" }}>{libelle}</div>
+      <div style={{ fontSize: fort ? 16 : 14, fontWeight: 800,
+                    color: valeur ? "#fff" : "#475569",
+                    fontFamily: "ui-monospace, monospace", marginTop: 2 }}>
+        {valeur || "—:—"}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", marginBottom: 10,
+                  background: "#1E293B", borderRadius: 9, padding: "4px 2px" }}>
+      <Case libelle="Départ" valeur={depart ? heureDe(depart) : null} />
+      <div style={{ color: "#475569" }}>→</div>
+      <Case libelle="Arrivée" valeur={arrivee ? heureDe(arrivee) : null} />
+      <div style={{ width: 1, alignSelf: "stretch", background: "#334155" }} />
+      <Case libelle="Durée" fort valeur={duree != null ? formaterDuree(duree) : null} />
+    </div>
+  );
+}

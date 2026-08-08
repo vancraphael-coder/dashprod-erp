@@ -12,7 +12,7 @@ import {
   obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
   obtenirOrganisation, contexteMainOeuvre,
   litigesAffaire, ouvrirLitige, avancerLitige, resoudreLitige, scenarioRetenu,
-  etatFacturation,
+  etatFacturation, heuresAffaire, validerHeures,
 } from "../lib/adaptateur.js";
 import { calculerScenario } from "@domaine/chiffrage/moteur.js";
 import { catalogueSupplements, supplementsRetenus, libelleLigne, UNITES_SUPPLEMENT }
@@ -568,6 +568,10 @@ function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peu
         )}
       </div>
 
+      {/* Heures réelles : le bureau confirme (ou corrige) ce que le terrain a
+          pointé. La validation est enregistrée — c'est l'heure retenue. */}
+      <HeuresReelles affaireId={affaireId} />
+
       {/* Litiges */}
       <Litiges affaireId={affaireId} affaire={affaire} />
     </div>
@@ -606,6 +610,125 @@ const ETATS_FACT_LIB = {
   non_facture: "non facturé", facture: "facturé",
   partiellement_paye: "partiel", paye: "payé",
 };
+
+// ── HEURES RÉELLES ───────────────────────────────────────────────────────────
+// Le bureau confirme les heures pointées par le terrain, ou les corrige, puis
+// valide. La validation est enregistrée (heure retenue pour les coûts).
+function HeuresReelles({ affaireId }) {
+  const [lignes, setLignes] = useState(null);
+  const [edite, setEdite] = useState(null);   // mission_id en cours de correction
+  const [saisie, setSaisie] = useState({ depart: "", arrivee: "" });
+  const [erreur, setErreur] = useState(null);
+  const [enCours, setEnCours] = useState(false);
+
+  const recharger = () => heuresAffaire(affaireId).then(setLignes).catch(() => setLignes([]));
+  useEffect(() => { recharger(); }, [affaireId]);
+
+  if (!lignes || lignes.length === 0) return null;
+
+  const hhmm = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+  const dateBase = (l) => (l.depart ? l.depart.slice(0, 10) : l.date);
+
+  async function valider(l, avecCorrection) {
+    setEnCours(true); setErreur(null);
+    try {
+      let depart = null, arrivee = null;
+      if (avecCorrection) {
+        const base = dateBase(l);
+        depart = saisie.depart ? new Date(`${base}T${saisie.depart}:00`) : null;
+        arrivee = saisie.arrivee ? new Date(`${base}T${saisie.arrivee}:00`) : null;
+      }
+      await validerHeures(l.mission_id, { depart, arrivee });
+      setEdite(null); await recharger();
+    } catch (e) { setErreur(e.message || "Refusé"); }
+    finally { setEnCours(false); }
+  }
+
+  return (
+    <div style={S.carte}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>Heures réelles</div>
+      <div style={{ fontSize: 11.5, color: C.muet, marginTop: 3, lineHeight: 1.45 }}>
+        Ce que le terrain a pointé. Confirmez, ou corrigez avant de valider.
+      </div>
+
+      {lignes.map((l) => {
+        const enEdition = edite === l.mission_id;
+        return (
+          <div key={l.mission_id} style={{ marginTop: 10, padding: 11, borderRadius: 10,
+            border: `1px solid ${l.validees ? "#A7F3D0" : C.bord}`,
+            background: l.validees ? "#F0FDF4" : "#F8FAFC" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>
+                {l.type ? l.type.charAt(0).toUpperCase() + l.type.slice(1) : "Chantier"}
+                {l.date ? ` · ${new Date(l.date + "T00:00:00").toLocaleDateString("fr-BE",
+                  { day: "numeric", month: "short" })}` : ""}
+              </span>
+              {l.validees && (
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: "#15803D" }}>✓ validées</span>
+              )}
+            </div>
+
+            {enEdition ? (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <label style={{ flex: 1, fontSize: 11, color: C.muet }}>
+                    Départ
+                    <input type="time" value={saisie.depart}
+                      onChange={(e) => setSaisie((s) => ({ ...s, depart: e.target.value }))}
+                      style={{ ...S.input, marginTop: 3 }} />
+                  </label>
+                  <label style={{ flex: 1, fontSize: 11, color: C.muet }}>
+                    Arrivée
+                    <input type="time" value={saisie.arrivee}
+                      onChange={(e) => setSaisie((s) => ({ ...s, arrivee: e.target.value }))}
+                      style={{ ...S.input, marginTop: 3 }} />
+                  </label>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button disabled={enCours} onClick={() => valider(l, true)}
+                          style={{ ...S.boutonPlein, flex: 1, padding: "9px" }}>
+                    Enregistrer et valider
+                  </button>
+                  <button onClick={() => setEdite(null)}
+                          style={{ ...S.boutonLien, color: C.muet }}>Annuler</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6,
+                              fontFamily: "ui-monospace, monospace", fontSize: 15,
+                              fontWeight: 800, color: C.encre }}>
+                  <span>{hhmm(l.depart) || "—:—"}</span>
+                  <span style={{ color: C.fantome }}>→</span>
+                  <span>{hhmm(l.arrivee) || "—:—"}</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  {!l.validees && l.depart && l.arrivee && (
+                    <button disabled={enCours} onClick={() => valider(l, false)}
+                            style={{ ...BTN_PETIT, background: "#15803D", color: "#fff" }}>
+                      ✓ Confirmer ces heures
+                    </button>
+                  )}
+                  <button onClick={() => {
+                    setSaisie({ depart: hhmm(l.depart), arrivee: hhmm(l.arrivee) });
+                    setEdite(l.mission_id);
+                  }} style={{ ...BTN_PETIT, background: "#EEF2F8", color: C.encre }}>
+                    {l.validees ? "Corriger" : "Corriger les heures"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+      {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 8 }}>{erreur}</div>}
+    </div>
+  );
+}
 
 // ── LITIGES ────────────────────────────────────────────────────────────────
 function Litiges({ affaireId, affaire }) {
