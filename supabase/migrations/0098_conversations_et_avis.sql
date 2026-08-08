@@ -1,0 +1,8 @@
+-- 0098 — Conversations Mailprod + avis étoilé.
+-- cmd_conversations() : boîte de réception bureau, une entrée par dossier ayant
+--   des messages (dernier message, non-lus, tri par activité).
+-- Table avis_clients (note 1-5 + commentaire, un par dossier). RLS bureau.
+-- cmd_avis_deposer(affaire, note, commentaire) : le client note son dossier
+--   effectué (upsert). cmd_avis_publics(org) : moyenne + verbatims pour la
+--   landing. NB : suppression des surcharges obsolètes cmd_message_bureau/client
+--   à 2 arguments (ambiguïté avec les versions à pièces jointes). Corps en base.

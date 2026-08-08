@@ -1,0 +1,6 @@
+-- 0097 — Démo plafonnée par compte Google (2 essais max).
+-- Table demos_essais (sub Google, email, essais, max_essais) — AUCUNE donnée
+--   d'entreprise, juste un compteur par identité. RLS : chacun voit sa ligne.
+-- cmd_demo_etat() : essais restants. cmd_demo_essai() : vérifie le quota,
+--   incrémente, autorise ou refuse. Décompte serveur → non contournable.
+-- Le front bascule alors sur le magasin démo local. Corps exact en base.
