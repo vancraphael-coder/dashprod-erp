@@ -205,10 +205,12 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
   const itineraire = urlItineraire(mission.charges, mission.decharges,
                                    adresseDepot(org));
   const enAttente = mission.etat === "brouillon";
+  const termineTerrain = mission.etat === "terminee_terrain";
   const termine = mission.etat === "effectuee";
 
-  // Fin du chantier : ferme le chrono ET fait passer le dossier en « effectué »
-  // au bureau (dernier maillon avant la facturation).
+  // Fin du chantier côté TERRAIN : ferme le chrono et INDIQUE au bureau que
+  // c'est terminé. Le dossier ne bascule pas en « effectué » ici — c'est le
+  // bureau qui confirmera. Le terrain remonte, il ne tranche pas (0088).
   async function confirmerFin() {
     await terminerChantier(mission.id);
     setCloture(false);
@@ -379,14 +381,14 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
               d'équipe (capacité `cloturer_chantier`) : on n'arrête pas le
               décompte des autres. On masque le bouton plutôt que de laisser
               un déménageur se heurter à un refus après coup. */}
-          {!termine && depart && !cloture && peutCloturer && (
+          {!termine && !termineTerrain && depart && !cloture && peutCloturer && (
             <button onClick={() => setCloture(true)} style={{
               width: "100%", padding: "12px", borderRadius: 11, marginBottom: 12,
               border: "none", cursor: "pointer", fontSize: 14, fontWeight: 800,
               background: "linear-gradient(135deg, #059669, #047857)", color: "#fff",
             }}>✓ Terminer le chantier</button>
           )}
-          {!termine && depart && !peutCloturer && (
+          {!termine && !termineTerrain && depart && !peutCloturer && (
             <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 10,
               background: "#1E293B", fontSize: 12, color: "#94A3B8",
               lineHeight: 1.45, textAlign: "center" }}>
@@ -396,10 +398,20 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
           {cloture && (
             <div style={{ marginBottom: 12 }}>
               <Confirmation
-                question="Terminer le chantier ? Le chrono sera clôturé et le bureau verra le dossier comme effectué."
+                question="Terminer le chantier ? Le chrono sera clôturé et le bureau recevra le chantier à confirmer."
                 action="Terminer" couleur={C.vert}
                 onConfirmer={confirmerFin}
                 onAnnuler={() => setCloture(false)} />
+            </div>
+          )}
+
+          {/* Terminé côté terrain, en attente du bureau. Le chef a fait sa part ;
+              la décision d'« effectué » revient au bureau. */}
+          {termineTerrain && (
+            <div style={{ marginBottom: 12, padding: "11px 12px", borderRadius: 10,
+              background: "#78350F", fontSize: 12.5, color: "#FDE68A",
+              lineHeight: 1.45, textAlign: "center", fontWeight: 700 }}>
+              ✓ Chantier remonté au bureau — en attente de confirmation
             </div>
           )}
 

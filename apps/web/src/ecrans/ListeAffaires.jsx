@@ -10,6 +10,7 @@ import { listerAffaires } from "../lib/adaptateur.js";
 import { caSigne } from "@domaine/pilotage/finances.js";
 import { zoneMarge } from "@domaine/chiffrage/moteur.js";
 import { regrouperParHorizon, compteurUrgent } from "@domaine/crm/horizons.js";
+import { VUES, filtrerParVue, compteursVues, urgencesVues } from "@domaine/crm/vues-dossiers.js";
 import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 
 // Le cycle ENTIER est filtrable : sans « facturé / payé / clos », la fin de
@@ -20,30 +21,43 @@ import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 // dossier. Les états « facture » et « paye » ont disparu de la liste : depuis
 // la séparation des cycles (0064), ce ne sont plus des états du déménagement —
 // les proposer en filtre ne rendait jamais aucun résultat.
-const FILTRES = ["a_soccuper", "tous", "devis", "envoye", "confirme", "planifie",
-                 "en_cours", "effectue", "clos", "reporte", "annule"];
-const LIBELLES_FILTRE = { a_soccuper: "À s'occuper", tous: "Tous" };
+// La barre de tri ne s'aligne plus état par état : elle propose quelques VUES
+// larges (À traiter · À planifier · Sur le terrain · À clôturer · Tous), chacune
+// avec son compteur. On retrouve d'un coup d'œil où est la charge. Les vues
+// vivent dans le domaine (crm/vues-dossiers), testées.
 
 export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
   const [affaires, setAffaires] = useState([]);
   const [recherche, setRecherche] = useState("");
-  const [filtre, setFiltre] = useState("a_soccuper");
+  const [vue, setVue] = useState("a_cloturer");
 
-  useEffect(() => { listerAffaires().then(setAffaires); }, []);
+  useEffect(() => {
+    listerAffaires().then((liste) => {
+      setAffaires(liste);
+      // À l'ouverture, on se place là où il y a du travail (à clôturer en
+      // priorité), sans forcer si la vue a déjà été changée à la main.
+      const c = compteursVues(liste);
+      const premiere = ["a_cloturer", "a_traiter", "a_planifier", "terrain"]
+        .find((k) => c[k] > 0) || "a_traiter";
+      setVue(premiere);
+    });
+  }, []);
 
-  const visibles = useMemo(() => affaires
-    .filter((a) => filtre === "tous" || filtre === "a_soccuper" || a.etat === filtre)
+  const compteurs = useMemo(() => compteursVues(affaires), [affaires]);
+  const urgences = useMemo(() => urgencesVues(affaires), [affaires]);
+
+  const visibles = useMemo(() => filtrerParVue(affaires, vue)
     .filter((a) => !recherche ||
       (a.client?.nom || "").toLowerCase().includes(recherche.toLowerCase())),
-  [affaires, recherche, filtre]);
+  [affaires, recherche, vue]);
 
-  // Regroupement par horizon : en retard / aujourd'hui / demain / cette
-  // semaine / semaines nommées / mois. Une liste plate ne dit pas ce qui presse.
+  // Regroupement par horizon : en retard / aujourd'hui / demain / cette semaine
+  // / semaines nommées / mois. Une liste plate ne dit pas ce qui presse.
   const groupes = useMemo(() => regrouperParHorizon(visibles, {
-    // En mode « à s'occuper », les dossiers terminés sortent d'eux-mêmes.
-    // Sur un filtre d'état précis, on montre ce qui est demandé.
-    seulementActifs: filtre === "a_soccuper",
-  }), [visibles, filtre]);
+    // Sur « Tous », on montre aussi les dossiers terminés ; sur une vue métier,
+    // ils sont déjà filtrés en amont, donc l'option n'a pas d'effet de bord.
+    seulementActifs: vue !== "tous",
+  }), [visibles, vue]);
 
   const urgent = useMemo(() => compteurUrgent(affaires), [affaires]);
 
@@ -75,26 +89,46 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
           value={recherche} onChange={(e) => setRecherche(e.target.value)}
         />
         <div style={{ display: "flex", gap: 6, marginTop: 10, overflowX: "auto", paddingBottom: 4 }}>
-          {FILTRES.map((f) => (
-            <button key={f} onClick={() => setFiltre(f)} style={{
-              border: `1.5px solid ${filtre === f ? C.bleu : C.bord}`,
-              background: filtre === f ? "#E7EFFC" : C.blanc,
-              color: filtre === f ? C.bleu : C.muet,
-              borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600,
-              cursor: "pointer", whiteSpace: "nowrap",
-            }}>
-              {LIBELLES_FILTRE[f] || ETATS_UI[f]?.libelle || f}
-            </button>
-          ))}
+          {VUES.map((v) => {
+            const actif = vue === v.cle;
+            const n = compteurs[v.cle];
+            const urg = urgences[v.cle];   // "rouge" | "ambre" | undefined
+            const teinteUrg = urg === "rouge" ? C.rouge : urg === "ambre" ? "#D97706" : null;
+            return (
+              <button key={v.cle} onClick={() => setVue(v.cle)} title={v.aide} style={{
+                position: "relative",
+                border: `1.5px solid ${actif ? C.bleu : teinteUrg ? teinteUrg + "66" : C.bord}`,
+                background: actif ? C.bleu : C.blanc,
+                color: actif ? "#fff" : teinteUrg || C.muet,
+                borderRadius: 10, padding: "7px 13px", fontSize: 12.5, fontWeight: 700,
+                cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6,
+              }}>
+                {/* Point d'urgence : la charge se voit sans lire le nombre. */}
+                {teinteUrg && !actif && (
+                  <span style={{ width: 7, height: 7, borderRadius: 999,
+                    background: teinteUrg, flexShrink: 0 }} />
+                )}
+                {v.libelle}
+                {n > 0 && (
+                  <span style={{ fontSize: 11, fontWeight: 800,
+                    color: actif ? C.bleu : "#fff",
+                    background: actif ? "#fff" : (teinteUrg || "#94A3B8"),
+                    borderRadius: 999, padding: "0 6px", minWidth: 16, textAlign: "center" }}>
+                    {n}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {groupes.length === 0 && (
         <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13,
                       lineHeight: 1.5 }}>
-          {filtre === "a_soccuper"
-            ? "Rien à traiter. Tous vos dossiers sont à jour."
-            : "Aucun dossier — le bouton « + » en crée un."}
+          {vue === "tous"
+            ? "Aucun dossier — le bouton « + » en crée un."
+            : "Rien dans cette vue pour le moment."}
         </div>
       )}
 

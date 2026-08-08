@@ -18,6 +18,7 @@ import {
   validerDossierTerrain, obtenirInstance, confirmerAffaire, archiverAffaire,
   annulerAffaire, reporterAffaire, reprendreAffaire, etatFacturation,
   exigencesCloture, cloturerDossier, rouvrirDossier,
+  reconciliationAffaire, confirmerMission, renvoyerChantier,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -518,6 +519,14 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </button>
         )}
 
+        {/* Réconciliation terrain → bureau : le chef d'équipe a remonté des
+            chantiers, le bureau confirme (ou renvoie). C'est ici, et seulement
+            ici, que le dossier devient officiellement « effectué ». */}
+        {!modeTerrain && !["clos"].includes(affaire.etat) && (
+          <ZoneReconciliation affaire={affaire} affaireId={affaireId}
+                              onFait={() => obtenirAffaire(affaireId).then(setAffaire)} />
+        )}
+
         {/* Clôture : la dernière étape du cycle. La check-list vient de la
             base, pas de l'écran — ce qui s'affiche ici est exactement ce qui
             sera vérifié au moment d'appuyer. */}
@@ -582,6 +591,109 @@ const REPORTABLE = ["envoye", "confirme", "planifie"];
  *  — il manque quelque chose : la liste nommée, et la possibilité de passer
  *    outre avec un motif — jamais en silence, jamais par défaut.
  */
+/**
+ * ZONE DE RÉCONCILIATION — le bureau tranche ce que le terrain a remonté.
+ *
+ * Le chef d'équipe clôt sa mission : elle passe « terminée sur le terrain ».
+ * C'est une indication, pas un verdict. Ici, le bureau (patron/secrétariat)
+ * confirme chaque chantier — ou le renvoie au terrain. Quand tous sont
+ * confirmés, le dossier devient « effectué » et la facturation s'ouvre.
+ *
+ * On n'affiche cette zone que lorsqu'il y a quelque chose à réconcilier : des
+ * chantiers en attente, ou tout juste confirmés.
+ */
+function ZoneReconciliation({ affaire, affaireId, onFait }) {
+  const [recon, setRecon] = useState(null);
+  const [renvoi, setRenvoi] = useState(null);   // mission en cours de renvoi
+  const [motif, setMotif] = useState("");
+  const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState(null);
+
+  const recharger = () => reconciliationAffaire(affaireId).then(setRecon).catch(() => setRecon(null));
+  useEffect(() => { recharger(); }, [affaireId, affaire.etat]);
+
+  if (!recon) return null;
+  // Rien à réconcilier : aucun chantier en attente ET le dossier n'est pas
+  // encore effectué (sinon la clôture prend le relais).
+  if (recon.en_attente_bureau === 0 && affaire.etat === "effectue") return null;
+  if (recon.en_attente_bureau === 0 && recon.encore_ouvertes > 0) return null;
+  if (recon.en_attente_bureau === 0 && recon.confirmees === 0) return null;
+
+  async function agir(fn) {
+    setEnCours(true); setErreur(null);
+    try { await fn(); setRenvoi(null); setMotif(""); await recharger(); onFait(); }
+    catch (e) { setErreur(e.message || "Refusé"); }
+    finally { setEnCours(false); }
+  }
+
+  const enAttente = (recon.missions || []).filter((m) => m.etat === "terminee_terrain");
+
+  return (
+    <div style={{ ...S.carte, border: `1px solid ${C.bord}` }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+        Confirmation du bureau
+      </div>
+      <div style={{ fontSize: 12, color: C.muet, marginTop: 4, lineHeight: 1.5 }}>
+        {enAttente.length > 0
+          ? "Le terrain a remonté ces chantiers comme terminés. À vous de confirmer — le dossier deviendra « effectué » et facturable."
+          : "Tous les chantiers sont confirmés."}
+      </div>
+
+      {enAttente.map((m) => (
+        <div key={m.id} style={{ marginTop: 10, padding: 11, borderRadius: 10,
+          border: "1px solid #FDE68A", background: "#FFFBEB" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>
+              {m.type ? m.type.charAt(0).toUpperCase() + m.type.slice(1) : "Chantier"}
+              {m.date ? ` · ${new Date(m.date + "T00:00:00").toLocaleDateString("fr-BE",
+                { day: "numeric", month: "short" })}` : ""}
+            </span>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#B45309" }}>
+              remonté du terrain
+            </span>
+          </div>
+
+          {renvoi === m.id ? (
+            <div style={{ marginTop: 8 }}>
+              <input value={motif} onChange={(e) => setMotif(e.target.value)}
+                     placeholder="Ce qui reste à faire (ex. cave oubliée)…"
+                     style={{ ...S.input }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button disabled={enCours}
+                  onClick={() => agir(() => renvoyerChantier(m.id, motif))}
+                  style={{ ...S.boutonLien, color: C.rouge, fontWeight: 700 }}>
+                  Renvoyer au terrain
+                </button>
+                <button onClick={() => { setRenvoi(null); setMotif(""); }}
+                        style={{ ...S.boutonLien, color: C.muet }}>Annuler</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button disabled={enCours}
+                onClick={() => agir(() => confirmerMission(m.id))}
+                style={{ ...S.boutonPlein, flex: 1, padding: "10px",
+                         background: "linear-gradient(135deg, #059669, #047857)" }}>
+                ✓ Confirmer effectué
+              </button>
+              <button onClick={() => setRenvoi(m.id)}
+                      style={{ ...S.boutonLien, color: C.muet }}>Pas fini</button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {recon.confirmees > 0 && enAttente.length === 0 && (
+        <div style={{ marginTop: 10, fontSize: 12, color: "#15803D", fontWeight: 600 }}>
+          ✓ {recon.confirmees} chantier{recon.confirmees > 1 ? "s" : ""} confirmé{recon.confirmees > 1 ? "s" : ""}.
+        </div>
+      )}
+
+      {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 8 }}>{erreur}</div>}
+    </div>
+  );
+}
+
 function ZoneCloture({ affaire, affaireId, onFait }) {
   const [exig, setExig] = useState(null);
   const [motif, setMotif] = useState("");
