@@ -1,0 +1,8 @@
+-- 0095 — MAILPROD : messagerie bidirectionnelle client ↔ bureau, probante.
+-- Table messages_dossier : append-only (triggers anti-UPDATE/DELETE), horodatage
+--   serveur, auteur attribué (client/entreprise), chaînage par empreinte SHA-256
+--   (chaque message porte le hash du précédent → altération détectable), accusé
+--   de lecture horodaté. RLS : bureau voit son org, client voit ses dossiers.
+-- Commandes : cmd_message_bureau, cmd_message_client, cmd_messages_fil (marque
+--   lu au passage), cmd_messages_verifier (rejoue la chaîne, prouve l'intégrité).
+-- Corps exact en base. Appliqué le 2026-08-08.
