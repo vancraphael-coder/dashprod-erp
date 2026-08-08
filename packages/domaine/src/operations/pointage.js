@@ -96,17 +96,19 @@ export function formaterDuree(secondes) {
  * État du pointage, tel que l'écran doit le présenter.
  * Trois situations, et une seule action évidente à chaque fois.
  */
-export function etatPointage(depart, arrivee, pauses = [], maintenant = new Date()) {
+export function etatPointage(depart, arrivee, pauses = []) {
   if (!depart) {
     return { phase: "avant", libelle: "Pas encore parti",
-             action: "Déclarer le départ", secondes: 0, encours: false };
+             action: "Déclarer le départ", secondes: null, encours: false };
   }
   if (!arrivee) {
+    // En chantier : on NE projette PAS l'horloge système. Tant que l'arrivée
+    // n'est pas pointée, aucune durée n'est « définie » — on affiche l'état,
+    // pas un total qui court tout seul (et gonfle si on oublie de pointer).
     return { phase: "encours", libelle: "En chantier",
-             action: "Déclarer l'arrivée",
-             secondes: secondesTravail(depart, null, pauses, maintenant),
-             encours: true };
+             action: "Déclarer l'arrivée", secondes: null, encours: true };
   }
+  // Départ ET arrivée posés : la durée est enfin une donnée, on la calcule.
   return { phase: "termine", libelle: "Chantier terminé", action: null,
            secondes: secondesTravail(depart, arrivee, pauses), encours: false };
 }
