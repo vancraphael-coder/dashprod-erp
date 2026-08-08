@@ -1,0 +1,6 @@
+-- 0091 — Passage « en cours » → « effectué » par le bureau, avec prérequis.
+-- cmd_prerequis_effectue(affaire) : liste validés/manquants (au moins un
+--   chantier ; chaque chantier a départ+arrivée pointés ; aucun pointage
+--   ouvert ; aucun écart en attente).
+-- cmd_marquer_effectue(affaire) : effectue le passage si tout est vert
+--   (confirme les missions au passage). Réservé au bureau. Corps exact en base.
