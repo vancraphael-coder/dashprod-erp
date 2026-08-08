@@ -2009,6 +2009,50 @@ export async function prerequisEffectue(affaireId) {
            peut_effectuer: manquants === 0 && a?.etat === "en_cours" };
 }
 
+/**
+ * Les heures de chaque mission d'un dossier, avec leur état de validation —
+ * pour le cadran du Calcul définitif.
+ */
+export async function heuresAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_heures_affaire", { p_affaire: affaireId });
+    if (error) throw error;
+    return data || [];
+  }
+  const d = lireDemo();
+  return (d.missions || []).filter((m) => m.affaire_id === affaireId && m.etat !== "annulee")
+    .map((m) => {
+      const t = (m.sessions || []).find((s) => (s.type || "travail") === "travail") || {};
+      return { mission_id: m.id, type: m.type, date: m.date, etat: m.etat,
+               depart: t.debut || null, arrivee: t.fin || null,
+               validees: Boolean(m.heures_validees_le), validees_le: m.heures_validees_le || null };
+    });
+}
+
+/** Le bureau valide (et corrige au besoin) les heures réelles d'une mission. */
+export async function validerHeures(missionId, { depart, arrivee } = {}) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_valider_heures", {
+      p_mission: missionId,
+      p_depart: depart ? new Date(depart).toISOString() : null,
+      p_arrivee: arrivee ? new Date(arrivee).toISOString() : null });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const m = (d.missions || []).find((x) => x.id === missionId);
+  if (m) {
+    const t = (m.sessions || []).find((s) => (s.type || "travail") === "travail");
+    if (t) {
+      if (depart) t.debut = new Date(depart).toISOString();
+      if (arrivee) t.fin = new Date(arrivee).toISOString();
+    }
+    m.heures_validees_le = new Date().toISOString();
+    ecrireDemo(d);
+  }
+  return { validees: true };
+}
+
 /** Le bureau marque le dossier effectué (en cours → effectué). */
 export async function marquerEffectue(affaireId) {
   if (modeDonnees() === "reel") {
