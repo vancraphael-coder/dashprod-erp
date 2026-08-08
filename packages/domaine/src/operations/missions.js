@@ -6,6 +6,25 @@
 // d'affectation (congé, double affectation le même jour).
 // =============================================================================
 
+/**
+ * Type de chantier → couleur et libellé. Une lecture immédiate sur l'agenda du
+ * terrain : un déménagement (le gros œuvre) en vert, une visite (l'évaluation)
+ * en bleu, l'emballage en violet. Couleurs alignées sur le thème.
+ */
+const TYPES_MISSION = {
+  demenagement: { libelle: "Déménagement", couleur: "#16A34A" },
+  visite: { libelle: "Visite", couleur: "#2563EB" },
+  emballage: { libelle: "Emballage", couleur: "#7C3AED" },
+};
+
+export function couleurTypeMission(type) {
+  return (TYPES_MISSION[type] || { couleur: "#64748B" }).couleur;
+}
+
+export function libelleTypeMission(type) {
+  return (TYPES_MISSION[type] || { libelle: type || "Chantier" }).libelle;
+}
+
 /** Sous-cycle d'état d'une mission (S4, section mission). */
 export const ETATS_MISSION = Object.freeze([
   "planifiee", "en_cours", "effectuee", "annulee",
