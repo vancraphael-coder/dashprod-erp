@@ -17,6 +17,18 @@ export function controleSolde({ enleve = 0, utilise = 0, repris = 0 }) {
 }
 
 /**
+ * Utilisé déduit du reste : ce qui est sorti du dépôt et non ramené a été
+ * consommé chez le client. util. = enl. − rep. (jamais négatif). C'est le
+ * raisonnement du terrain : le chef compte ce qu'il rapporte, l'utilisé s'en
+ * déduit — plus de troisième saisie à tenir cohérente à la main.
+ */
+export function utiliseCalcule(enleve = 0, repris = 0) {
+  const e = Math.max(0, Number(enleve) || 0);
+  const r = Math.max(0, Number(repris) || 0);
+  return Math.max(0, e - r);
+}
+
+/**
  * Valorise le matériel utilisé d'une mission : pour chaque article, quantité
  * utilisée × prix unitaire. Produit les lignes injectables dans la facture et
  * le total (C-18). Montants en centimes.

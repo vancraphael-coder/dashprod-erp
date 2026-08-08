@@ -15,7 +15,7 @@
 // modèle validé.
 // =============================================================================
 
-import { controleSolde } from "./stock.js";
+import { controleSolde, utiliseCalcule } from "./stock.js";
 
 /** Catalogue du matériel d'emballage (noms issus du modèle validé). */
 export const CATALOGUE_EMBALLAGE = Object.freeze([
@@ -46,10 +46,12 @@ export function resumeEmballage(emballage, catalogue = CATALOGUE_EMBALLAGE) {
   const liste = Array.isArray(catalogue) && catalogue.length ? catalogue : CATALOGUE_EMBALLAGE;
   const lignes = liste.map((a) => {
     const v = src[a.cle] || {};
-    const e = Number(v.e) || 0, u = Number(v.u) || 0, r = Number(v.r) || 0;
-    // L'équilibre vient du domaine Stocks (Module 8) : une seule règle.
-    const { coherent, ecart } = controleSolde({ enleve: e, utilise: u, repris: r });
-    return { cle: a.cle, nom: a.nom, e, u, r, ecart, coherent };
+    const e = Number(v.e) || 0, r = Number(v.r) || 0;
+    // util. n'est plus saisi : il se déduit de enl. − rep. Le seul « écart »
+    // possible est de reprendre plus qu'on a sorti (saisie incohérente).
+    const u = utiliseCalcule(e, r);
+    const ecart = r > e ? r - e : 0;
+    return { cle: a.cle, nom: a.nom, e, u, r, ecart, coherent: ecart === 0 };
   });
   return {
     lignes,
@@ -71,7 +73,11 @@ export function fournituresOffre(emballage, catalogue = CATALOGUE_EMBALLAGE) {
   const src = emballage || {};
   const liste = Array.isArray(catalogue) && catalogue.length ? catalogue : CATALOGUE_EMBALLAGE;
   return liste
-    .map((a) => ({ a, u: Number((src[a.cle] || {}).u) || 0 }))
+    .map((a) => {
+      const v = src[a.cle] || {};
+      // Cohérent avec le résumé : l'utilisé se déduit de enl. − rep.
+      return { a, u: utiliseCalcule(Number(v.e) || 0, Number(v.r) || 0) };
+    })
     .filter((x) => x.u > 0)
     // pluriel est optionnel : un article ajouté par l'entreprise n'en a pas.
     .map((x) => `${x.u} ${x.u > 1 ? (x.a.pluriel || x.a.nom.toLowerCase())
