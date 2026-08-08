@@ -1,0 +1,10 @@
+-- 0088 — Réconciliation terrain → bureau.
+-- Nouvel état de mission 'terminee_terrain' (entre en_cours et effectuee).
+-- cmd_terminer_chantier : le CHEF indique (mission → terminee_terrain), le
+--   dossier NE bascule PAS.
+-- cmd_confirmer_mission : le BUREAU confirme (mission → effectuee) ; quand toutes
+--   les missions sont confirmées, le dossier passe 'effectue'.
+-- cmd_renvoyer_chantier : le bureau renvoie une mission au terrain (→ en_cours).
+-- cmd_reconciliation_affaire : résumé (en attente / confirmées / ouvertes).
+-- cmd_suites_administratives étendu : missions_terrain_en_attente.
+-- Corps exact en base. Appliqué le 2026-08-07.
