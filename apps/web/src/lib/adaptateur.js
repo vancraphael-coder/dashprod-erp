@@ -2202,6 +2202,59 @@ export async function creerLienSignature(affaireId, code, jours = 30) {
   return data;
 }
 
+/**
+ * Lit l'accès signature ACTIF d'un dossier — pour retrouver le minuteur et
+ * l'échéance au rechargement de l'onglet mail. Le code complet n'est jamais
+ * relisible (haché) ; seuls l'indice (4 derniers) et l'échéance survivent.
+ */
+export async function accesActif(affaireId) {
+  if (modeDonnees() !== "reel") {
+    const d = lireDemo();
+    const a = (d.acces || {})[affaireId];
+    if (!a) return { actif: false };
+    const expire = new Date(a.expire_le);
+    return { actif: expire > new Date() && !a.revoque && !a.signe,
+             indice: a.indice, expire_le: a.expire_le, cree_le: a.cree_le,
+             signe: Boolean(a.signe), revoque: Boolean(a.revoque),
+             expire: expire <= new Date() };
+  }
+  const { data, error } = await supabase.rpc("cmd_acces_actif", { p_affaire: affaireId });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Journal MANUEL des mails envoyés d'un dossier. Le bureau marque « envoyé »
+ * quand il a effectivement expédié un mail (Dashprod n'envoie rien lui-même).
+ * Stocké dans affaires.mails_envoyes (jsonb) — trace simple, pas de preuve.
+ */
+export async function journalMails(affaireId) {
+  if (modeDonnees() !== "reel") {
+    const d = lireDemo();
+    return ((d.affaires.find((x) => x.id === affaireId) || {}).mails_envoyes) || [];
+  }
+  const { data, error } = await supabase.from("affaires")
+    .select("mails_envoyes").eq("id", affaireId).maybeSingle();
+  if (error) throw error;
+  return data?.mails_envoyes || [];
+}
+
+/** Ajoute une entrée au journal des mails envoyés (fonction manuelle). */
+export async function marquerMailEnvoye(affaireId, { modele, objet }) {
+  const entree = { modele: modele || "offre", objet: objet || "",
+                   le: new Date().toISOString() };
+  if (modeDonnees() !== "reel") {
+    const d = lireDemo();
+    const a = d.affaires.find((x) => x.id === affaireId);
+    if (a) { a.mails_envoyes = [...(a.mails_envoyes || []), entree]; ecrireDemo(d); }
+    return entree;
+  }
+  const { data, error } = await supabase.rpc("cmd_journaliser_mail",
+    { p_affaire: affaireId, p_modele: entree.modele, p_objet: entree.objet });
+  if (error) throw error;
+  return data;
+}
+
 // =============================================================================
 // ── RGPD : aperçu de rétention et purge des données expirées ───────────────
 export async function apercuRetention() {
