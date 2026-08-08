@@ -141,18 +141,25 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   return (
     <div style={S.page}>
       <div style={S.entete}>
-        <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
+        {/* En consultation terrain, le retour vit dans le bandeau du haut :
+            pas de second bouton retour ici (évite le double retour). */}
+        {!modeTerrain && (
+          <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={S.titre}>{affaire.client?.nom || "Dossier"}</div>
-          {/* Deux badges : où en est le déménagement, où en est l'argent. */}
+          {/* Deux badges : où en est le déménagement, où en est l'argent.
+              Le cycle de facturation reste masqué au terrain (aucun prix). */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <Badge etat={affaire.etat} />
-            <BadgeFacturation etat={cycleFacture?.etat} discret />
+            {!modeTerrain && <BadgeFacturation etat={cycleFacture?.etat} discret />}
           </div>
         </div>
         <div style={{ fontSize: 12.5, color: C.muet, marginTop: 2 }}>
           {affaire.client?.tel || "—"}
-          {chiffree && <> · <b style={{ color: C.encre }}>{euros(affaire.tvac_centimes)}</b></>}
+          {/* Aucun montant pour le terrain : zéro prix, nulle part. */}
+          {chiffree && !modeTerrain &&
+            <> · <b style={{ color: C.encre }}>{euros(affaire.tvac_centimes)}</b></>}
         </div>
       </div>
 
@@ -372,8 +379,8 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       })()}
 
       {/* Coût de trajet : le versant COÛT réel (marge), distinct du km facturé
-          au barème. Maps s'ouvre ci-dessus, on lit distance et durée, on
-          reporte ici (alignement 02 §3). Les péages se saisissent au Devis. */}
+          au barème. Interne — jamais montré au terrain (aucun prix). */}
+      {!modeTerrain && (
       <div style={S.carte}>
         <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 6 }}>
           Coût de trajet <span style={{ fontWeight: 500, color: C.muet }}>(interne)</span>
@@ -406,10 +413,11 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </div>
         )}
       </div>
+      )}
 
-      {/* Données de facturation — masquées par défaut : la majorité des
-          clients sont des particuliers. Dépliables dès qu'il s'agit d'une
-          société (TVA + adresse de facturation obligatoires sur la facture). */}
+      {/* Données de facturation — le bouton facturation entreprise n'a rien à
+          faire côté terrain (donnée commerciale, aucun prix). Masqué. */}
+      {!modeTerrain && (
       <div style={S.carte}>
         <button onClick={() => setFactOuvert(!factOuvert)} style={{
           ...S.boutonLien, paddingLeft: 0, width: "100%", textAlign: "left",
@@ -473,6 +481,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </div>
         )}
       </div>
+      )}
 
       {/* Remarques */}
       <div style={S.carte}>

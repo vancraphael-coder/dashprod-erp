@@ -21,8 +21,7 @@ import {
 import { resumeHoraires } from "@domaine/operations/horaires.js";
 import RapportChantier from "./RapportChantier.jsx";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
-import { urlItineraire } from "@domaine/communication/brief.js";
-import { adresseDepot } from "@domaine/organisation/identite.js";
+import { urlVersAdresse } from "@domaine/communication/brief.js";
 import { C, S, Confirmation } from "../lib/theme.jsx";
 
 function aujourdhui() { return new Date().toISOString().slice(0, 10); }
@@ -194,8 +193,6 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
   // Le départ vient de l'adresse de l'entreprise (Paramètres → Identité).
   // Sans elle, pas d'itinéraire : un kilométrage faux coûte plus cher qu'un
   // bouton absent.
-  const itineraire = urlItineraire(mission.charges, mission.decharges,
-                                   adresseDepot(org));
   const enAttente = mission.etat === "brouillon";
   const termineTerrain = mission.etat === "terminee_terrain";
   const termine = mission.etat === "effectuee";
@@ -416,13 +413,6 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
           {/* Adresses + itinéraire */}
           <Bloc titre="Chargement" liste={mission.charges} couleur={C.bleu} />
           <Bloc titre="Déchargement" liste={mission.decharges} couleur="#6366F1" />
-          {itineraire && (
-            <a href={itineraire} target="_blank" rel="noreferrer" style={{
-              display: "block", textAlign: "center", padding: "11px", marginBottom: 10,
-              borderRadius: 10, textDecoration: "none", fontSize: 13.5, fontWeight: 700,
-              color: "#fff", background: "linear-gradient(135deg, #2563EB, #1D4ED8)",
-            }}>🗺️ Itinéraire</a>
-          )}
 
           {/* Équipe & camions */}
           {(mission.equipe.length > 0 || mission.camions.length > 0) && (
@@ -478,14 +468,35 @@ function Bloc({ titre, liste, couleur }) {
     <div style={{ borderLeft: `3px solid ${couleur}`, paddingLeft: 10, marginBottom: 8 }}>
       <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase",
         color: "#64748B" }}>{titre}</div>
-      {l.map((a, i) => (
-        <div key={a.id || i} style={{ fontSize: 12.5, color: C.encre }}>
-          {l.length > 1 ? `${i + 1}. ` : ""}{a.adresse}
-          {a.etage ? ` · étage ${a.etage}` : ""}
-          {a.ascenseur ? " · ascenseur" : ""}
-          {a.monteMeubles ? " · monte-meubles" : ""}
-        </div>
-      ))}
+      {l.map((a, i) => {
+        const versMaps = urlVersAdresse(a);
+        return (
+          <div key={a.id || i} style={{ marginTop: 6 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ flex: 1, fontSize: 12.5, color: C.encre }}>
+                {l.length > 1 ? `${i + 1}. ` : ""}{a.adresse}
+                {a.etage ? ` · étage ${a.etage}` : ""}
+                {a.ascenseur ? " · ascenseur" : ""}
+                {a.monteMeubles ? " · monte-meubles" : ""}
+              </div>
+              {/* Un bouton par adresse : ma position → cette adresse dans Maps. */}
+              {versMaps && (
+                <a href={versMaps} target="_blank" rel="noreferrer" style={{
+                  flexShrink: 0, textDecoration: "none", fontSize: 12, fontWeight: 700,
+                  color: "#fff", background: couleur, borderRadius: 8,
+                  padding: "5px 10px", whiteSpace: "nowrap",
+                }}>🧭 Y aller</a>
+              )}
+            </div>
+            {/* Remarques de l'article/pièce, ce qui attend l'équipe sur place. */}
+            {a.remarques && (
+              <div style={{ fontSize: 11.5, color: C.muet, marginTop: 2, lineHeight: 1.4 }}>
+                {a.remarques}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
