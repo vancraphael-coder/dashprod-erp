@@ -1,0 +1,5 @@
+-- 0090 — cmd_pointage_definir n'avance plus la mission jusqu'à 'effectuee' quand
+-- une heure d'arrivée est saisie (court-circuitait la réconciliation 0088).
+-- Un pointage enregistre une heure ; le seul changement d'état admis est
+-- planifiee → en_cours au démarrage. « effectuee » revient au chef
+-- (terminee_terrain) puis au bureau (cmd_confirmer_mission). Corps exact en base.

@@ -1,0 +1,4 @@
+-- 0089 — Le point « rapports » de la clôture devient NON bloquant (réserve, pas
+-- mur). Un déménagement peut se clôturer sans compte-rendu rédigé. Restent
+-- bloquants : chantier terminé, missions confirmées, pointages fermés, écarts
+-- tranchés, litiges résolus, facture émise, solde à zéro. Corps exact en base.
