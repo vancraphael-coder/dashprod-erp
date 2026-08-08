@@ -160,7 +160,8 @@ export default function Mail({ affaireId, retour, versOffre }) {
             Mailprod · messagerie tracée
           </div>
           <FilMessages affaireId={affaireId} cote="entreprise"
-            amorce={contexte ? recapDossier(contexte) : null} />
+            amorce={contexte ? recapDossier(contexte) : null}
+            modeles={contexte ? modelesRemplis(modeles, contexte) : []} />
         </div>
       ) : (
       <>
@@ -503,6 +504,18 @@ function Minuteur({ echeance }) {
       ⏳ {texte} · échéance {fin}
     </div>
   );
+}
+
+/**
+ * Les modèles de mail (confirmation, relance…) prêts à insérer dans un message
+ * Mailprod : jetons remplis avec le contexte du dossier. On ne garde que le
+ * corps — un message n'a pas d'objet séparé.
+ */
+function modelesRemplis(modeles, ctx) {
+  return (modeles || []).map((m) => ({
+    cle: m.cle, titre: m.titre,
+    corps: remplirJetons(m.corps, ctx),
+  }));
 }
 
 /** Récap du dossier à reprendre dans un message client (bouton mailprod). */

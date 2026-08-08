@@ -13,7 +13,7 @@ import { C, S } from "../lib/theme.jsx";
  * @param {string} affaireId
  * @param {"entreprise"|"client"} cote  qui utilise l'écran (détermine la commande d'envoi)
  */
-export default function FilMessages({ affaireId, cote, amorce }) {
+export default function FilMessages({ affaireId, cote, amorce, modeles }) {
   const [messages, setMessages] = useState(null);
   const [texte, setTexte] = useState("");
   const [envoi, setEnvoi] = useState(false);
@@ -114,6 +114,21 @@ export default function FilMessages({ affaireId, cote, amorce }) {
       </div>
 
       {erreur && <div style={{ fontSize: 12, color: C.rouge, marginTop: 8 }}>{erreur}</div>}
+
+      {/* Bureau : insérer un modèle de mail (confirmation, relance…) rempli. */}
+      {cote === "entreprise" && (modeles || []).length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          {modeles.map((m) => (
+            <button key={m.cle} onClick={() =>
+              setTexte((t) => (t ? t + "\n\n" : "") + m.corps)}
+              style={{ fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+                       border: `1.5px solid ${C.bord}`, background: "#fff",
+                       color: C.bleu, borderRadius: 999, padding: "5px 11px" }}>
+              + {m.titre}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Bureau : reprendre les infos du dossier dans le message (mail affilié). */}
       {cote === "entreprise" && amorce && !texte && (

@@ -20,6 +20,8 @@ import { obtenirCatalogues } from "../lib/adaptateur.js";
 import { catalogue } from "@domaine/stocks/catalogues.js";
 import { meublesDePiece } from "@domaine/stocks/meubles-piece.js";
 import { C, S, declarerModifs} from "../lib/theme.jsx";
+import ReleveDoc from "./ReleveDoc.jsx";
+import { obtenirOrganisation } from "../lib/adaptateur.js";
 
 // Catalogue par pièce (roovers-mobile.jsx, CATALOGUE).
 
@@ -38,6 +40,8 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
   const [deplie, setDeplie] = useState(null);
   const [nouvellePiece, setNouvellePiece] = useState("");
   useEffect(() => { obtenirCatalogues().then(setCats).catch(() => {}); }, []);
+  const [org, setOrg] = useState({});
+  useEffect(() => { obtenirOrganisation().then(setOrg).catch(() => {}); }, []);
   const pieces = useMemo(() => {
     const base = catalogue(cats, "pieces").map(String);
     return [...base, ...piecesAdHoc.filter((p) => !base.includes(p))];
@@ -63,6 +67,7 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
   // il ne peut donc pas servir de drapeau « modifié ». D'où `touche`, mis à
   // vrai par la première modification réelle.
   const [touche, setTouche] = useState(false);
+  const [apercu, setApercu] = useState(false);   // aperçu du document PDF (sans m³)
   const sauverRef = useRef(null);
 
   useEffect(() => {
@@ -154,6 +159,30 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
 
   return (
     <div style={S.page}>
+      {/* Aperçu du document imprimable / PDF — la liste des biens, SANS m³. */}
+      {apercu && (
+        <div style={{ paddingTop: 12 }}>
+          <div className="no-print" style={{ display: "flex", gap: 8,
+                margin: "0 16px 10px", alignItems: "center" }}>
+            <button style={S.boutonLien} onClick={() => setApercu(false)}>← Retour au relevé</button>
+            <button onClick={() => window.print()} style={{
+              marginLeft: "auto", padding: "9px 14px", borderRadius: 10,
+              border: "none", background: C.bleu, color: "#fff",
+              fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+              🖨️ Imprimer / Enregistrer en PDF
+            </button>
+          </div>
+          <div className="no-print" style={{ margin: "0 16px 10px", fontSize: 11.5,
+                color: C.muet, lineHeight: 1.5 }}>
+            Ce document liste les biens sans le volume estimé : il peut être remis
+            au client sans dévoiler notre chiffrage.
+          </div>
+          <ReleveDoc organisation={org} client={affaire?.client}
+            reference={affaire?.reference} inventaire={inv} />
+        </div>
+      )}
+
+      <div style={{ display: apercu ? "none" : "block" }}>
       <div style={S.entete}>
         {!modeTerrain && (
           <button style={S.boutonLien} onClick={retour}>← Dossiers</button>
@@ -392,12 +421,19 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
         <button style={S.boutonPlein} onClick={enregistrer}>
           {sauve ? "✓ Relevé enregistré" : "Enregistrer le relevé"}
         </button>
+        {!modeTerrain && (
+          <button style={{ ...S.boutonLien, width: "100%", textAlign: "center", marginTop: 8 }}
+                  onClick={() => setApercu(true)}>
+            📄 Aperçu / PDF (liste sans volume)
+          </button>
+        )}
         {sauve && versDevis && (
           <button style={{ ...S.boutonLien, width: "100%", textAlign: "center", marginTop: 8 }}
                   onClick={() => versDevis(affaireId)}>
             Aller au devis →
           </button>
         )}
+      </div>
       </div>
     </div>
   );

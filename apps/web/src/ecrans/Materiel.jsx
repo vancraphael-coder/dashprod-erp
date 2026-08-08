@@ -12,11 +12,11 @@
 import React, { useEffect, useMemo, useState, useRef} from "react";
 import { obtenirAffaire, obtenirEmballage, sauverEmballage } from "../lib/adaptateur.js";
 import {
-  resumeEmballage, fournituresOffre,
+  resumeEmballage, fournituresOffre, valoriserEmballage,
 } from "@domaine/stocks/emballage.js";
 import { obtenirCatalogues } from "../lib/adaptateur.js";
 import { catalogue } from "@domaine/stocks/catalogues.js";
-import { C, S, declarerModifs} from "../lib/theme.jsx";
+import { C, S, declarerModifs, euros as eur } from "../lib/theme.jsx";
 
 export default function Materiel({ affaireId, retour, modeTerrain }) {
   const [affaire, setAffaire] = useState(null);
@@ -47,6 +47,9 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
 
   const resume = useMemo(
     () => resumeEmballage(emballage, fournituresCatalogue),
+    [emballage, fournituresCatalogue]);
+  const valorisation = useMemo(
+    () => valoriserEmballage(emballage, fournituresCatalogue),
     [emballage, fournituresCatalogue]);
   const fournitures = useMemo(
     () => fournituresOffre(emballage, fournituresCatalogue),
@@ -199,6 +202,42 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
           </div>
           <div style={{ fontSize: 12.5, color: "#1E3A8A", marginTop: 4 }}>
             Fourniture du matériel d'emballage ({fournitures.join(", ")})
+          </div>
+        </div>
+      )}
+
+      {/* Valorisation du matériel consommé : dénomination + coût + montant.
+          C'est ce qui se retranscrit sur l'offre / la facture. Masqué au
+          terrain (aucun prix). */}
+      {!modeTerrain && valorisation.lignes.length > 0 && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.encre,
+                        textTransform: "uppercase", letterSpacing: ".05em",
+                        marginBottom: 8 }}>
+            Matériel d'emballage — coût
+          </div>
+          {valorisation.lignes.map((l) => (
+            <div key={l.cle} style={{ display: "flex", justifyContent: "space-between",
+                          alignItems: "baseline", padding: "6px 0",
+                          borderTop: `1px solid ${C.doux}` }}>
+              <span style={{ fontSize: 13, color: C.encre }}>
+                {l.quantite} × {l.nom}
+                <span style={{ fontSize: 11, color: C.fantome }}>
+                  {" "}({eur(l.cout_unitaire_centimes)}/{l.unite})
+                </span>
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.encre }}>
+                {eur(l.montant_centimes)}
+              </span>
+            </div>
+          ))}
+          <div style={{ display: "flex", justifyContent: "space-between",
+                        marginTop: 8, paddingTop: 8,
+                        borderTop: `2px solid ${C.bord}` }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>Total</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
+              {eur(valorisation.total_centimes)}
+            </span>
           </div>
         </div>
       )}
