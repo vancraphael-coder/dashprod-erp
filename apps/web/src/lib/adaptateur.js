@@ -1982,6 +1982,51 @@ export async function renvoyerChantier(missionId, motif) {
   return { statut: "RENVOYE_TERRAIN" };
 }
 
+/**
+ * Prérequis pour passer un dossier « en cours » à « effectué » — validés et
+ * manquants, pour éclairer le bouton du bureau.
+ */
+export async function prerequisEffectue(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_prerequis_effectue", { p_affaire: affaireId });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  const miss = (d.missions || []).filter((m) => m.affaire_id === affaireId && m.etat !== "annulee");
+  const sansHeure = miss.filter((m) => !(m.sessions || [])
+    .some((s) => (s.type || "travail") === "travail" && s.debut && s.fin)).length;
+  const points = [
+    { cle: "missions", libelle: "Au moins un chantier planifié",
+      statut: miss.length > 0 ? "ok" : "manquant" },
+    { cle: "heures", libelle: "Chaque chantier a ses heures (départ et arrivée)",
+      statut: miss.length > 0 && sansHeure === 0 ? "ok" : "manquant" },
+  ];
+  const manquants = points.filter((p) => p.statut === "manquant").length;
+  return { affaire: affaireId, etat: a?.etat, points, manquants,
+           deja_effectue: ["effectue", "clos"].includes(a?.etat),
+           peut_effectuer: manquants === 0 && a?.etat === "en_cours" };
+}
+
+/** Le bureau marque le dossier effectué (en cours → effectué). */
+export async function marquerEffectue(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_marquer_effectue", { p_affaire: affaireId });
+    if (error) throw error;
+    return data;
+  }
+  const d = lireDemo();
+  const a = (d.affaires || []).find((x) => x.id === affaireId);
+  if (a) {
+    (d.missions || []).filter((m) => m.affaire_id === affaireId)
+      .forEach((m) => { if (["terminee_terrain", "planifiee", "en_cours"].includes(m.etat)) m.etat = "effectuee"; });
+    a.etat = "effectue";
+    ecrireDemo(d);
+  }
+  return { statut: "EFFECTUE" };
+}
+
 /** État de réconciliation d'un dossier (missions en attente / confirmées). */
 export async function reconciliationAffaire(affaireId) {
   if (modeDonnees() === "reel") {
