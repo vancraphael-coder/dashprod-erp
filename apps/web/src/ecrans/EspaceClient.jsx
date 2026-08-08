@@ -120,6 +120,15 @@ function Etat({ chargement, erreur, vide, children }) {
   return children;
 }
 
+/**
+ * MON DOSSIER — l'avancement de son déménagement chez chaque entreprise.
+ * Information : déménageur, référence, dates (souhaitée, visite), adresses
+ *   charge/décharge avec étage, contact.
+ * Interactions : lire l'avancement [indispensable] ; appeler le déménageur
+ *   [gadget indispensable]. Ligne du temps de l'état : à venir.
+ * Permissions : LECTURE SEULE. Les dates et adresses engagent le déménageur ;
+ *   toute demande de changement passe par la messagerie.
+ */
 function Dossiers() {
   const { chargement, donnees, erreur } = useCharge(clientDossiers);
   const dossiers = donnees || [];
@@ -168,6 +177,16 @@ function Dossiers() {
   );
 }
 
+/**
+ * MES MEUBLES — le relevé transformé en liste de colisage.
+ * Information : récap (colis, objets, volume, poids), détail par pièce, numéro
+ *   de colis fixe, remarques par objet.
+ * Interactions : consulter [indispensable] ; télécharger la liste CSV [gadget
+ *   indispensable, clé pour l'international/douane]. Signaler une correction :
+ *   via la messagerie.
+ * Permissions : LECTURE SEULE. L'inventaire est la base du prix — non éditable
+ *   par le client ; il peut le commenter (messagerie).
+ */
 function Inventaire() {
   const { chargement, donnees, erreur } = useCharge(clientInventaire);
   const lignes = donnees || [];
@@ -268,6 +287,16 @@ function Inventaire() {
   );
 }
 
+/**
+ * MES OFFRES — toutes les offres reçues, à comparer.
+ * Information : entreprise, référence, date, montant TVAC, statut (signée),
+ *   contact.
+ * Interactions : comparer [indispensable] ; voir le PDF [indispensable, à
+ *   renforcer] ; signer en ligne [indispensable, circuit code + portail] ;
+ *   poser une question [gadget indispensable, messagerie].
+ * Permissions : LECTURE + SIGNATURE (acte fort, tracé). Une offre ne se modifie
+ *   jamais : on l'accepte ou on la refuse.
+ */
 function Offres() {
   const { chargement, donnees, erreur } = useCharge(clientOffres);
   const offres = donnees || [];
@@ -322,6 +351,15 @@ function Offres() {
   );
 }
 
+/**
+ * MES FACTURES — les factures émises.
+ * Information : numéro, entreprise, montant TVAC, émission, échéance,
+ *   communication structurée.
+ * Interactions : consulter [indispensable] ; copier la communication [gadget
+ *   indispensable] ; télécharger le PDF [indispensable, à ajouter] ; voir le
+ *   solde [gadget indispensable].
+ * Permissions : LECTURE SEULE. Le paiement se fait hors application (virement).
+ */
 function Factures() {
   const { chargement, donnees, erreur } = useCharge(clientFactures);
   const f = donnees || [];
@@ -365,6 +403,15 @@ function Factures() {
   );
 }
 
+/**
+ * MESSAGES (Mailprod) — le fil tracé avec chaque déménageur, par dossier.
+ * Information : messages horodatés, attribués, INALTÉRABLES (registre probant).
+ * Interactions : lire [indispensable] ; répondre [indispensable, seul endroit
+ *   où le client écrit] ; joindre photo/PDF [gadget indispensable] ; accusé de
+ *   lecture [gadget].
+ * Permissions : ÉCRITURE autorisée mais APPEND-ONLY — ni modification ni
+ *   suppression. Le fil fait foi en cas de litige.
+ */
 function Messages() {
   const { chargement, donnees, erreur } = useCharge(clientDossiers);
   const dossiers = donnees || [];
@@ -415,6 +462,13 @@ function Messages() {
   );
 }
 
+/**
+ * DÉMÉNAGEURS (réseau) — annuaire public des entreprises opt-in.
+ * Information : entreprises visibles, aucun compte requis.
+ * Interactions : découvrir d'autres déménageurs [gadget] ; demander une offre
+ *   [gadget, V2].
+ * Permissions : LECTURE PUBLIQUE. Aucune donnée personnelle exposée.
+ */
 function Reseau() {
   const { chargement, donnees, erreur } = useCharge(reseauDemenageurs);
   const liste = donnees || [];
