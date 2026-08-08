@@ -12,12 +12,13 @@
 // pas décoratif — ce métier EST une séquence de colis numérotés.
 // =============================================================================
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   PLANS, plan, module, prixPeriode, gainSurPrecedent, modulesAVenir,
   planDisponible, REMISE_ANNUELLE_PCT, ESSAI_JOURS, ESSAI_PLAN,
 } from "@domaine/commercial/plans.js";
 import { V, MONO, NavPublique, PiedPublic, Etiquette } from "./theme-vitrine.jsx";
+import { avisPublics } from "../../lib/adaptateur.js";
 
 const MODULES = [
   { n: "001", t: "Relevé & devis", d: "Le relevé pièce par pièce devient un chiffrage : barème, suppléments, marge visible. L'offre part le jour même." },
@@ -34,7 +35,7 @@ const CHIFFRES = [
   ["7 ans", "vos factures conservées, loi belge"],
 ];
 
-export default function Landing({ aller }) {
+export default function Landing({ aller, orgId }) {
   return (
     <div className="vitrine" style={{ minHeight: "100vh", display: "flex",
       flexDirection: "column", background: V.ivoire, color: V.encre }}>
@@ -330,8 +331,55 @@ export default function Landing({ aller }) {
         </div>
       </section>
 
+      <SectionAvis orgId={orgId} />
+
       <PiedPublic aller={aller} />
     </div>
+  );
+}
+
+function SectionAvis({ orgId }) {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    let actif = true;
+    if (!orgId) { setData(null); return; }
+    avisPublics(orgId).then((d) => { if (actif) setData(d); }).catch(() => {});
+    return () => { actif = false; };
+  }, [orgId]);
+
+  if (!orgId || !data || !data.total) return null;
+  const moyenne = Number(data.moyenne) || 0;
+  const pleines = Math.round(moyenne);
+
+  return (
+    <section style={{ background: "#fff", borderTop: `1px solid ${V.bord}`,
+                      padding: "clamp(44px, 6vw, 76px) 20px" }}>
+      <div style={{ maxWidth: 1080, margin: "0 auto", textAlign: "center" }}>
+        <div style={{ fontSize: 34, letterSpacing: 2, color: "#F59E0B" }}>
+          {"★".repeat(pleines)}{"☆".repeat(5 - pleines)}
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: V.encre, marginTop: 6 }}>
+          {moyenne.toFixed(1)} / 5
+          <span style={{ fontWeight: 500, color: V.muet, fontSize: 14 }}>
+            {" "}· {data.total} avis
+          </span>
+        </div>
+        <div style={{ display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))",
+                      gap: 16, marginTop: 28, textAlign: "left" }}>
+          {(data.avis || []).slice(0, 6).map((a, i) => (
+            <div key={i} style={{ border: `1px solid ${V.bord}`, borderRadius: 14,
+                                  padding: "16px 18px", background: V.ivoire }}>
+              <div style={{ color: "#F59E0B", fontSize: 15 }}>
+                {"★".repeat(a.note)}{"☆".repeat(5 - a.note)}
+              </div>
+              <p style={{ fontSize: 13.5, color: V.encre, lineHeight: 1.5,
+                          margin: "8px 0 0" }}>« {a.commentaire} »</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
