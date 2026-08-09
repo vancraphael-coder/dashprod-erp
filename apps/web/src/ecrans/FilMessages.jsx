@@ -87,12 +87,15 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme })
         )}
         {(messages || []).map((m) => {
           const aMoi = mien(m);
+          const surfaceRecue = theme ? "#22304A" : "#F1F5F9";  // nuit : ardoise claire
           return (
             <div key={m.id} style={{ alignSelf: aMoi ? "flex-end" : "flex-start",
                                      maxWidth: "82%" }}>
               <div style={{ padding: "9px 12px", borderRadius: 12,
-                background: aMoi ? C.bleu : "#F1F5F9",
-                color: aMoi ? "#fff" : C.encre,
+                background: aMoi ? C.bleu : surfaceRecue,
+                color: aMoi ? (theme ? "#12151F" : "#fff")
+                            : (theme ? "#EEF2F8" : C.encre),
+                border: aMoi ? "none" : `1px solid ${C.bord}`,
                 borderBottomRightRadius: aMoi ? 4 : 12,
                 borderBottomLeftRadius: aMoi ? 12 : 4,
                 fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>

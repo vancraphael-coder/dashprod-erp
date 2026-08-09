@@ -15,9 +15,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   clientDossiers, clientInventaire, clientOffres, clientFactures, deposerAvis,
   caissesClient, definirCaisse, supprimerCaisse,
+  clientProfil, definirProfilClient, definirAdresseVisite,
   reseauDemenageurs,
 } from "../lib/adaptateur.js";
 import { deconnecter } from "../lib/supabase.js";
+import { CIVILITES } from "@domaine/crm/civilite.js";
 import { manifeste, manifestePret, packingListCsv }
   from "@domaine/releve/inventaire-export.js";
 import { C, S, CT, FC, Eyebrow, LigneRoute, Compteur, HaloPhares }
@@ -42,6 +44,7 @@ const ONGLETS = [
   ["factures", "Mes factures"],
   ["messages", "Messages"],
   ["reseau", "Déménageurs"],
+  ["profil", "Profil"],
 ];
 
 export default function EspaceClient({ client }) {
@@ -100,14 +103,7 @@ export default function EspaceClient({ client }) {
       {onglet === "factures"   && <Factures />}
       {onglet === "messages"   && <Messages />}
       {onglet === "reseau"     && <Reseau />}
-
-      <div style={{ margin: "18px 16px 30px", textAlign: "center" }}>
-        <button onClick={async () => { await deconnecter(); window.location.reload(); }}
-                style={{ background: "none", border: "none", color: C.muet,
-                         fontSize: 12.5, cursor: "pointer", padding: 10 }}>
-          Se déconnecter
-        </button>
-      </div>
+      {onglet === "profil"     && <ProfilClient />}
     </div>
   );
 }
@@ -542,6 +538,162 @@ function Messages() {
  *   [gadget, V2].
  * Permissions : LECTURE PUBLIQUE. Aucune donnée personnelle exposée.
  */
+/**
+ * PROFIL du client : son identité (civilité, nom, prénom, téléphone) et, au
+ * moins, son adresse de visite — l'adresse actuelle où le déménageur vient
+ * évaluer. C'est ici, et nulle part ailleurs, qu'on se déconnecte.
+ */
+function ProfilClient() {
+  const [profil, setProfil] = useState(null);
+  const [dossiers, setDossiers] = useState([]);
+  const [civilite, setCivilite] = useState("");
+  const [nom, setNom] = useState("");
+  const [prenom, setPrenom] = useState("");
+  const [tel, setTel] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    clientProfil().then((p) => {
+      setProfil(p);
+      setCivilite(p.civilite || ""); setNom(p.nom || "");
+      setPrenom(p.prenom || ""); setTel(p.tel || "");
+    }).catch((e) => setErr(e.message));
+    clientDossiers().then(setDossiers).catch(() => {});
+  }, []);
+
+  async function enregistrer() {
+    setErr(null); setMsg(null);
+    if (!nom.trim() || !prenom.trim()) { setErr("Nom et prénom sont requis."); return; }
+    try {
+      await definirProfilClient({ civilite, nom, prenom, tel });
+      setMsg("Profil enregistré."); setProfil((p) => ({ ...p, identite_complete: true }));
+    } catch (e) { setErr(e.message); }
+  }
+
+  const identiteManque = !nom.trim() || !prenom.trim() || !civilite;
+
+  return (
+    <>
+      {/* Rappel si l'essentiel manque encore. */}
+      {profil && identiteManque && (
+        <div style={{ ...S.carte, background: "rgba(255,182,39,.10)",
+                      border: "1px solid rgba(255,182,39,.4)" }}>
+          <div style={{ fontSize: 12.5, color: CT.phare, lineHeight: 1.5 }}>
+            Complétez votre civilité, nom et prénom — et au moins votre adresse de
+            visite plus bas. C'est ce dont votre déménageur a besoin pour démarrer.
+          </div>
+        </div>
+      )}
+
+      <div style={S.carte}>
+        <Eyebrow>Votre identité</Eyebrow>
+        <label style={S.label}>Civilité</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {CIVILITES.map((c) => (
+            <button key={c.cle} onClick={() => setCivilite(c.cle)} style={{
+              flex: 1, padding: "10px", borderRadius: 12, cursor: "pointer",
+              fontSize: 12.5, fontWeight: 700,
+              border: `1px solid ${civilite === c.cle ? CT.phare : C.bord}`,
+              background: civilite === c.cle ? "rgba(255,182,39,.14)" : S.input.background,
+              color: civilite === c.cle ? CT.phare : C.muet }}>
+              {c.court}
+            </button>
+          ))}
+        </div>
+
+        <label style={S.label}>Prénom</label>
+        <input style={S.input} value={prenom} onChange={(e) => setPrenom(e.target.value)}
+               placeholder="Votre prénom" />
+        <label style={S.label}>Nom</label>
+        <input style={S.input} value={nom} onChange={(e) => setNom(e.target.value)}
+               placeholder="Votre nom" />
+        <label style={S.label}>Téléphone</label>
+        <input style={S.input} value={tel} onChange={(e) => setTel(e.target.value)}
+               placeholder="Pour être joint le jour J" inputMode="tel" />
+
+        {err && <div style={{ fontSize: 12.5, color: C.rouge, marginTop: 10 }}>{err}</div>}
+        {msg && <div style={{ fontSize: 12.5, color: CT.menthe, marginTop: 10 }}>{msg}</div>}
+        <button style={{ ...S.boutonPlein, marginTop: 14 }} onClick={enregistrer}>
+          Enregistrer mon identité
+        </button>
+      </div>
+
+      {/* Adresse de visite, par dossier (au moins une requise). */}
+      {dossiers.map((d) => (
+        <AdresseVisite key={d.affaire_id} dossier={d} />
+      ))}
+
+      {/* La déconnexion vit ici, et nulle part ailleurs. */}
+      <div style={{ margin: "10px 16px 30px", textAlign: "center" }}>
+        <button onClick={async () => { await deconnecter(); window.location.reload(); }}
+                style={{ background: "none", border: `1px solid ${C.bord}`,
+                         borderRadius: 12, color: C.muet, fontSize: 12.5,
+                         cursor: "pointer", padding: "11px 18px" }}>
+          Se déconnecter
+        </button>
+      </div>
+    </>
+  );
+}
+
+/** Bloc « adresse de visite » d'un dossier : le chargement (domicile actuel). */
+function AdresseVisite({ dossier }) {
+  const visite = (dossier.adresses || []).find((a) => a.role === "charge");
+  const [adresse, setAdresse] = useState(visite?.adresse || "");
+  const [cp, setCp] = useState(visite?.code_postal || "");
+  const [ville, setVille] = useState(visite?.ville || "");
+  const [etage, setEtage] = useState(visite?.etage || "");
+  const [msg, setMsg] = useState(null);
+  const [err, setErr] = useState(null);
+
+  async function enregistrer() {
+    setErr(null); setMsg(null);
+    if (!adresse.trim()) { setErr("L'adresse est requise."); return; }
+    try {
+      await definirAdresseVisite(dossier.affaire_id,
+        { adresse, code_postal: cp, ville, etage });
+      setMsg("Adresse de visite enregistrée.");
+    } catch (e) { setErr(e.message); }
+  }
+
+  return (
+    <div style={S.carte}>
+      <Eyebrow>Adresse de visite{dossiers2(dossier)}</Eyebrow>
+      <div style={{ fontSize: 11.5, color: C.muet, margin: "6px 0 4px", lineHeight: 1.5 }}>
+        L'adresse actuelle où le déménageur vient évaluer votre déménagement.
+      </div>
+      <label style={S.label}>Adresse</label>
+      <input style={S.input} value={adresse} onChange={(e) => setAdresse(e.target.value)}
+             placeholder="Rue et numéro" />
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ flex: "0 0 34%" }}>
+          <label style={S.label}>Code postal</label>
+          <input style={S.input} value={cp} onChange={(e) => setCp(e.target.value)}
+                 inputMode="numeric" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={S.label}>Ville</label>
+          <input style={S.input} value={ville} onChange={(e) => setVille(e.target.value)} />
+        </div>
+      </div>
+      <label style={S.label}>Étage (facultatif)</label>
+      <input style={S.input} value={etage} onChange={(e) => setEtage(e.target.value)}
+             placeholder="Rez, 2e…" />
+      {err && <div style={{ fontSize: 12.5, color: C.rouge, marginTop: 10 }}>{err}</div>}
+      {msg && <div style={{ fontSize: 12.5, color: CT.menthe, marginTop: 10 }}>{msg}</div>}
+      <button style={{ ...S.boutonPlein, marginTop: 12 }} onClick={enregistrer}>
+        Enregistrer l'adresse de visite
+      </button>
+    </div>
+  );
+}
+
+/** Suffixe de titre quand le client a plusieurs dossiers. */
+function dossiers2(d) {
+  return d.reference ? ` · ${d.reference}` : "";
+}
+
 /**
  * Avis rapide : note en étoiles + un mot, déposé par le client sur un dossier
  * effectué. Une note peut être révisée (upsert côté base).
