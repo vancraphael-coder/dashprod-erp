@@ -11,7 +11,7 @@
 // sur l'e-mail authentifié : l'écran ne choisit pas son périmètre.
 // =============================================================================
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, createContext, useContext } from "react";
 import {
   clientDossiers, clientInventaire, clientOffres, clientFactures, deposerAvis,
   caissesClient, definirCaisse, supprimerCaisse,
@@ -36,6 +36,50 @@ const jour = (iso) => {
   } catch { return iso; }
 };
 
+/**
+ * Contexte du dossier actuellement suivi. Toutes les pages (meubles, offres,
+ * factures, messages, caisses) s'y réfèrent pour filtrer et pour dire QUI et
+ * QUEL déménagement, au lieu d'afficher tout en vrac.
+ */
+const DossierContext = createContext({ affaireId: null, dossier: null, dossiers: [] });
+const useDossier = () => useContext(DossierContext);
+
+/** États de dossier, en clair pour le client. */
+function libelleEtat(etat) {
+  const M = {
+    devis: "Offre en préparation", confirme: "Confirmé", planifie: "Planifié",
+    en_cours: "En cours", effectue: "Terminé", clos: "Clôturé", annule: "Annulé",
+  };
+  return M[etat] || "En cours";
+}
+
+/** Trajet résumé « CP ville → CP ville » à partir des adresses du dossier. */
+function trajetCourt(d) {
+  const a = d.adresses || [];
+  const dep = a.find((x) => x.role === "charge");
+  const arr = a.find((x) => x.role !== "charge");
+  const lieu = (x) => x ? [x.code_postal, x.ville].filter(Boolean).join(" ") || x.adresse : "?";
+  if (!dep && !arr) return d.reference || "";
+  return `${lieu(dep)} → ${lieu(arr)}`;
+}
+
+/** Bandeau rappelant le dossier courant, en tête d'une page filtrée. */
+function EnteteDossier() {
+  const { dossier } = useDossier();
+  if (!dossier) return null;
+  return (
+    <div style={{ margin: "0 16px 12px", padding: "10px 13px", borderRadius: 12,
+                  background: "#0D1424", border: `1px solid ${C.bord}` }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+        {dossier.entreprise?.nom || "Déménageur"}
+      </div>
+      <div style={{ fontFamily: FC, fontSize: 10.5, color: C.fantome, marginTop: 2 }}>
+        {trajetCourt(dossier)} · {libelleEtat(dossier.etat)}
+      </div>
+    </div>
+  );
+}
+
 const ONGLETS = [
   ["dossier", "Mon dossier"],
   ["inventaire", "Mes meubles"],
@@ -49,6 +93,9 @@ const ONGLETS = [
 
 export default function EspaceClient({ client }) {
   const [onglet, setOnglet] = useState("dossier");
+  // Le dossier actuellement suivi : c'est LUI qui organise toute la navigation.
+  const [dossiers, setDossiers] = useState(null);
+  const [affaireActive, setAffaireActive] = useState(null);
 
   // La nuit doit couvrir toute la page, pas seulement la colonne centrale.
   useEffect(() => {
@@ -57,7 +104,22 @@ export default function EspaceClient({ client }) {
     return () => { document.body.style.background = avant; };
   }, []);
 
+  // On charge la liste des dossiers une fois : elle pilote le sélecteur et
+  // sert de contexte à toutes les pages (plus rien ne « flotte »).
+  useEffect(() => {
+    clientDossiers().then((d) => {
+      setDossiers(d);
+      if (d.length && !affaireActive) setAffaireActive(d[0].affaire_id);
+    }).catch(() => setDossiers([]));
+  }, []);
+
+  const actif = (dossiers || []).find((d) => d.affaire_id === affaireActive) || null;
+  const multi = (dossiers || []).length > 1;
+  // Réseau et Profil sont transversaux ; le reste dépend d'un dossier.
+  const transversal = onglet === "reseau" || onglet === "profil";
+
   return (
+    <DossierContext.Provider value={{ affaireId: affaireActive, dossier: actif, dossiers }}>
     <div style={S.page}>
       {/* En-tête : la nuit avant le départ, halo de phares en fond. */}
       <div style={{ position: "relative", overflow: "hidden",
@@ -69,27 +131,58 @@ export default function EspaceClient({ client }) {
             {client?.nom || "Votre espace"}
           </div>
           <div style={{ fontSize: 13, color: C.muet, marginTop: 6 }}>
-            {client?.dossiers > 1
-              ? `${client.dossiers} déménagements en cours`
+            {multi
+              ? `Vous suivez ${dossiers.length} déménagements`
               : "Tout ce qui concerne votre déménagement, au même endroit."}
           </div>
         </div>
       </div>
+
+      {/* Sélecteur de dossier : QUI, QUEL trajet, QUAND. Il n'apparaît que s'il
+          y a plusieurs déménagements, et pas sur les pages transversales. */}
+      {multi && !transversal && (
+        <div style={{ display: "flex", gap: 10, overflowX: "auto",
+                      padding: "14px 16px 2px", scrollbarWidth: "none" }}>
+          {dossiers.map((d) => {
+            const sel = d.affaire_id === affaireActive;
+            return (
+              <button key={d.affaire_id} onClick={() => setAffaireActive(d.affaire_id)}
+                style={{ flexShrink: 0, textAlign: "left", cursor: "pointer",
+                  minWidth: 190, padding: "11px 13px", borderRadius: 14,
+                  border: `1px solid ${sel ? CT.phare : C.bord}`,
+                  background: sel ? "rgba(255,182,39,.12)" : S.carte.background }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800,
+                              color: sel ? C.encre : C.muet }}>
+                  {d.entreprise?.nom || "Déménageur"}
+                </div>
+                <div style={{ fontFamily: FC, fontSize: 10.5, color: C.fantome,
+                              marginTop: 3 }}>
+                  {trajetCourt(d)}
+                </div>
+                <div style={{ fontSize: 11, color: sel ? CT.phare : C.fantome,
+                              marginTop: 2 }}>
+                  {libelleEtat(d.etat)}{d.date_souhaitee ? ` · ${jour(d.date_souhaitee)}` : ""}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Navigation : rail en mono, soulignement ambré sur l'onglet actif. */}
       <div style={{ display: "flex", gap: 18, overflowX: "auto",
                     padding: "14px 18px 0", borderBottom: `1px solid ${C.bord}`,
                     scrollbarWidth: "none" }}>
         {ONGLETS.map(([cle, lib]) => {
-          const actif = onglet === cle;
+          const estActif = onglet === cle;
           return (
             <button key={cle} onClick={() => setOnglet(cle)} style={{
               padding: "0 0 12px", background: "none", border: "none",
-              borderBottom: `2px solid ${actif ? CT.phare : "transparent"}`,
+              borderBottom: `2px solid ${estActif ? CT.phare : "transparent"}`,
               whiteSpace: "nowrap", cursor: "pointer",
               fontFamily: FC, fontSize: 11, fontWeight: 700,
               letterSpacing: ".1em", textTransform: "uppercase",
-              color: actif ? C.encre : C.muet }}>{lib}</button>
+              color: estActif ? C.encre : C.muet }}>{lib}</button>
           );
         })}
       </div>
@@ -105,6 +198,7 @@ export default function EspaceClient({ client }) {
       {onglet === "reseau"     && <Reseau />}
       {onglet === "profil"     && <ProfilClient />}
     </div>
+    </DossierContext.Provider>
   );
 }
 
@@ -150,8 +244,11 @@ function Etat({ chargement, erreur, vide, children }) {
  *   toute demande de changement passe par la messagerie.
  */
 function Dossiers() {
+  const { affaireId, dossiers: ctxDossiers } = useDossier();
   const { chargement, donnees, erreur } = useCharge(clientDossiers);
-  const dossiers = donnees || [];
+  const toutes = donnees || ctxDossiers || [];
+  // On montre le dossier suivi ; s'il n'y en a qu'un, c'est lui.
+  const dossiers = affaireId ? toutes.filter((d) => d.affaire_id === affaireId) : toutes;
   return (
     <Etat chargement={chargement} erreur={erreur}
           vide={dossiers.length === 0 && "Aucun dossier pour le moment."}>
@@ -256,99 +353,63 @@ function Lieu({ a, vide }) {
  *   par le client ; il peut le commenter (messagerie).
  */
 function Inventaire() {
+  const { affaireId, dossier } = useDossier();
   const { chargement, donnees, erreur } = useCharge(clientInventaire);
-  const lignes = donnees || [];
+  const toutes = donnees || [];
+  // On ne montre que les meubles du dossier suivi : plus rien en vrac.
+  const lignes = affaireId
+    ? toutes.filter((r) => r.affaire_id === affaireId)
+    : toutes;
 
-  const m = useMemo(() => manifeste(
-    lignes.map((r) => ({
-      type: "carton", piece: r.piece, volume_m3: r.volume_m3,
-      objets: [{ designation: r.designation, quantite: r.quantite,
-                 piece: r.piece, remarque: r.remarque }],
-    })), { mode: "maritime", valeurRequise: false }), [donnees]);
-
-  const verdict = manifestePret(m);
+  // Regroupement par pièce, SANS volume : c'est une liste, pas un chiffrage.
   const parPiece = useMemo(() => {
     const g = new Map();
-    for (const x of m.colis) {
-      const p = x.piece || "Non classé";
-      g.set(p, [...(g.get(p) || []), x]);
+    for (const r of lignes) {
+      const p = r.piece || "Autre";
+      g.set(p, [...(g.get(p) || []), r]);
     }
     return [...g.entries()];
-  }, [m]);
-
-  function telecharger() {
-    const blob = new Blob([packingListCsv(m)], { type: "text/csv;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "liste-de-colisage.csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
+  }, [lignes]);
+  const total = lignes.reduce((n, r) => n + (Number(r.quantite) || 1), 0);
 
   return (
     <Etat chargement={chargement} erreur={erreur}
           vide={lignes.length === 0 && "Aucun meuble relevé pour le moment."}>
       <>
-        <div style={S.carte}>
-          <label style={{ ...S.label, marginTop: 0 }}>Récapitulatif</label>
-          <L l="Colis numérotés" v={m.totaux.colis} />
-          <L l="Objets" v={m.totaux.objets} />
-          <L l="Volume total" v={`${m.totaux.volume_m3} m³`} />
-          {m.totaux.poids_kg > 0 && <L l="Poids total" v={`${m.totaux.poids_kg} kg`} />}
-          <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8,
-                        lineHeight: 1.5 }}>
-            Chaque colis porte un numéro fixe (001/025). C'est ce numéro qui
-            figure sur l'étiquette et sur la liste de colisage douanière.
-          </div>
+        <EnteteDossier />
+        <div style={{ margin: "0 16px 12px", fontSize: 11.5, color: C.muet,
+                      lineHeight: 1.5 }}>
+          La liste de vos biens telle que relevée avec {dossier?.entreprise?.nom
+            || "votre déménageur"}. Une correction ? Signalez-la via Messages.
         </div>
 
-        {parPiece.map(([piece, colis]) => (
+        {parPiece.map(([piece, items]) => (
           <div key={piece} style={S.carte}>
-            <label style={{ ...S.label, marginTop: 0 }}>{piece}</label>
-            {colis.map((x) => (
-              <div key={x.numero} style={{ display: "flex", gap: 10,
-                     padding: "9px 0", borderTop: `1px solid ${C.doux}` }}>
-                <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 11.5,
-                               fontWeight: 700, color: C.bleu, flexShrink: 0,
-                               paddingTop: 1 }}>{x.numero}</span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  {x.objets.map((o) => (
-                    <span key={o.numero} style={{ display: "block", fontSize: 13.5,
-                            color: C.encre, fontWeight: 600 }}>
-                      {o.quantite > 1 ? `${o.quantite} × ` : ""}{o.designation}
-                      {o.remarque && (
-                        <span style={{ display: "block", fontSize: 11.5,
-                                       color: C.fantome, fontWeight: 500,
-                                       marginTop: 2 }}>{o.remarque}</span>
-                      )}
-                    </span>
-                  ))}
+            <div style={{ display: "flex", justifyContent: "space-between",
+                          alignItems: "baseline" }}>
+              <label style={{ ...S.label, marginTop: 0 }}>{piece}</label>
+              <span style={{ fontFamily: FC, fontSize: 10.5, color: C.fantome }}>
+                {items.reduce((n, x) => n + (Number(x.quantite) || 1), 0)} biens
+              </span>
+            </div>
+            {items.map((r, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0",
+                     borderTop: `1px solid ${C.doux}` }}>
+                <span style={{ fontFamily: FC, fontSize: 12, fontWeight: 700,
+                               color: CT.phare, flexShrink: 0, minWidth: 26 }}>
+                  {(r.quantite || 1) > 1 ? `${r.quantite}×` : "1×"}
                 </span>
-                {x.volume_m3 > 0 && (
-                  <span style={{ fontSize: 11.5, color: C.muet, flexShrink: 0 }}>
-                    {x.volume_m3} m³
-                  </span>
-                )}
+                <span style={{ flex: 1, fontSize: 13.5, color: C.encre }}>{r.nom}</span>
               </div>
             ))}
           </div>
         ))}
 
-        {verdict.avertissements.length > 0 && (
-          <div style={{ margin: "0 16px 12px", padding: "11px 13px",
-                        borderRadius: 11, background: "#FFFBEB",
-                        border: "1px solid #FDE68A", fontSize: 11.5,
-                        color: "#92400E", lineHeight: 1.5 }}>
-            <b>Pour un envoi maritime ou aérien</b>, poids et dimensions de
-            chaque colis restent à compléter par votre déménageur, ainsi que la
-            valeur déclarée — base de l'assurance et de la déclaration douanière.
-          </div>
-        )}
-
-        <div style={{ margin: "0 16px 12px" }}>
-          <button style={S.boutonPlein} onClick={telecharger}>
-            Télécharger la liste de colisage
-          </button>
+        <div style={{ margin: "0 16px 12px", paddingTop: 4,
+                      display: "flex", justifyContent: "space-between",
+                      fontSize: 13, fontWeight: 800, color: C.encre }}>
+          <span>Total des biens</span>
+          <span>{total}</span>
         </div>
       </>
     </Etat>
@@ -366,16 +427,19 @@ function Inventaire() {
  *   jamais : on l'accepte ou on la refuse.
  */
 function Offres() {
+  const { affaireId } = useDossier();
   const { chargement, donnees, erreur } = useCharge(clientOffres);
-  const offres = donnees || [];
+  const toutes = donnees || [];
+  const offres = affaireId ? toutes.filter((o) => o.affaire_id === affaireId) : toutes;
   return (
     <Etat chargement={chargement} erreur={erreur}
           vide={offres.length === 0 && "Aucune offre reçue pour le moment."}>
       <>
+        <EnteteDossier />
         <div style={{ margin: "0 16px 10px", fontSize: 11.5, color: C.muet,
                       lineHeight: 1.5 }}>
-          Toutes les offres reçues pour votre déménagement, quelle que soit
-          l'entreprise. Comparez avant de choisir.
+          L'offre reçue pour ce déménagement. Signez-la ou posez vos questions
+          via Messages.
         </div>
         {offres.map((o, i) => (
           <div key={i} style={S.carte}>
@@ -430,12 +494,15 @@ function Offres() {
  * Permissions : LECTURE SEULE. Le paiement se fait hors application (virement).
  */
 function Factures() {
+  const { affaireId } = useDossier();
   const { chargement, donnees, erreur } = useCharge(clientFactures);
-  const f = donnees || [];
+  const toutes = donnees || [];
+  const f = affaireId ? toutes.filter((x) => x.affaire_id === affaireId) : toutes;
   return (
     <Etat chargement={chargement} erreur={erreur}
           vide={f.length === 0 && "Aucune facture pour le moment."}>
       <>
+        <EnteteDossier />
         {f.map((x, i) => (
           <div key={i} style={S.carte}>
             <div style={{ display: "flex", justifyContent: "space-between",
@@ -482,52 +549,24 @@ function Factures() {
  *   suppression. Le fil fait foi en cas de litige.
  */
 function Messages() {
-  const { chargement, donnees, erreur } = useCharge(clientDossiers);
-  const dossiers = donnees || [];
-  const [ouvert, setOuvert] = useState(null);   // affaire_id du fil ouvert
+  const { affaireId, dossier } = useDossier();
 
-  if (chargement) return (
-    <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
-      Chargement…
-    </div>
-  );
-  if (erreur) return <div style={{ ...S.carte, color: C.rouge, fontSize: 12.5 }}>{erreur}</div>;
-  if (dossiers.length === 0) return (
+  if (!affaireId) return (
     <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
       Aucun dossier — pas encore de messagerie.
     </div>
   );
 
-  // Un seul dossier : on ouvre le fil directement.
-  const seul = dossiers.length === 1 ? dossiers[0] : null;
-  const actif = seul || dossiers.find((d) => d.affaire_id === ouvert);
-
-  if (actif) {
-    return (
-      <div style={S.carte}>
-        {!seul && (
-          <button style={{ ...S.boutonLien, paddingLeft: 0, marginBottom: 6 }}
-                  onClick={() => setOuvert(null)}>← Mes dossiers</button>
-        )}
-        <FilMessages affaireId={actif.affaire_id} cote="client" theme={{ C, S }} />
-      </div>
-    );
-  }
-
   return (
-    <>
-      {dossiers.map((d) => (
-        <button key={d.affaire_id} onClick={() => setOuvert(d.affaire_id)}
-          style={{ ...S.carte, width: "100%", textAlign: "left", cursor: "pointer",
-                   border: `1px solid ${C.bord}`, display: "flex",
-                   justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: C.encre }}>
-            {d.titre || d.reference || "Mon déménagement"}
-          </span>
-          <span style={{ color: C.fantome }}>›</span>
-        </button>
-      ))}
-    </>
+    <div style={S.carte}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 2 }}>
+        {dossier?.entreprise?.nom || "Votre déménageur"}
+      </div>
+      <div style={{ fontFamily: FC, fontSize: 10.5, color: C.fantome, marginBottom: 12 }}>
+        {dossier ? trajetCourt(dossier) : ""}
+      </div>
+      <FilMessages affaireId={affaireId} cote="client" theme={{ C, S }} />
+    </div>
   );
 }
 
@@ -750,39 +789,11 @@ function AvisDossier({ affaireId }) {
  * (numéro → pièce → adresse) est visible — jamais le contenu.
  */
 function Caisses() {
-  const { chargement, donnees, erreur } = useCharge(clientDossiers);
-  const dossiers = donnees || [];
-  const [choisi, setChoisi] = useState(null);
-
-  if (chargement) return <Etat chargement />;
-  if (erreur) return <Etat erreur={erreur} />;
-  if (dossiers.length === 0) return <Etat vide="Aucun dossier." />;
-
-  const dossier = dossiers.length === 1 ? dossiers[0]
-    : dossiers.find((d) => d.affaire_id === choisi);
-
-  if (!dossier) {
-    return (
-      <>
-        <div style={{ fontSize: 12.5, color: C.muet, marginBottom: 10 }}>
-          Choisissez le déménagement concerné :
-        </div>
-        {dossiers.map((d) => (
-          <button key={d.affaire_id} onClick={() => setChoisi(d.affaire_id)}
-            style={{ ...S.carte, width: "100%", textAlign: "left", cursor: "pointer" }}>
-            {d.entreprise?.nom || "Déménagement"} · {d.reference}
-          </button>
-        ))}
-      </>
-    );
-  }
-
+  const { dossier } = useDossier();
+  if (!dossier) return <Etat vide="Aucun dossier." />;
   return (
     <>
-      {dossiers.length > 1 && (
-        <button style={{ ...S.boutonLien, paddingLeft: 0, marginBottom: 6 }}
-                onClick={() => setChoisi(null)}>← Mes déménagements</button>
-      )}
+      <EnteteDossier />
       <CaissesDossier dossier={dossier} />
     </>
   );

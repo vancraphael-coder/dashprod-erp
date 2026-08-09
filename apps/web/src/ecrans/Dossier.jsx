@@ -218,6 +218,25 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 4 }}>
             Client
           </div>
+          {/* La civilité qualifie le CONTACT client (couple, madame, monsieur),
+              pas la facturation : elle sert aux formules des documents. */}
+          <label style={S.label}>Civilité</label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+            {CIVILITES.map((c) => {
+              const actif = identite.civilite === c.cle;
+              return (
+                <button key={c.cle} type="button"
+                  onClick={() => majIdentite("civilite", actif ? null : c.cle)}
+                  style={{ padding: "8px 14px", borderRadius: 999, cursor: "pointer",
+                    fontSize: 12.5, fontWeight: 700,
+                    border: `1.5px solid ${actif ? C.bleu : C.bord}`,
+                    background: actif ? "#E7EFFC" : C.blanc,
+                    color: actif ? C.bleu : C.muet }}>
+                  {actif ? "✓ " : ""}{c.libelle}
+                </button>
+              );
+            })}
+          </div>
           <label style={S.label}>Nom</label>
           <input style={S.input} value={identite.nom || ""}
                  onChange={(e) => majIdentite("nom", e.target.value)}
@@ -429,28 +448,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         </button>
         {factOuvert && facturation && (
           <div style={{ marginTop: 8 }}>
-            {/* Un déménagement se traite le plus souvent avec un COUPLE :
-                « les deux » est le cas le plus fréquent, pas une exception.
-                Aucune case cochée = on ne sait pas encore, et les documents
-                emploieront une formule neutre plutôt qu'une supposition. */}
-            <label style={S.label}>Civilité</label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {CIVILITES.map((c) => {
-                const actif = facturation.civilite === c.cle;
-                return (
-                  <button key={c.cle} type="button"
-                    onClick={() => majFact("civilite", actif ? null : c.cle)}
-                    style={{ padding: "8px 14px", borderRadius: 999,
-                      cursor: "pointer", fontSize: 12.5, fontWeight: 700,
-                      border: `1.5px solid ${actif ? C.bleu : C.bord}`,
-                      background: actif ? "#E7EFFC" : C.blanc,
-                      color: actif ? C.bleu : C.muet }}>
-                    {actif ? "✓ " : ""}{c.libelle}
-                  </button>
-                );
-              })}
-            </div>
-
             <label style={S.label}>Société</label>
             <input style={S.input} value={facturation.societe || ""}
                    onChange={(e) => majFact("societe", e.target.value)}
