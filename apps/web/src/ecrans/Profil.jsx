@@ -42,7 +42,7 @@ const jour = (iso) => {
   } catch { return iso; }
 };
 
-export default function Profil({ profil, versParametres, versDiagnostic, peutConfigurer }) {
+export default function Profil({ profil, versParametres, versDiagnostic, versDemandes, peutConfigurer }) {
   const [onglet, setOnglet] = useState("inventaire");
 
   return (
@@ -90,6 +90,28 @@ export default function Profil({ profil, versParametres, versDiagnostic, peutCon
               </span>
               <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
                 Barème, coûts, catalogues, textes, archivage.
+              </span>
+            </span>
+            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
+          </button>
+        </div>
+      )}
+
+      {/* Demandes du réseau : le carnet de pistes partagé (marketplace). */}
+      {versDemandes && (
+        <div style={{ margin: "12px 16px 0" }}>
+          <button onClick={versDemandes} style={{
+            display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
+            border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
+            boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer",
+            textAlign: "left" }}>
+            <span style={{ fontSize: 19 }}>📦</span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
+                Demandes du réseau
+              </span>
+              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
+                Les particuliers qui cherchent un déménageur.
               </span>
             </span>
             <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
