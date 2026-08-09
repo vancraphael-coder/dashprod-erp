@@ -1,0 +1,5 @@
+-- 0102 — Rattacher chaque info cliente à son dossier.
+-- cmd_client_dossiers enrichi (reference + entreprise.ville).
+-- cmd_client_factures porte affaire_id. (cmd_client_inventaire revu en 0103.)
+-- Objectif : dans l'espace client, plus rien ne "flotte" — tout se rattache à
+--   un dossier précis (donc un déménageur précis). Corps exact en base.

@@ -1,0 +1,4 @@
+-- 0103 — Relevé des meubles côté client : la LISTE, sans volume.
+-- cmd_client_inventaire reconstruit depuis affaires.releve (JSON nom/piece/
+--   quantite), rattaché à affaire_id, SANS m³ (protection anti-concurrentielle,
+--   comme le PDF du relevé). Corps exact en base.
