@@ -2184,6 +2184,23 @@ export const clientDossiers   = () => rpcClient("cmd_client_dossiers");
 export const clientProfil     = () => rpcClient("cmd_client_profil");
 export const clientInventaire = () => rpcClient("cmd_client_inventaire");
 export const clientOffres     = () => rpcClient("cmd_client_offres");
+
+/** Le client écrit son identité (civilité, nom, prénom, téléphone). */
+export async function definirProfilClient({ civilite, nom, prenom, tel }) {
+  const { data, error } = await supabase.rpc("cmd_client_profil_definir",
+    { p_civilite: civilite || null, p_nom: nom, p_prenom: prenom, p_tel: tel || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Le client renseigne son adresse de visite (le chargement) sur un dossier. */
+export async function definirAdresseVisite(affaireId, adr) {
+  const { data, error } = await supabase.rpc("cmd_client_adresse_visite", {
+    p_affaire: affaireId, p_adresse: adr.adresse, p_code_postal: adr.code_postal || null,
+    p_ville: adr.ville || null, p_etage: adr.etage || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
 export const clientFactures   = () => rpcClient("cmd_client_factures");
 
 // =============================================================================
