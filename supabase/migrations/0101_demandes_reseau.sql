@@ -1,0 +1,7 @@
+-- 0101 — Demandes de déménagement du réseau (marketplace type « 365 »).
+-- Table demandes_reseau (coordonnées demandeur + trajet + statut ouverte/prise).
+--   RLS lecture : uniquement les organisations du réseau (visible_reseau).
+-- cmd_demande_reseau_deposer(jsonb) : dépôt PUBLIC (anon+authenticated), aucune
+--   écriture directe de la table. cmd_demandes_reseau() : liste pour un
+--   déménageur du réseau (ouvertes + les siennes). cmd_demande_reseau_prendre(id)
+--   : prise en charge (retire du pool commun ; refus si déjà prise). Corps en base.
