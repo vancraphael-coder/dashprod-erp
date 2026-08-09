@@ -1,0 +1,8 @@
+-- 0100 — Profil client éditable.
+-- Ajout colonne clients.prenom.
+-- cmd_client_profil() enrichi : civilite, nom, prenom, tel, identite_complete.
+-- cmd_client_profil_definir(civilite, nom, prenom, tel) : le client écrit son
+--   identité (nom+prénom requis ; civilité contrainte monsieur/madame/les_deux).
+-- cmd_client_adresse_visite(affaire, adresse, cp, ville, etage) : le client
+--   renseigne/corrige son adresse de VISITE = le chargement (domicile actuel) ;
+--   crée l'adresse si absente, sinon met à jour (pas de doublon). Corps en base.
