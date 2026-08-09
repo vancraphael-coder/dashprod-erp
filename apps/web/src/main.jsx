@@ -47,6 +47,7 @@ import RapportsDossier from "./ecrans/RapportsDossier.jsx";
 import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Conversations from "./ecrans/Conversations.jsx";
+import DemandesReseau from "./ecrans/DemandesReseau.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
 function BandeauDemo({ versDiagnostic }) {
@@ -491,6 +492,7 @@ function App() {
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
     compte: () => setRoute({ ecran: "compte", affaireId: null }),
     diagnostic: () => setRoute({ ecran: "diagnostic", affaireId: null }),
+    demandes: () => setRoute({ ecran: "demandes", affaireId: null }),
     bareme: () => setRoute({ ecran: "bareme", affaireId: null }),
     cout: () => setRoute({ ecran: "cout", affaireId: null }),
     archivage: () => setRoute({ ecran: "archivage", affaireId: null }),
@@ -521,7 +523,10 @@ function App() {
     );
   } else if (route.ecran === "compte") {
     ecran = <Profil profil={profil} versDiagnostic={nav.diagnostic}
-      versParametres={nav.parametres} peutConfigurer={peutGererEquipe} />;
+      versParametres={nav.parametres} versDemandes={nav.demandes}
+      peutConfigurer={peutGererEquipe} />;
+  } else if (route.ecran === "demandes") {
+    ecran = <DemandesReseau />;
   } else if (route.ecran === "equipe") {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
