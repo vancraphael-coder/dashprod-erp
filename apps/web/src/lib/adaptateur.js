@@ -2337,6 +2337,29 @@ export async function reseauDemenageurs() {
   return data || [];
 }
 
+// ── Demandes du réseau (marketplace type « 365 ») ────────────────────────────
+
+/** Dépôt PUBLIC d'une demande de déménagement (sans compte). */
+export async function deposerDemandeReseau(demande) {
+  const { data, error } = await supabase.rpc("cmd_demande_reseau_deposer", { p: demande });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Les demandes visibles pour un déménageur du réseau (ouvertes + les siennes). */
+export async function demandesReseau() {
+  const { data, error } = await supabase.rpc("cmd_demandes_reseau");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Un déménageur prend une demande en charge. */
+export async function prendreDemandeReseau(id) {
+  const { data, error } = await supabase.rpc("cmd_demande_reseau_prendre", { p_id: id });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // ── Signature d'offre par code (le lien envoyé au client) ──────────────────
 export async function offreApercu(code) {
   const { data, error } = await supabase.rpc("cmd_offre_apercu", { p_code: code });
