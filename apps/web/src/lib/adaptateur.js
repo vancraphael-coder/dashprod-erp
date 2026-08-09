@@ -1219,7 +1219,7 @@ export async function sauverClientFacturation(affaireId, champs) {
 export async function obtenirClientIdentite(affaireId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("affaires")
-      .select("clients(id, nom, tel, email)").eq("id", affaireId).single();
+      .select("clients(id, civilite, nom, tel, email)").eq("id", affaireId).single();
     if (error) throw error;
     return data?.clients || {};
   }
@@ -1228,9 +1228,10 @@ export async function obtenirClientIdentite(affaireId) {
   return d.clients.find((c) => c.id === a?.clientId) || {};
 }
 
-/** Met à jour le nom / téléphone / email du client depuis le dossier. */
-export async function sauverClientIdentite(affaireId, { nom, tel, email }) {
+/** Met à jour la civilité / le nom / téléphone / email du client depuis le dossier. */
+export async function sauverClientIdentite(affaireId, { civilite, nom, tel, email }) {
   const propre = {};
+  if (civilite !== undefined) propre.civilite = civilite || null;
   if (nom !== undefined) propre.nom = nom || "Sans nom";
   if (tel !== undefined) propre.tel = tel || null;
   if (email !== undefined) propre.email = email || null;
