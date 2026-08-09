@@ -19,6 +19,7 @@ import {
 } from "@domaine/commercial/plans.js";
 import { V, MONO, NavPublique, PiedPublic, Etiquette } from "./theme-vitrine.jsx";
 import { avisPublics } from "../../lib/adaptateur.js";
+import CommandeReseau from "./CommandeReseau.jsx";
 
 const MODULES = [
   { n: "001", t: "Relevé & devis", d: "Le relevé pièce par pièce devient un chiffrage : barème, suppléments, marge visible. L'offre part le jour même." },
@@ -74,8 +75,9 @@ export default function Landing({ aller, orgId }) {
               <button className="v-btn v-btn-plein" onClick={() => aller("societe")}>
                 Créer ma société →
               </button>
-              <button className="v-btn v-btn-fantome" onClick={() => aller("client")}>
-                Je déménage
+              <button className="v-btn v-btn-fantome"
+                onClick={() => document.getElementById("commander")?.scrollIntoView({ behavior: "smooth" })}>
+                Commander mon déménagement
               </button>
             </div>
             <div style={{ marginTop: 26, display: "flex", gap: 26, flexWrap: "wrap" }}>
@@ -128,7 +130,28 @@ export default function Landing({ aller, orgId }) {
         </div>
       </section>
 
-      {/* ── LES TROIS PORTES ─────────────────────────────────────────────── */}
+      {/* ── COMMANDER SON DÉMÉNAGEMENT SUR LE RÉSEAU ─────────────────────── */}
+      <section id="commander" style={{
+        background: "linear-gradient(180deg, #0B1220, #111C33)", color: "#fff",
+        padding: "clamp(44px, 6vw, 80px) 20px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto 26px", textAlign: "center" }}>
+          <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700,
+                        letterSpacing: ".16em", color: "#FFB627",
+                        textTransform: "uppercase" }}>
+            Un seul formulaire · tout le réseau
+          </div>
+          <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
+                                             margin: "10px 0 8px" }}>
+            Commandez votre déménagement.
+          </h2>
+          <p style={{ color: "rgba(255,255,255,.72)", fontSize: 15, lineHeight: 1.6, margin: 0 }}>
+            Décrivez votre projet une fois. Il part à tous les déménageurs
+            inscrits, qui vous recontactent. Sans compte, sans engagement.
+          </p>
+        </div>
+        <CommandeReseau aller={aller} />
+      </section>
+
       <section style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(40px, 6vw, 70px) 20px 10px" }}>
         <div style={{ display: "grid", gap: 16,
