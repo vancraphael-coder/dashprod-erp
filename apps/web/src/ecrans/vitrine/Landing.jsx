@@ -20,158 +20,20 @@ import {
 import { V, MONO, NavPublique, PiedPublic, Etiquette } from "./theme-vitrine.jsx";
 import { avisPublics } from "../../lib/adaptateur.js";
 import CommandeReseau from "./CommandeReseau.jsx";
+import VariateurNav from "./VariateurNav.jsx";
 
-const MATRIX_CSS = `
-.vitrine-dashprod {
-  --dp-bg:#050608;
-  --dp-panel:rgba(255,255,255,.055);
-  --dp-line:rgba(255,255,255,.12);
-  --dp-text:#f5f5f7;
-  --dp-muted:rgba(255,255,255,.58);
-  --dp-cyan:#00f2fe;
-  --dp-green:#00ff87;
-  --dp-gold:#d9b36c;
-  background:
-    radial-gradient(900px 500px at 80% -5%, rgba(0,242,254,.10), transparent 60%),
-    radial-gradient(700px 450px at 5% 35%, rgba(112,0,255,.06), transparent 60%),
-    var(--dp-bg) !important;
-  color:var(--dp-text) !important;
+/** Les sections que le variateur permet d'atteindre (avis seulement si dispo). */
+function SECTIONS_NAV(avecAvis) {
+  const base = [
+    { id: "accueil", label: "Accueil", icone: "accueil" },
+    { id: "produit", label: "Produit", icone: "produit" },
+    { id: "commander", label: "Commander", icone: "commander" },
+    { id: "tarifs", label: "Tarifs", icone: "tarifs" },
+  ];
+  if (avecAvis) base.push({ id: "avis", label: "Avis", icone: "avis" });
+  base.push({ id: "contact", label: "Contact", icone: "contact" });
+  return base;
 }
-.vitrine-dashprod .dp-nav {
-  background:rgba(5,6,8,.72) !important;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  backdrop-filter:blur(20px);
-}
-.vitrine-dashprod .dp-hero {
-  background:
-    radial-gradient(900px 500px at 72% 5%,rgba(0,242,254,.12),transparent 60%),
-    radial-gradient(700px 450px at 5% 95%,rgba(112,0,255,.09),transparent 60%),
-    #050608 !important;
-}
-.vitrine-dashprod .dp-kicker {
-  display:inline-flex;align-items:center;gap:8px;
-  font-family:${MONO};font-size:11px;font-weight:700;letter-spacing:.14em;
-  text-transform:uppercase;color:#9afaff;
-  background:rgba(0,242,254,.08);border:1px solid rgba(0,242,254,.24);
-  padding:7px 12px;border-radius:999px;
-}
-.vitrine-dashprod .dp-kicker:before {
-  content:"";width:6px;height:6px;border-radius:50%;
-  background:var(--dp-green);box-shadow:0 0 10px var(--dp-green);
-}
-.vitrine-dashprod .dp-display {
-  font-family:${MONO};letter-spacing:-.055em;
-}
-.vitrine-dashprod .dp-copy {color:rgba(255,255,255,.68) !important}
-.vitrine-dashprod .dp-btn {
-  border-radius:999px !important;
-  transition:.25s ease !important;
-}
-.vitrine-dashprod .dp-btn:hover {transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.3)}
-.vitrine-dashprod .dp-glass {
-  border:1px solid rgba(255,255,255,.12);
-  border-top-color:rgba(255,255,255,.30);
-  border-left-color:rgba(255,255,255,.20);
-  background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.01));
-  border-radius:28px;
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  box-shadow:0 30px 60px rgba(0,0,0,.65),inset 0 1px rgba(255,255,255,.18);
-}
-.vitrine-dashprod .dp-workflow {
-  display:grid;grid-template-columns:repeat(6,1fr);gap:10px;
-}
-.vitrine-dashprod .dp-step {
-  min-height:160px;padding:18px;border-radius:22px;
-  border:1px solid rgba(255,255,255,.10);
-  background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.012));
-  transition:.3s;position:relative;overflow:hidden;
-}
-.vitrine-dashprod .dp-step:hover {transform:translateY(-5px);border-color:rgba(0,242,254,.3)}
-.vitrine-dashprod .dp-step-no {font-family:${MONO};font-size:11px;color:var(--dp-cyan)}
-.vitrine-dashprod .dp-step h3 {font-size:16px;margin-top:48px;color:#fff}
-.vitrine-dashprod .dp-step p {font-size:12px;line-height:1.5;color:var(--dp-muted);margin-top:6px}
-.vitrine-dashprod .dp-pricing {
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;
-}
-.vitrine-dashprod .dp-price-scene {perspective:1200px;padding:12px}
-.vitrine-dashprod .dp-price-card {
-  --rot-x:0deg;--rot-y:0deg;--glow-x:50%;--glow-y:50%;--oil-angle:135deg;--shift-x:0px;--shift-y:0px;
-  min-height:530px;padding:2rem 1.5rem;border-radius:32px;position:relative;
-  background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.01));
-  border:1px solid rgba(255,255,255,.12);
-  border-top-color:rgba(255,255,255,.30);border-left-color:rgba(255,255,255,.20);
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  transform:rotateX(var(--rot-x)) rotateY(var(--rot-y));
-  transform-style:preserve-3d;will-change:transform;
-  box-shadow:0 30px 60px rgba(0,0,0,.8),inset 0 1px rgba(255,255,255,.2);
-  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
-  transition:transform .1s cubic-bezier(.1,1,.1,1);overflow:hidden;
-}
-.vitrine-dashprod .dp-price-card:before {
-  content:"";position:absolute;inset:0;border-radius:32px;pointer-events:none;z-index:1;
-  background:radial-gradient(600px circle at var(--glow-x) var(--glow-y),rgba(0,242,254,.12),transparent 40%);
-}
-.vitrine-dashprod .dp-badge {
-  font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--dp-cyan);background:rgba(0,242,254,.10);
-  border:1px solid rgba(0,242,254,.25);padding:5px 13px;border-radius:20px;
-  transform:translateZ(20px);z-index:2;
-}
-.vitrine-dashprod .dp-plan-head {text-align:center;transform:translateZ(25px);z-index:2}
-.vitrine-dashprod .dp-plan-head h3 {font-size:21px;font-weight:600;color:#fff;margin:10px 0 0}
-.vitrine-dashprod .dp-plan-price {font-size:32px;font-weight:700;color:#fff;margin-top:3px}
-.vitrine-dashprod .dp-plan-price span {font-size:12px;font-weight:400;color:rgba(255,255,255,.5)}
-.vitrine-dashprod .dp-bubble {
-  position:relative;width:80px;height:80px;transform:translateZ(40px);
-  transform-style:preserve-3d;z-index:10;margin:18px 0;cursor:pointer;
-}
-.vitrine-dashprod .dp-sphere {
-  position:absolute;inset:0;border-radius:50%;
-  background:linear-gradient(var(--oil-angle),rgba(0,242,254,.4),rgba(112,0,255,.3) 35%,rgba(255,0,128,.35) 70%,rgba(0,242,254,.3));
-  border:1px solid rgba(255,255,255,.5);
-  box-shadow:inset 0 0 15px rgba(255,255,255,.4),inset 8px 8px 20px rgba(0,242,254,.3),inset -8px -8px 20px rgba(255,0,128,.25),0 15px 30px rgba(0,0,0,.5);
-  backdrop-filter:blur(4px);transition:.4s cubic-bezier(.34,1.56,.64,1);
-}
-.vitrine-dashprod .dp-bubble:hover .dp-sphere,.vitrine-dashprod .dp-price-card.is-open .dp-sphere {
-  transform:scale(1.08);border-color:rgba(255,255,255,.8);box-shadow:inset 0 0 20px rgba(255,255,255,.6),0 0 25px rgba(0,242,254,.4);
-}
-.vitrine-dashprod .dp-specular {position:absolute;top:7%;left:14%;width:72%;height:36%;border-radius:50%;background:linear-gradient(to bottom,rgba(255,255,255,.75),transparent);pointer-events:none;transform:translateZ(5px)}
-.vitrine-dashprod .dp-bubble-icon {position:absolute;inset:0;display:flex;justify-content:center;align-items:center;transform:translate3d(var(--shift-x),var(--shift-y),15px);z-index:4}
-.vitrine-dashprod .dp-chevron {width:24px;height:24px;color:#fff;stroke-width:2.5;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));transition:.5s cubic-bezier(.34,1.56,.64,1)}
-.vitrine-dashprod .dp-price-card.is-open .dp-chevron {transform:rotate(-180deg) scale(1.15)}
-.vitrine-dashprod .dp-expandable {width:100%;display:grid;grid-template-rows:0fr;transition:grid-template-rows .5s cubic-bezier(.16,1,.3,1);z-index:2;transform:translateZ(25px)}
-.vitrine-dashprod .dp-features {overflow:hidden;opacity:0;transform:translateY(6px);transition:.4s;list-style:none;display:flex;flex-direction:column;gap:9px;font-size:13px;color:rgba(255,255,255,.75)}
-.vitrine-dashprod .dp-features li:before {content:"✓";color:var(--dp-cyan);font-weight:bold;margin-right:8px}
-.vitrine-dashprod .dp-price-card.is-open .dp-expandable {grid-template-rows:1fr}
-.vitrine-dashprod .dp-price-card.is-open .dp-features {opacity:1;transform:none;padding:8px 0}
-.vitrine-dashprod .dp-price-cta {
-  width:100%;padding:13px;border-radius:999px;background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.2);color:#fff;font-size:14px;font-weight:600;
-  cursor:pointer;transform:translateZ(20px);transition:.3s;z-index:2;margin-top:16px;
-}
-.vitrine-dashprod .dp-price-cta:hover {background:#fff;color:#000;box-shadow:0 0 25px rgba(255,255,255,.3)}
-.vitrine-dashprod .dp-price-card.recommended {border-color:rgba(0,242,254,.32);box-shadow:0 30px 70px rgba(0,242,254,.08),inset 0 1px rgba(255,255,255,.2)}
-.vitrine-dashprod .dp-route {
-  display:grid;grid-template-columns:repeat(7,1fr);align-items:center;gap:5px;margin-top:25px;
-}
-.vitrine-dashprod .dp-route span {height:4px;border-radius:99px;background:rgba(255,255,255,.1)}
-.vitrine-dashprod .dp-route span.on {background:linear-gradient(90deg,var(--dp-cyan),#fff)}
-.vitrine-dashprod .dp-terminal {
-  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#030405;border:1px solid rgba(255,255,255,.10);
-  border-radius:20px;padding:18px;color:#b7c0c7;font-size:11px;line-height:1.9;
-}
-.vitrine-dashprod .dp-terminal .cyan{color:#8cf3ff}.vitrine-dashprod .dp-terminal .green{color:#69f2aa}.vitrine-dashprod .dp-terminal .gold{color:#e6c37d}
-@media(max-width:900px){
-  .vitrine-dashprod .dp-workflow{grid-template-columns:repeat(2,1fr)}
-  .vitrine-dashprod .dp-pricing{grid-template-columns:1fr}
-}
-@media(max-width:560px){
-  .vitrine-dashprod .dp-workflow{grid-template-columns:1fr}
-  .vitrine-dashprod .dp-price-scene{padding:8px 0}
-}
-`;
-
 
 const MODULES = [
   { n: "001", t: "Relevé & devis", d: "Le relevé pièce par pièce devient un chiffrage : barème, suppléments, marge visible. L'offre part le jour même." },
@@ -190,13 +52,20 @@ const CHIFFRES = [
 
 export default function Landing({ aller, orgId }) {
   return (
-    <div className="vitrine vitrine-dashprod" style={{ minHeight: "100vh", display: "flex",
+    <div className="vitrine" style={{ minHeight: "100vh", display: "flex",
       flexDirection: "column", background: V.ivoire, color: V.encre }}>
-      <style>{MATRIX_CSS}</style>
       <NavPublique page="accueil" aller={aller} sombre />
 
+      {/* Variateur rotatif : navigation par section, façon molette de précision.
+          Flottant à droite sur grand écran ; masqué sous 900px (le pouce n'a pas
+          la place, la nav classique prend le relais). */}
+      <div className="variateur-flottant">
+        <VariateurNav sections={SECTIONS_NAV(Boolean(orgId))} />
+      </div>
+
+
       {/* ── HERO — la nuit du chargement ─────────────────────────────────── */}
-      <section className="dp-hero" style={{ background:
+      <section id="accueil" style={{ background:
         `radial-gradient(1100px 500px at 75% -10%, rgba(37,99,235,.28), transparent 60%),
          radial-gradient(700px 400px at 10% 110%, rgba(217,119,6,.14), transparent 55%),
          ${V.nuit}`, color: "#fff" }}>
@@ -283,43 +152,6 @@ export default function Landing({ aller, orgId }) {
         </div>
       </section>
 
-      {/* ── FLUX OPÉRATIONNEL ───────────────────────────────────────────── */}
-      <section style={{ background:"#050608", color:"#fff", padding:"clamp(44px,6vw,78px) 20px" }}>
-        <div style={{ maxWidth:1080, margin:"0 auto" }}>
-          <div className="dp-kicker">Le circuit Dashprod</div>
-          <h2 className="dp-display" style={{fontSize:"clamp(28px,4vw,46px)",margin:"14px 0 10px"}}>
-            Une saisie. Tout le circuit.
-          </h2>
-          <p className="dp-copy" style={{maxWidth:"62ch",fontSize:15,lineHeight:1.6}}>
-            Le devis devient dossier. Le dossier devient planning. Le chantier devient preuve.
-            La preuve devient facture. Rien ne repart dans Excel.
-          </p>
-          <div className="dp-route">
-            {["Demande","Devis","Signature","Planning","Chantier","Facture","Paiement"].map((x,i)=>
-              <React.Fragment key={x}>
-                <span className={i<6 ? "on" : "on"} />
-              </React.Fragment>
-            )}
-          </div>
-          <div className="dp-workflow" style={{marginTop:22}}>
-            {[
-              ["001","CRM","Client et demande"],
-              ["002","Devis","Chiffrage et marge"],
-              ["003","Signature","Offre validée"],
-              ["004","Planning","Équipe + camion"],
-              ["005","Chantier","Heures + photos"],
-              ["006","Facture","Peppol + paiement"]
-            ].map(([n,t,d])=>(
-              <article className="dp-step" key={n}>
-                <div className="dp-step-no">{n}/006</div>
-                <h3>{t}</h3>
-                <p>{d}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── COMMANDER SON DÉMÉNAGEMENT SUR LE RÉSEAU ─────────────────────── */}
       <section id="commander" style={{
         background: "linear-gradient(180deg, #0B1220, #111C33)", color: "#fff",
@@ -342,7 +174,7 @@ export default function Landing({ aller, orgId }) {
         <CommandeReseau aller={aller} />
       </section>
 
-      <section style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
+      <section id="produit" style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(40px, 6vw, 70px) 20px 10px" }}>
         <div style={{ display: "grid", gap: 16,
                       gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
@@ -378,7 +210,7 @@ export default function Landing({ aller, orgId }) {
         <div style={{ display: "grid", gap: 14, marginTop: 30,
                       gridTemplateColumns: "repeat(auto-fit, minmax(min(270px, 100%), 1fr))" }}>
           {MODULES.map((m) => (
-            <article key={m.n} className="v-carte v-carte-hover dp-glass" style={{ padding: 20 }}>
+            <article key={m.n} className="v-carte v-carte-hover" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center",
                             justifyContent: "space-between" }}>
                 <span style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 700,
@@ -396,58 +228,177 @@ export default function Landing({ aller, orgId }) {
         </div>
       </section>
 
-      {/* ── PRIX — cartes matrice 3D ───────────────────────────────────── */}
-      <section style={{background:"#050608", color:"#fff", padding:"clamp(55px,7vw,90px) 20px"}}>
-        <div style={{maxWidth:1080,margin:"0 auto"}}>
-          <div style={{maxWidth:620}}>
-            <div className="dp-kicker">3 offres · une raison d'évoluer</div>
-            <h2 className="dp-display" style={{fontSize:"clamp(28px,4vw,46px)",margin:"14px 0 10px"}}>
-              L'ERP grandit avec votre entreprise.
+      {/* ── PRIX — une offre, un chiffre ─────────────────────────────────── */}
+      <section id="tarifs" style={{ background: "#fff", borderTop: `1px solid ${V.bord}`,
+                        borderBottom: `1px solid ${V.bord}` }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto",
+                      padding: "clamp(44px, 6vw, 70px) 20px", display: "grid",
+                      gap: 36, alignItems: "center",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))" }}>
+          <div>
+            <Etiquette numero="3 offres" libelle="vous montez quand vous grandissez" />
+            <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
+                                               margin: "14px 0 0" }}>
+              Une offre par taille d'entreprise.
             </h2>
-            <p className="dp-copy" style={{fontSize:15,lineHeight:1.6}}>
-              Pas de catalogue illisible. Chaque niveau répond à un besoin concret.
-              Cliquez sur la bulle pour voir ce qui est inclus.
+            <p style={{ fontSize: 15, color: V.muet, lineHeight: 1.6,
+                        margin: "12px 0 0", maxWidth: "48ch" }}>
+              Un prix par entreprise, pas par utilisateur. Vous changez d'offre
+              quand votre équipe grandit — et vos données vous suivent : rien
+              n'est jamais supprimé si vous redescendez.
             </p>
+            <ul style={{ margin: "18px 0 0", padding: 0, listStyle: "none",
+                         display: "grid", gap: 9 }}>
+              {[`${ESSAI_JOURS} jours d'essai, sans carte bancaire`,
+                `Mensuel sans engagement, ou annuel remisé de ${REMISE_ANNUELLE_PCT} %`,
+                "Vos données cloisonnées, hébergées en Europe",
+                "Exportables à tout moment, même après résiliation"].map((x) => (
+                <li key={x} style={{ display: "flex", gap: 10, fontSize: 14,
+                                     color: V.encre }}>
+                  <span style={{ color: V.route, fontWeight: 800 }}>✓</span>{x}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <div className="dp-pricing" style={{marginTop:34}}>
-            <MatrixPlan
-              planKey="starter"
-              badge="Essentiel"
-              name="Starter"
-              price="180€"
-              promise="Sortir du papier"
-              features={["2 utilisateurs inclus","CRM et dossiers clients","Demandes centralisées","Base opérationnelle"]}
-              action="Commencer"
-              aller={aller}
-            />
-            <MatrixPlan
-              planKey="regular"
-              badge="Recommandé"
-              name="Regular"
-              price="360€"
-              promise="Piloter l'entreprise"
-              features={["5 utilisateurs inclus","Devis et signature en ligne","Planning et équipes terrain","Facturation + Peppol","Inventaire simple"]}
-              action="Demander un accès"
-              aller={aller}
-              recommended
-            />
-            <MatrixPlan
-              planKey="pro"
-              badge="Échelle"
-              name="Pro"
-              price="720€"
-              promise="Changer d'échelle"
-              features={["Utilisateurs illimités","Coût utilisateur dégressif","Multi-équipes","Opérations internationales","Fonctionnalités avancées"]}
-              action="Parler à Dashprod"
-              aller={aller}
-            />
+          <div style={{ display: "grid", gap: 16,
+                        gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))",
+                        gridColumn: "1 / -1" }}>
+            {PLANS.map((p) => {
+              const ouverte = planDisponible(p.cle);
+              const gains = gainSurPrecedent(p.cle).filter((c) => module(c)?.livre);
+              const aVenir = modulesAVenir(p.cle);
+              const vedette = p.recommande && ouverte;
+              return (
+                <div key={p.cle} style={{
+                  position: "relative", borderRadius: 22, padding: "26px 22px",
+                  overflow: "hidden",
+                  // La vedette est en nuit (contraste fort) ; les autres en blanc.
+                  background: vedette
+                    ? `linear-gradient(180deg, ${V.nuitDouce}, ${V.nuit})`
+                    : "#fff",
+                  color: vedette ? "#fff" : V.encre,
+                  border: vedette ? "1px solid rgba(147,197,253,.28)"
+                                  : `1px solid ${V.bord}`,
+                  borderStyle: ouverte ? "solid" : "dashed",
+                  opacity: ouverte ? 1 : .78,
+                  boxShadow: vedette
+                    ? "0 30px 70px -24px rgba(37,99,235,.55)"
+                    : "0 2px 10px rgba(15,23,42,.05)",
+                  transform: vedette ? "translateY(-6px)" : "none",
+                }}>
+                  {/* Lueur d'accent en haut de la carte vedette. */}
+                  {vedette && (
+                    <div aria-hidden style={{ position: "absolute", inset: "-40% -20% auto -20%",
+                      height: 180, pointerEvents: "none",
+                      background: "radial-gradient(60% 80% at 50% 0%, rgba(37,99,235,.35), transparent 70%)" }} />
+                  )}
+
+                  <div style={{ position: "relative", display: "flex",
+                                alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700,
+                      letterSpacing: ".14em", textTransform: "uppercase",
+                      color: vedette ? "#93C5FD" : V.muet }}>{p.nom}</span>
+                    {vedette && (
+                      <span style={{ fontSize: 10, fontWeight: 800, color: "#fff",
+                        background: V.route, borderRadius: 999, padding: "3px 10px",
+                        letterSpacing: ".04em", textTransform: "uppercase",
+                        boxShadow: "0 6px 16px rgba(37,99,235,.5)" }}>Le plus choisi</span>
+                    )}
+                    {!ouverte && (
+                      <span style={{ fontSize: 10.5, fontWeight: 700,
+                        color: V.muet, background: "#F1F5F9", borderRadius: 999,
+                        padding: "2px 8px" }}>bientôt</span>
+                    )}
+                  </div>
+
+                  <div style={{ position: "relative", margin: "16px 0 2px",
+                                display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span className="v-display" style={{ fontSize: 46,
+                      color: vedette ? "#fff" : V.encre }}>
+                      {Math.round(p.prix_centimes / 100)}
+                    </span>
+                    <span className="v-display" style={{ fontSize: 22,
+                      color: vedette ? "#93C5FD" : V.muet }}>€</span>
+                    <span style={{ fontSize: 12, marginLeft: 4,
+                      color: vedette ? "rgba(255,255,255,.6)" : V.muet }}>
+                      HTVA / mois
+                    </span>
+                  </div>
+                  <div style={{ position: "relative", fontSize: 12,
+                    color: vedette ? "rgba(255,255,255,.55)" : V.muet }}>
+                    {p.utilisateurs
+                      ? `Jusqu'à ${p.utilisateurs} utilisateur${p.utilisateurs > 1 ? "s" : ""}`
+                      : "Sans limite d'utilisateurs"}
+                  </div>
+
+                  <div style={{ position: "relative", fontSize: 14, marginTop: 14,
+                    lineHeight: 1.45, fontWeight: 700,
+                    color: vedette ? "#fff" : V.encre }}>
+                    {p.promesse}
+                  </div>
+                  <div style={{ position: "relative", fontSize: 12.5, marginTop: 6,
+                    lineHeight: 1.5, color: vedette ? "rgba(255,255,255,.62)" : V.muet }}>
+                    {p.pour}
+                  </div>
+
+                  <div style={{ position: "relative", height: 1, margin: "16px 0",
+                    background: vedette ? "rgba(255,255,255,.12)" : V.bord }} />
+
+                  <ul style={{ position: "relative", margin: 0, padding: 0,
+                               listStyle: "none", display: "grid", gap: 8 }}>
+                    {PLANS.indexOf(p) === 0 ? (
+                      <li style={{ fontSize: 12.5, display: "flex", gap: 8,
+                        color: vedette ? "#fff" : V.encre }}>
+                        <span style={{ color: V.routeVif, fontWeight: 800 }}>✓</span>
+                        Dossiers, relevé, devis, offre, planning, terrain,
+                        véhicules et facturation
+                      </li>
+                    ) : (
+                      <li style={{ fontSize: 11.5, marginBottom: 2,
+                        color: vedette ? "#93C5FD" : V.muet }}>
+                        Tout {PLANS[PLANS.indexOf(p) - 1].nom}, plus :
+                      </li>
+                    )}
+                    {gains.map((c) => (
+                      <li key={c} style={{ fontSize: 12.5, display: "flex", gap: 8,
+                        color: vedette ? "#fff" : V.encre }}>
+                        <span style={{ color: V.routeVif, fontWeight: 800 }}>✓</span>
+                        {module(c).titre}
+                      </li>
+                    ))}
+                    {aVenir.map((c) => (
+                      <li key={c} style={{ fontSize: 12, display: "flex", gap: 8,
+                        color: vedette ? "rgba(255,255,255,.5)" : V.brume }}>
+                        <span>◦</span>{module(c).titre}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {ouverte ? (
+                    <button
+                      className={vedette ? "v-btn v-btn-plein" : "v-btn v-btn-blanc"}
+                      style={{ position: "relative", width: "100%", marginTop: 20,
+                               ...(vedette ? { background: "#fff", color: V.route,
+                                               boxShadow: "0 10px 30px rgba(0,0,0,.3)" } : {}) }}
+                      onClick={() => aller("societe")}>
+                      {`Essayer ${ESSAI_JOURS} jours`}
+                    </button>
+                  ) : (
+                    <div style={{ position: "relative", fontSize: 11.5, marginTop: 20,
+                      lineHeight: 1.5, color: V.muet }}>
+                      {plan(p.cle).verrou_motif}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ── APPEL FINAL ──────────────────────────────────────────────────── */}
-      <section style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
+      <section id="contact" style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(44px, 6vw, 76px) 20px", textAlign: "center" }}>
         <h2 className="v-display" style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>
           Le prochain camion part avec Dashprod.
@@ -470,72 +421,6 @@ export default function Landing({ aller, orgId }) {
   );
 }
 
-
-function MatrixPlan({planKey,badge,name,price,promise,features,action,aller,recommended=false}) {
-  const [open,setOpen] = useState(false);
-  const ref = React.useRef(null);
-
-  useEffect(() => {
-    const card = ref.current;
-    if (!card) return;
-    const maxTilt = 14, depthOffset = 10;
-    const move = (e) => {
-      const r = card.getBoundingClientRect();
-      const x=e.clientX-r.left, y=e.clientY-r.top;
-      const xn=(x/r.width)*2-1, yn=(y/r.height)*2-1;
-      card.style.setProperty("--rot-x",`${(-yn*maxTilt).toFixed(2)}deg`);
-      card.style.setProperty("--rot-y",`${(xn*maxTilt).toFixed(2)}deg`);
-      card.style.setProperty("--glow-x",`${x}px`);
-      card.style.setProperty("--glow-y",`${y}px`);
-      card.style.setProperty("--oil-angle",`${(Math.atan2(yn,xn)*180/Math.PI+90).toFixed(1)}deg`);
-      card.style.setProperty("--shift-x",`${(Math.sin(xn*Math.PI/2)*depthOffset).toFixed(1)}px`);
-      card.style.setProperty("--shift-y",`${(Math.sin(yn*Math.PI/2)*depthOffset).toFixed(1)}px`);
-    };
-    const leave = () => {
-      ["--rot-x","--rot-y"].forEach(v=>card.style.setProperty(v,"0deg"));
-      card.style.setProperty("--oil-angle","135deg");
-      card.style.setProperty("--shift-x","0px");
-      card.style.setProperty("--shift-y","0px");
-    };
-    card.addEventListener("mousemove",move);
-    card.addEventListener("mouseleave",leave);
-    return () => { card.removeEventListener("mousemove",move); card.removeEventListener("mouseleave",leave); };
-  },[]);
-
-  return (
-    <div className="dp-price-scene">
-      <article ref={ref} className={`dp-price-card ${recommended ? "recommended" : ""} ${open ? "is-open" : ""}`}>
-        <div className="dp-badge">{badge}</div>
-        <div className="dp-plan-head">
-          <h3>{name}</h3>
-          <div className="dp-plan-price">{price} <span>/mois HTVA</span></div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,.55)",marginTop:6}}>{promise}</div>
-        </div>
-
-        <div className="dp-bubble" role="button" tabIndex={0} aria-label={`Afficher les fonctionnalités ${name}`}
-             onClick={()=>setOpen(v=>!v)}
-             onKeyDown={(e)=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();setOpen(v=>!v)}}}>
-          <div className="dp-sphere"/>
-          <div className="dp-specular"/>
-          <div className="dp-bubble-icon">
-            <svg className="dp-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </div>
-        </div>
-
-        <div className="dp-expandable">
-          <ul className="dp-features">
-            {features.map(f=><li key={f}>{f}</li>)}
-          </ul>
-        </div>
-
-        <button className="dp-price-cta" onClick={()=>aller("societe")}>{action}</button>
-      </article>
-    </div>
-  );
-}
-
 function SectionAvis({ orgId }) {
   const [data, setData] = useState(null);
   useEffect(() => {
@@ -550,7 +435,7 @@ function SectionAvis({ orgId }) {
   const pleines = Math.round(moyenne);
 
   return (
-    <section style={{ background: "#fff", borderTop: `1px solid ${V.bord}`,
+    <section id="avis" style={{ background: "#fff", borderTop: `1px solid ${V.bord}`,
                       padding: "clamp(44px, 6vw, 76px) 20px" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", textAlign: "center" }}>
         <div style={{ fontSize: 34, letterSpacing: 2, color: "#F59E0B" }}>

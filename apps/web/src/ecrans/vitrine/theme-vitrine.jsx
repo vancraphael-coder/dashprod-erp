@@ -87,6 +87,19 @@ if (typeof document !== "undefined" && !document.getElementById("vitrine-fonts")
       transform: translateY(-3px);
       box-shadow: 0 16px 40px rgba(15,23,42,.10);
     }
+    /* Variateur rotatif : flottant à droite, dans un socle sombre translucide.
+       Masqué sous 1100px (place au pouce et à la nav classique). */
+    .variateur-flottant {
+      position: fixed; right: 22px; top: 50%; transform: translateY(-50%);
+      z-index: 60; padding: 10px; border-radius: 28px;
+      background: radial-gradient(120% 120% at 50% 0%, rgba(16,28,54,.92), rgba(8,12,22,.92));
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 30px 70px -30px rgba(0,0,0,.8);
+    }
+    @media (max-width: 1100px) { .variateur-flottant { display: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      .variateur-flottant * { transition-duration: .001ms !important; }
+    }
     @keyframes v-lever { from { opacity: 0; transform: translateY(14px); }
                          to { opacity: 1; transform: none; } }
     .v-lever { animation: v-lever .55s ease both; }
