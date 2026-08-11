@@ -21,6 +21,13 @@ import { V, MONO, NavPublique, PiedPublic, Etiquette } from "./theme-vitrine.jsx
 import { avisPublics } from "../../lib/adaptateur.js";
 import CommandeReseau from "./CommandeReseau.jsx";
 import VariateurNav from "./VariateurNav.jsx";
+import CarteAbonnement from "./CarteAbonnement.jsx";
+
+/** Le socle, dit en clair (plutôt qu'une liste de clés techniques). */
+const SOCLE_LISIBLE = [
+  "Dossiers et relevé", "Devis et offre", "Planning et terrain",
+  "Véhicules", "Facturation",
+];
 
 /** Les sections que le variateur permet d'atteindre (avis seulement si dispo). */
 function SECTIONS_NAV(avecAvis) {
@@ -229,8 +236,12 @@ export default function Landing({ aller, orgId }) {
       </section>
 
       {/* ── PRIX — une offre, un chiffre ─────────────────────────────────── */}
-      <section id="tarifs" style={{ background: "#fff", borderTop: `1px solid ${V.bord}`,
-                        borderBottom: `1px solid ${V.bord}` }}>
+      <section id="tarifs" style={{
+        background: `radial-gradient(900px 420px at 80% -10%, rgba(37,99,235,.28), transparent 60%),
+                     radial-gradient(600px 340px at 5% 100%, rgba(217,119,6,.12), transparent 55%),
+                     ${V.nuit}`,
+        color: "#fff",
+        backgroundImage: undefined }}>
         <div style={{ maxWidth: 1080, margin: "0 auto",
                       padding: "clamp(44px, 6vw, 70px) 20px", display: "grid",
                       gap: 36, alignItems: "center",
@@ -238,10 +249,10 @@ export default function Landing({ aller, orgId }) {
           <div>
             <Etiquette numero="3 offres" libelle="vous montez quand vous grandissez" />
             <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
-                                               margin: "14px 0 0" }}>
+                                               margin: "14px 0 0", color: "#fff" }}>
               Une offre par taille d'entreprise.
             </h2>
-            <p style={{ fontSize: 15, color: V.muet, lineHeight: 1.6,
+            <p style={{ fontSize: 15, color: "rgba(255,255,255,.66)", lineHeight: 1.6,
                         margin: "12px 0 0", maxWidth: "48ch" }}>
               Un prix par entreprise, pas par utilisateur. Vous changez d'offre
               quand votre équipe grandit — et vos données vous suivent : rien
@@ -254,143 +265,34 @@ export default function Landing({ aller, orgId }) {
                 "Vos données cloisonnées, hébergées en Europe",
                 "Exportables à tout moment, même après résiliation"].map((x) => (
                 <li key={x} style={{ display: "flex", gap: 10, fontSize: 14,
-                                     color: V.encre }}>
-                  <span style={{ color: V.route, fontWeight: 800 }}>✓</span>{x}
+                                     color: "rgba(255,255,255,.82)" }}>
+                  <span style={{ color: "#60A5FA", fontWeight: 800 }}>✓</span>{x}
                 </li>
               ))}
             </ul>
           </div>
-
-          <div style={{ display: "grid", gap: 16,
-                        gridTemplateColumns: "repeat(auto-fit, minmax(min(230px, 100%), 1fr))",
+          <div style={{ display: "grid", gap: 18,
+                        gridTemplateColumns: "repeat(auto-fit, minmax(min(250px, 100%), 1fr))",
                         gridColumn: "1 / -1" }}>
-            {PLANS.map((p) => {
+            {PLANS.map((p, i) => {
               const ouverte = planDisponible(p.cle);
-              const gains = gainSurPrecedent(p.cle).filter((c) => module(c)?.livre);
-              const aVenir = modulesAVenir(p.cle);
-              const vedette = p.recommande && ouverte;
+              const gains = gainSurPrecedent(p.cle)
+                .filter((c) => module(c)?.livre)
+                .map((c) => ({ cle: c, titre: module(c).titre }));
+              const aVenir = modulesAVenir(p.cle)
+                .map((c) => ({ cle: c, titre: module(c).titre }));
               return (
-                <div key={p.cle} style={{
-                  position: "relative", borderRadius: 22, padding: "26px 22px",
-                  overflow: "hidden",
-                  // La vedette est en nuit (contraste fort) ; les autres en blanc.
-                  background: vedette
-                    ? `linear-gradient(180deg, ${V.nuitDouce}, ${V.nuit})`
-                    : "#fff",
-                  color: vedette ? "#fff" : V.encre,
-                  border: vedette ? "1px solid rgba(147,197,253,.28)"
-                                  : `1px solid ${V.bord}`,
-                  borderStyle: ouverte ? "solid" : "dashed",
-                  opacity: ouverte ? 1 : .78,
-                  boxShadow: vedette
-                    ? "0 30px 70px -24px rgba(37,99,235,.55)"
-                    : "0 2px 10px rgba(15,23,42,.05)",
-                  transform: vedette ? "translateY(-6px)" : "none",
-                }}>
-                  {/* Lueur d'accent en haut de la carte vedette. */}
-                  {vedette && (
-                    <div aria-hidden style={{ position: "absolute", inset: "-40% -20% auto -20%",
-                      height: 180, pointerEvents: "none",
-                      background: "radial-gradient(60% 80% at 50% 0%, rgba(37,99,235,.35), transparent 70%)" }} />
-                  )}
-
-                  <div style={{ position: "relative", display: "flex",
-                                alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700,
-                      letterSpacing: ".14em", textTransform: "uppercase",
-                      color: vedette ? "#93C5FD" : V.muet }}>{p.nom}</span>
-                    {vedette && (
-                      <span style={{ fontSize: 10, fontWeight: 800, color: "#fff",
-                        background: V.route, borderRadius: 999, padding: "3px 10px",
-                        letterSpacing: ".04em", textTransform: "uppercase",
-                        boxShadow: "0 6px 16px rgba(37,99,235,.5)" }}>Le plus choisi</span>
-                    )}
-                    {!ouverte && (
-                      <span style={{ fontSize: 10.5, fontWeight: 700,
-                        color: V.muet, background: "#F1F5F9", borderRadius: 999,
-                        padding: "2px 8px" }}>bientôt</span>
-                    )}
-                  </div>
-
-                  <div style={{ position: "relative", margin: "16px 0 2px",
-                                display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <span className="v-display" style={{ fontSize: 46,
-                      color: vedette ? "#fff" : V.encre }}>
-                      {Math.round(p.prix_centimes / 100)}
-                    </span>
-                    <span className="v-display" style={{ fontSize: 22,
-                      color: vedette ? "#93C5FD" : V.muet }}>€</span>
-                    <span style={{ fontSize: 12, marginLeft: 4,
-                      color: vedette ? "rgba(255,255,255,.6)" : V.muet }}>
-                      HTVA / mois
-                    </span>
-                  </div>
-                  <div style={{ position: "relative", fontSize: 12,
-                    color: vedette ? "rgba(255,255,255,.55)" : V.muet }}>
-                    {p.utilisateurs
-                      ? `Jusqu'à ${p.utilisateurs} utilisateur${p.utilisateurs > 1 ? "s" : ""}`
-                      : "Sans limite d'utilisateurs"}
-                  </div>
-
-                  <div style={{ position: "relative", fontSize: 14, marginTop: 14,
-                    lineHeight: 1.45, fontWeight: 700,
-                    color: vedette ? "#fff" : V.encre }}>
-                    {p.promesse}
-                  </div>
-                  <div style={{ position: "relative", fontSize: 12.5, marginTop: 6,
-                    lineHeight: 1.5, color: vedette ? "rgba(255,255,255,.62)" : V.muet }}>
-                    {p.pour}
-                  </div>
-
-                  <div style={{ position: "relative", height: 1, margin: "16px 0",
-                    background: vedette ? "rgba(255,255,255,.12)" : V.bord }} />
-
-                  <ul style={{ position: "relative", margin: 0, padding: 0,
-                               listStyle: "none", display: "grid", gap: 8 }}>
-                    {PLANS.indexOf(p) === 0 ? (
-                      <li style={{ fontSize: 12.5, display: "flex", gap: 8,
-                        color: vedette ? "#fff" : V.encre }}>
-                        <span style={{ color: V.routeVif, fontWeight: 800 }}>✓</span>
-                        Dossiers, relevé, devis, offre, planning, terrain,
-                        véhicules et facturation
-                      </li>
-                    ) : (
-                      <li style={{ fontSize: 11.5, marginBottom: 2,
-                        color: vedette ? "#93C5FD" : V.muet }}>
-                        Tout {PLANS[PLANS.indexOf(p) - 1].nom}, plus :
-                      </li>
-                    )}
-                    {gains.map((c) => (
-                      <li key={c} style={{ fontSize: 12.5, display: "flex", gap: 8,
-                        color: vedette ? "#fff" : V.encre }}>
-                        <span style={{ color: V.routeVif, fontWeight: 800 }}>✓</span>
-                        {module(c).titre}
-                      </li>
-                    ))}
-                    {aVenir.map((c) => (
-                      <li key={c} style={{ fontSize: 12, display: "flex", gap: 8,
-                        color: vedette ? "rgba(255,255,255,.5)" : V.brume }}>
-                        <span>◦</span>{module(c).titre}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {ouverte ? (
-                    <button
-                      className={vedette ? "v-btn v-btn-plein" : "v-btn v-btn-blanc"}
-                      style={{ position: "relative", width: "100%", marginTop: 20,
-                               ...(vedette ? { background: "#fff", color: V.route,
-                                               boxShadow: "0 10px 30px rgba(0,0,0,.3)" } : {}) }}
-                      onClick={() => aller("societe")}>
-                      {`Essayer ${ESSAI_JOURS} jours`}
-                    </button>
-                  ) : (
-                    <div style={{ position: "relative", fontSize: 11.5, marginTop: 20,
-                      lineHeight: 1.5, color: V.muet }}>
-                      {plan(p.cle).verrou_motif}
-                    </div>
-                  )}
-                </div>
+                <CarteAbonnement key={p.cle}
+                  plan={p}
+                  vedette={p.recommande && ouverte}
+                  ouverte={ouverte}
+                  gains={gains}
+                  aVenir={aVenir}
+                  socle={i === 0 ? SOCLE_LISIBLE : null}
+                  heritage={i === 0 ? null : PLANS[i - 1].nom}
+                  essaiJours={ESSAI_JOURS}
+                  verrouMotif={plan(p.cle).verrou_motif}
+                  onSouscrire={() => aller("societe")} />
               );
             })}
           </div>
