@@ -25,10 +25,14 @@ function fichiers(dossier, ext, acc = []) {
   return acc;
 }
 
-/** Tous les noms exportés par le domaine ET par l'adaptateur. */
+/** Tous les noms exportés par le domaine ET par les modules de `lib`. */
 function exportsDomaine() {
   const noms = new Set();
-  const sources = [...fichiers(SRC_DOMAINE, ".js"), join(SRC_APP, "lib/adaptateur.js")];
+  // `lib` en entier, et pas seulement l'adaptateur : un symbole exporté par
+  // apparence.js et oublié à l'import produit le même écran blanc. Le cas s'est
+  // produit avec couleurUtilite, invisible tant que ce test ne connaissait que
+  // le domaine et l'adaptateur.
+  const sources = [...fichiers(SRC_DOMAINE, ".js"), ...fichiers(join(SRC_APP, "lib"), ".js")];
   for (const f of sources) {
     const src = readFileSync(f, "utf8");
     for (const m of src.matchAll(/^export\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/gm)) {
