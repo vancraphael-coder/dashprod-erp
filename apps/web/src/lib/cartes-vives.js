@@ -20,7 +20,7 @@
 const ID = "cartes-vives";
 const INCLINAISON = 6;      // degrés — au-delà, un tableau de bord donne le tournis
 
-export function installerCartesVives(actif, accentRgb = "37,99,235") {
+export function installerCartesVives(actif, accentRgb = "37,99,235", verre = false) {
   if (typeof document === "undefined") return;
 
   const ancienne = document.getElementById(ID);
@@ -81,7 +81,7 @@ export function installerCartesVives(actif, accentRgb = "37,99,235") {
       carte.style.setProperty("--carte-my", `${y}px`);
       carte.style.setProperty("--carte-rx", `${(-ny * INCLINAISON).toFixed(2)}deg`);
       carte.style.setProperty("--carte-ry", `${(nx * INCLINAISON).toFixed(2)}deg`);
-      carte.style.setProperty("--carte-lueur", ".13");
+      carte.style.setProperty("--carte-lueur", verre ? ".22" : ".13");
     });
   }
 

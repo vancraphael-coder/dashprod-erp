@@ -30,11 +30,18 @@ export const ACCENTS = Object.freeze([
     voileClair: "#F1F5F9", voileNuit: "rgba(148,163,184,.16)" },
 ]);
 
-/** La matière des cartes : du plus sobre au plus marqué. */
-export const MATIERES = Object.freeze([
-  { cle: "plat", nom: "Plat", resume: "Un simple filet, aucune ombre." },
+/** La PROFONDEUR : à quel point la carte se détache du fond. */
+export const PROFONDEURS = Object.freeze([
+  { cle: "plat", nom: "Plate", resume: "Un simple filet, aucune ombre." },
   { cle: "relief", nom: "Relief", resume: "Ombre douce — le réglage d'origine." },
-  { cle: "verre", nom: "Verre", resume: "Surface translucide et lumière rasante, comme le site." },
+  { cle: "flottant", nom: "Flottante", resume: "Ombre portée large, la carte décolle." },
+]);
+
+/** La MATIÈRE : de quoi la carte est faite. */
+export const MATIERES = Object.freeze([
+  { cle: "pleine", nom: "Pleine", resume: "Surface opaque, franche et lisible." },
+  { cle: "verre", nom: "Verre",
+    resume: "Surface translucide qui retient votre couleur d'accent, et la fait glisser sous la souris." },
 ]);
 
 export const MODES = Object.freeze([
@@ -43,7 +50,9 @@ export const MODES = Object.freeze([
 ]);
 
 export const APPARENCE_DEFAUT = Object.freeze({
-  mode: "clair", accent: "route", matiere: "relief", rayon: 14, relief: true,
+  mode: "clair", accent: "route",
+  profondeur: "relief", matiere: "pleine",
+  rayon: 14, relief: true,
   couleurs: {},   // surcharges par utilité (voir UTILITES ci-dessous)
 });
 
@@ -112,8 +121,20 @@ export function lireApparence() {
   try {
     const brut = localStorage.getItem(CLE);
     if (!brut) return { ...APPARENCE_DEFAUT };
-    return { ...APPARENCE_DEFAUT, ...JSON.parse(brut) };
+    return convertirAncien({ ...APPARENCE_DEFAUT, ...JSON.parse(brut) });
   } catch { return { ...APPARENCE_DEFAUT }; }
+}
+
+/**
+ * Profondeur et matière étaient un seul réglage (plat / relief / verre). On
+ * traduit l'ancien choix vers les deux axes, pour ne pas réinitialiser en
+ * silence le réglage de quelqu'un.
+ */
+function convertirAncien(a) {
+  if (a.matiere === "plat") return { ...a, profondeur: "plat", matiere: "pleine" };
+  if (a.matiere === "relief") return { ...a, profondeur: "relief", matiere: "pleine" };
+  if (a.matiere === "verre" && !a.profondeur) return { ...a, profondeur: "relief" };
+  return a;
 }
 
 export function ecrireApparence(a) {
@@ -150,40 +171,56 @@ export function jetons(app) {
 }
 
 /**
- * La matière d'une carte : fond, bordure, ombre. C'est ce qui rapproche l'app
- * du site — le « verre » y reprend la surface translucide et le filet lumineux.
+ * La surface d'une carte : la MATIÈRE (pleine ou verre) donne le fond et les
+ * arêtes, la PROFONDEUR donne l'ombre. Les deux se combinent librement.
+ *
+ * En verre, la couleur d'accent est réellement « emprisonnée » : elle teinte le
+ * fond translucide et l'arête haute, et le moteur des cartes vives la fait
+ * glisser sous la souris (voir cartes-vives.js).
  */
 export function matiereCarte(app, C) {
   const nuit = app.mode === "nuit";
-  if (app.matiere === "plat") {
-    return { background: C.blanc, border: `1px solid ${C.bord}`, boxShadow: "none" };
-  }
-  if (app.matiere === "verre") {
-    return nuit ? {
-      background: "linear-gradient(145deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.015) 100%)",
-      border: "1px solid rgba(255,255,255,.12)",
-      borderTop: "1px solid rgba(255,255,255,.28)",
-      backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)",
-      boxShadow: "0 22px 46px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.16)",
-    } : {
-      background: "linear-gradient(145deg, rgba(255,255,255,.96), rgba(248,250,255,.86))",
-      border: `1px solid ${C.bord}`,
-      borderTop: "1px solid #fff",
-      backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-      boxShadow: "0 14px 34px -18px rgba(15,23,42,.35), inset 0 1px 0 #fff",
-    };
-  }
-  // relief (défaut) — avec la lumière emprisonnée : un filet clair sur l'arête
-  // haute et un reflet interne, comme si la carte gardait un peu de jour.
-  return nuit ? {
-    background: `linear-gradient(180deg, #182339, ${C.blanc})`,
-    border: `1px solid ${C.bord}`,
-    borderTop: "1px solid rgba(255,255,255,.22)",
-    boxShadow: "0 18px 40px -28px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14)",
-  } : {
-    background: C.blanc, border: `1px solid ${C.bord}`,
-    borderTop: "1px solid #fff",
-    boxShadow: "0 6px 18px -10px rgba(15,23,42,.28), inset 0 1px 0 #fff",
+  const rgb = rgbAccent(app.accent);
+  const verre = app.matiere === "verre";
+
+  // ── La matière : fond + arêtes ─────────────────────────────────────────────
+  const surface = verre
+    ? (nuit ? {
+        background: `linear-gradient(145deg, rgba(${rgb},.14) 0%, rgba(255,255,255,.015) 100%)`,
+        border: `1px solid rgba(${rgb},.24)`,
+        borderTop: "1px solid rgba(255,255,255,.30)",
+        backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)",
+      } : {
+        background: `linear-gradient(145deg, rgba(${rgb},.07) 0%, rgba(255,255,255,.92) 100%)`,
+        border: `1px solid rgba(${rgb},.18)`,
+        borderTop: "1px solid #fff",
+        backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+      })
+    : (nuit ? {
+        background: `linear-gradient(180deg, #182339, ${C.blanc})`,
+        border: `1px solid ${C.bord}`,
+        borderTop: "1px solid rgba(255,255,255,.22)",
+      } : {
+        background: C.blanc,
+        border: `1px solid ${C.bord}`,
+        borderTop: "1px solid #fff",
+      });
+
+  // ── La profondeur : l'ombre portée ────────────────────────────────────────
+  const reflet = nuit ? "inset 0 1px 0 rgba(255,255,255,.14)" : "inset 0 1px 0 #fff";
+  const ombres = {
+    plat: "none",
+    relief: nuit ? "0 18px 40px -28px rgba(0,0,0,.9)"
+                 : "0 6px 18px -10px rgba(15,23,42,.28)",
+    flottant: nuit ? "0 34px 64px -26px rgba(0,0,0,.95)"
+                   : "0 22px 48px -20px rgba(15,23,42,.38)",
+  };
+  const ombre = ombres[app.profondeur] ?? ombres.relief;
+  const lueurVerre = verre ? `, 0 10px 30px -18px rgba(${rgb},.5)` : "";
+
+  return {
+    ...surface,
+    boxShadow: ombre === "none" ? reflet : `${ombre}, ${reflet}${lueurVerre}`,
   };
 }
 

@@ -25,7 +25,8 @@ if (typeof document !== "undefined") {
 }
 
 // Relief 3D et lueur au curseur sur toutes les cartes, en un seul écouteur.
-installerCartesVives(APP.relief !== false, rgbAccent(APP.accent));
+installerCartesVives(APP.relief !== false, rgbAccent(APP.accent),
+                     APP.matiere === "verre");
 
 // Typographie du modèle validé (roovers-mobile) : Fira Sans pour le texte,
 // Fira Code pour les libellés techniques et les montants. Injectées une fois.
