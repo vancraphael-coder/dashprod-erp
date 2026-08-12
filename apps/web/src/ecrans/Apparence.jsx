@@ -12,7 +12,7 @@
 import React, { useState } from "react";
 import { C, S, FC } from "../lib/theme.jsx";
 import {
-  ACCENTS, MATIERES, MODES, APPARENCE_DEFAUT, UTILITES,
+  ACCENTS, MATIERES, PROFONDEURS, MODES, APPARENCE_DEFAUT, UTILITES,
   lireApparence, ecrireApparence, jetons, matiereCarte, accentDe,
   couleurUtilite, ecrireCouleur,
 } from "../lib/apparence.js";
@@ -91,11 +91,15 @@ export default function Apparence({ retour }) {
       </div>
 
       <div style={S.carte}>
-        <label style={{ ...S.label, marginTop: 0 }}>Matière des cartes</label>
+        <label style={{ ...S.label, marginTop: 0 }}>Profondeur</label>
+        <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 10,
+                      lineHeight: 1.5 }}>
+          À quel point les cartes se détachent du fond.
+        </div>
         <div style={{ display: "grid", gap: 8 }}>
-          {MATIERES.map((m) => (
-            <Choix key={m.cle} actif={app.matiere === m.cle} titre={m.nom}
-                   resume={m.resume} onClick={() => maj("matiere", m.cle)} />
+          {PROFONDEURS.map((m) => (
+            <Choix key={m.cle} actif={app.profondeur === m.cle} titre={m.nom}
+                   resume={m.resume} onClick={() => maj("profondeur", m.cle)} />
           ))}
         </div>
 
@@ -107,6 +111,22 @@ export default function Apparence({ retour }) {
           <span style={{ fontFamily: FC, fontSize: 12.5, color: C.encre,
                          minWidth: 44, textAlign: "right" }}>{app.rayon} px</span>
         </div>
+      </div>
+
+      {/* La matière : de quoi la carte est faite. */}
+      <div style={S.carte}>
+        <label style={{ ...S.label, marginTop: 0 }}>Matière des cartes</label>
+        <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 10,
+                      lineHeight: 1.5 }}>
+          Pleine, ou en verre — le verre retient votre couleur d'accent et la
+          fait glisser sous la souris.
+        </div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {MATIERES.map((m) => (
+            <Choix key={m.cle} actif={app.matiere === m.cle} titre={m.nom}
+                   resume={m.resume} onClick={() => maj("matiere", m.cle)} />
+          ))}
+        </div>
 
         <label style={{ display: "flex", alignItems: "flex-start", gap: 10,
                         marginTop: 16, cursor: "pointer" }}>
@@ -115,11 +135,11 @@ export default function Apparence({ retour }) {
                  style={{ marginTop: 2 }} />
           <span>
             <span style={{ display: "block", fontSize: 13.5, fontWeight: 700,
-                           color: C.encre }}>Relief au survol</span>
+                           color: C.encre }}>Mouvement au survol</span>
             <span style={{ display: "block", fontSize: 11.5, color: C.muet,
                            marginTop: 2, lineHeight: 1.45 }}>
-              Les cartes s'inclinent sous la souris et retiennent un halo de
-              lumière. Sans effet au doigt.
+              Les cartes s'inclinent sous la souris et la lumière suit le
+              curseur. Sans effet au doigt.
             </span>
           </span>
         </label>
