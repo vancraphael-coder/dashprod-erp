@@ -141,7 +141,7 @@ export default function Offre({ affaireId, retour, versMail }) {
         {instance && !signee && (
           <div style={{ padding: "12px 13px", borderRadius: 12, marginBottom: 10,
                         background: "#EFF6FF", border: `1px solid ${C.bord}` }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.encre }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#0F172A" }}>
               Faire signer le client
             </div>
             <div style={{ fontSize: 11.5, color: C.muet, marginTop: 3,

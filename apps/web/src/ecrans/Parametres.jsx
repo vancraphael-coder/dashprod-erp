@@ -34,6 +34,7 @@ import {
   reinitialiserMeubles,
 } from "@domaine/stocks/meubles-piece.js";
 import { C, S } from "../lib/theme.jsx";
+import Apparence from "./Apparence.jsx";
 
 const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €";
 
@@ -56,6 +57,9 @@ export default function Parametres({
 
   if (ouvert === "identite" || ouvert === "facturation") {
     return <Identite page={ouvert} retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "apparence") {
+    return <Apparence retour={() => setOuvert(null)} />;
   }
   if (ouvert === "fermetures") {
     return <Fermetures retour={() => setOuvert(null)} />;
@@ -146,6 +150,11 @@ export default function Parametres({
         <Entree icone="📝" titre="Textes des dossiers"
                 resume="Mails, email et PDF d'offre, conditions générales."
                 onClick={versTextes} />
+
+        <Rubrique>Affichage</Rubrique>
+        <Entree icone="🎨" titre="Apparence"
+                resume="Mode clair ou nuit, couleur d'accent, matière des cartes."
+                onClick={() => setOuvert("apparence")} />
 
         <Rubrique>Données</Rubrique>
         <Entree icone="📖" titre="Journal"

@@ -348,7 +348,7 @@ function CoutEmployeur({ ligne, reglage }) {
       {cout.total_centimes ? (
         <div style={{ marginTop: 10, padding: "11px 13px", borderRadius: 11,
                       background: "#EFF6FF", border: `1px solid ${C.bord}`,
-                      fontSize: 12.5, color: C.encre, lineHeight: 1.5 }}>
+                      fontSize: 12.5, color: "#0F172A", lineHeight: 1.5 }}>
           <b>{eur(horaire)} de l'heure</b> — coefficient {cout.coefficient} × le brut.
           <div style={{ fontSize: 11.5, color: C.muet, marginTop: 4 }}>
             C'est ce chiffre, pas le salaire brut, qui doit guider votre barème client.
@@ -372,7 +372,7 @@ function Avertissement() {
     <div style={{ margin: "0 16px 16px", padding: "12px 14px", borderRadius: 12,
                   background: "#EFF6FF", border: `1px solid ${C.bord}`,
                   fontSize: 11.5, color: C.slate || C.muet, lineHeight: 1.55 }}>
-      <b style={{ color: C.encre }}>Ce n'est pas une fiche de paie officielle.</b><br />
+      <b style={{ color: "#0F172A" }}>Ce n'est pas une fiche de paie officielle.</b><br />
       Le brut et les heures viennent de vos chantiers : c'est ce que votre
       secrétariat social vous demande. Le précompte professionnel dépend de la
       situation familiale de chaque salarié et change chaque année ; la fiche

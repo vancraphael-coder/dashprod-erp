@@ -775,7 +775,7 @@ function ZoneReconciliation({ affaire, affaireId, onFait }) {
         <div key={m.id} style={{ marginTop: 10, padding: 11, borderRadius: 10,
           border: "1px solid #FDE68A", background: "#FFFBEB" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: "#0F172A" }}>
               {m.type ? m.type.charAt(0).toUpperCase() + m.type.slice(1) : "Chantier"}
               {m.date ? ` · ${new Date(m.date + "T00:00:00").toLocaleDateString("fr-BE",
                 { day: "numeric", month: "short" })}` : ""}
