@@ -40,7 +40,7 @@ export default function CommandeReseau({ aller }) {
         <h3 className="v-display" style={{ textAlign: "center", fontSize: 24, margin: "8px 0" }}>
           Votre demande est partie sur le réseau.
         </h3>
-        <p style={{ textAlign: "center", color: V.muet, fontSize: 14, lineHeight: 1.6 }}>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,.66)", fontSize: 14, lineHeight: 1.6 }}>
           Les déménageurs inscrits vont la découvrir et vous recontacter. Créez un
           compte pour suivre leurs réponses au même endroit — c'est vivement
           conseillé, mais pas obligatoire.
@@ -85,13 +85,13 @@ export default function CommandeReseau({ aller }) {
                 value={f.description} onChange={set("description")}
                 placeholder="Tout ce qui aide un déménageur à estimer." />
 
-      {err && <div style={{ color: "#B91C1C", fontSize: 13, marginTop: 10 }}>{err}</div>}
+      {err && <div style={{ color: "#FCA5A5", fontSize: 13, marginTop: 10 }}>{err}</div>}
 
       <button className="v-btn v-btn-plein" onClick={envoyer} disabled={envoi}
               style={{ width: "100%", marginTop: 16 }}>
         {envoi ? "Envoi…" : "Envoyer ma demande au réseau"}
       </button>
-      <div style={{ fontSize: 11.5, color: V.brume, textAlign: "center", marginTop: 8 }}>
+      <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.45)", textAlign: "center", marginTop: 8 }}>
         Sans engagement. Aucun compte requis pour envoyer.
       </div>
     </div>
@@ -107,21 +107,28 @@ function Champ({ label, v, on, type = "text" }) {
   );
 }
 
+// Verre dépoli, même matière que les cartes d'abonnement.
 const carte = {
   maxWidth: 720, margin: "0 auto", width: "100%", boxSizing: "border-box",
-  background: "#fff", border: `1px solid ${V.bord}`, borderRadius: 18,
-  padding: "clamp(20px, 4vw, 32px)", boxShadow: "0 30px 60px -40px rgba(0,0,0,.3)",
+  background: "linear-gradient(145deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.015) 100%)",
+  border: "1px solid rgba(255,255,255,.12)",
+  borderTop: "1px solid rgba(255,255,255,.3)",
+  backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)",
+  borderRadius: 22, padding: "clamp(20px, 4vw, 32px)",
+  boxShadow: "0 30px 62px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.18)",
 };
 const lab = {
   display: "block", fontFamily: MONO, fontSize: 10, fontWeight: 700,
-  letterSpacing: ".1em", textTransform: "uppercase", color: V.sangle, marginBottom: 5,
+  letterSpacing: ".1em", textTransform: "uppercase",
+  color: "rgba(255,255,255,.5)", marginBottom: 5,
 };
 const inp = {
   width: "100%", boxSizing: "border-box", padding: "11px 12px",
-  border: `1px solid ${V.bord}`, borderRadius: 10, fontSize: 14, background: "#fff",
+  border: "1px solid rgba(255,255,255,.14)", borderRadius: 10, fontSize: 14,
+  background: "rgba(0,0,0,.3)", color: "#fff",
 };
 const sep = {
   fontFamily: MONO, fontSize: 11, fontWeight: 700, letterSpacing: ".1em",
-  textTransform: "uppercase", color: V.route, margin: "22px 0 4px",
-  borderTop: `1px solid ${V.bord}`, paddingTop: 16,
+  textTransform: "uppercase", color: "#93C5FD", margin: "22px 0 4px",
+  borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 16,
 };

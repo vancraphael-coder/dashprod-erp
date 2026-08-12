@@ -22,6 +22,7 @@ import { avisPublics } from "../../lib/adaptateur.js";
 import CommandeReseau from "./CommandeReseau.jsx";
 import VariateurNav from "./VariateurNav.jsx";
 import CarteAbonnement from "./CarteAbonnement.jsx";
+import PanneauVerre from "./PanneauVerre.jsx";
 
 /** Le socle, dit en clair (plutôt qu'une liste de clés techniques). */
 const SOCLE_LISIBLE = [
@@ -60,15 +61,12 @@ const CHIFFRES = [
 export default function Landing({ aller, orgId }) {
   return (
     <div className="vitrine" style={{ minHeight: "100vh", display: "flex",
-      flexDirection: "column", background: V.ivoire, color: V.encre }}>
+      flexDirection: "column", background: V.nuit, color: "#fff" }}>
       <NavPublique page="accueil" aller={aller} sombre />
 
-      {/* Variateur rotatif : navigation par section, façon molette de précision.
-          Flottant à droite sur grand écran ; masqué sous 900px (le pouce n'a pas
-          la place, la nav classique prend le relais). */}
-      <div className="variateur-flottant">
-        <VariateurNav sections={SECTIONS_NAV(Boolean(orgId))} />
-      </div>
+      {/* Variateur rotatif : boussole de page, rangée en bas à droite.
+          Masquée sous 1100px — au pouce, la nav classique reprend la main. */}
+      <VariateurNav sections={SECTIONS_NAV(Boolean(orgId))} />
 
 
       {/* ── HERO — la nuit du chargement ─────────────────────────────────── */}
@@ -182,7 +180,7 @@ export default function Landing({ aller, orgId }) {
       </section>
 
       <section id="produit" style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
-                        padding: "clamp(40px, 6vw, 70px) 20px 10px" }}>
+                        padding: "clamp(52px, 6vw, 80px) 20px 10px" }}>
         <div style={{ display: "grid", gap: 16,
                       gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
           <Porte
@@ -204,12 +202,13 @@ export default function Landing({ aller, orgId }) {
       <section style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(44px, 6vw, 70px) 20px" }}>
         <div style={{ maxWidth: 560 }}>
-          <Etiquette numero="006 colis" libelle="tout est compté" />
+          <Etiquette numero="006 colis" libelle="tout est compté" sombre />
           <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
                                              margin: "14px 0 0" }}>
             Tout le métier, dans l'ordre du métier.
           </h2>
-          <p style={{ fontSize: 15, color: V.muet, lineHeight: 1.6, margin: "12px 0 0" }}>
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,.62)", lineHeight: 1.6,
+                      margin: "12px 0 0" }}>
             Chaque module reprend là où le précédent s'arrête. Ce que vous saisissez
             une fois — barème, équipe, textes — se retrouve partout, sans ressaisie.
           </p>
@@ -217,20 +216,21 @@ export default function Landing({ aller, orgId }) {
         <div style={{ display: "grid", gap: 14, marginTop: 30,
                       gridTemplateColumns: "repeat(auto-fit, minmax(min(270px, 100%), 1fr))" }}>
           {MODULES.map((m) => (
-            <article key={m.n} className="v-carte v-carte-hover" style={{ padding: 20 }}>
+            <PanneauVerre key={m.n} padding={20}>
               <div style={{ display: "flex", alignItems: "center",
                             justifyContent: "space-between" }}>
                 <span style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 700,
-                               color: V.route }}>{m.n}/006</span>
+                               color: "#60A5FA" }}>{m.n}/006</span>
                 <span aria-hidden="true" style={{ height: 4, width: 42,
-                        borderRadius: 2, background: V.sangleClair }} />
+                        borderRadius: 2, background: "rgba(217,119,6,.55)" }} />
               </div>
               <h3 style={{ fontSize: 16.5, fontWeight: 800, margin: "10px 0 6px",
-                           letterSpacing: "-.01em" }}>{m.t}</h3>
-              <p style={{ fontSize: 13.5, color: V.muet, lineHeight: 1.55, margin: 0 }}>
+                           letterSpacing: "-.01em", color: "#fff" }}>{m.t}</h3>
+              <p style={{ fontSize: 13.5, color: "rgba(255,255,255,.62)",
+                          lineHeight: 1.55, margin: 0 }}>
                 {m.d}
               </p>
-            </article>
+            </PanneauVerre>
           ))}
         </div>
       </section>
@@ -247,7 +247,7 @@ export default function Landing({ aller, orgId }) {
                       gap: 36, alignItems: "center",
                       gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))" }}>
           <div>
-            <Etiquette numero="3 offres" libelle="vous montez quand vous grandissez" />
+            <Etiquette numero="3 offres" libelle="vous montez quand vous grandissez" sombre />
             <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
                                                margin: "14px 0 0", color: "#fff" }}>
               Une offre par taille d'entreprise.
@@ -337,15 +337,15 @@ function SectionAvis({ orgId }) {
   const pleines = Math.round(moyenne);
 
   return (
-    <section id="avis" style={{ background: "#fff", borderTop: `1px solid ${V.bord}`,
+    <section id="avis" style={{ borderTop: "1px solid rgba(255,255,255,.08)",
                       padding: "clamp(44px, 6vw, 76px) 20px" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", textAlign: "center" }}>
         <div style={{ fontSize: 34, letterSpacing: 2, color: "#F59E0B" }}>
           {"★".repeat(pleines)}{"☆".repeat(5 - pleines)}
         </div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: V.encre, marginTop: 6 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginTop: 6 }}>
           {moyenne.toFixed(1)} / 5
-          <span style={{ fontWeight: 500, color: V.muet, fontSize: 14 }}>
+          <span style={{ fontWeight: 500, color: "rgba(255,255,255,.55)", fontSize: 14 }}>
             {" "}· {data.total} avis
           </span>
         </div>
@@ -353,14 +353,13 @@ function SectionAvis({ orgId }) {
                       gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))",
                       gap: 16, marginTop: 28, textAlign: "left" }}>
           {(data.avis || []).slice(0, 6).map((a, i) => (
-            <div key={i} style={{ border: `1px solid ${V.bord}`, borderRadius: 14,
-                                  padding: "16px 18px", background: V.ivoire }}>
+            <PanneauVerre key={i} padding={18} accent="245,158,11">
               <div style={{ color: "#F59E0B", fontSize: 15 }}>
                 {"★".repeat(a.note)}{"☆".repeat(5 - a.note)}
               </div>
-              <p style={{ fontSize: 13.5, color: V.encre, lineHeight: 1.5,
-                          margin: "8px 0 0" }}>« {a.commentaire} »</p>
-            </div>
+              <p style={{ fontSize: 13.5, color: "rgba(255,255,255,.82)",
+                          lineHeight: 1.5, margin: "8px 0 0" }}>« {a.commentaire} »</p>
+            </PanneauVerre>
           ))}
         </div>
       </div>
@@ -370,23 +369,31 @@ function SectionAvis({ orgId }) {
 
 function Porte({ etiquette, titre, texte, action, onClick, pleine = false }) {
   return (
-    <article className="v-carte v-carte-hover"
-             style={{ padding: 22, display: "flex", flexDirection: "column",
-                      borderWidth: pleine ? 2 : 1,
-                      borderColor: pleine ? V.route : V.bord }}>
+    <PanneauVerre padding={22}
+      style={pleine ? {
+        background: "linear-gradient(145deg, rgba(59,130,246,.16) 0%, rgba(255,255,255,.02) 100%)",
+        border: "1px solid rgba(147,197,253,.32)",
+        borderTop: "1px solid rgba(191,219,254,.55)",
+        boxShadow: "0 30px 62px -22px rgba(37,99,235,.5), inset 0 1px 0 rgba(255,255,255,.22)",
+      } : {}}>
       <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700,
-                     letterSpacing: ".12em", color: pleine ? V.route : V.sangle }}>
+                     letterSpacing: ".12em",
+                     color: pleine ? "#93C5FD" : "rgba(217,119,6,.9)" }}>
         {etiquette}
       </span>
       <h3 style={{ fontSize: 19, fontWeight: 800, margin: "8px 0 6px",
-                   letterSpacing: "-.01em" }}>{titre}</h3>
-      <p style={{ fontSize: 13.5, color: V.muet, lineHeight: 1.55,
+                   letterSpacing: "-.01em", color: "#fff" }}>{titre}</h3>
+      <p style={{ fontSize: 13.5, color: "rgba(255,255,255,.62)", lineHeight: 1.55,
                   margin: "0 0 16px", flex: 1 }}>{texte}</p>
       <button onClick={onClick}
-              className={`v-btn ${pleine ? "v-btn-plein" : "v-btn-blanc"}`}
-              style={{ width: "100%", padding: "12px 18px", fontSize: 14 }}>
+        style={{ width: "100%", padding: "12px 18px", fontSize: 14, fontWeight: 700,
+                 borderRadius: 980, cursor: "pointer",
+                 border: pleine ? "none" : "1px solid rgba(255,255,255,.18)",
+                 background: pleine ? "#fff" : "rgba(255,255,255,.06)",
+                 color: pleine ? V.route : "#fff",
+                 boxShadow: pleine ? "0 10px 26px rgba(0,0,0,.34)" : "none" }}>
         {action}
       </button>
-    </article>
+    </PanneauVerre>
   );
 }

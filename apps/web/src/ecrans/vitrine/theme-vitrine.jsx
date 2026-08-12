@@ -87,18 +87,24 @@ if (typeof document !== "undefined" && !document.getElementById("vitrine-fonts")
       transform: translateY(-3px);
       box-shadow: 0 16px 40px rgba(15,23,42,.10);
     }
-    /* Variateur rotatif : flottant à droite, dans un socle sombre translucide.
-       Masqué sous 1100px (place au pouce et à la nav classique). */
-    .variateur-flottant {
-      position: fixed; right: 22px; top: 50%; transform: translateY(-50%);
-      z-index: 60; padding: 10px; border-radius: 28px;
-      background: radial-gradient(120% 120% at 50% 0%, rgba(16,28,54,.92), rgba(8,12,22,.92));
-      border: 1px solid rgba(255,255,255,.08);
-      box-shadow: 0 30px 70px -30px rgba(0,0,0,.8);
+    /* Variateur : rangé en bas à droite. Discret au repos, net dès qu'on
+       l'approche ou qu'on l'atteint au clavier. */
+    .variateur {
+      position: fixed; right: 20px; bottom: 20px; z-index: 60;
+      padding: 6px; border-radius: 50%;
+      background: radial-gradient(120% 120% at 50% 0%, rgba(16,28,54,.9), rgba(8,12,22,.92));
+      border: 1px solid rgba(255,255,255,.07);
+      box-shadow: 0 20px 50px -22px rgba(0,0,0,.85);
+      opacity: .55; transform: scale(.92);
+      transition: opacity .35s ease, transform .35s ease, box-shadow .35s ease;
     }
-    @media (max-width: 1100px) { .variateur-flottant { display: none; } }
+    .variateur:hover, .variateur:focus-within {
+      opacity: 1; transform: scale(1);
+      box-shadow: 0 26px 60px -20px rgba(0,0,0,.9);
+    }
+    @media (max-width: 1100px) { .variateur { display: none; } }
     @media (prefers-reduced-motion: reduce) {
-      .variateur-flottant * { transition-duration: .001ms !important; }
+      .variateur, .variateur * { transition-duration: .001ms !important; }
     }
     @keyframes v-lever { from { opacity: 0; transform: translateY(14px); }
                          to { opacity: 1; transform: none; } }
