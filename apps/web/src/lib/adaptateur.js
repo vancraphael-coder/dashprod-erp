@@ -2296,6 +2296,36 @@ export async function avisPublics(orgId) {
   return data;
 }
 
+/** Avis par organisation du réseau (moyenne + verbatims) — vitrine publique. */
+export async function avisReseau() {
+  const { data, error } = await supabase.rpc("cmd_avis_reseau");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Avis des entreprises SUR Dashprod — vitrine publique. */
+export async function avisProduitPublics() {
+  const { data, error } = await supabase.rpc("cmd_avis_produit_publics");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** L'avis de mon organisation sur Dashprod (bureau). */
+export async function avisProduitMien() {
+  const { data, error } = await supabase.rpc("cmd_avis_produit_mien");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Déposer / mettre à jour l'avis de mon organisation sur Dashprod. */
+export async function definirAvisProduit({ note, commentaire, auteur, publiable }) {
+  const { data, error } = await supabase.rpc("cmd_avis_produit_definir", {
+    p_note: note, p_commentaire: commentaire || null,
+    p_auteur: auteur || null, p_publiable: publiable !== false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // ── Inventaire des caisses (privé au client) ─────────────────────────────────
 // Le client remplit le contenu de ses caisses (intime) ; le bureau ne voit que
 // le plan de pose : numéro → pièce → adresse, jamais le contenu.
