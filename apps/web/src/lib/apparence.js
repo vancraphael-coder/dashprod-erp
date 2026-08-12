@@ -43,8 +43,70 @@ export const MODES = Object.freeze([
 ]);
 
 export const APPARENCE_DEFAUT = Object.freeze({
-  mode: "clair", accent: "route", matiere: "relief", rayon: 14,
+  mode: "clair", accent: "route", matiere: "relief", rayon: 14, relief: true,
+  couleurs: {},   // surcharges par utilité (voir UTILITES ci-dessous)
 });
+
+/**
+ * Les couleurs qui PORTENT UN SENS, réglables une par une. Elles ne suivent pas
+ * l'accent : leur rôle est de se distinguer d'un coup d'œil sur un planning ou
+ * une liste. On les regroupe par famille pour que le réglage reste lisible.
+ */
+export const UTILITES = Object.freeze([
+  {
+    cle: "etats", nom: "Statut des dossiers",
+    resume: "La pastille d'état sur les dossiers et les listes.",
+    entrees: [
+      { cle: "brouillon", nom: "Brouillon", defaut: "#94A3B8" },
+      { cle: "devis", nom: "Devis", defaut: "#64748B" },
+      { cle: "confirme", nom: "Confirmé", defaut: "#2563EB" },
+      { cle: "planifie", nom: "Planifié", defaut: "#2563EB" },
+      { cle: "en_cours", nom: "En cours", defaut: "#D97706" },
+      { cle: "effectue", nom: "Effectué", defaut: "#059669" },
+      { cle: "clos", nom: "Clos", defaut: "#94A3B8" },
+      { cle: "annule", nom: "Annulé", defaut: "#DC2626" },
+    ],
+  },
+  {
+    cle: "missions", nom: "Types de travail",
+    resume: "Les cartes du planning et de la fiche terrain.",
+    entrees: [
+      { cle: "demenagement", nom: "Déménagement", defaut: "#16A34A" },
+      { cle: "visite", nom: "Visite", defaut: "#2563EB" },
+      { cle: "emballage", nom: "Emballage", defaut: "#7C3AED" },
+    ],
+  },
+  {
+    cle: "planning", nom: "Planning — disponibilité",
+    resume: "Congés et indisponibilités des membres et des véhicules.",
+    entrees: [
+      { cle: "conge", nom: "Congé approuvé", defaut: "#DC2626" },
+      { cle: "demande", nom: "Congé demandé", defaut: "#D97706" },
+      { cle: "double", nom: "Déjà affecté", defaut: "#D97706" },
+      { cle: "libre", nom: "Disponible", defaut: "#059669" },
+    ],
+  },
+]);
+
+/** La couleur retenue pour une utilité : réglage de la personne, sinon défaut. */
+export function couleurUtilite(app, famille, cle) {
+  const perso = ((app || {}).couleurs || {})[famille] || {};
+  if (perso[cle]) return perso[cle];
+  const f = UTILITES.find((u) => u.cle === famille);
+  return f?.entrees.find((e) => e.cle === cle)?.defaut || "#64748B";
+}
+
+/** Écrit (ou efface, si égal au défaut) une couleur d'utilité. */
+export function ecrireCouleur(app, famille, cle, valeur) {
+  const f = UTILITES.find((u) => u.cle === famille);
+  const defaut = f?.entrees.find((e) => e.cle === cle)?.defaut;
+  const couleurs = { ...(app.couleurs || {}) };
+  const groupe = { ...(couleurs[famille] || {}) };
+  if (!valeur || valeur.toLowerCase() === String(defaut).toLowerCase()) delete groupe[cle];
+  else groupe[cle] = valeur;
+  couleurs[famille] = groupe;
+  return { ...app, couleurs };
+}
 
 export function lireApparence() {
   try {
@@ -111,14 +173,17 @@ export function matiereCarte(app, C) {
       boxShadow: "0 14px 34px -18px rgba(15,23,42,.35), inset 0 1px 0 #fff",
     };
   }
-  // relief (défaut)
+  // relief (défaut) — avec la lumière emprisonnée : un filet clair sur l'arête
+  // haute et un reflet interne, comme si la carte gardait un peu de jour.
   return nuit ? {
     background: `linear-gradient(180deg, #182339, ${C.blanc})`,
     border: `1px solid ${C.bord}`,
-    boxShadow: "0 18px 40px -28px rgba(0,0,0,.9)",
+    borderTop: "1px solid rgba(255,255,255,.22)",
+    boxShadow: "0 18px 40px -28px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.14)",
   } : {
     background: C.blanc, border: `1px solid ${C.bord}`,
-    boxShadow: "0 1px 3px rgba(15,23,42,.05)",
+    borderTop: "1px solid #fff",
+    boxShadow: "0 6px 18px -10px rgba(15,23,42,.28), inset 0 1px 0 #fff",
   };
 }
 
@@ -127,4 +192,11 @@ export function fondPage(app, C) {
   if (app.mode !== "nuit") return C.fond;
   const a = accentDe(app.accent);
   return `radial-gradient(900px 420px at 80% -10%, ${a.voileNuit}, transparent 60%), ${C.fond}`;
+}
+
+/** L'accent en composantes rvb, pour composer des rgba() en CSS. */
+export function rgbAccent(cle) {
+  const h = accentDe(cle).vif.replace("#", "");
+  const n = parseInt(h, 16);
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
 }

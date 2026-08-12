@@ -6,7 +6,8 @@
 // =============================================================================
 
 import React from "react";
-import { lireApparence, jetons, matiereCarte, fondPage } from "./apparence.js";
+import { lireApparence, jetons, matiereCarte, fondPage, rgbAccent } from "./apparence.js";
+import { installerCartesVives } from "./cartes-vives.js";
 
 // Le réglage d'apparence choisi par la personne (mode, accent, matière). Il est
 // lu UNE fois au chargement : les styles étant en ligne, un changement à chaud
@@ -21,6 +22,9 @@ if (typeof document !== "undefined") {
   document.documentElement.style.background = APP.mode === "nuit" ? "#070B18" : "#F4F7FE";
   document.documentElement.style.colorScheme = APP.mode === "nuit" ? "dark" : "light";
 }
+
+// Relief 3D et lueur au curseur sur toutes les cartes, en un seul écouteur.
+installerCartesVives(APP.relief !== false, rgbAccent(APP.accent));
 
 // Typographie du modèle validé (roovers-mobile) : Fira Sans pour le texte,
 // Fira Code pour les libellés techniques et les montants. Injectées une fois.
@@ -38,19 +42,32 @@ if (typeof document !== "undefined" && !document.getElementById("polices-roovers
 // « facture » et « paye » n'en font plus partie (0064) : l'argent a son propre
 // cycle, dérivé des factures. Ils restent listés ici pour d'anciens dossiers.
 export const ETATS_UI = {
-  brouillon: { libelle: "Brouillon", couleur: C.fantome },
-  devis:     { libelle: "Devis",     couleur: C.muet },
-  envoye:    { libelle: "Envoyé",    couleur: C.bleu },
-  confirme:  { libelle: "Confirmé",  couleur: C.bleu },
-  planifie:  { libelle: "Planifié",  couleur: C.bleu },
-  en_cours:  { libelle: "En cours",  couleur: C.ambre },
-  effectue:  { libelle: "Effectué",  couleur: C.vert },
-  facture:   { libelle: "Facturé",   couleur: C.vert },
-  paye:      { libelle: "Payé",      couleur: C.vert },
-  clos:      { libelle: "Clos",      couleur: C.fantome },
-  reporte:   { libelle: "Reporté",   couleur: C.ambre },
-  annule:    { libelle: "Annulé",    couleur: C.rouge },
+  brouillon: { libelle: "Brouillon", couleur: couleurUtilite(APP, "etats", "brouillon") },
+  devis:     { libelle: "Devis",     couleur: couleurUtilite(APP, "etats", "devis") },
+  envoye:    { libelle: "Envoyé",    couleur: couleurUtilite(APP, "etats", "confirme") },
+  confirme:  { libelle: "Confirmé",  couleur: couleurUtilite(APP, "etats", "confirme") },
+  planifie:  { libelle: "Planifié",  couleur: couleurUtilite(APP, "etats", "planifie") },
+  en_cours:  { libelle: "En cours",  couleur: couleurUtilite(APP, "etats", "en_cours") },
+  effectue:  { libelle: "Effectué",  couleur: couleurUtilite(APP, "etats", "effectue") },
+  facture:   { libelle: "Facturé",   couleur: couleurUtilite(APP, "etats", "effectue") },
+  paye:      { libelle: "Payé",      couleur: couleurUtilite(APP, "etats", "effectue") },
+  clos:      { libelle: "Clos",      couleur: couleurUtilite(APP, "etats", "clos") },
+  reporte:   { libelle: "Reporté",   couleur: couleurUtilite(APP, "etats", "en_cours") },
+  annule:    { libelle: "Annulé",    couleur: couleurUtilite(APP, "etats", "annule") },
 };
+
+/**
+ * Couleur d'un TYPE DE TRAVAIL (déménagement, visite, emballage), réglable.
+ * Le domaine garde sa couleur par défaut ; ici on applique le choix de l'app.
+ */
+export function couleurMission(type) {
+  return couleurUtilite(APP, "missions", type);
+}
+
+/** Couleur d'un état de DISPONIBILITÉ au planning (congé, double, libre). */
+export function couleurPlanning(cle) {
+  return couleurUtilite(APP, "planning", cle);
+}
 
 // ── Le CYCLE DE FACTURATION : où en est l'argent ─────────────────────────────
 // Dérivé en base par etat_facturation() — jamais stocké, donc jamais en
@@ -113,6 +130,8 @@ export const S = {
   titre: { fontSize: 19, fontWeight: 800, color: C.encre, fontFamily: FS,
            letterSpacing: "-.01em" },
   carte: { borderRadius: APP.rayon, padding: 16, margin: "0 16px 12px",
+           // Marqueur du moteur « cartes vives » (relief 3D + lueur au curseur).
+           "--carte-vive": 1,
            ...matiereCarte(APP, C) },
   label: { display: "block", fontSize: 10.5, fontWeight: 700, color: C.muet,
            textTransform: "uppercase", letterSpacing: ".05em", fontFamily: FC,
