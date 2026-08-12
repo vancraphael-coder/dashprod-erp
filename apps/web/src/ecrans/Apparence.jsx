@@ -11,6 +11,7 @@
 
 import React, { useState } from "react";
 import { C, S, FC } from "../lib/theme.jsx";
+import MolettesCouleur from "./MolettesCouleur.jsx";
 import {
   ACCENTS, MATIERES, PROFONDEURS, MODES, APPARENCE_DEFAUT, UTILITES,
   lireApparence, ecrireApparence, jetons, matiereCarte, accentDe,
@@ -23,6 +24,7 @@ export default function Apparence({ retour }) {
   const modifie = JSON.stringify(app) !== JSON.stringify(initial);
 
   const maj = (cle, val) => setApp((a) => ({ ...a, [cle]: val }));
+  const acc = accentDe(app.accent);
 
   function appliquer() {
     ecrireApparence(app);
@@ -63,30 +65,38 @@ export default function Apparence({ retour }) {
 
       <div style={S.carte}>
         <label style={{ ...S.label, marginTop: 0 }}>Couleur d'accent</label>
-        <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 10,
+        <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 14,
                       lineHeight: 1.5 }}>
           Elle habille les boutons, les liens et les éléments actifs. Les couleurs
           de sens — vert « effectué », rouge « en retard » — ne changent pas.
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {ACCENTS.map((a) => {
-            const actif = app.accent === a.cle;
+
+        {/* Deux molettes : la teinte à gauche, le dégradé à droite, l'aperçu
+            au milieu. Toutes les couleurs sont atteignables. */}
+        <MolettesCouleur
+          teinte={acc.teinte} degrade={acc.degrade} accent={acc}
+          onChange={(d) => maj("accent", {
+            teinte: d.teinte ?? acc.teinte,
+            degrade: d.degrade ?? acc.degrade,
+          })} />
+
+        <label style={S.label}>Départs rapides</label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {ACCENTS.map((p) => {
+            const c = accentDe(p.cle);
+            const choisi = acc.teinte === p.teinte && acc.degrade === p.degrade;
             return (
-              <button key={a.cle} onClick={() => maj("accent", a.cle)}
-                title={a.nom} aria-label={a.nom} aria-pressed={actif}
-                style={{ width: 46, height: 46, borderRadius: 14, cursor: "pointer",
-                  background: `linear-gradient(135deg, ${a.vif}, ${a.fonce})`,
-                  border: actif ? `3px solid ${C.encre}` : `1px solid ${C.bord}`,
-                  boxShadow: actif ? `0 6px 18px -6px ${a.vif}` : "none",
+              <button key={p.cle} onClick={() => maj("accent", p.cle)}
+                title={p.nom} aria-label={p.nom} aria-pressed={choisi}
+                style={{ width: 34, height: 34, borderRadius: 11, cursor: "pointer",
+                  background: `linear-gradient(135deg, ${c.vif}, ${c.fonce})`,
+                  border: choisi ? `3px solid ${C.encre}` : `1px solid ${C.bord}`,
                   display: "grid", placeItems: "center", color: "#fff",
-                  fontSize: 16, fontWeight: 800 }}>
-                {actif ? "✓" : ""}
+                  fontSize: 13, fontWeight: 800 }}>
+                {choisi ? "✓" : ""}
               </button>
             );
           })}
-        </div>
-        <div style={{ fontSize: 12, color: C.encre, marginTop: 8, fontWeight: 600 }}>
-          {accentDe(app.accent).nom}
         </div>
       </div>
 
@@ -107,7 +117,7 @@ export default function Apparence({ retour }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <input type="range" min={6} max={26} step={2} value={app.rayon}
                  onChange={(e) => maj("rayon", Number(e.target.value))}
-                 style={{ flex: 1, accentColor: accentDe(app.accent).vif }} />
+                 style={{ flex: 1, accentColor: acc.vif }} />
           <span style={{ fontFamily: FC, fontSize: 12.5, color: C.encre,
                          minWidth: 44, textAlign: "right" }}>{app.rayon} px</span>
         </div>
