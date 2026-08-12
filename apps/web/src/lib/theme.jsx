@@ -6,7 +6,8 @@
 // =============================================================================
 
 import React from "react";
-import { lireApparence, jetons, matiereCarte, fondPage, rgbAccent } from "./apparence.js";
+import { lireApparence, jetons, matiereCarte, fondPage, rgbAccent, couleurUtilite }
+  from "./apparence.js";
 import { installerCartesVives } from "./cartes-vives.js";
 
 // Le réglage d'apparence choisi par la personne (mode, accent, matière). Il est
