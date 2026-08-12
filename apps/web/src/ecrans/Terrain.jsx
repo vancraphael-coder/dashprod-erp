@@ -19,11 +19,11 @@ import {
   etatPointage, verifierPointage, pausesValides,
 } from "@domaine/operations/pointage.js";
 import { resumeHoraires } from "@domaine/operations/horaires.js";
-import { couleurTypeMission, libelleTypeMission } from "@domaine/operations/missions.js";
+import { libelleTypeMission } from "@domaine/operations/missions.js";
 import RapportChantier from "./RapportChantier.jsx";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlVersAdresse } from "@domaine/communication/brief.js";
-import { C, S, Confirmation } from "../lib/theme.jsx";
+import { C, S, Confirmation, couleurMission } from "../lib/theme.jsx";
 
 function aujourdhui() { return new Date().toISOString().slice(0, 10); }
 
@@ -209,7 +209,7 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
 
   return (
     <div style={{ ...S.carte,
-      borderLeft: `4px solid ${couleurTypeMission(mission.type)}` }}>
+      borderLeft: `4px solid ${couleurMission(mission.type)}` }}>
       {/* Bandeau à valider */}
       {enAttente && (
         <div style={{ margin: "-4px 0 8px", padding: "5px 9px", borderRadius: 8,
@@ -227,8 +227,8 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
           {/* Type de chantier : déménagement vert, visite bleu. */}
           <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase",
             letterSpacing: ".04em", padding: "2px 8px", borderRadius: 999,
-            color: couleurTypeMission(mission.type),
-            background: couleurTypeMission(mission.type) + "1A" }}>
+            color: couleurMission(mission.type),
+            background: couleurMission(mission.type) + "1A" }}>
             {libelleTypeMission(mission.type)}
           </span>
         </div>

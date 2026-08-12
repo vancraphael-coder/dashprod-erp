@@ -12,8 +12,9 @@
 import React, { useState } from "react";
 import { C, S, FC } from "../lib/theme.jsx";
 import {
-  ACCENTS, MATIERES, MODES, APPARENCE_DEFAUT,
+  ACCENTS, MATIERES, MODES, APPARENCE_DEFAUT, UTILITES,
   lireApparence, ecrireApparence, jetons, matiereCarte, accentDe,
+  couleurUtilite, ecrireCouleur,
 } from "../lib/apparence.js";
 
 export default function Apparence({ retour }) {
@@ -106,7 +107,59 @@ export default function Apparence({ retour }) {
           <span style={{ fontFamily: FC, fontSize: 12.5, color: C.encre,
                          minWidth: 44, textAlign: "right" }}>{app.rayon} px</span>
         </div>
+
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10,
+                        marginTop: 16, cursor: "pointer" }}>
+          <input type="checkbox" checked={app.relief !== false}
+                 onChange={(e) => maj("relief", e.target.checked)}
+                 style={{ marginTop: 2 }} />
+          <span>
+            <span style={{ display: "block", fontSize: 13.5, fontWeight: 700,
+                           color: C.encre }}>Relief au survol</span>
+            <span style={{ display: "block", fontSize: 11.5, color: C.muet,
+                           marginTop: 2, lineHeight: 1.45 }}>
+              Les cartes s'inclinent sous la souris et retiennent un halo de
+              lumière. Sans effet au doigt.
+            </span>
+          </span>
+        </label>
       </div>
+
+      {/* Les couleurs qui portent un sens — réglables une par une. */}
+      {UTILITES.map((u) => (
+        <div key={u.cle} style={S.carte}>
+          <label style={{ ...S.label, marginTop: 0 }}>{u.nom}</label>
+          <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 12,
+                        lineHeight: 1.5 }}>{u.resume}</div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {u.entrees.map((e) => {
+              const val = couleurUtilite(app, u.cle, e.cle);
+              const change = val.toLowerCase() !== e.defaut.toLowerCase();
+              return (
+                <div key={e.cle} style={{ display: "flex", alignItems: "center",
+                                          gap: 11 }}>
+                  <input type="color" value={val} aria-label={e.nom}
+                    onChange={(ev) => setApp((a) =>
+                      ecrireCouleur(a, u.cle, e.cle, ev.target.value))}
+                    style={{ width: 40, height: 32, padding: 0, cursor: "pointer",
+                             border: `1px solid ${C.bord}`, borderRadius: 8,
+                             background: "none" }} />
+                  <span style={{ flex: 1, fontSize: 13, color: C.encre }}>{e.nom}</span>
+                  <span style={{ fontFamily: FC, fontSize: 11,
+                                 color: C.fantome }}>{val.toUpperCase()}</span>
+                  {change && (
+                    <button onClick={() => setApp((a) =>
+                      ecrireCouleur(a, u.cle, e.cle, null))}
+                      title="Revenir à la couleur d'origine"
+                      style={{ background: "none", border: "none", cursor: "pointer",
+                               color: C.muet, fontSize: 15, padding: 2 }}>↺</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
 
       <div style={{ margin: "0 16px 12px" }}>
         <button style={{ ...S.boutonPlein, opacity: modifie ? 1 : .5 }}
@@ -181,6 +234,19 @@ function Apercu({ app }) {
           Namur → Liège · 12 juin
         </div>
         <div style={{ height: 1, background: T.bord, margin: "11px 0" }} />
+        {/* Les couleurs de sens, telles qu'elles seront lues sur un planning. */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 11 }}>
+          {[["etats", "effectue", "Effectué"], ["etats", "en_cours", "En cours"],
+            ["missions", "demenagement", "Déménagement"], ["missions", "visite", "Visite"],
+            ["planning", "conge", "Congé"]].map(([f, c, nom]) => {
+            const coul = couleurUtilite(app, f, c);
+            return (
+              <span key={f + c} style={{ fontSize: 10.5, fontWeight: 700,
+                color: coul, background: coul + "22", borderRadius: 999,
+                padding: "3px 9px", border: `1px solid ${coul}55` }}>{nom}</span>
+            );
+          })}
+        </div>
         <div style={{ display: "flex", gap: 8 }}>
           <span style={{ flex: 1, padding: "9px 12px", borderRadius: 10,
             background: `linear-gradient(135deg, ${a.vif}, ${a.fonce})`,
