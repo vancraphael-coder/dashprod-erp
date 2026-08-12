@@ -15,6 +15,7 @@ import {
   listerConges, ajouterConge, supprimerConge, supprimerEquipement, modeDonnees,
 } from "../lib/adaptateur.js";
 import { deconnecter } from "../lib/supabase.js";
+import { avisProduitMien, definirAvisProduit } from "../lib/adaptateur.js";
 import { C, S } from "../lib/theme.jsx";
 
 const ETATS = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
@@ -118,6 +119,10 @@ export default function Profil({ profil, versParametres, versDiagnostic, versDem
           </button>
         </div>
       )}
+
+      {/* Donner son avis sur Dashprod — publiable sur la vitrine si l'entreprise
+          l'accepte. C'est ce qui alimente la section « avis » de la landing. */}
+      {peutConfigurer && modeDonnees() === "reel" && <AvisSurDashprod />}
 
       <div style={{ margin: "0 16px" }}>
         <button onClick={versDiagnostic} style={{ background: "none", border: "none",
@@ -322,5 +327,95 @@ function Conges({ profil }) {
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * L'avis de l'entreprise SUR Dashprod. Note + un mot, et le choix de le rendre
+ * public sur la vitrine. Rien n'est publié sans cette case cochée.
+ */
+function AvisSurDashprod() {
+  const [note, setNote] = useState(0);
+  const [mot, setMot] = useState("");
+  const [auteur, setAuteur] = useState("");
+  const [publiable, setPubliable] = useState(true);
+  const [ouvert, setOuvert] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    avisProduitMien().then((a) => {
+      if (!a?.existe) return;
+      setNote(a.note || 0); setMot(a.commentaire || "");
+      setAuteur(a.auteur || ""); setPubliable(a.publiable !== false);
+    }).catch(() => {});
+  }, []);
+
+  async function envoyer() {
+    setErr(null); setMsg(null);
+    if (!note) { setErr("Choisissez une note."); return; }
+    try {
+      await definirAvisProduit({ note, commentaire: mot, auteur, publiable });
+      setMsg("Merci — votre avis est enregistré.");
+    } catch (e) { setErr(e.message); }
+  }
+
+  if (!ouvert) {
+    return (
+      <div style={{ margin: "12px 16px 0" }}>
+        <button onClick={() => setOuvert(true)} style={{
+          display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
+          border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
+          boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer",
+          textAlign: "left" }}>
+          <span style={{ fontSize: 19 }}>⭐</span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
+              Votre avis sur Dashprod
+            </span>
+            <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
+              {note ? `Vous avez mis ${note}/5` : "Aidez d'autres déménageurs à se décider."}
+            </span>
+          </span>
+          <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ ...S.carte, margin: "12px 16px 0" }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
+        Votre avis sur Dashprod
+      </div>
+      <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} onClick={() => setNote(n)}
+            aria-label={`${n} sur 5`}
+            style={{ border: "none", background: "none", cursor: "pointer",
+                     fontSize: 26, lineHeight: 1, padding: 0,
+                     color: n <= note ? "#F59E0B" : "#D1D5DB" }}>★</button>
+        ))}
+      </div>
+      <textarea value={mot} onChange={(e) => setMot(e.target.value)} rows={3}
+        placeholder="Ce que Dashprod change dans votre quotidien…"
+        style={{ ...S.input, width: "100%", boxSizing: "border-box",
+                 resize: "vertical", minHeight: 60 }} />
+      <label style={S.label}>Signature affichée (facultatif)</label>
+      <input style={S.input} value={auteur} onChange={(e) => setAuteur(e.target.value)}
+             placeholder="Prénom, fonction" />
+      <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12,
+                      fontSize: 13, color: C.encre, cursor: "pointer" }}>
+        <input type="checkbox" checked={publiable}
+               onChange={(e) => setPubliable(e.target.checked)} />
+        Autoriser l'affichage sur le site public
+      </label>
+      {err && <div style={{ fontSize: 12.5, color: C.rouge, marginTop: 8 }}>{err}</div>}
+      {msg && <div style={{ fontSize: 12.5, color: C.vert, marginTop: 8 }}>{msg}</div>}
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <button style={S.boutonPlein} onClick={envoyer}>Enregistrer</button>
+        <button style={S.boutonLien} onClick={() => setOuvert(false)}>Fermer</button>
+      </div>
+    </div>
   );
 }
