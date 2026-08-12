@@ -1,0 +1,7 @@
+-- 0104 — Deux familles d'avis publiables sur la vitrine.
+-- cmd_avis_reseau() : agrège avis_clients par organisation du réseau
+--   (moyenne, total, 2 verbatims). Exécutable anon.
+-- Table avis_produit (org_id PK, note 1-5, commentaire, auteur, publiable) :
+--   l'avis d'une entreprise SUR Dashprod. RLS : chacune ne voit que le sien.
+-- cmd_avis_produit_definir / _mien (bureau) ; cmd_avis_produit_publics (anon).
+-- Rien n'est inventé : sans avis réel, les sections vitrine ne s'affichent pas.
