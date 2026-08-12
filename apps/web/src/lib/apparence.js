@@ -1,3 +1,5 @@
+import { accentDepuisMolettes, hexVersRgb } from "@domaine/noyau/couleurs.js";
+
 // =============================================================================
 // APPARENCE DE L'APP — le réglage visuel de l'espace entreprise.
 //
@@ -16,18 +18,22 @@
 
 const CLE = "dashprod-apparence-v1";
 
-/** Les accents disponibles. Chacun porte sa version foncée et son voile. */
+/**
+ * Les préréglages d'accent — des points de départ, pas une limite. L'accent
+ * réel se choisit sur deux molettes (teinte 0-360 et dégradé 0-100), donc
+ * toutes les couleurs sont atteignables.
+ */
 export const ACCENTS = Object.freeze([
-  { cle: "route", nom: "Bleu route", vif: "#2563EB", fonce: "#1D4ED8",
-    voileClair: "#EFF6FF", voileNuit: "rgba(37,99,235,.16)" },
-  { cle: "phare", nom: "Ambre phare", vif: "#D97706", fonce: "#B45309",
-    voileClair: "#FFFBEB", voileNuit: "rgba(217,119,6,.18)" },
-  { cle: "menthe", nom: "Vert menthe", vif: "#059669", fonce: "#047857",
-    voileClair: "#ECFDF5", voileNuit: "rgba(5,150,105,.18)" },
-  { cle: "aube", nom: "Violet aube", vif: "#7C3AED", fonce: "#6D28D9",
-    voileClair: "#F5F3FF", voileNuit: "rgba(124,58,237,.18)" },
-  { cle: "ardoise", nom: "Ardoise", vif: "#334155", fonce: "#1E293B",
-    voileClair: "#F1F5F9", voileNuit: "rgba(148,163,184,.16)" },
+  { cle: "route", nom: "Bleu route", teinte: 221, degrade: 50 },
+  { cle: "phare", nom: "Ambre phare", teinte: 32, degrade: 57 },
+  { cle: "menthe", nom: "Vert menthe", teinte: 161, degrade: 68 },
+  { cle: "aube", nom: "Violet aube", teinte: 262, degrade: 46 },
+  { cle: "ardoise", nom: "Ardoise", teinte: 215, degrade: 76 },
+  { cle: "brique", nom: "Brique", teinte: 8, degrade: 62 },
+  { cle: "sapin", nom: "Sapin", teinte: 150, degrade: 78 },
+  { cle: "prune", nom: "Prune", teinte: 300, degrade: 66 },
+  { cle: "ocean", nom: "Océan", teinte: 190, degrade: 60 },
+  { cle: "rose", nom: "Rose", teinte: 336, degrade: 52 },
 ]);
 
 /** La PROFONDEUR : à quel point la carte se détache du fond. */
@@ -142,8 +148,19 @@ export function ecrireApparence(a) {
   catch { /* navigation privée : on ne bloque pas */ }
 }
 
-export function accentDe(cle) {
-  return ACCENTS.find((a) => a.cle === cle) || ACCENTS[0];
+/**
+ * L'accent effectif. On accepte deux formes :
+ *  • un réglage complet { teinte, degrade } — le cas courant, molettes libres ;
+ *  • une clé de préréglage ("route", "phare"…) — d'anciens réglages enregistrés.
+ */
+export function accentDe(a) {
+  if (a && typeof a === "object" && a.teinte != null) {
+    return { ...accentDepuisMolettes(a.teinte, a.degrade ?? 50),
+             teinte: a.teinte, degrade: a.degrade ?? 50, nom: "Personnalisée" };
+  }
+  const p = ACCENTS.find((x) => x.cle === a) || ACCENTS[0];
+  return { ...accentDepuisMolettes(p.teinte, p.degrade),
+           teinte: p.teinte, degrade: p.degrade, nom: p.nom };
 }
 
 /**
@@ -232,8 +249,6 @@ export function fondPage(app, C) {
 }
 
 /** L'accent en composantes rvb, pour composer des rgba() en CSS. */
-export function rgbAccent(cle) {
-  const h = accentDe(cle).vif.replace("#", "");
-  const n = parseInt(h, 16);
-  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+export function rgbAccent(a) {
+  return hexVersRgb(accentDe(a).vif);
 }
