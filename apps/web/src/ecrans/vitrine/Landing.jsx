@@ -18,11 +18,14 @@ import {
   planDisponible, REMISE_ANNUELLE_PCT, ESSAI_JOURS, ESSAI_PLAN,
 } from "@domaine/commercial/plans.js";
 import { V, MONO, NavPublique, PiedPublic, Etiquette } from "./theme-vitrine.jsx";
-import { avisPublics } from "../../lib/adaptateur.js";
+import { avisPublics, avisReseau, avisProduitPublics }
+  from "../../lib/adaptateur.js";
 import CommandeReseau from "./CommandeReseau.jsx";
 import VariateurNav from "./VariateurNav.jsx";
 import CarteAbonnement from "./CarteAbonnement.jsx";
 import PanneauVerre from "./PanneauVerre.jsx";
+import PileRotative from "./PileRotative.jsx";
+import { PAGES_DOSSIER, VignetteEcran } from "./PagesDossier.jsx";
 
 /** Le socle, dit en clair (plutôt qu'une liste de clés techniques). */
 const SOCLE_LISIBLE = [
@@ -118,41 +121,14 @@ export default function Landing({ aller, orgId }) {
             </div>
           </div>
 
-          {/* L'étiquette de colisage — la signature de la page. */}
-          <div className="v-lever-2" aria-hidden="true"
-               style={{ justifySelf: "center", width: "min(360px, 100%)" }}>
-            <div style={{ background: V.nuitDouce, borderRadius: 20,
-                          border: `1px solid ${V.bordNuit}`, padding: 22,
-                          transform: "rotate(-1.2deg)",
-                          boxShadow: "0 30px 70px rgba(0,0,0,.4)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between",
-                            alignItems: "center", marginBottom: 14 }}>
-                <span style={{ fontFamily: MONO, fontSize: 11.5, color: V.brume,
-                               letterSpacing: ".08em" }}>LISTE DE COLISAGE</span>
-                <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700,
-                               color: "#fff", background: V.sangle,
-                               padding: "3px 9px", borderRadius: 6 }}>EXPORT</span>
-              </div>
-              {[["001/025", "Salon — buffet chêne, 95 kg"],
-                ["002/025", "Salon — cartons livres × 6"],
-                ["014/025", "Cuisine — vaisselle, fragile"],
-                ["025/025", "Cave — atelier, outillage"]].map(([n, l], i) => (
-                <div key={n} style={{ display: "flex", alignItems: "center", gap: 12,
-                       padding: "10px 2px",
-                       borderTop: i ? `1px solid ${V.bordNuit}` : "none" }}>
-                  <span style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700,
-                                 color: V.routeVif }}>{n}</span>
-                  <span style={{ fontSize: 12.5, color: "rgba(255,255,255,.82)" }}>{l}</span>
-                </div>
-              ))}
-              <div style={{ marginTop: 14, paddingTop: 12,
-                            borderTop: `1px dashed ${V.bordNuit}`,
-                            display: "flex", justifyContent: "space-between",
-                            fontFamily: MONO, fontSize: 12 }}>
-                <span style={{ color: V.brume }}>38,2 m³ · 2 140 kg</span>
-                <span style={{ color: "#fff", fontWeight: 700 }}>✓ Douane OK</span>
-              </div>
-            </div>
+          {/* Les six pages d'un dossier, en pile qui tourne. */}
+          <div style={{ justifySelf: "center", width: "min(380px, 100%)" }}>
+            <PileRotative hauteur={310}
+              libelle="Les six pages d'un dossier"
+              etiquettes={PAGES_DOSSIER.map((p) => p.titre)}
+              items={PAGES_DOSSIER.map((pg) => (
+                <VignetteEcran key={pg.cle} page={pg} />
+              ))} />
           </div>
         </div>
       </section>
@@ -177,6 +153,9 @@ export default function Landing({ aller, orgId }) {
           </p>
         </div>
         <CommandeReseau aller={aller} />
+
+        {/* Ce que les particuliers disent des déménageurs du réseau. */}
+        <AvisDesOrganisations />
       </section>
 
       <section id="produit" style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
@@ -299,6 +278,9 @@ export default function Landing({ aller, orgId }) {
         </div>
       </section>
 
+      {/* Ce que les entreprises disent de Dashprod. */}
+      <AvisDeDashprod />
+
       {/* ── APPEL FINAL ──────────────────────────────────────────────────── */}
       <section id="contact" style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(44px, 6vw, 76px) 20px", textAlign: "center" }}>
@@ -362,6 +344,137 @@ function SectionAvis({ orgId }) {
             </PanneauVerre>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * AVIS DES ORGANISATIONS — ce que les particuliers pensent des déménageurs du
+ * réseau. Une carte par entreprise (note moyenne + verbatims), en pile qui
+ * tourne. Sans avis réel, la section ne s'affiche pas : on n'invente pas.
+ */
+function AvisDesOrganisations() {
+  const [liste, setListe] = useState(null);
+  useEffect(() => {
+    let actif = true;
+    avisReseau().then((d) => { if (actif) setListe(d); }).catch(() => {});
+    return () => { actif = false; };
+  }, []);
+
+  if (!liste || liste.length === 0) return null;
+
+  return (
+    <div style={{ maxWidth: 720, margin: "48px auto 0", width: "100%" }}>
+      <div style={{ textAlign: "center", marginBottom: 22 }}>
+        <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700,
+                      letterSpacing: ".16em", color: "#FFB627",
+                      textTransform: "uppercase" }}>
+          Ils déménagent sur le réseau
+        </div>
+        <h3 className="v-display" style={{ fontSize: "clamp(20px, 2.6vw, 28px)",
+                                           margin: "10px 0 0" }}>
+          Ce que disent leurs clients.
+        </h3>
+      </div>
+
+      <PileRotative hauteur={250} libelle="Avis sur les déménageurs du réseau"
+        etiquettes={liste.map((o) => o.nom)}
+        items={liste.map((o) => (
+          <PanneauVerre key={o.org_id} padding={24} accent="245,158,11">
+            <div style={{ display: "flex", alignItems: "baseline",
+                          justifyContent: "space-between", gap: 10 }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>
+                {o.nom}
+              </span>
+              <span style={{ fontFamily: MONO, fontSize: 11,
+                             color: "rgba(255,255,255,.45)" }}>{o.ville || ""}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10,
+                          marginTop: 8 }}>
+              <span style={{ color: "#F59E0B", fontSize: 16, letterSpacing: 1 }}>
+                {"★".repeat(Math.round(Number(o.moyenne) || 0))}
+                {"☆".repeat(5 - Math.round(Number(o.moyenne) || 0))}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
+                {Number(o.moyenne).toFixed(1)}
+              </span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,.45)" }}>
+                · {o.total} avis
+              </span>
+            </div>
+            <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+              {(o.verbatims || []).map((v, i) => (
+                <p key={i} style={{ margin: 0, fontSize: 13,
+                     color: "rgba(255,255,255,.76)", lineHeight: 1.55 }}>
+                  « {v.commentaire} »
+                </p>
+              ))}
+            </div>
+          </PanneauVerre>
+        ))} />
+    </div>
+  );
+}
+
+/**
+ * AVIS SUR DASHPROD — ce que les entreprises clientes disent du logiciel.
+ * Même mouvement. Sans avis publiable, rien ne s'affiche.
+ */
+function AvisDeDashprod() {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    let actif = true;
+    avisProduitPublics().then((d) => { if (actif) setData(d); }).catch(() => {});
+    return () => { actif = false; };
+  }, []);
+
+  const avis = data?.avis || [];
+  if (!data || !data.total || avis.length === 0) return null;
+  const moyenne = Number(data.moyenne) || 0;
+
+  return (
+    <section style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
+                      padding: "clamp(44px, 6vw, 76px) 20px" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
+        <Etiquette numero={`${moyenne.toFixed(1)} / 5`}
+                   libelle={`sur ${data.total} entreprise${data.total > 1 ? "s" : ""}`}
+                   sombre style={{ marginBottom: 16 }} />
+        <h2 className="v-display" style={{ fontSize: "clamp(24px, 3.4vw, 36px)",
+                                           margin: "0 0 26px" }}>
+          Ce que les déménageurs disent de Dashprod.
+        </h2>
+      </div>
+
+      <div style={{ maxWidth: 640, margin: "0 auto" }}>
+        <PileRotative hauteur={230} libelle="Avis des entreprises sur Dashprod"
+          etiquettes={avis.map((a) => a.entreprise)}
+          items={avis.map((a, i) => (
+            <PanneauVerre key={i} padding={26}>
+              <span style={{ color: "#F59E0B", fontSize: 15, letterSpacing: 1 }}>
+                {"★".repeat(a.note)}{"☆".repeat(5 - a.note)}
+              </span>
+              <p style={{ fontSize: 15, color: "#fff", lineHeight: 1.6,
+                          margin: "12px 0 0", fontWeight: 500 }}>
+                « {a.commentaire} »
+              </p>
+              <div style={{ marginTop: "auto", paddingTop: 16, display: "flex",
+                            alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: "#93C5FD" }}>
+                  {a.entreprise}
+                </span>
+                {a.auteur && (
+                  <span style={{ fontSize: 11.5, color: "rgba(255,255,255,.5)" }}>
+                    — {a.auteur}
+                  </span>
+                )}
+                {a.ville && (
+                  <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 10.5,
+                                 color: "rgba(255,255,255,.35)" }}>{a.ville}</span>
+                )}
+              </div>
+            </PanneauVerre>
+          ))} />
       </div>
     </section>
   );
