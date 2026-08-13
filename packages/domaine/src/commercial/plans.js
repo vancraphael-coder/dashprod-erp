@@ -72,14 +72,14 @@ export const MODULES = Object.freeze([
   { cle: "international", titre: "Déménagement international", livre: true,
     valeur: "Inventaire numéroté colis par colis, liste de colisage douanière, "
           + "poids taxable maritime et aérien calculés juste." },
-  { cle: "multi_depots", titre: "Centres logistiques", livre: false,
+  { cle: "multi_depots", titre: "Centres logistiques", livre: true,
     valeur: "Plusieurs centres, chacun ses équipes, ses véhicules et son "
           + "planning. Un gestionnaire par dépôt, et la direction une vue "
           + "consolidée sur l'ensemble." },
-  { cle: "gestionnaire_depot", titre: "Gestionnaire de dépôt", livre: false,
+  { cle: "gestionnaire_depot", titre: "Gestionnaire de dépôt", livre: true,
     valeur: "Un responsable par centre : il pilote son planning et ses équipes "
           + "sans voir ni toucher aux autres dépôts." },
-  { cle: "stockage_3d", titre: "Stockage et garde-meubles", livre: false,
+  { cle: "stockage_3d", titre: "Stockage et garde-meubles", livre: true,
     valeur: "Plan du dépôt, zones, emplacements : où est le mobilier de qui." },
 ]);
 
@@ -124,10 +124,10 @@ export const PLANS = Object.freeze([
     promesse: "Le circuit complet, du premier appel au paiement",
     pour: "L'entreprise établie, avec une équipe bureau et une ou deux équipes "
         + "terrain.",
-    // L'international a rejoint Regular : tant que Pro est verrouillé, le
-    // laisser là-haut rendrait un module LIVRÉ et testé invendable. Il
-    // remontera si Pro s'ouvre avec sa propre valeur — la logistique
-    // multi-sites, qui se suffit à elle-même.
+    // L'international reste un module de Regular, même Pro ouverte : Pro se
+    // différencie par la logistique multi-sites, qui se suffit à elle-même —
+    // inutile de retirer à Regular une valeur déjà livrée. (À rebasculer en
+    // Pro-only si l'on veut un cran de différenciation supplémentaire.)
     modules: [...modulesSocle(), "signature_client", "espace_client", "peppol",
               "comptabilite", "rapport_chantier", "paie", "journal",
               "international"],
@@ -148,13 +148,11 @@ export const PLANS = Object.freeze([
               "stockage_3d"],
     motif_montee: null,   // dernier palier
 
-    // VERROUILLÉE temporairement (décision de Raphaël, 05/08/2026). Ce qui la
-    // définit — plusieurs centres logistiques avec un gestionnaire par dépôt —
-    // n'est pas construit. On l'annonce sans la vendre : encaisser pour une
-    // promesse est le plus sûr moyen de perdre un client au premier mois.
-    disponible: false,
-    verrou_motif: "Les centres logistiques et les gestionnaires de dépôt sont "
-                + "en construction. Cette offre ouvrira quand ils seront prêts.",
+    // OUVERTE le 13/08/2026. Ce qui la définit — centres logistiques,
+    // gestionnaire de dépôt, stockage — est construit, testé et câblé
+    // (table `centres_logistiques`, cloisonnement RLS, écrans Centres /
+    // Stockage / RapportCentres). La condition posée le 05/08 pour ne pas
+    // « vendre une promesse » est remplie : l'offre devient souscriptible.
   },
 ]);
 
@@ -275,10 +273,10 @@ export const REMISE_ANNUELLE_PCT = 5;
 /** Durée de l'essai, et l'offre sur laquelle il porte. */
 export const ESSAI_JOURS = 5;
 /**
- * L'essai porte sur la meilleure offre SOUSCRIPTIBLE — aujourd'hui Regular,
- * puisque Pro est verrouillée. Faire essayer une offre qu'on ne peut pas
- * acheter ensuite ne crée que de la frustration. La constante suit
- * automatiquement l'ouverture de Pro.
+ * L'essai porte sur la meilleure offre SOUSCRIPTIBLE. Pro étant désormais
+ * ouverte (13/08/2026), l'essai porte sur Pro — comme prévu par ce calcul, qui
+ * suit l'ouverture de l'offre. (Épingler l'essai sur Regular = remplacer par
+ * le plan `recommande` si l'on préfère ne pas faire essayer le haut de gamme.)
  */
 export const ESSAI_PLAN = meilleurPlanDisponible();
 
