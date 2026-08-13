@@ -35,6 +35,25 @@ export default function Bareme({ retour }) {
   /** Une modification réelle : le garde-fou s'arme. */
   function marquerTouche() { setSauve(false); setTouche(true); }
 
+  /** Les tranches du barème des boxes : ajouter, modifier, retirer. */
+  function ajouterTranche() {
+    setParams((p) => ({ ...p,
+      stockage_boxes: [...(p.stockage_boxes || []),
+                       { jusqua_m3: 0, prix_mensuel_centimes: 0 }] }));
+    marquerTouche();
+  }
+  function majTranche(i, cle, v) {
+    setParams((p) => ({ ...p,
+      stockage_boxes: (p.stockage_boxes || []).map((t, j) =>
+        j === i ? { ...t, [cle]: v } : t) }));
+    marquerTouche();
+  }
+  function retirerTranche(i) {
+    setParams((p) => ({ ...p,
+      stockage_boxes: (p.stockage_boxes || []).filter((_, j) => j !== i) }));
+    marquerTouche();
+  }
+
   // Garde de modifications — AVANT tout return conditionnel (règle des hooks).
   // Toute navigation, y compris la flèche retour, demandera d'abord
   // « Enregistrer / Annuler les modifications ».
@@ -150,6 +169,44 @@ export default function Bareme({ retour }) {
         ))}
         <button onClick={ajouter} style={{ ...S.boutonLien, paddingLeft: 0 }}>
           + Ajouter un supplément
+        </button>
+      </Section>
+
+      {/* Le prix des boxes de stockage : des tranches de volume. C'est ce
+          barème qui s'applique, sans négociation, quand on loue un box.
+          (Les ZONES, elles, se négocient au contrat — rien à régler ici.) */}
+      <Section titre="Boxes de stockage (HTVA / mois)">
+        <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 10,
+                      lineHeight: 1.5 }}>
+          Un box est facturé selon son volume : on retient la première tranche
+          qui le couvre. Un box plus grand que votre dernière tranche sera
+          signalé « hors barème » plutôt que facturé au hasard.
+        </div>
+        {(params.stockage_boxes || []).map((t, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-end",
+                                marginBottom: 8 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ ...S.label, marginTop: 0 }}>Jusqu'à (m³)</label>
+              <input style={S.input} type="number" inputMode="decimal"
+                     value={t.jusqua_m3 ?? ""}
+                     onChange={(e) => majTranche(i, "jusqua_m3", Number(e.target.value) || 0)} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ ...S.label, marginTop: 0 }}>Prix / mois (€)</label>
+              <input style={S.input} type="number" inputMode="decimal"
+                     value={t.prix_mensuel_centimes != null
+                            ? (t.prix_mensuel_centimes / 100) : ""}
+                     onChange={(e) => majTranche(i, "prix_mensuel_centimes",
+                       Math.round((Number(e.target.value) || 0) * 100))} />
+            </div>
+            <button onClick={() => retirerTranche(i)}
+                    style={{ ...S.boutonLien, color: C.rouge, paddingBottom: 12 }}>
+              ✕
+            </button>
+          </div>
+        ))}
+        <button onClick={ajouterTranche} style={{ ...S.boutonLien, paddingLeft: 0 }}>
+          + Ajouter une tranche
         </button>
       </Section>
 

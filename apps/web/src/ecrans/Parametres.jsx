@@ -35,6 +35,8 @@ import {
 } from "@domaine/stocks/meubles-piece.js";
 import { C, S } from "../lib/theme.jsx";
 import Apparence from "./Apparence.jsx";
+import Stockage from "./Stockage.jsx";
+import Depots from "./Depots.jsx";
 
 const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €";
 
@@ -57,6 +59,12 @@ export default function Parametres({
 
   if (ouvert === "identite" || ouvert === "facturation") {
     return <Identite page={ouvert} retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "stockage") {
+    return <Stockage retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "depots") {
+    return <Depots retour={() => setOuvert(null)} />;
   }
   if (ouvert === "apparence") {
     return <Apparence retour={() => setOuvert(null)} />;
@@ -150,6 +158,14 @@ export default function Parametres({
         <Entree icone="📝" titre="Textes des dossiers"
                 resume="Mails, email et PDF d'offre, conditions générales."
                 onClick={versTextes} />
+
+        <Rubrique>Logistique</Rubrique>
+        <Entree icone="🏭" titre="Centres logistiques"
+                resume="Vos dépôts, leurs équipes et leurs véhicules."
+                onClick={() => setOuvert("depots")} />
+        <Entree icone="📦" titre="Stockage"
+                resume="Zones au sol ou à étages, boxes numérotés, occupation."
+                onClick={() => setOuvert("stockage")} />
 
         <Rubrique>Affichage</Rubrique>
         <Entree icone="🎨" titre="Apparence"
