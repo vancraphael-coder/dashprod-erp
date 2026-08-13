@@ -1,0 +1,6 @@
+-- 0105 — Centres logistiques (module Pro « multi_depots » + « gestionnaire_depot »).
+-- Table depots ; colonnes depot_id NULLABLES sur utilisateurs, vehicules, affaires
+--   (nullable = « toute l'entreprise » : les clients mono-dépôt ne changent rien).
+-- Capacité gerer_depot ; rôle gestion_depot créé pour chaque organisation.
+-- jwt_depot() / peut_voir_depot() : le cloisonnement par centre.
+-- cmd_depots / cmd_depot_definir / cmd_depot_rattacher. Corps exact en base.

@@ -1,0 +1,5 @@
+-- 0107 — Commandes du stockage.
+-- cmd_stock_zones / cmd_stock_boxes (avec occupation et client occupant)
+-- cmd_stock_zone_definir / cmd_stock_box_definir / cmd_stock_supprimer
+--   (suppression refusée si un contrat actif porte encore dessus)
+-- cmd_stock_contrat_definir (zone sans tarif = refus) / cmd_stock_contrats.

@@ -1,0 +1,5 @@
+-- 0106 — Stockage : zones, boxes, contrats.
+-- stock_zones (type sol | sol_etages, surface, hauteur, niveaux)
+-- stock_boxes (numero, volume_m3, niveau, zone facultative)
+-- stock_contrats (nature zone|box, periode, debut/fin, tarif négocié pour les
+--   zones) + stock_contrat_lignes (les cibles). RLS org + cloisonnement dépôt.
