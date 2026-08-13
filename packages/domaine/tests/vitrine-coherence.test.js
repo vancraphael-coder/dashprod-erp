@@ -32,11 +32,15 @@ test("la vitrine ne promet nulle part « illimité »", () => {
     "aucune offre souscriptible n'a d'utilisateurs illimités");
 });
 
-test("aucune offre souscriptible n'est réellement illimitée", () => {
-  // Le test précédent n'aurait aucun sens si l'une l'était.
+test("une offre PLAFONNÉE affiche toujours son nombre d'utilisateurs", () => {
+  // Le bug d'origine : promettre « illimité » sur une offre en réalité
+  // plafonnée. Une offre RÉELLEMENT sans limite (utilisateurs: null) est
+  // honnête — c'est le cas de Pro. Ce qui reste interdit, c'est une offre
+  // plafonnée présentée sans son nombre.
   for (const p of plansDisponibles()) {
-    assert.ok(p.utilisateurs != null,
-      `${p.cle} est vendue comme limitée : la vitrine doit le dire`);
+    if (p.utilisateurs == null) continue;   // sans limite assumée : honnête
+    assert.ok(Number.isInteger(p.utilisateurs) && p.utilisateurs > 0,
+      `${p.cle} est plafonnée : la vitrine doit afficher son nombre`);
   }
 });
 

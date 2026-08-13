@@ -84,37 +84,40 @@ test("Peppol n'est pas dans Starter — c'est ce qui force le B2B à monter", ()
   assert.equal(planOuvre("regular", "peppol"), true);
 });
 
-test("l'international est vendu dès Regular tant que Pro est verrouillée", () => {
-  // Il est LIVRÉ et testé : le laisser dans une offre qu'on ne peut pas
-  // souscrire le rendrait invendable.
+test("l'international reste un module de Regular, Pro ouverte", () => {
+  // Choix assumé : Pro se différencie par la logistique multi-sites, pas en
+  // retirant à Regular une valeur déjà livrée.
   assert.equal(planOuvre("regular", "international"), true);
   assert.equal(planMinimalPour("international"), "regular");
 });
 
 test("une offre VENDUE ne repose jamais uniquement sur des promesses", () => {
-  // La règle vaut pour ce qu'on encaisse. Pro est annoncée mais VERROUILLÉE
-  // précisément parce que ce qui la définit n'est pas construit — c'est la
-  // manière honnête de tenir la règle plutôt que de la contourner.
+  // La règle vaut pour ce qu'on encaisse : toute offre souscriptible doit
+  // apporter au moins un module réellement livré par rapport à la précédente.
   for (const p of plansDisponibles()) {
     if (PLANS.indexOf(p) === 0) continue;
     const nouveautes = gainSurPrecedent(p.cle).filter((c) => module(c)?.livre);
     assert.ok(nouveautes.length > 0,
       `${p.cle} est vendue sans apporter un seul module livré`);
   }
-  assert.equal(planDisponible("pro"), false, "Pro ne doit pas être souscriptible");
-  assert.ok(plan("pro").verrou_motif, "et le motif du verrou doit être dit");
+  // Pro est ouverte depuis le 13/08/2026 : souscriptible et sans motif de verrou.
+  assert.equal(planDisponible("pro"), true, "Pro doit être souscriptible");
+  assert.ok(!plan("pro").verrou_motif, "et ne plus porter de motif de verrou");
 });
 
-test("Pro n'apporte que du non-livré — d'où le verrou", () => {
-  const livres = gainSurPrecedent("pro").filter((c) => module(c)?.livre);
-  assert.deepEqual(livres, [],
-    "si Pro gagnait un module livré, elle devrait être ouverte à la vente");
+test("ce que Pro apporte de plus est bien livré — d'où l'ouverture", () => {
+  // L'inverse de l'ancienne règle : Pro ne s'ouvre que parce que ce qui la
+  // définit est construit.
+  const gains = gainSurPrecedent("pro");
+  assert.ok(gains.length > 0, "Pro doit apporter quelque chose de plus");
+  for (const c of gains) {
+    assert.equal(module(c)?.livre, true, `${c} vendu dans Pro sans être livré`);
+  }
 });
 
-test("ce qui n'est pas livré est séparé de ce qui l'est", () => {
-  const aVenir = modulesAVenir("pro");
-  assert.ok(aVenir.includes("multi_depots"));
-  assert.equal(modulesUtilisables("pro").includes("multi_depots"), false);
+test("les modules livrés sont utilisables, pas relégués à « à venir »", () => {
+  assert.equal(modulesAVenir("pro").includes("multi_depots"), false);
+  assert.ok(modulesUtilisables("pro").includes("multi_depots"));
   // Aucun plan ne se contente de promesses.
   for (const p of PLANS) {
     assert.ok(modulesUtilisables(p.cle).length >= 8, `${p.cle} trop vide`);
@@ -207,9 +210,10 @@ test("l'annuel est toujours moins cher que douze mensualités", () => {
 
 test("l'essai dure 5 jours, sur la meilleure offre SOUSCRIPTIBLE", () => {
   assert.equal(ESSAI_JOURS, 5);
-  // Faire essayer une offre verrouillée serait une impasse : le client ne
-  // pourrait pas la souscrire à la fin. La constante suit l'ouverture de Pro.
+  // L'essai suit la meilleure offre souscriptible. Pro étant ouverte, il porte
+  // désormais sur Pro.
   assert.equal(ESSAI_PLAN, meilleurPlanDisponible());
+  assert.equal(ESSAI_PLAN, "pro");
   assert.equal(planDisponible(ESSAI_PLAN), true);
   const fin = finEssai(new Date("2026-08-05T10:00:00"));
   assert.equal(fin.toISOString().slice(0, 10), "2026-08-10");
