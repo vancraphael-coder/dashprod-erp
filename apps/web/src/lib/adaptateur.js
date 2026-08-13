@@ -3321,16 +3321,59 @@ export async function demoDemarrer() {
 // CENTRES LOGISTIQUES et STOCKAGE (offre Pro)
 // =============================================================================
 
-/** Les centres de l'entreprise (un gestionnaire ne voit que le sien). */
+/**
+ * Ce à quoi j'ai droit : le plan, les modules ouverts, et mon cadrage
+ * (maison mère ou centre). C'est la base autorise l'accès, pas l'écran —
+ * ceci sert seulement à ne pas montrer une porte fermée.
+ */
+export async function monAcces() {
+  const { data, error } = await supabase.rpc("cmd_mon_acces");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Les centres de l'entreprise (un responsable ne voit que le sien). */
 export async function depots() {
-  const { data, error } = await supabase.rpc("cmd_depots");
+  const { data, error } = await supabase.rpc("cmd_centres");
   if (error) throw new Error(error.message);
   return data || [];
 }
 
+/** La répartition membres / véhicules par centre (maison mère). */
+export async function repartitionCentres() {
+  const { data, error } = await supabase.rpc("cmd_centres_repartition");
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Affecter un membre à un centre, et le nommer responsable (maison mère). */
+export async function affecterMembreCentre(membreId, centreId, responsable) {
+  const { data, error } = await supabase.rpc("cmd_centre_affecter_membre", {
+    p_membre: membreId, p_centre: centreId || null,
+    p_responsable: Boolean(responsable) });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Affecter un véhicule ou un dossier à un centre (maison mère). */
+export async function affecterAuCentre(quoi, id, centreId) {
+  const { data, error } = await supabase.rpc("cmd_centre_affecter", {
+    p_quoi: quoi, p_id: id, p_centre: centreId || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Le compte rendu hebdomadaire, un centre ou tous. */
+export async function rapportHebdo(centreId, semaine) {
+  const { data, error } = await supabase.rpc("cmd_rapport_hebdo", {
+    p_centre: centreId || null, p_semaine: semaine || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 /** Créer ou modifier un centre (direction). */
 export async function definirDepot(d) {
-  const { data, error } = await supabase.rpc("cmd_depot_definir", {
+  const { data, error } = await supabase.rpc("cmd_centre_definir", {
     p_id: d.id || null, p_nom: d.nom, p_adresse: d.adresse || null,
     p_code_postal: d.code_postal || null, p_ville: d.ville || null,
     p_tel: d.tel || null, p_actif: d.actif !== false });
