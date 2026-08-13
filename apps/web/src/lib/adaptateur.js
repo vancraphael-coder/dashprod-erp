@@ -3316,3 +3316,78 @@ export async function demoDemarrer() {
   if (data?.autorise) activerDemoForcee();
   return data;
 }
+
+// =============================================================================
+// CENTRES LOGISTIQUES et STOCKAGE (offre Pro)
+// =============================================================================
+
+/** Les centres de l'entreprise (un gestionnaire ne voit que le sien). */
+export async function depots() {
+  const { data, error } = await supabase.rpc("cmd_depots");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Créer ou modifier un centre (direction). */
+export async function definirDepot(d) {
+  const { data, error } = await supabase.rpc("cmd_depot_definir", {
+    p_id: d.id || null, p_nom: d.nom, p_adresse: d.adresse || null,
+    p_code_postal: d.code_postal || null, p_ville: d.ville || null,
+    p_tel: d.tel || null, p_actif: d.actif !== false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Rattacher un membre, un véhicule ou un dossier à un centre. */
+export async function rattacherAuDepot(quoi, id, depotId) {
+  const { data, error } = await supabase.rpc("cmd_depot_rattacher", {
+    p_quoi: quoi, p_id: id, p_depot: depotId || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Les zones de stockage d'un centre. */
+export async function stockZones(depotId) {
+  const { data, error } = await supabase.rpc("cmd_stock_zones", { p_depot: depotId || null });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Les boxes d'un centre, avec leur occupation. */
+export async function stockBoxes(depotId) {
+  const { data, error } = await supabase.rpc("cmd_stock_boxes", { p_depot: depotId || null });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function definirZone(z) {
+  const { data, error } = await supabase.rpc("cmd_stock_zone_definir", { p: z });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function definirBox(b) {
+  const { data, error } = await supabase.rpc("cmd_stock_box_definir", { p: b });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function supprimerStock(quoi, id) {
+  const { data, error } = await supabase.rpc("cmd_stock_supprimer",
+    { p_quoi: quoi, p_id: id });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Les contrats de stockage (zones négociées ou boxes au barème). */
+export async function stockContrats(depotId) {
+  const { data, error } = await supabase.rpc("cmd_stock_contrats", { p_depot: depotId || null });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function definirContratStockage(c) {
+  const { data, error } = await supabase.rpc("cmd_stock_contrat_definir", { p: c });
+  if (error) throw new Error(error.message);
+  return data;
+}
