@@ -1,0 +1,6 @@
+-- 0110 — Ce que le plan ouvre réellement.
+-- modules_du_plan(plan) / a_module(module) / exiger_module(module).
+-- cmd_mon_acces() : plan, modules ouverts, maison_mere, centre, acces_sensible.
+-- Les commandes du stockage et des centres appellent exiger_module() : un
+--   module non payé est REFUSÉ EN BASE, pas seulement masqué dans le menu.
+-- Prouvé : en 'regular' cmd_stock_boxes lève une erreur ; en 'pro' elle répond.

@@ -1,0 +1,8 @@
+-- 0108 — Centres logistiques : cloisonnement général.
+-- Renommage depots → centres_logistiques ; depot_id → centre_id partout
+--   (utilisateurs, vehicules, affaires, stock_*). missions.centre_id ajouté,
+--   hérité du dossier par trigger.
+-- centre_courant() / est_maison_mere() / peut_voir_centre() / acces_sensible().
+-- Le cloisonnement est posé dans les POLITIQUES RLS (affaires, missions,
+--   vehicules, utilisateurs, stock_*, centres) : il s'applique partout, y
+--   compris aux lectures directes du frontend. Corps exact en base.

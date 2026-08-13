@@ -1,0 +1,7 @@
+-- 0109 — Affectation par la maison mère + compte rendu hebdomadaire.
+-- cmd_centres / cmd_centre_definir (maison mère seule)
+-- cmd_centre_affecter_membre(membre, centre, responsable) : accorde/retire le
+--   rôle de responsable ; MAISON MÈRE uniquement.
+-- cmd_centre_affecter(vehicule|dossier) ; cmd_centres_repartition (vue globale)
+-- cmd_rapport_hebdo(centre, semaine) : activité, moyens, stockage, points
+--   d'attention. Le CA n'est renvoyé que si acces_sensible() (maison mère).
