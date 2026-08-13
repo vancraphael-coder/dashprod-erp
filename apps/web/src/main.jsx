@@ -9,7 +9,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { sessionCourante, configPresente, deconnecter } from "./lib/supabase.js";
-import { modeDonnees, demoForceeActive, quitterDemoForcee, reclamerInvitation, monProfil, mesSocietes, choisirSociete }
+import { modeDonnees, demoForceeActive, quitterDemoForcee, monAcces, reclamerInvitation, monProfil, mesSocietes, choisirSociete }
   from "./lib/adaptateur.js";
 import { C, Icone, gardeModifs, Confirmation } from "./lib/theme.jsx";
 import Connexion from "./ecrans/Connexion.jsx";
@@ -47,6 +47,9 @@ import RapportsDossier from "./ecrans/RapportsDossier.jsx";
 import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Conversations from "./ecrans/Conversations.jsx";
+import Stockage from "./ecrans/Stockage.jsx";
+import Centres from "./ecrans/Centres.jsx";
+import RapportCentres from "./ecrans/RapportCentres.jsx";
 import DemandesReseau from "./ecrans/DemandesReseau.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
@@ -73,10 +76,15 @@ function BandeauDemo({ versDiagnostic }) {
 }
 
 /** Barre de navigation inférieure — écrans racine uniquement. */
-function BarreNav({ actif, aller, peutGererEquipe }) {
+function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
+  // Un module que l'abonnement n'ouvre pas n'apparaît PAS : pas de porte
+  // fermée, pas de publicité déguisée dans la barre de navigation. La base
+  // refuse de toute façon l'accès — ceci évite seulement le clic inutile.
+  const a = (cle) => modules.includes(cle);
   const items = [
     ["liste", "dossiers", "Dossiers"],
     ["planning", "planning", "Planning"],
+    ...(a("stockage_3d") ? [["stockage", "boite", "Stockage"]] : []),
     ["conversations", "mail", "Messages"],
     ...(peutGererEquipe ? [["equipe", "ressources", "Ressources"]] : []),
     ["compte", "compte", "Compte"],
@@ -489,6 +497,9 @@ function App() {
     materiel: (id) => setRoute({ ecran: "materiel", affaireId: id }),
     planning: () => setRoute({ ecran: "planning", affaireId: null }),
     conversations: () => setRoute({ ecran: "conversations", affaireId: null }),
+    stockage: () => setRoute({ ecran: "stockage", affaireId: null }),
+    centres: () => setRoute({ ecran: "centres", affaireId: null }),
+    rapport: () => setRoute({ ecran: "rapport", affaireId: null }),
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
     compte: () => setRoute({ ecran: "compte", affaireId: null }),
     diagnostic: () => setRoute({ ecran: "diagnostic", affaireId: null }),
@@ -507,7 +518,15 @@ function App() {
       [cle, (...args) => naviguerAvecGarde(() => fn(...args))]));
   const retourDossier = () => nav.dossier(route.affaireId);
 
-  const RACINES = ["liste", "planning", "conversations", "equipe", "compte"];
+  // Ce que l'abonnement ouvre, et si je suis maison mère ou centre. La base
+  // reste l'autorité ; ceci ne sert qu'à ne pas afficher de porte fermée.
+  const [acces, setAcces] = useState(null);
+  useEffect(() => {
+    if (modeDonnees() !== "reel" || !org) return;
+    monAcces().then(setAcces).catch(() => setAcces(null));
+  }, [org]);
+
+  const RACINES = ["liste", "planning", "stockage", "conversations", "equipe", "compte"];
   let ecran;
   if (route.ecran === "diagnostic") {
     ecran = (
@@ -524,6 +543,8 @@ function App() {
   } else if (route.ecran === "compte") {
     ecran = <Profil profil={profil} versDiagnostic={nav.diagnostic}
       versParametres={nav.parametres} versDemandes={nav.demandes}
+      versCentres={(acces?.modules || []).includes("multi_depots") ? nav.centres : null}
+      versRapport={(acces?.modules || []).includes("multi_depots") ? nav.rapport : null}
       peutConfigurer={peutGererEquipe} />;
   } else if (route.ecran === "demandes") {
     ecran = <DemandesReseau />;
@@ -533,6 +554,12 @@ function App() {
     ecran = <Planning ouvrirDossier={nav.dossier} />;
   } else if (route.ecran === "conversations") {
     ecran = <Conversations ouvrirDossier={nav.dossier} />;
+  } else if (route.ecran === "stockage") {
+    ecran = <Stockage retour={nav.liste} />;
+  } else if (route.ecran === "centres") {
+    ecran = <Centres retour={nav.compte} />;
+  } else if (route.ecran === "rapport") {
+    ecran = <RapportCentres retour={nav.compte} />;
   } else if (route.ecran === "dossier") {
     ecran = <Dossier affaireId={route.affaireId} retour={nav.liste}
                      versReleve={nav.releve} versDevis={nav.devis}
@@ -580,7 +607,7 @@ function App() {
       <BandeauDemo versDiagnostic={nav.diagnostic} />
       {ecran}
       {RACINES.includes(route.ecran) && (
-        <BarreNav actif={route.ecran} aller={(cle) => nav[cle]()}
+        <BarreNav actif={route.ecran} aller={(cle) => nav[cle]()} modules={acces?.modules || []}
                   peutGererEquipe={peutGererEquipe} />
       )}
       {SECTIONS_DOSSIER.some(([cle]) => cle === route.ecran) && route.affaireId && (
