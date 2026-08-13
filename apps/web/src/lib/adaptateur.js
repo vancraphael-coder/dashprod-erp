@@ -3333,8 +3333,9 @@ export async function monAcces() {
 }
 
 /** Les centres de l'entreprise (un responsable ne voit que le sien). */
-export async function depots() {
-  const { data, error } = await supabase.rpc("cmd_centres");
+export async function depots(inclureArchives = false) {
+  const { data, error } = await supabase.rpc("cmd_centres",
+    { p_inclure_archives: !!inclureArchives });
   if (error) throw new Error(error.message);
   return data || [];
 }
@@ -3377,6 +3378,35 @@ export async function definirDepot(d) {
     p_id: d.id || null, p_nom: d.nom, p_adresse: d.adresse || null,
     p_code_postal: d.code_postal || null, p_ville: d.ville || null,
     p_tel: d.tel || null, p_actif: d.actif !== false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Les axes x/y/z tels que l'organisation les a définis (libellés, format,
+ * bornes réelles du dépôt). Repli sur allée / rangée / étage si rien n'a été
+ * déclaré — le repli vit côté base ET côté domaine, sans divergence possible.
+ */
+export async function axesStockage() {
+  const { data, error } = await supabase.rpc("cmd_axes_stockage");
+  if (error) throw new Error(error.message);
+  return data || null;
+}
+
+export async function definirAxesStockage(a) {
+  const { data, error } = await supabase.rpc("cmd_axes_stockage_definir", { p: a });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Archive un centre, ou le réactive. La base refuse d'archiver un centre qui
+ * porte encore des membres, des véhicules, des dossiers ouverts ou des
+ * contrats de stockage : le message d'erreur dit quoi déplacer d'abord.
+ */
+export async function archiverDepot(id, archiver = true) {
+  const { data, error } = await supabase.rpc("cmd_centre_archiver",
+    { p_id: id, p_archiver: !!archiver });
   if (error) throw new Error(error.message);
   return data;
 }
