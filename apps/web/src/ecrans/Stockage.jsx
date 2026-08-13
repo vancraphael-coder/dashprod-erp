@@ -16,12 +16,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   depots, stockZones, stockBoxes, definirZone, definirBox, supprimerStock,
-  obtenirParametresPrix,
+  obtenirParametresPrix, axesStockage,
 } from "../lib/adaptateur.js";
 import {
   TYPES_ZONE, volumeZone, surfaceExploitable, tauxOccupation,
   montantPeriodeBox,
 } from "@domaine/stocks/stockage.js";
+import { repereDe, repereVersChamps } from "@domaine/stocks/repere.js";
+import { BadgeRepere, SaisieRepere, MiniPlan } from "../composants/Repere.jsx";
 import { C, S, euros } from "../lib/theme.jsx";
 
 const PAGES = [["zones", "Zones"], ["boxes", "Boxes"]];
@@ -31,12 +33,18 @@ export default function Stockage({ retour }) {
   const [page, setPage] = useState("zones");
   const [centres, setCentres] = useState([]);
   const [depotId, setDepotId] = useState(null);
+  // Les axes sont chargés UNE fois ici et descendus : ils ne changent pas
+  // d'une zone à l'autre, et deux écrans qui les rechargent chacun de leur
+  // côté finiraient par en afficher deux versions le temps d'un aller-retour.
+  const [axesOrg, setAxesOrg] = useState(null);
 
   useEffect(() => {
     depots().then((d) => {
       setCentres(d);
       if (d.length && !depotId) setDepotId(d[0].id);
     }).catch(() => setCentres([]));
+    // Un échec n'est pas bloquant : le domaine retombe sur allée/rangée/étage.
+    axesStockage().then(setAxesOrg).catch(() => setAxesOrg(null));
   }, []);
 
   return (
@@ -83,15 +91,17 @@ export default function Stockage({ retour }) {
         </div>
       )}
 
-      {centres.length > 0 && page === "zones" && <PageZones depotId={depotId} />}
-      {centres.length > 0 && page === "boxes" && <PageBoxes depotId={depotId} />}
+      {centres.length > 0 && page === "zones"
+        && <PageZones depotId={depotId} axesOrg={axesOrg} />}
+      {centres.length > 0 && page === "boxes"
+        && <PageBoxes depotId={depotId} axesOrg={axesOrg} />}
     </div>
   );
 }
 
 /* ── Page ZONES ──────────────────────────────────────────────────────────── */
 
-function PageZones({ depotId }) {
+function PageZones({ depotId, axesOrg }) {
   const [sous, setSous] = useState("sol");
   const [liste, setListe] = useState(null);
   const [form, setForm] = useState(null);
@@ -148,7 +158,10 @@ function PageZones({ depotId }) {
           <div style={{ display: "flex", justifyContent: "space-between",
                         alignItems: "baseline", gap: 8 }}>
             <span style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>{z.nom}</span>
-            <Pastille occupe={z.occupee} client={z.client} />
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <BadgeRepere entite={z} genre="zone" reglageAxes={axesOrg} />
+              <Pastille occupe={z.occupee} client={z.client} />
+            </div>
           </div>
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8 }}>
             <Mesure label="Surface au sol" valeur={`${z.surface_m2 ?? "—"} m²`} />
@@ -208,6 +221,17 @@ function PageZones({ depotId }) {
           <label style={S.label}>Remarque</label>
           <input style={S.input} value={form.remarque || ""}
                  onChange={(e) => setForm({ ...form, remarque: e.target.value })} />
+
+          <div style={{ marginTop: 12, paddingTop: 12,
+                        borderTop: `1px solid ${C.bord}` }}>
+            <SaisieRepere
+              genre="zone" reglageAxes={axesOrg}
+              valeur={repereDe(form, "zone")}
+              onChange={(r) => setForm({ ...form, ...repereVersChamps(r, "zone") })} />
+            <MiniPlan entites={filtrees.filter((z) => z.id !== form.id)}
+                      genre="zone" courant={form} reglageAxes={axesOrg} />
+          </div>
+
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button style={S.boutonPlein} onClick={enregistrer}>Enregistrer</button>
             <button style={S.boutonLien} onClick={() => setForm(null)}>Annuler</button>
@@ -227,7 +251,7 @@ function PageZones({ depotId }) {
 
 /* ── Page BOXES ──────────────────────────────────────────────────────────── */
 
-function PageBoxes({ depotId }) {
+function PageBoxes({ depotId, axesOrg }) {
   const [liste, setListe] = useState(null);
   const [zones, setZones] = useState([]);
   const [bareme, setBareme] = useState([]);
@@ -305,8 +329,10 @@ function PageBoxes({ depotId }) {
                 <span style={{ fontSize: 12.5, color: C.muet, minWidth: 58 }}>
                   {b.volume_m3} m³
                 </span>
-                <span style={{ flex: 1, fontSize: 12, color: C.muet }}>
+                <span style={{ flex: 1, fontSize: 12, color: C.muet,
+                               display: "flex", alignItems: "center", gap: 6 }}>
                   {b.zone || ""}
+                  <BadgeRepere entite={b} genre="box" reglageAxes={axesOrg} />
                 </span>
                 <span style={{ fontSize: 12, fontWeight: 700,
                   color: prix.hors_bareme ? C.ambre : C.encre, whiteSpace: "nowrap" }}>
@@ -340,13 +366,9 @@ function PageBoxes({ depotId }) {
                      value={form.volume_m3 ?? ""}
                      onChange={(e) => setForm({ ...form, volume_m3: e.target.value })} />
             </div>
-            <div style={{ flex: "0 0 26%" }}>
-              <label style={S.label}>Niveau</label>
-              <input style={S.input} type="number" min={0}
-                     value={form.niveau ?? 0}
-                     onChange={(e) => setForm({ ...form, niveau: e.target.value })} />
-            </div>
           </div>
+          {/* Le niveau n'a PAS de champ à part : c'est le z du repère. Deux
+              saisies pour la même colonne divergeraient à la première frappe. */}
           <label style={S.label}>Zone (facultatif)</label>
           <select style={S.input} value={form.zone_id || ""}
                   onChange={(e) => setForm({ ...form, zone_id: e.target.value || null })}>
@@ -363,6 +385,17 @@ function PageBoxes({ depotId }) {
               })()}
             </div>
           )}
+
+          <div style={{ marginTop: 12, paddingTop: 12,
+                        borderTop: `1px solid ${C.bord}` }}>
+            <SaisieRepere
+              genre="box" reglageAxes={axesOrg}
+              valeur={repereDe(form, "box")}
+              onChange={(r) => setForm({ ...form, ...repereVersChamps(r, "box") })} />
+            <MiniPlan entites={(liste || []).filter((b) => b.id !== form.id)}
+                      genre="box" courant={form} reglageAxes={axesOrg} />
+          </div>
+
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button style={S.boutonPlein} onClick={enregistrer}>Enregistrer</button>
             <button style={S.boutonLien} onClick={() => setForm(null)}>Annuler</button>

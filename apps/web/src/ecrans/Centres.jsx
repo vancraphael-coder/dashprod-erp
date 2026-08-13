@@ -11,7 +11,8 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  depots, definirDepot, repartitionCentres, affecterMembreCentre, affecterAuCentre,
+  depots, definirDepot, archiverDepot, repartitionCentres,
+  affecterMembreCentre, affecterAuCentre,
 } from "../lib/adaptateur.js";
 import { C, S } from "../lib/theme.jsx";
 
@@ -25,14 +26,32 @@ export default function Centres({ retour }) {
   const [form, setForm] = useState(null);
   const [err, setErr] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [voirArchives, setVoirArchives] = useState(false);
 
   async function recharger() {
-    try { setListe(await depots()); }
+    try { setListe(await depots(voirArchives)); }
     catch (e) { setErr(e.message); setListe([]); }
     try { setRep(await repartitionCentres()); }
     catch { setRep(null); }   // un responsable de centre n'y a pas droit
   }
-  useEffect(() => { recharger(); }, []);
+  useEffect(() => { recharger(); }, [voirArchives]);
+
+  /**
+   * Archiver n'est pas « décocher actif ». La base refuse tant que le centre
+   * porte de l'exploitation, et son message dit précisément quoi déplacer —
+   * on le remonte tel quel plutôt que de le reformuler en « impossible ».
+   */
+  async function archiver(d, oui) {
+    setErr(null); setMsg(null);
+    if (oui && !window.confirm(
+      `Archiver « ${d.nom} » ?\n\nLe centre sortira des listes et des `
+      + `sélecteurs. Vous pourrez le réactiver à tout moment.`)) return;
+    try {
+      await archiverDepot(d.id, oui);
+      setMsg(oui ? `« ${d.nom} » est archivé.` : `« ${d.nom} » est réactivé.`);
+      await recharger();
+    } catch (e) { setErr(e.message); }
+  }
 
   async function enregistrer() {
     setErr(null);
@@ -106,7 +125,9 @@ export default function Centres({ retour }) {
                   {d.nom}
                 </span>
                 {d.le_mien && <Etiq texte="votre centre" />}
-                {!d.actif && <span style={{ fontSize: 10.5, color: C.muet }}>inactif</span>}
+                {d.archive_le
+                  ? <Etiq texte="archivé" sourd />
+                  : (!d.actif && <span style={{ fontSize: 10.5, color: C.muet }}>inactif</span>)}
               </div>
               {(d.adresse || d.ville) && (
                 <div style={{ fontSize: 12.5, color: C.muet, marginTop: 3 }}>
@@ -127,8 +148,18 @@ export default function Centres({ retour }) {
                 <Compteur label="Dossiers ouverts" valeur={d.dossiers_ouverts} />
               </div>
               {maisonMere && (
-                <button style={{ ...S.boutonLien, paddingLeft: 0, marginTop: 8 }}
-                        onClick={() => setForm({ ...d })}>Modifier</button>
+                <div style={{ display: "flex", gap: 14, marginTop: 8,
+                              alignItems: "center", flexWrap: "wrap" }}>
+                  <button style={{ ...S.boutonLien, paddingLeft: 0 }}
+                          onClick={() => setForm({ ...d })}>Modifier</button>
+                  {d.archive_le ? (
+                    <button style={S.boutonLien}
+                            onClick={() => archiver(d, false)}>Réactiver</button>
+                  ) : (
+                    <button style={{ ...S.boutonLien, color: C.rouge }}
+                            onClick={() => archiver(d, true)}>Archiver</button>
+                  )}
+                </div>
               )}
             </div>
           ))}
@@ -270,9 +301,13 @@ function Compteur({ label, valeur }) {
   );
 }
 
-const Etiq = ({ texte }) => (
-  <span style={{ fontSize: 10.5, fontWeight: 700, color: C.bleu,
-    background: C.bleuClair, borderRadius: 999, padding: "2px 8px" }}>{texte}</span>
+// `sourd` : une étiquette d'état éteint (archivé). Elle ne doit pas attirer
+// l'œil comme « votre centre » — c'est une mention, pas une mise en avant.
+const Etiq = ({ texte, sourd = false }) => (
+  <span style={{ fontSize: 10.5, fontWeight: 700,
+    color: sourd ? C.muet : C.bleu,
+    background: sourd ? C.doux : C.bleuClair,
+    borderRadius: 999, padding: "2px 8px" }}>{texte}</span>
 );
 
 const Attente = () => (
