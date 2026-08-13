@@ -79,7 +79,7 @@ export default function Stockage({ retour }) {
 
       {centres.length === 0 && (
         <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
-          Créez d'abord un centre logistique dans Paramètres → Centres.
+          Créez d'abord un centre logistique depuis Compte → Centres logistiques.
         </div>
       )}
 
@@ -108,7 +108,7 @@ function PageZones({ depotId }) {
   async function enregistrer() {
     setErr(null);
     try {
-      await definirZone({ ...form, depot_id: depotId, type: sous });
+      await definirZone({ ...form, centre_id: depotId, type: sous });
       setForm(null); await recharger();
     } catch (e) { setErr(e.message); }
   }
@@ -256,7 +256,7 @@ function PageBoxes({ depotId }) {
   async function enregistrer() {
     setErr(null);
     try {
-      await definirBox({ ...form, depot_id: depotId });
+      await definirBox({ ...form, centre_id: depotId });
       setForm(null); await recharger();
     } catch (e) { setErr(e.message); }
   }

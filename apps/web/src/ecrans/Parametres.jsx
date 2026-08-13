@@ -36,7 +36,7 @@ import {
 import { C, S } from "../lib/theme.jsx";
 import Apparence from "./Apparence.jsx";
 import Stockage from "./Stockage.jsx";
-import Depots from "./Depots.jsx";
+import Centres from "./Centres.jsx";
 
 const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €";
 
@@ -64,7 +64,7 @@ export default function Parametres({
     return <Stockage retour={() => setOuvert(null)} />;
   }
   if (ouvert === "depots") {
-    return <Depots retour={() => setOuvert(null)} />;
+    return <Centres retour={() => setOuvert(null)} />;
   }
   if (ouvert === "apparence") {
     return <Apparence retour={() => setOuvert(null)} />;

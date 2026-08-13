@@ -43,7 +43,8 @@ const jour = (iso) => {
   } catch { return iso; }
 };
 
-export default function Profil({ profil, versParametres, versDiagnostic, versDemandes, peutConfigurer }) {
+export default function Profil({ profil, versParametres, versDiagnostic, versDemandes,
+                                 versCentres, versRapport, peutConfigurer }) {
   const [onglet, setOnglet] = useState("inventaire");
 
   return (
@@ -113,6 +114,41 @@ export default function Profil({ profil, versParametres, versDiagnostic, versDem
               </span>
               <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
                 Les particuliers qui cherchent un déménageur.
+              </span>
+            </span>
+            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
+          </button>
+        </div>
+      )}
+
+      {/* Centres logistiques et compte rendu : visibles seulement si l'offre
+          ouvre ce module. Le menu ne montre pas de porte fermée. */}
+      {versCentres && (
+        <div style={{ margin: "12px 16px 0" }}>
+          <button onClick={versCentres} style={carteAction}>
+            <span style={{ fontSize: 19 }}>🏭</span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
+                Centres logistiques
+              </span>
+              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
+                Vos centres, et qui y travaille.
+              </span>
+            </span>
+            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
+          </button>
+        </div>
+      )}
+      {versRapport && (
+        <div style={{ margin: "12px 16px 0" }}>
+          <button onClick={versRapport} style={carteAction}>
+            <span style={{ fontSize: 19 }}>📊</span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
+                Compte rendu hebdomadaire
+              </span>
+              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
+                Où en est chaque centre, en un clic.
               </span>
             </span>
             <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
@@ -419,3 +455,10 @@ function AvisSurDashprod() {
     </div>
   );
 }
+
+/** Une entrée d'action en carte, réutilisée par les accès du Compte. */
+const carteAction = {
+  display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
+  border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
+  boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer", textAlign: "left",
+};
