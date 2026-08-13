@@ -413,6 +413,16 @@ function App() {
     });
   }, []);
 
+  // Ce que l'abonnement ouvre, et si je suis maison mère ou centre.
+  // IMPORTANT : ce hook doit rester AVANT tout return conditionnel. Placé
+  // après, le nombre de hooks variait d'un rendu à l'autre — React refuse, et
+  // l'application rendait un écran blanc.
+  const [acces, setAcces] = useState(null);
+  useEffect(() => {
+    if (modeDonnees() !== "reel" || !org) return;
+    monAcces().then(setAcces).catch(() => setAcces(null));
+  }, [org]);
+
   if (!charge) return null;
   // Signature d'offre : accessible sans compte, c'est un lien ciblé.
   if (signer !== null) {
@@ -517,14 +527,6 @@ function App() {
     Object.entries(navBrute).map(([cle, fn]) =>
       [cle, (...args) => naviguerAvecGarde(() => fn(...args))]));
   const retourDossier = () => nav.dossier(route.affaireId);
-
-  // Ce que l'abonnement ouvre, et si je suis maison mère ou centre. La base
-  // reste l'autorité ; ceci ne sert qu'à ne pas afficher de porte fermée.
-  const [acces, setAcces] = useState(null);
-  useEffect(() => {
-    if (modeDonnees() !== "reel" || !org) return;
-    monAcces().then(setAcces).catch(() => setAcces(null));
-  }, [org]);
 
   const RACINES = ["liste", "planning", "stockage", "conversations", "equipe", "compte"];
   let ecran;
