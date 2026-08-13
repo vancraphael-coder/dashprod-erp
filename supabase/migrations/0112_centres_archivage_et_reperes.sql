@@ -1,0 +1,6 @@
+-- 0112 — APPLIQUÉE EN LIVE via MCP le 13/08/2026 (stub de référence).
+-- Archivage des centres : colonnes archive_le / archive_par, commande
+-- cmd_centre_archiver (refuse si le centre porte encore membres, véhicules,
+-- dossiers ouverts ou contrats de stockage), cmd_centres masque les archivés.
+-- Repères : pos_x/pos_y sur stock_zones et stock_boxes, pos_z sur les ZONES
+-- seulement — pour un BOX, z = la colonne `niveau` déjà existante.

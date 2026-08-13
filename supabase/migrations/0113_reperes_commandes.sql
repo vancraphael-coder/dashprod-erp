@@ -1,0 +1,3 @@
+-- 0113 — APPLIQUÉE EN LIVE via MCP le 13/08/2026 (stub de référence).
+-- cmd_stock_zone_definir / cmd_stock_box_definir écrivent les repères ;
+-- cmd_stock_zones / cmd_stock_boxes les renvoient.

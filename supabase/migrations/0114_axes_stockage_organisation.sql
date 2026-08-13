@@ -1,0 +1,6 @@
+-- 0114 — APPLIQUÉE EN LIVE via MCP le 13/08/2026 (stub de référence).
+-- Les axes x/y/z appartiennent à l'organisation (referentiels, type
+-- 'stockage', clé 'axes') : libellé, format (lettre|nombre) et bornes réelles
+-- du dépôt. axes_stockage() / cmd_axes_stockage() / cmd_axes_stockage_definir().
+-- Repli si rien n'est déclaré : x = Allée (lettre, 1–12), y = Rangée (1–40),
+-- z = Étage (0–4).
