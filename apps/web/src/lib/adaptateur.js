@@ -19,6 +19,7 @@ const CLE = "dashprod-demo-v1";
 const CLE_DEMO_FORCEE = "dashprod-demo-forcee";
 
 import { tauxTva } from "@domaine/organisation/identite.js";
+import { natureValide } from "@domaine/commercial/natures.js";
 
 /** Force la session en mode démo (découverte via compte Google, quota vérifié). */
 export function activerDemoForcee() {
@@ -193,7 +194,11 @@ export async function obtenirAffaire(id) {
  * branchement) ; en démo, écrit le magasin local.
  * @returns {Promise<string>} id de l'affaire créée
  */
-export async function creerAffaire({ clientId, clientNom, tel, email }) {
+export async function creerAffaire({ clientId, clientNom, tel, email, nature }) {
+  // La nature est validée par le DOMAINE, pas ici : une chaîne libre venue
+  // d'un appelant distrait tomberait sinon dans l'enum et ferait échouer
+  // l'insert avec un message Postgres illisible.
+  const n = natureValide(nature) ? nature : "demenagement";
   if (modeDonnees() === "reel") {
     let cid = clientId;
     if (!cid) {
@@ -203,7 +208,8 @@ export async function creerAffaire({ clientId, clientNom, tel, email }) {
       cid = data.id;
     }
     const { data: aff, error: e2 } = await supabase.from("affaires")
-      .insert({ client_id: cid, etat: "brouillon" }).select("id").single();
+      .insert({ client_id: cid, etat: "brouillon", nature: n })
+      .select("id").single();
     if (e2) throw e2;
     return aff.id;
   }
@@ -215,7 +221,7 @@ export async function creerAffaire({ clientId, clientNom, tel, email }) {
   }
   const aid = idDemo();
   d.affaires.push({
-    id: aid, clientId: cid, etat: "devis", formule: "tarifaire",
+    id: aid, clientId: cid, etat: "devis", formule: "tarifaire", nature: n,
     creeLe: new Date().toISOString().slice(0, 10),
     faits: null, couts: null, tvac_centimes: null, marge_pct: null,
   });
@@ -1254,8 +1260,8 @@ export async function sauverClientIdentite(affaireId, { civilite, nom, tel, emai
  * Création rapide d'un dossier vide (client « Nouveau client » à renommer
  * dans la fiche). Le « + » ne passe plus par un écran intermédiaire.
  */
-export async function creerDossierVide() {
-  return creerAffaire({ clientNom: "Nouveau client" });
+export async function creerDossierVide(nature = "demenagement") {
+  return creerAffaire({ clientNom: "Nouveau client", nature });
 }
 
 // ── Équipe pressentie du dossier (symétrique aux camions) ─────────────────────
