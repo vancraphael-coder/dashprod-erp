@@ -1,0 +1,4 @@
+-- 0115 — APPLIQUÉE EN LIVE via MCP le 13/08/2026 (stub de référence).
+-- litiges.contrat_id ajouté, affaire_id devient nullable, et une contrainte
+-- CHECK num_nonnulls(affaire_id, contrat_id) = 1 : un litige porte sur
+-- EXACTEMENT une chose — une affaire OU un contrat de stockage.

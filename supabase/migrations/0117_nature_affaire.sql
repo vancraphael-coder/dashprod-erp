@@ -1,0 +1,5 @@
+-- 0117 — APPLIQUÉE EN LIVE via MCP le 13/08/2026 (stub de référence).
+-- Enum nature_affaire (demenagement, sous_traitance, lift, boxe, zone) et
+-- colonne affaires.nature (défaut 'demenagement' : l'existant EST cela).
+-- Trigger trg_releve_coherent : une affaire non-déménagement ne peut pas
+-- porter de relevé de meubles rempli.

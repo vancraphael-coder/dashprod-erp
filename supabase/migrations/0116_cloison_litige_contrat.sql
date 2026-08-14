@@ -1,0 +1,4 @@
+-- 0116 — APPLIQUÉE EN LIVE via MCP le 13/08/2026 (stub de référence).
+-- Le trigger trg_cloison_org de `litiges` surveille désormais AUSSI
+-- contrat_id -> stock_contrats. Sans ça, 0115 ouvrait une brèche : un litige
+-- pouvait désigner le contrat de stockage d'une autre société.
