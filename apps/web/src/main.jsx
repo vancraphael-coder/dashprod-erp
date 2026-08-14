@@ -497,7 +497,7 @@ function App() {
   // l'objet ENTIER évite d'avoir à y penser à chaque nouvel écran.
   const navBrute = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
-    nouvelle: async () => { const id = await creerDossierVide(); setRoute({ ecran: "dossier", affaireId: id }); },
+    nouvelle: async (nature) => { const id = await creerDossierVide(nature); setRoute({ ecran: "dossier", affaireId: id }); },
     dossier: (id) => setRoute({ ecran: "dossier", affaireId: id }),
     releve: (id) => setRoute({ ecran: "releve", affaireId: id }),
     devis: (id) => setRoute({ ecran: "devis", affaireId: id }),
