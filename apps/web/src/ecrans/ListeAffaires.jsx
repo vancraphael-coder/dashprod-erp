@@ -11,6 +11,7 @@ import { caSigne } from "@domaine/pilotage/finances.js";
 import { zoneMarge } from "@domaine/chiffrage/moteur.js";
 import { regrouperParHorizon, compteurUrgent } from "@domaine/crm/horizons.js";
 import { VUES, filtrerParVue, compteursVues, urgencesVues } from "@domaine/crm/vues-dossiers.js";
+import MenuCreation from "../composants/MenuCreation.jsx";
 import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 
 // Le cycle ENTIER est filtrable : sans « facturé / payé / clos », la fin de
@@ -28,6 +29,7 @@ import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 
 export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
   const [affaires, setAffaires] = useState([]);
+  const [menuOuvert, setMenuOuvert] = useState(false);
   const [recherche, setRecherche] = useState("");
   const [vue, setVue] = useState("a_cloturer");
 
@@ -215,7 +217,8 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
         </div>
       ))}
 
-      <button style={S.flottant} onClick={nouvelleAffaire} aria-label="Nouveau dossier">+</button>
+      <MenuCreation ouvert={menuOuvert} basculer={setMenuOuvert}
+                    choisir={(nature) => nouvelleAffaire(nature)} />
     </div>
   );
 }
