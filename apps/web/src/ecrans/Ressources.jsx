@@ -1,5 +1,5 @@
 // =============================================================================
-// Écran — Ressources (onglets Membres / Camions).
+// Écran — Ressources (onglets Véhicules / Membres / Heures).
 // Alignement page 10 : l'invitation OAuth existante devient l'onglet Membres ;
 // l'onglet Camions livre le P0 n°4 — fiches complètes (nom, type, volume,
 // immatriculation) + P1 inclus d'office car la table les portait déjà : CT,
@@ -9,12 +9,17 @@
 
 import React, { useEffect, useState } from "react";
 import { listerVehicules, sauverVehicule, archiverVehicule, listerSignalements } from "../lib/adaptateur.js";
-import { alertesVehicule, TYPES_VEHICULE, ETATS_MECANIQUES } from "@domaine/flotte/vehicules.js";
+import {
+  alertesVehicule, TYPES_VEHICULE, ETATS_MECANIQUES, CATEGORIES, CARBURANTS,
+  PERMIS, categorie, porte, resumeCapacite,
+} from "@domaine/flotte/vehicules.js";
 import Equipe from "./Equipe.jsx";
 import Heures from "./Heures.jsx";
 import { C, S, Confirmation, FC } from "../lib/theme.jsx";
 
 const LIBELLE_TYPE = { fourgon: "Fourgon", porteur: "Porteur", hayon: "Hayon élévateur" };
+/** Un picto par catégorie : on distingue les trois d'un coup d'œil dans la liste. */
+const PICTO_CAT = { camion: "🚛", lift: "🪜", voiture: "🚗" };
 const LIBELLE_MECA = { ok: "OK", surveiller: "À surveiller", urgent: "URGENT" };
 const COULEUR_MECA = { ok: "#059669", surveiller: "#D97706", urgent: "#DC2626" };
 
@@ -25,7 +30,7 @@ export default function Ressources() {
       <div style={S.entete}>
         <div style={S.titre}>Ressources</div>
         <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-          {[["camions", "🚛 Camions"], ["membres", "👥 Membres"], ["heures", "⏱️ Heures"]].map(([cle, lib]) => (
+          {[["camions", "🚛 Véhicules"], ["membres", "👥 Membres"], ["heures", "⏱️ Heures"]].map(([cle, lib]) => (
             <button key={cle} onClick={() => setOnglet(cle)} style={{
               flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer",
               border: `1.5px solid ${onglet === cle ? C.bleu : C.bord}`,
@@ -65,11 +70,32 @@ function OngletCamions() {
     } catch (e) { setErreur(e.message); }
   }
 
+  /**
+   * Changer de catégorie EFFACE les attributs que la nouvelle ne porte pas.
+   * Sans ça, transformer un lift en voiture laisserait une hauteur d'échelle
+   * derrière, et la base refuserait l'enregistrement (trigger 0119) avec un
+   * message que personne ne relierait au changement de catégorie.
+   */
+  async function majCategorie(v, cle) {
+    setErreur(null);
+    try {
+      await sauverVehicule({
+        ...v, categorie: cle,
+        type: porte(cle, "carrosserie") ? (v.type || "fourgon") : null,
+        volume_m3: porte(cle, "volume") ? v.volume_m3 : null,
+        echelle_m: porte(cle, "echelle") ? v.echelle_m : null,
+        etage_max: porte(cle, "echelle") ? v.etage_max : null,
+      });
+      recharger();
+    } catch (e) { setErreur(e.message); }
+  }
+
   async function ajouter() {
     setErreur(null);
     try {
       const id = await sauverVehicule({
-        nom: `Camion ${camions.length + 1}`, type: "fourgon", volume_m3: 20,
+        nom: `Véhicule ${camions.length + 1}`, categorie: "camion",
+        type: "fourgon", volume_m3: 20,
         immatriculation: "", etat_mecanique: "ok",
       });
       recharger();
@@ -102,11 +128,16 @@ function OngletCamions() {
           <div key={v.id} style={S.carte}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
                  onClick={() => setOuvert(ouvertIci ? null : v.id)}>
-              <span style={{ fontSize: 20 }}>{alerte.niveau === "urgent" ? "🔴" : "🚛"}</span>
+              <span style={{ fontSize: 20 }}>
+                {alerte.niveau === "urgent" ? "🔴" : PICTO_CAT[v.categorie || "camion"]}
+              </span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 700, color: C.encre }}>{v.nom}</div>
                 <div style={{ fontSize: 11.5, color: C.muet }}>
-                  {LIBELLE_TYPE[v.type] || v.type || "—"} · {v.volume_m3 || "?"} m³
+                  {categorie(v.categorie || "camion")?.nom || "—"}
+                  {porte(v.categorie || "camion", "carrosserie") && v.type
+                    ? ` · ${LIBELLE_TYPE[v.type] || v.type}` : ""}
+                  {resumeCapacite(v) ? ` · ${resumeCapacite(v)}` : ""}
                   {v.immatriculation ? ` · ${v.immatriculation}` : ""}
                 </div>
               </div>
@@ -129,22 +160,94 @@ function OngletCamions() {
                 <label style={S.label}>Nom</label>
                 <input style={S.input} value={v.nom || ""}
                        onChange={(e) => maj(v.id, "nom", e.target.value)} />
+                {/* La catégorie commande le reste du formulaire : elle vient
+                    donc en premier. Les champs d'une autre catégorie ne sont
+                    pas grisés mais ABSENTS — la base les refuserait. */}
+                <label style={S.label}>Catégorie</label>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  {CATEGORIES.map((c) => {
+                    const choisie = (v.categorie || "camion") === c.cle;
+                    return (
+                      <button key={c.cle} onClick={() => majCategorie(v, c.cle)}
+                        title={c.resume} style={{
+                          flex: 1, padding: "9px 4px", borderRadius: 10,
+                          cursor: "pointer", fontSize: 12.5, fontWeight: 700,
+                          border: `1.5px solid ${choisie ? C.bleu : C.bord}`,
+                          background: choisie ? C.bleuClair : C.blanc,
+                          color: choisie ? C.bleu : C.muet }}>{c.nom}</button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  {porte(v.categorie || "camion", "carrosserie") && (
+                    <div style={{ flex: 1 }}>
+                      <label style={S.label}>Carrosserie</label>
+                      <select style={S.input} value={v.type || "fourgon"}
+                              onChange={(e) => maj(v.id, "type", e.target.value)}>
+                        {TYPES_VEHICULE.map((t) => (
+                          <option key={t} value={t}>{LIBELLE_TYPE[t]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {porte(v.categorie || "camion", "volume") && (
+                    <div style={{ flex: 1 }}>
+                      <label style={S.label}>Volume (m³)</label>
+                      <input style={S.input} inputMode="decimal" value={v.volume_m3 ?? ""}
+                             onChange={(e) => maj(v.id, "volume_m3", e.target.value)} />
+                    </div>
+                  )}
+                  {porte(v.categorie || "camion", "echelle") && (
+                    <>
+                      <div style={{ flex: 1 }}>
+                        <label style={S.label}>Échelle (m)</label>
+                        <input style={S.input} inputMode="decimal" value={v.echelle_m ?? ""}
+                               onChange={(e) => maj(v.id, "echelle_m", e.target.value)} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={S.label}>Étage maximal</label>
+                        <input style={S.input} type="number" min={0} value={v.etage_max ?? ""}
+                               onChange={(e) => maj(v.id, "etage_max", e.target.value)}
+                               placeholder="—" />
+                      </div>
+                    </>
+                  )}
+                </div>
+                {porte(v.categorie || "camion", "echelle") && (
+                  <div style={{ fontSize: 11.5, color: C.muet, marginTop: -4,
+                                marginBottom: 8 }}>
+                    L'étage maximal sert à refuser un chantier trop haut pour ce
+                    lift. Laissé vide, il ne bloquera rien.
+                  </div>
+                )}
+
                 <div style={{ display: "flex", gap: 10 }}>
                   <div style={{ flex: 1 }}>
-                    <label style={S.label}>Type</label>
-                    <select style={S.input} value={v.type || "fourgon"}
-                            onChange={(e) => maj(v.id, "type", e.target.value)}>
-                      {TYPES_VEHICULE.map((t) => (
-                        <option key={t} value={t}>{LIBELLE_TYPE[t]}</option>
+                    <label style={S.label}>Carburant</label>
+                    <select style={S.input} value={v.carburant || ""}
+                            onChange={(e) => maj(v.id, "carburant", e.target.value)}>
+                      <option value="">—</option>
+                      {CARBURANTS.map((c) => (
+                        <option key={c.cle} value={c.cle}>{c.nom}</option>
                       ))}
                     </select>
                   </div>
                   <div style={{ flex: 1 }}>
-                    <label style={S.label}>Volume (m³)</label>
-                    <input style={S.input} inputMode="decimal" value={v.volume_m3 ?? ""}
-                           onChange={(e) => maj(v.id, "volume_m3", e.target.value)} />
+                    <label style={S.label}>Permis requis</label>
+                    <select style={S.input} value={v.permis || ""}
+                            onChange={(e) => maj(v.id, "permis", e.target.value)}>
+                      <option value="">—</option>
+                      {PERMIS.map((p) => (
+                        <option key={p.cle} value={p.cle} title={p.resume}>{p.nom}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
+                <label style={S.label}>Numéro de châssis</label>
+                <input style={S.input} value={v.chassis || ""}
+                       onChange={(e) => maj(v.id, "chassis", e.target.value)}
+                       placeholder="VF1ABCDE0123456" />
                 <label style={S.label}>Immatriculation</label>
                 <input style={S.input} value={v.immatriculation || ""}
                        onChange={(e) => maj(v.id, "immatriculation", e.target.value)}
@@ -197,7 +300,7 @@ function OngletCamions() {
 
                 <button onClick={() => setArchivage(v.id)}
                         style={{ ...S.boutonLien, color: C.muet, marginTop: 12 }}>
-                  🗂 Archiver ce camion
+                  🗂 Archiver ce véhicule
                 </button>
                 {archivage === v.id && (
                   <Confirmation
@@ -216,7 +319,7 @@ function OngletCamions() {
       })}
 
       <div style={{ margin: "0 16px" }}>
-        <button style={S.boutonPlein} onClick={ajouter}>+ Ajouter un camion</button>
+        <button style={S.boutonPlein} onClick={ajouter}>+ Ajouter un véhicule</button>
       </div>
     </>
   );

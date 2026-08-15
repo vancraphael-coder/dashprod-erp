@@ -240,7 +240,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
                        onChange={(e) => maj("heures", num(e.target.value))} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={S.label}>Camions</label>
+                <label style={S.label}>Véhicules</label>
                 <input style={S.input} type="number" min="1"
                        value={faits.nbCamions}
                        onChange={(e) => maj("nbCamions", num(e.target.value))} />

@@ -330,7 +330,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       {flotte.length > 0 && (
         <div style={S.carte}>
           <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
-            Camions ({camions.length})
+            Véhicules ({camions.length})
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {flotte.map((v) => {
@@ -1119,7 +1119,7 @@ function ZoneDesistement({ affaire, affaireId, onFait }) {
 
           <div style={{ fontSize: 11.5, color: C.muet, margin: "8px 0 10px", lineHeight: 1.5 }}>
             {mode === "annuler"
-              ? "L'équipe et les camions seront libérés au planning. Le dossier reste consultable."
+              ? "L'équipe et les véhicules seront libérés au planning. Le dossier reste consultable."
               : nouvelleDate
                 ? "Le chantier sera replanifié à cette date avec la même équipe."
                 : "Le dossier passera en « reporté » et libèrera le planning jusqu'à une nouvelle date."}
