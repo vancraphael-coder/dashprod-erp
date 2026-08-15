@@ -97,3 +97,53 @@ test("le matériel de terrain n'est jamais filtré par l'emballage", () => {
   assert.equal(ligne.includes("vendEmballage"), false,
     "le matériel de terrain reste, même sans emballage");
 });
+
+/* ── La saisie du dossier ───────────────────────────────────────────────── */
+
+test("visite préalable et jour d'emballage n'existent que pour un déménagement", () => {
+  // « Trois dates deviennent une seule » : la date d'intervention subsiste,
+  // la visite d'estimation et le jour d'emballage disparaissent.
+  const src = lire("ecrans/Dossier.jsx");
+  assert.ok(src.includes("{parcoursComplet && (<>"),
+    "les deux dates optionnelles doivent être conditionnées");
+  assert.ok(/const parcoursComplet = comporteEtape\([^)]*"releve"\)/.test(src),
+    "le drapeau doit venir du domaine, pas d'une liste de natures écrite sur place");
+});
+
+test("un lift ne se réserve qu'avec un véhicule de catégorie lift", () => {
+  const src = lire("ecrans/Dossier.jsx");
+  assert.ok(/flotteOfferte\s*=\s*affaire\.nature === "lift"/.test(src),
+    "la flotte offerte doit être filtrée pour un lift");
+  assert.ok(src.includes('v.categorie === "lift"'));
+  // Les autres natures gardent toute la flotte : le filtre est un ternaire.
+  assert.ok(src.includes(": flotte;"),
+    "hors lift, aucune restriction ne doit s'appliquer");
+});
+
+test("l'étage maximal du lift est réellement confronté aux adresses", () => {
+  // Sans cette confrontation, la donnée saisie au lot 4 ne servirait à rien.
+  const src = lire("ecrans/Dossier.jsx");
+  assert.ok(src.includes("liftSuffit("),
+    "le verdict doit être calculé, pas seulement stocké");
+  assert.ok(src.includes("verdictLift.motif"),
+    "et son motif doit être affiché");
+});
+
+test("la sélection rapide d'étage produit une valeur relisible", () => {
+  const src = lire("ecrans/Dossier.jsx");
+  assert.ok(src.includes("ETAGES_RAPIDES.map"));
+  assert.ok(src.includes("libelleEtage(n)"),
+    "les boutons écrivent RDC / 1er / 2e, que `niveau()` sait relire");
+  assert.ok(src.includes("estRelisible(a.etage)"),
+    "une saisie héritée incomprise doit être signalée, pas écrasée");
+});
+
+test("la sous-traitance sépare le donneur d'ordre du contact sur place", () => {
+  // Deux personnes distinctes : on facture l'un, on appelle l'autre.
+  const src = lire("composants/BlocsNature.jsx");
+  assert.ok(src.includes("export function BlocDonneurOrdre"));
+  assert.ok(src.includes("contact_tel") && src.includes("societe"));
+  const dossier = lire("ecrans/Dossier.jsx");
+  assert.ok(dossier.includes("BlocDonneurOrdre"),
+    "le bloc doit être monté dans le dossier");
+});
