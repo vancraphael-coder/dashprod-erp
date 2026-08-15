@@ -13,7 +13,8 @@ import React, { useEffect, useState } from "react";
 import { nature as natureDe, comporte } from "@domaine/commercial/natures.js";
 import { chiffrer as chiffrerST, tauxHoraireEffectif }
   from "@domaine/chiffrage/sous-traitance.js";
-import { chiffrer as chiffrerLift } from "@domaine/chiffrage/lift.js";
+import { chiffrer as chiffrerLift, formaterHeures }
+  from "@domaine/chiffrage/lift.js";
 import { obtenirParametresPrix, depots } from "../lib/adaptateur.js";
 import { C, S, euros } from "../lib/theme.jsx";
 
@@ -114,6 +115,7 @@ export function BlocSousTraitance({ valeur, onChange }) {
 
 export function BlocLift({ valeur, onChange, centreId }) {
   const [reglages, setReglages] = useState(null);
+  const [supp, setSupp] = useState(null);
   const [centres, setCentres] = useState([]);
   const m = valeur || {};
 
@@ -122,6 +124,7 @@ export function BlocLift({ valeur, onChange, centreId }) {
                  depots().catch(() => [])])
       .then(([p, cs]) => {
         setCentres(cs);
+        setSupp(p?.lift_supplements || {});
         setReglages({
           maisonMere: p?.lift_couronnes || [],
           parCentre: Object.fromEntries(
@@ -131,13 +134,17 @@ export function BlocLift({ valeur, onChange, centreId }) {
   }, []);
 
   const centreRetenu = m.centreId || centreId || centres[0]?.id || null;
-  const r = reglages ? chiffrerLift(m.km, reglages, centreRetenu) : null;
+  const r = reglages ? chiffrerLift(m, reglages, centreRetenu, supp) : null;
 
   const ORIGINE = {
     centre: "grille propre à ce centre",
     maison_mere: "grille de la maison mère",
     defaut: "grille par défaut — aucune n'est encore réglée",
   };
+
+  function maj(cle, v) {
+    onChange({ ...m, [cle]: v === "" ? null : Number(v) });
+  }
 
   return (
     <div style={S.carte}>
@@ -155,11 +162,33 @@ export function BlocLift({ valeur, onChange, centreId }) {
         </>
       )}
 
-      <label style={S.label}>Distance depuis le centre (km)</label>
-      <input style={S.input} type="number" min={0} step="0.1"
-             value={m.km ?? ""}
-             onChange={(e) => onChange({ ...m,
-               km: e.target.value === "" ? null : Number(e.target.value) })} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <label style={S.label}>Distance (km)</label>
+          <input style={{ ...S.input, textAlign: "center" }} type="number"
+                 min={0} step="0.1" value={m.km ?? ""}
+                 onChange={(e) => maj("km", e.target.value)} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={S.label}>Temps sur place (h)</label>
+          <input style={{ ...S.input, textAlign: "center" }} type="number"
+                 min={0} step="0.25" value={m.heures ?? ""}
+                 onChange={(e) => maj("heures", e.target.value)} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={S.label}>Hommes en plus</label>
+          <input style={{ ...S.input, textAlign: "center" }} type="number"
+                 min={0} value={m.hommes_supp ?? ""}
+                 onChange={(e) => maj("hommes_supp", e.target.value)} />
+        </div>
+      </div>
+
+      {r && !r.grille_absente && r.couronne && (
+        <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
+          Cette couronne comprend {formaterHeures(r.heures_incluses)} sur place.
+          Un homme en plus reprend le temps sans doubler le prix.
+        </div>
+      )}
 
       {r && r.grille_absente && (
         <Avertir>Aucune couronne n'est réglée. Renseignez-les dans
@@ -180,7 +209,8 @@ export function BlocLift({ valeur, onChange, centreId }) {
           {/* D'où vient la grille : indispensable quand un client discute. */}
           <div style={{ fontSize: 11.5, color: C.muet, marginTop: 4 }}>
             {ORIGINE[r.origine]}
-            {r.hors_couronne && ` · ${r.km_supplementaires} km au-delà du dernier anneau`}
+            {r.hors_couronne && r.km_supplementaires > 0
+              ? ` · ${r.km_supplementaires} km au-delà du dernier anneau` : ""}
           </div>
         </div>
       )}
