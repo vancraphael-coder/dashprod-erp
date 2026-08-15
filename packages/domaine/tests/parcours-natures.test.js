@@ -192,3 +192,41 @@ test("le récapitulatif d'une offre non-déménagement est adapté", () => {
   // litiges.
   assert.ok(/sans emballage ni fournitures/i.test(src));
 });
+
+/* ── Le récurrent (lot 7) ───────────────────────────────────────────────── */
+
+test("aucune facture n'est émise automatiquement", () => {
+  // Facturer sans regard humain un contrat résilié la veille fâche un client
+  // pour rien, et la correction coûte plus cher que la saisie.
+  const src = lire("ecrans/Contrats.jsx");
+  assert.ok(src.includes("marquerEcheance("),
+    "l'émission passe par une action explicite");
+  assert.ok(/Marquer comme factur/.test(src),
+    "le bureau décide de chaque échéance");
+});
+
+test("le prorata s'annonce à l'écran", () => {
+  // Un montant réduit sans explication passe pour une erreur, et le client
+  // appelle.
+  const src = lire("ecrans/Contrats.jsx");
+  assert.ok(src.includes("m.proratise"));
+  assert.ok(/le mois plein/.test(src),
+    "on montre le montant plein à côté du prorata");
+});
+
+test("un box hors barème est signalé avant d'être facturé à zéro", () => {
+  const src = lire("ecrans/Contrats.jsx");
+  assert.ok(src.includes("m.hors_bareme"));
+  assert.ok(/aucune tranche/i.test(src));
+});
+
+test("le litige sur contrat est câblé de bout en bout", () => {
+  // La contrainte existait depuis 0115, mais aucune commande ne permettait
+  // d'ouvrir un litige SUR UN CONTRAT : la moitié était inutilisable.
+  const ad = lire("lib/adaptateur.js");
+  assert.ok(ad.includes("cmd_ouvrir_litige_contrat"));
+  assert.ok(ad.includes("cmd_litiges_contrat"));
+  const src = lire("ecrans/Contrats.jsx");
+  assert.ok(src.includes("ouvrirLitigeContrat("));
+  assert.ok(src.includes("litigesContrat("));
+});
