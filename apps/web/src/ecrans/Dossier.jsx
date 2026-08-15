@@ -27,8 +27,11 @@ import { adresseDepot } from "@domaine/organisation/identite.js";
 import { CIVILITES } from "@domaine/crm/civilite.js";
 import { synthese, verdict, pictoStatut, lignesBilan, mentionDerogation }
   from "@domaine/crm/cloture.js";
-import { BandeauNature, BlocSousTraitance, BlocLift }
+import { BandeauNature, BlocDonneurOrdre, BlocSousTraitance, BlocLift }
   from "../composants/BlocsNature.jsx";
+import { comporte as comporteEtape } from "@domaine/commercial/natures.js";
+import { ETAGES_RAPIDES, libelleEtage, niveau, estRelisible, liftSuffit }
+  from "@domaine/planning/etages.js";
 import { C, S, Badge, BadgeFacturation, euros, declarerModifs, Confirmation }
   from "../lib/theme.jsx";
 
@@ -142,6 +145,24 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     } catch (e) { setErreur(e.message); }
   }
   enregistrerRef.current = enregistrer;
+
+  // Le parcours complet = le déménagement. Les autres natures n'ont ni visite
+  // d'estimation, ni jour d'emballage : une seule date les concerne.
+  const parcoursComplet = comporteEtape(affaire.nature || "demenagement", "releve");
+
+  // Un lift ne se réserve qu'avec un véhicule de catégorie « lift ». Pour les
+  // autres natures, toute la flotte reste offerte.
+  const flotteOfferte = affaire.nature === "lift"
+    ? flotte.filter((v) => v.categorie === "lift")
+    : flotte;
+
+  // L'étage maximal du lift choisi, confronté aux adresses du dossier. C'est
+  // ce contrôle qui donne son utilité à la donnée saisie au lot 4 : une
+  // information qu'on ne confronte jamais ne sert à rien.
+  const liftChoisi = flotte.find((v) => camions.includes(v.id) && v.categorie === "lift");
+  const verdictLift = liftChoisi
+    ? liftSuffit(liftChoisi, [...(contact?.charges || []), ...(contact?.decharges || [])])
+    : { ok: true, motif: null };
 
   const chiffree = affaire.tvac_centimes != null;
   // Depuis la séparation des cycles (0064), on facture un dossier ENGAGÉ —
@@ -288,7 +309,11 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </div>
         </div>
 
-        {/* Visite préalable du chantier (le commercial passe estimer). */}
+        {/* Visite préalable et jour d'emballage n'existent QUE pour un
+            déménagement : on ne passe pas estimer un lift, et une
+            sous-traitance n'emballe rien. Trois dates deviennent donc une
+            seule pour ces natures — c'est la date d'intervention. */}
+        {parcoursComplet && (<>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muet, margin: "12px 0 4px" }}>
           Visite préalable (optionnel)
         </div>
@@ -322,18 +347,36 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
                    onChange={(e) => maj("heureEmballage", e.target.value)} />
           </div>
         </div>
+        </>)}
       </div>
 
       {/* Camions pressentis — reportés sur la mission à la confirmation (0022).
           Un camion en alerte (méca urgente, CT expiré) reste sélectionnable
           mais s'affiche en rouge : le système signale, l'humain décide. */}
-      {flotte.length > 0 && (
+      {flotteOfferte.length > 0 && (
         <div style={S.carte}>
           <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
             Véhicules ({camions.length})
           </div>
+
+          {/* Un lift ne se réserve qu'avec un lift : proposer un fourgon ici
+              n'aurait aucun sens. Les autres natures gardent toute la flotte. */}
+          {affaire.nature === "lift" && (
+            <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
+              Seuls les lifts sont proposés pour cette nature.
+            </div>
+          )}
+          {verdictLift.motif && (
+            <div style={{ fontSize: 12, marginBottom: 8, padding: "8px 10px",
+                          borderRadius: 9, lineHeight: 1.45,
+                          color: verdictLift.ok ? C.ambre : C.rouge,
+                          background: `${verdictLift.ok ? C.ambre : C.rouge}1F` }}>
+              {verdictLift.ok ? "⚠ " : "⛔ "}{verdictLift.motif}
+            </div>
+          )}
+
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {flotte.map((v) => {
+            {flotteOfferte.map((v) => {
               const sel = camions.includes(v.id);
               const alerte = alertesVehicule(v).niveau === "urgent";
               return (
@@ -385,6 +428,10 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       {/* Ce qu'on vend — et, pour les natures sans relevé, leur chiffrage. */}
       <BandeauNature cle={affaire?.nature} />
 
+      {affaire?.nature === "sous_traitance" && (
+        <BlocDonneurOrdre valeur={mission}
+          onChange={(m) => { setMission(m); setModifie(true); }} />
+      )}
       {affaire?.nature === "sous_traitance" && (
         <BlocSousTraitance valeur={mission}
           onChange={(m) => { setMission(m); setModifie(true); }} />
@@ -1191,6 +1238,32 @@ function BlocAdresses({ titre, liste, onMaj, onAjouter, onRetirer }) {
                      onChange={(e) => onMaj(a.id, "etage", e.target.value)}
                      placeholder="RDC / 2e" />
             </div>
+          </div>
+
+          {/* Sélection rapide : un doigt au lieu du clavier, et surtout une
+              valeur COMPARABLE à l'étage maximal d'un lift. Le champ libre
+              reste au-dessus — les saisies héritées ne se perdent pas. */}
+          <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
+            {ETAGES_RAPIDES.map((n) => {
+              const choisi = niveau(a.etage) === n;
+              return (
+                <button key={n} type="button"
+                  onClick={() => onMaj(a.id, "etage", libelleEtage(n))}
+                  style={{
+                    padding: "5px 11px", borderRadius: 999, cursor: "pointer",
+                    fontSize: 12, fontWeight: 700,
+                    border: `1.5px solid ${choisi ? C.bleu : C.bord}`,
+                    background: choisi ? C.bleuClair : C.blanc,
+                    color: choisi ? C.bleu : C.muet }}>
+                  {libelleEtage(n)}
+                </button>
+              );
+            })}
+            {!estRelisible(a.etage) && (
+              <span style={{ fontSize: 11.5, color: C.ambre, alignSelf: "center" }}>
+                étage non reconnu
+              </span>
+            )}
           </div>
           <div style={{ display: "flex", gap: 14, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
             <label style={{ fontSize: 12.5, color: C.encre, display: "flex", gap: 6, cursor: "pointer" }}>
