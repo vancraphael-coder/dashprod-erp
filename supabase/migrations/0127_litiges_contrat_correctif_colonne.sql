@@ -1,0 +1,3 @@
+-- 0127 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- CORRECTIF de 0126 : tri sur `created_at`, colonne inexistante sur `litiges`
+-- (c'est `ouvert_le`).

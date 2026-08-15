@@ -1,0 +1,5 @@
+-- 0125 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- cmd_stock_echeances : période par période, avec les JOURS RÉELLEMENT
+-- couverts (un contrat démarré le 20 ne doit pas le mois entier) et ce qui a
+-- déjà été facturé. Aucune facture n'est générée : le bureau décide.
+-- cmd_stock_echeance_marquer : idempotent via ON CONFLICT.

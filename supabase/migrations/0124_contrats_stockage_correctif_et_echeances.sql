@@ -1,0 +1,6 @@
+-- 0124 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- CORRECTIF : cmd_stock_contrat_definir insérait dans `depot_id`, colonne
+-- INEXISTANTE (c'est `centre_id`). Aucun contrat n'avait donc jamais pu être
+-- créé — la table à zéro ligne le confirmait.
+-- Ajout : table stock_echeances (contrat, période, montant, facture),
+-- contrainte UNIQUE (contrat_id, periode_debut) contre la double facturation.

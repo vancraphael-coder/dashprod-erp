@@ -1,0 +1,5 @@
+-- 0126 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- cmd_ouvrir_litige_contrat + cmd_litiges_contrat. La contrainte de 0115
+-- prévoyait le litige sur contrat, mais aucune commande ne permettait d'en
+-- ouvrir un : la moitié de la contrainte était inutilisable.
+-- ⚠️ Contenait un bug corrigé par 0127.
