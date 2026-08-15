@@ -74,7 +74,11 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
     setMissions(lectureSeule ? toutes.filter((m) => m.partagee) : toutes);
     setMembres(await listerMembresSimples());
     setTousMembres(await listerMembresSimples(true).catch(() => []));
-    setConges(await listerConges().catch(() => []));
+    // Les DEMANDES sont chargées avec les congés accordés : une absence
+    // probable doit se voir au planning, sinon on affecte quelqu'un sur une
+    // période qu'il vient justement de demander. Elles ne bloquent pas —
+    // elles avertissent.
+    setConges(await listerConges(["approuve", "demande"]).catch(() => []));
     setFermetures(await listerFermetures().catch(() => []));
     setFlotte(await listerVehicules().catch(() => []));
   }
@@ -102,8 +106,12 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
     const engagements = missions
       .filter((m) => (m.affectations || []).some((a) => a.utilisateur_id === membreId))
       .map((m) => ({ missionId: m.id, date: m.date }));
+    // SEULS les congés ACCORDÉS rendent indisponible. Une demande en attente
+    // n'est pas une absence : bloquer dessus reviendrait à laisser le membre
+    // décider seul de son planning, alors que la décision revient au bureau.
+    // Elle est signalée ailleurs (pastille creuse au calendrier).
     const congesMembre = conges
-      .filter((c) => c.utilisateur_id === membreId)
+      .filter((c) => c.utilisateur_id === membreId && c.etat !== "demande")
       .map((c) => ({ debut: c.debut, fin: c.fin }));
     return disponibiliteRessource({
       date: mission.date, missionId: mission.id,
@@ -156,6 +164,7 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
   // de l'utilisateur se répercute ici sans retoucher cet écran.
   const cDouble = couleurPlanning("double");
   const cConge = couleurPlanning("conge");
+  const cDemande = couleurPlanning("demande");
   const COULEURS_DISPO = {
     libre:        { bord: C.bord,        fond: C.blanc,      texte: C.encre, signe: "" },
     double:       { bord: `${cDouble}66`, fond: `${cDouble}1F`, texte: cDouble, signe: "⚠ " },
@@ -220,8 +229,10 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
             const estAujourdhui = j.date === aujourdhui();
             const selectionne = j.date === jourSel;
             const q = qualifierJour(j.date, fermetures);
-            const nbConges = conges.filter((c) =>
-              c.debut && c.fin && j.date >= c.debut && j.date <= c.fin).length;
+            const duJour = conges.filter((c) =>
+              c.debut && c.fin && j.date >= c.debut && j.date <= c.fin);
+            const nbConges = duJour.filter((c) => c.etat !== "demande").length;
+            const nbDemandes = duJour.filter((c) => c.etat === "demande").length;
             // Priorité visuelle : fermeture entreprise, puis férié légal.
             // Teintes TRANSLUCIDES et non des pastels opaques : en nuit,
             // #FEF2F2 posait un pavé blanc sur un fond presque noir. Un voile
@@ -248,7 +259,7 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                     fontSize: 8, lineHeight: 1,
                     color: q.ferme ? C.rouge : C.ambre }}>●</span>
                 )}
-                {(j.nb > 0 || nbConges > 0) && (
+                {(j.nb > 0 || nbConges > 0 || nbDemandes > 0) && (
                   <span style={{ position: "absolute", bottom: 5, left: "50%",
                     transform: "translateX(-50%)", display: "flex", gap: 2 }}>
                     {j.nb > 0 && (
@@ -261,6 +272,14 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                       // réglage : on passe par l'assistant prévu pour ça.
                       <span style={{ width: 5, height: 5, borderRadius: "50%",
                         background: estAujourdhui ? C.blanc : couleurPlanning("conge") }} />
+                    )}
+                    {nbDemandes > 0 && (
+                      // Une DEMANDE n'est pas une absence : elle se distingue
+                      // par sa couleur et par son contour creux, pour ne pas
+                      // se lire comme un congé acquis.
+                      <span style={{ width: 5, height: 5, borderRadius: "50%",
+                        border: `1.5px solid ${estAujourdhui ? C.blanc : couleurPlanning("demande")}`,
+                        boxSizing: "border-box" }} />
                     )}
                   </span>
                 )}
@@ -286,13 +305,18 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
 
       {(() => {
         const q = qualifierJour(jourSel, fermetures);
-        const enConge = conges
-          .filter((c) => c.debut && c.fin && jourSel >= c.debut && jourSel <= c.fin)
-          .map((c) => {
-            const m = tousMembres.find((x) => x.id === c.utilisateur_id);
-            return { nom: m?.nom || "Membre", motif: c.motif };
-          });
-        if (!q.ferie && !q.ferme && enConge.length === 0) return null;
+        // « X en congé » ne compte que les congés ACCORDÉS : annoncer une
+        // demande comme une absence ferait renoncer à un chantier pour rien.
+        const surLeJour = conges
+          .filter((c) => c.debut && c.fin && jourSel >= c.debut && jourSel <= c.fin);
+        const nommer = (c) => {
+          const m = tousMembres.find((x) => x.id === c.utilisateur_id);
+          return { nom: m?.nom || "Membre", motif: c.motif };
+        };
+        const enConge = surLeJour.filter((c) => c.etat !== "demande").map(nommer);
+        const enDemande = surLeJour.filter((c) => c.etat === "demande").map(nommer);
+        if (!q.ferie && !q.ferme && enConge.length === 0
+            && enDemande.length === 0) return null;
         return (
           <div style={{ margin: "0 16px 10px", display: "flex",
                         flexDirection: "column", gap: 6 }}>
@@ -311,6 +335,13 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
               <div style={bandeauStyle(`${cConge}1F`, `${cConge}55`, cConge)}>
                 <b>{enConge.length} en congé</b> :{" "}
                 {enConge.map((e) => e.nom.split(" ")[0]).join(", ")}
+              </div>
+            )}
+            {enDemande.length > 0 && (
+              <div style={bandeauStyle(`${cDemande}1F`, `${cDemande}55`, cDemande)}>
+                <b>{enDemande.length} en attente</b> :{" "}
+                {enDemande.map((e) => e.nom.split(" ")[0]).join(", ")}
+                {" — à confirmer au bureau."}
               </div>
             )}
           </div>

@@ -12,10 +12,11 @@
 import React, { useEffect, useState } from "react";
 import {
   listerEquipement, ajouterEquipement, changerEtatEquipement,
-  listerConges, ajouterConge, supprimerConge, supprimerEquipement, modeDonnees,
+  supprimerEquipement, modeDonnees,
 } from "../lib/adaptateur.js";
 import { deconnecter } from "../lib/supabase.js";
 import { avisProduitMien, definirAvisProduit } from "../lib/adaptateur.js";
+import { DemanderConge, MesConges } from "../composants/Conges.jsx";
 import { C, S } from "../lib/theme.jsx";
 
 const ETATS = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
@@ -76,7 +77,7 @@ export default function Profil({ profil, versParametres, versDiagnostic, versDem
         ))}
       </div>
 
-      {onglet === "inventaire" ? <Inventaire profil={profil} /> : <Conges profil={profil} />}
+      {onglet === "inventaire" ? <Inventaire profil={profil} /> : <Conges />}
 
       {peutConfigurer && versParametres && (
         <div style={{ margin: "18px 16px 0" }}>
@@ -285,83 +286,20 @@ function Inventaire({ profil }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Conges({ profil }) {
-  const [liste, setListe] = useState([]);
-  const [form, setForm] = useState({ debut: "", fin: "", motif: "" });
-  const [erreur, setErreur] = useState(null);
-  const monId = profil?.utilisateur_id;
-
-  function recharger() {
-    listerConges()
-      .then((c) => setListe((c || []).filter((x) => x.utilisateur_id === monId)))
-      .catch((e) => setErreur(e.message));
-  }
-  useEffect(recharger, [monId]);
-
-  async function ajouter() {
-    setErreur(null);
-    if (!form.debut || !form.fin) { setErreur("Indiquez une date de début et de fin."); return; }
-    if (form.fin < form.debut) { setErreur("La date de fin précède la date de début."); return; }
-    try {
-      await ajouterConge({ utilisateurId: monId, ...form });
-      setForm({ debut: "", fin: "", motif: "" });
-      recharger();
-    } catch (e) { setErreur(e.message); }
-  }
-
-  async function retirer(id) {
-    setErreur(null);
-    try { await supprimerConge(id); recharger(); }
-    catch (e) { setErreur(e.message); }
-  }
-
+/**
+ * Mes congés — demande et suivi.
+ *
+ * Le circuit a changé (migration 0120) : un membre DEMANDE, le bureau
+ * confirme. L'ancien écran enregistrait un congé directement approuvé et ne
+ * listait que les approuvés — une demande en attente y était donc invisible,
+ * ce qui laissait croire qu'elle s'était perdue.
+ */
+function Conges() {
+  const [maj, setMaj] = useState(0);
   return (
     <>
-      <div style={S.carte}>
-        <label style={{ ...S.label, marginTop: 0 }}>
-          {liste.length === 0 ? "Aucun congé enregistré" : `${liste.length} congé${liste.length > 1 ? "s" : ""}`}
-        </label>
-        {liste.map((c) => (
-          <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10,
-                                   padding: "9px 0", borderTop: `1px solid ${C.doux}` }}>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: C.encre }}>
-                {jour(c.debut)} → {jour(c.fin)}
-              </span>
-              {c.motif && (
-                <span style={{ display: "block", fontSize: 11.5, color: C.fantome, marginTop: 2 }}>
-                  {c.motif}
-                </span>
-              )}
-            </span>
-            <button onClick={() => retirer(c.id)} style={{ border: "none", background: "none",
-              cursor: "pointer", fontSize: 15, color: C.rouge, padding: "2px 6px" }}>✕</button>
-          </div>
-        ))}
-      </div>
-
-      <div style={S.carte}>
-        <label style={{ ...S.label, marginTop: 0 }}>Poser un congé</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input style={{ ...S.input, flex: 1 }} type="date" value={form.debut}
-                 onChange={(e) => setForm((f) => ({ ...f, debut: e.target.value }))} />
-          <input style={{ ...S.input, flex: 1 }} type="date" value={form.fin}
-                 onChange={(e) => setForm((f) => ({ ...f, fin: e.target.value }))} />
-        </div>
-        <input style={{ ...S.input, marginTop: 8 }} value={form.motif}
-               placeholder="Motif (facultatif)"
-               onChange={(e) => setForm((f) => ({ ...f, motif: e.target.value }))} />
-        {erreur && (
-          <div style={{ fontSize: 12.5, color: C.rouge, marginTop: 8 }}>{erreur}</div>
-        )}
-        <button style={{ ...S.boutonPlein, marginTop: 10 }} onClick={ajouter}>
-          Enregistrer le congé
-        </button>
-        <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 8, lineHeight: 1.5 }}>
-          Les congés apparaissent dans le planning et bloquent l'affectation aux
-          chantiers sur la période.
-        </div>
-      </div>
+      <DemanderConge onFait={() => setMaj((n) => n + 1)} />
+      <MesConges rafraichir={maj} />
     </>
   );
 }

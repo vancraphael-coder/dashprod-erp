@@ -19,6 +19,7 @@ import {
   capacitesTerrain, capacitesBureau, capacitesEffectives, origineCapacite,
   resumeAcces,
 } from "@domaine/rh/capacites.js";
+import { DemandesConges } from "../composants/Conges.jsx";
 import { C, S, Confirmation } from "../lib/theme.jsx";
 
 function DroitDevisComplet({ membreId }) {
@@ -158,6 +159,8 @@ export default function Equipe({ retour, integre }) {
   const [conges, setConges] = useState([]);
   const [ouvert, setOuvert] = useState(null);   // fiche membre dépliée
   const [nouveauConge, setNouveauConge] = useState({ debut: "", fin: "" });
+  // Incrémenté après chaque décision : force la corbeille à se recharger.
+  const [majConges, setMajConges] = useState(0);
   const [archivage, setArchivage] = useState(null); // id du membre à archiver
 
   function recharger() {
@@ -179,6 +182,7 @@ export default function Equipe({ retour, integre }) {
     try {
       await ajouterConge({ utilisateurId: membreId, ...nouveauConge });
       setNouveauConge({ debut: "", fin: "" });
+      setMajConges((n) => n + 1);
       recharger();
     } catch (e) { setErreur(e.message); }
   }
@@ -203,6 +207,9 @@ export default function Equipe({ retour, integre }) {
 
   const contenu = (
     <>
+      {/* La corbeille du bureau : ce qui attend une décision passe AVANT le
+          reste, sinon une demande dort jusqu'à ce que le membre relance. */}
+      <DemandesConges rafraichir={majConges} />
 
       <div style={S.carte}>
         <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 4 }}>
