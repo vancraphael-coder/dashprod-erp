@@ -62,3 +62,112 @@ export function alertesVehicule(v, reference = new Date()) {
 
   return { niveau: urgent ? "urgent" : raisons.length ? "attention" : "ok", raisons };
 }
+
+// =============================================================================
+// CATÉGORIES — camion, lift, voiture.
+//
+// À ne pas confondre avec `TYPES_VEHICULE` (fourgon | porteur | hayon), qui
+// est la CARROSSERIE d'un camion. Un lift n'a pas de carrosserie de camion, et
+// mettre les deux notions sur le même axe rendrait « fourgon » et « lift »
+// comparables alors qu'ils ne sont pas du même ordre.
+// =============================================================================
+
+export const CATEGORIES = Object.freeze([
+  { cle: "camion", nom: "Camion", resume: "Transporte le mobilier. Se mesure en m³.",
+    porte: { volume: true, carrosserie: true, echelle: false } },
+  { cle: "lift", nom: "Lift", resume: "Monte-meubles. Hauteur d'échelle et étage desservi.",
+    porte: { volume: false, carrosserie: false, echelle: true } },
+  { cle: "voiture", nom: "Voiture", resume: "Transporte les personnes. Rien à charger.",
+    porte: { volume: false, carrosserie: false, echelle: false } },
+]);
+
+/** Carburants proposés. `electrique` n'a pas de carte carburant : c'est voulu. */
+export const CARBURANTS = Object.freeze([
+  { cle: "diesel", nom: "Diesel" },
+  { cle: "essence", nom: "Essence" },
+  { cle: "hybride", nom: "Hybride" },
+  { cle: "electrique", nom: "Électrique" },
+  { cle: "gpl", nom: "GPL" },
+]);
+
+/**
+ * Permis belges, avec ce qu'ils autorisent réellement. Le poids est la borne
+ * de la masse en charge — c'est lui qui décide, pas la catégorie du véhicule :
+ * un gros lift peut exiger un C alors qu'un petit camion se conduit en B.
+ */
+export const PERMIS = Object.freeze([
+  { cle: "B", nom: "B", resume: "Jusqu'à 3,5 t — permis voiture." },
+  { cle: "BE", nom: "BE", resume: "B avec remorque lourde." },
+  { cle: "C1", nom: "C1", resume: "De 3,5 à 7,5 t." },
+  { cle: "C", nom: "C", resume: "Plus de 7,5 t — poids lourd." },
+  { cle: "CE", nom: "CE", resume: "C avec remorque." },
+]);
+
+export function categorie(cle) {
+  return CATEGORIES.find((c) => c.cle === cle) || null;
+}
+
+/** La catégorie porte-t-elle cet attribut ? Inconnue → non. */
+export function porte(cle, attribut) {
+  return categorie(cle)?.porte?.[attribut] === true;
+}
+
+export function nomCarburant(cle) {
+  return CARBURANTS.find((c) => c.cle === cle)?.nom || null;
+}
+
+export function nomPermis(cle) {
+  return PERMIS.find((p) => p.cle === cle)?.nom || null;
+}
+
+/** Seuls les camions comptent dans la capacité : un lift ne charge rien. */
+export function capaciteCamions(vehicules) {
+  return capaciteFlotte((vehicules || []).filter((v) => porte(v.categorie || "camion", "volume")));
+}
+
+/** Les lifts de la flotte, pour n'offrir qu'eux quand on réserve un lift. */
+export function liftsDisponibles(vehicules) {
+  return (vehicules || []).filter((v) => v.categorie === "lift" && !v.archive_le);
+}
+
+/**
+ * Un lift atteint-il cet étage ? Renvoie une DÉCISION motivée plutôt qu'un
+ * booléen : c'est le motif qu'on affichera au moment de réserver.
+ *
+ * `etage_max` non renseigné ne vaut PAS zéro — c'est « on ne sait pas ». Le
+ * confondre ferait refuser tous les lifts non documentés (piège Number(null)).
+ */
+export function liftAtteint(vehicule, etageDemande) {
+  if (!vehicule || vehicule.categorie !== "lift") {
+    return { ok: false, motif: "Ce véhicule n'est pas un lift." };
+  }
+  const max = vehicule.etage_max;
+  if (max === null || max === undefined || max === "") {
+    return { ok: true, inconnu: true,
+             motif: "Étage maximal non renseigné pour ce lift." };
+  }
+  const demande = Number(etageDemande);
+  if (!Number.isFinite(demande)) return { ok: true, motif: null };
+  if (demande > Number(max)) {
+    return { ok: false,
+             motif: `Ce lift dessert jusqu'au ${Number(max)}e étage — `
+                  + `le chantier est au ${demande}e.` };
+  }
+  return { ok: true, motif: null };
+}
+
+/** Le résumé d'un véhicule selon sa catégorie : m³, ou échelle et étages. */
+export function resumeCapacite(v) {
+  if (!v) return "";
+  const cat = v.categorie || "camion";
+  if (porte(cat, "volume")) return v.volume_m3 ? `${v.volume_m3} m³` : "";
+  if (porte(cat, "echelle")) {
+    const bouts = [];
+    if (v.echelle_m) bouts.push(`${v.echelle_m} m`);
+    if (v.etage_max !== null && v.etage_max !== undefined && v.etage_max !== "") {
+      bouts.push(`jusqu'au ${Number(v.etage_max)}e`);
+    }
+    return bouts.join(" · ");
+  }
+  return "";
+}
