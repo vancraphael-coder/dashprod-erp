@@ -8,7 +8,6 @@ import {
   exigeEntreprise, porteSurContrat, manques,
 } from "../src/commercial/natures.js";
 import * as ST from "../src/chiffrage/sous-traitance.js";
-import * as LIFT from "../src/chiffrage/lift.js";
 
 /* ── Natures ────────────────────────────────────────────────────────────── */
 
@@ -121,61 +120,6 @@ test("le taux horaire effectif révèle ce que la remise a coûté", () => {
 });
 
 /* ── Lift ───────────────────────────────────────────────────────────────── */
-
-const REGLAGES = {
-  parCentre: {
-    anvers: [{ jusqua_km: 10, prix_centimes: 15000 },
-             { jusqua_km: 25, prix_centimes: 21000 }],
-  },
-  maisonMere: [{ jusqua_km: 20, prix_centimes: 20000 },
-               { jusqua_km: 50, prix_centimes: 30000 }],
-};
-
-test("un centre avec sa grille applique la sienne", () => {
-  const g = LIFT.grilleDuCentre(REGLAGES, "anvers");
-  assert.equal(g.origine, "centre");
-  assert.equal(LIFT.chiffrer(8, REGLAGES, "anvers").total_centimes, 15000);
-});
-
-test("un centre sans grille retombe sur la maison mère", () => {
-  const g = LIFT.grilleDuCentre(REGLAGES, "bruxelles");
-  assert.equal(g.origine, "maison_mere");
-  // 18 km → première couronne du siège.
-  assert.equal(LIFT.chiffrer(18, REGLAGES, "bruxelles").total_centimes, 20000);
-});
-
-test("l'origine de la grille est toujours dite — on discute des prix", () => {
-  assert.equal(LIFT.chiffrer(8, REGLAGES, "anvers").origine, "centre");
-  assert.equal(LIFT.chiffrer(8, REGLAGES, "gand").origine, "maison_mere");
-  assert.equal(LIFT.chiffrer(8, {}, "gand").origine, "defaut");
-});
-
-test("la bonne couronne est choisie, bornes incluses", () => {
-  // 10 km pile appartient à la couronne « jusqu'à 10 km ».
-  assert.equal(LIFT.chiffrer(10, REGLAGES, "anvers").total_centimes, 15000);
-  assert.equal(LIFT.chiffrer(10.1, REGLAGES, "anvers").total_centimes, 21000);
-  assert.equal(LIFT.chiffrer(0, REGLAGES, "anvers").total_centimes, 15000);
-});
-
-test("au-delà de la dernière couronne, on prolonge au km sans refuser", () => {
-  const r = LIFT.chiffrer(40, REGLAGES, "anvers", { km_supp_centimes: 200 });
-  assert.equal(r.hors_couronne, true);
-  assert.equal(r.km_supplementaires, 15);          // 40 − 25
-  assert.equal(r.supplement_centimes, 3000);       // 15 × 2 €
-  assert.equal(r.total_centimes, 21000 + 3000);
-  assert.equal(r.lignes.length, 2);
-});
-
-test("une couronne mal saisie est écartée, pas intégrée au tri", () => {
-  const sales = [{ jusqua_km: 20, prix_centimes: 20000 },
-                 { jusqua_km: null, prix_centimes: 5000 },
-                 { jusqua_km: 10, prix_centimes: null },
-                 { jusqua_km: 5, prix_centimes: 10000 }];
-  const propres = LIFT.couronnes(sales);
-  assert.deepEqual(propres.map((c) => c.jusqua_km), [5, 20]);
-});
-
-test("la grille se décrit en anneaux lisibles", () => {
-  const d = LIFT.decrireGrille(REGLAGES.maisonMere);
-  assert.deepEqual(d.map((l) => l.libelle), ["0 – 20 km", "20 – 50 km"]);
-});
+// Le chiffrage du lift a son propre fichier : `lift-chiffrage.test.js`.
+// Le modèle a changé (couronne + temps inclus + homme supplémentaire à
+// supplément propre) et méritait une suite dédiée plutôt qu'un appendice ici.
