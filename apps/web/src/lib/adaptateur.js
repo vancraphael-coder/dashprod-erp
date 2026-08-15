@@ -163,7 +163,7 @@ export async function obtenirAffaire(id) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase
       .from("affaires")
-      .select("id, etat, formule, created_at, date_souhaitee, heure_souhaitee, clients(id, nom, tel, email), scenarios(retenu, entrees, resultats)")
+      .select("id, etat, formule, nature, centre_id, created_at, date_souhaitee, heure_souhaitee, clients(id, nom, tel, email), scenarios(retenu, entrees, resultats)")
       .eq("id", id).single();
     if (error) throw error;
     // On relit le scénario retenu pour restituer les faits ET les coûts saisis :
@@ -173,7 +173,12 @@ export async function obtenirAffaire(id) {
     const r = retenu?.resultats || {};
     const { couts, ...faits } = entrees || {};
     return {
-      id: data.id, etat: data.etat, formule: data.formule, creeLe: data.created_at,
+      id: data.id, etat: data.etat, formule: data.formule,
+      // La nature pilote le parcours : sans elle, un lift s'ouvrirait sur les
+      // écrans d'un déménagement. Repli explicite pour les lignes d'avant 0117.
+      nature: data.nature || "demenagement",
+      centreId: data.centre_id || null,
+      creeLe: data.created_at,
       date_souhaitee: data.date_souhaitee || null,
       client: data.clients,
       tvac_centimes: r.tvac_centimes ?? null,
@@ -185,7 +190,45 @@ export async function obtenirAffaire(id) {
   const d = lireDemo();
   const a = d.affaires.find((x) => x.id === id);
   if (!a) return null;
-  return { ...a, client: d.clients.find((c) => c.id === a.clientId) };
+  // Même repli qu'en mode réel : les affaires de démonstration créées avant
+  // l'introduction de la nature n'en portent pas, et un `undefined` ferait
+  // diverger le parcours entre démo et réel.
+  return { ...a, nature: a.nature || "demenagement",
+           client: d.clients.find((c) => c.id === a.clientId) };
+}
+
+/**
+ * La saisie propre aux natures sans relevé (sous-traitance, lift) : hommes,
+ * heures, camions, km. Rangée dans `scenarios.entrees.mission` plutôt que dans
+ * de nouvelles colonnes — c'est déjà là que vivent les faits du chiffrage, et
+ * une colonne par nature multiplierait les champs vides sur les autres.
+ *
+ * On relit-modifie-réécrit `entrees` : un remplacement direct effacerait les
+ * faits et les coûts déjà saisis.
+ */
+export async function sauverMission(affaireId, mission) {
+  if (modeDonnees() === "reel") {
+    const { data: sc, error: eSel } = await supabase.from("scenarios")
+      .select("id, entrees").eq("affaire_id", affaireId).eq("retenu", true)
+      .maybeSingle();
+    if (eSel) throw eSel;
+
+    const entrees = { ...(sc?.entrees || {}), mission: mission || {} };
+    if (sc?.id) {
+      const { error } = await supabase.from("scenarios")
+        .update({ entrees }).eq("id", sc.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("scenarios")
+        .insert({ affaire_id: affaireId, nom: "Scénario retenu",
+                  retenu: true, entrees });
+      if (error) throw error;
+    }
+    return;
+  }
+  const d = lireDemo();
+  const a = d.affaires.find((x) => x.id === affaireId);
+  if (a) { a.mission = mission || {}; ecrireDemo(d); }
 }
 
 /**
