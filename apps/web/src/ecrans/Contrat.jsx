@@ -52,6 +52,11 @@ export default function Contrat({ contenu, signature }) {
   if (!contenu) return null;
   const o = contenu.organisation || {};
   const cl = contenu.client || {};
+  // La nature telle qu'elle était AU MOMENT DU GEL, pas celle de l'affaire
+  // aujourd'hui : un contrat signé garde ce qu'il décrivait. Les documents
+  // composés avant l'introduction des natures n'en portent pas — c'étaient
+  // des déménagements.
+  const natureOffre = contenu.nature || "demenagement";
   const horaire = contenu.formule !== "forfait";
   // Priorité au texte FIGÉ dans le document. On ne relit les conditions en
   // vigueur que pour un vieux document composé avant ce mécanisme.
@@ -93,25 +98,35 @@ export default function Contrat({ contenu, signature }) {
         <BlocAdresses titre="Chargement" liseré={C.bleu} liste={contenu.charges} />
         <BlocAdresses titre="Déchargement" liseré="#6366F1" liste={contenu.decharges} />
 
-        {/* Volume & équipe */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, margin: "11px 0" }}>
-          <Case titre="Volume estimé"
-                valeur={contenu.volume_m3 ? `${contenu.volume_m3} m³` : "—"} />
-          <Case titre="Équipe"
-                valeur={contenu.nb_demenageurs ? `${contenu.nb_demenageurs} déménageurs` : "—"} />
-        </div>
+        {/* Le récapitulatif suit la NATURE. Une offre de lift qui annoncerait
+            « volume estimé » et « prestations incluses : relevé, emballage »
+            décrirait une prestation que le client ne recevra pas — il la
+            lirait comme une erreur, ou pire, l'exigerait. */}
+        {natureOffre === "demenagement" ? (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+                          gap: 8, margin: "11px 0" }}>
+              <Case titre="Volume estimé"
+                    valeur={contenu.volume_m3 ? `${contenu.volume_m3} m³` : "—"} />
+              <Case titre="Équipe"
+                    valeur={contenu.nb_demenageurs
+                      ? `${contenu.nb_demenageurs} déménageurs` : "—"} />
+            </div>
 
-        {/* Prestations incluses */}
-        <div style={{ margin: "12px 0" }}>
-          <div style={S.legende}>Prestations incluses</div>
-          {PRESTATIONS_INCLUSES.map((p) => <Coche key={p}>{p}</Coche>)}
-          {contenu.elevateur && <Coche>Mise en œuvre d'un monte-meubles</Coche>}
-          {(contenu.supplements || []).map((sp, i) => (
-            <Coche key={i}>
-              {sp.libelle}{sp.quantite > 1 ? ` × ${sp.quantite}` : ""}
-            </Coche>
-          ))}
-        </div>
+            <div style={{ margin: "12px 0" }}>
+              <div style={S.legende}>Prestations incluses</div>
+              {PRESTATIONS_INCLUSES.map((p) => <Coche key={p}>{p}</Coche>)}
+              {contenu.elevateur && <Coche>Mise en œuvre d'un monte-meubles</Coche>}
+              {(contenu.supplements || []).map((sp, i) => (
+                <Coche key={i}>
+                  {sp.libelle}{sp.quantite > 1 ? ` × ${sp.quantite}` : ""}
+                </Coche>
+              ))}
+            </div>
+          </>
+        ) : (
+          <RecapNature nature={natureOffre} mission={contenu.mission} />
+        )}
 
         {/* Démontage et remontage (issus du relevé). Deux lignes distinctes :
             un meuble peut partir démonté au garde-meuble sans être remonté, et
@@ -272,3 +287,55 @@ const S = {
                    alignItems: "flex-end", gap: 16 },
   piedLegal: { marginTop: 8, fontSize: 9, color: "#94A3B8", lineHeight: 1.6 },
 };
+
+
+/**
+ * Le récapitulatif des natures sans relevé. On y écrit ce qui a RÉELLEMENT
+ * été vendu — hommes, heures, distance — plutôt que des rubriques de
+ * déménagement laissées vides.
+ */
+function RecapNature({ nature, mission }) {
+  const m = mission || {};
+  const cases = [];
+
+  if (nature === "lift") {
+    if (m.km !== null && m.km !== undefined) cases.push(["Distance", `${m.km} km`]);
+    if (m.heures) cases.push(["Temps sur place", `${m.heures} h`]);
+    if (m.hommes_supp > 0) cases.push(["Hommes en plus", String(m.hommes_supp)]);
+  }
+  if (nature === "sous_traitance") {
+    if (m.hommes) cases.push(["Hommes", String(m.hommes)]);
+    if (m.heures) cases.push(["Heures", `${m.heures} h`]);
+    if (m.camions > 0) cases.push(["Camions", String(m.camions)]);
+    if (m.km) cases.push(["Kilomètres", `${m.km} km`]);
+  }
+
+  const INCLUS = {
+    lift: ["Mise en place et repli du monte-meubles",
+           "Opérateur qualifié",
+           "Assurance en responsabilité civile"],
+    sous_traitance: ["Main-d'œuvre qualifiée",
+                     "Matériel de terrain (sangles, couvertures, diable)",
+                     "Assurance en responsabilité civile"],
+  };
+
+  return (
+    <>
+      {cases.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+                      gap: 8, margin: "11px 0" }}>
+          {cases.map(([t, v]) => <Case key={t} titre={t} valeur={v} />)}
+        </div>
+      )}
+      <div style={{ margin: "12px 0" }}>
+        <div style={S.legende}>Prestations incluses</div>
+        {(INCLUS[nature] || []).map((p) => <Coche key={p}>{p}</Coche>)}
+        {/* Ce qui n'est PAS compris se dit aussi : les litiges naissent de ce
+            qui n'a pas été écrit, jamais de ce qui l'a été. */}
+        <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6, lineHeight: 1.5 }}>
+          Sans relevé de mobilier, sans emballage ni fournitures.
+        </div>
+      </div>
+    </>
+  );
+}

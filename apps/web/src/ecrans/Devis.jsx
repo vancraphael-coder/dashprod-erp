@@ -9,12 +9,13 @@
 import React, { useEffect, useMemo, useState, useRef} from "react";
 import {
   obtenirAffaire, enregistrerChiffrage,
-  obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix,
+  obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix, depots,
   obtenirOrganisation, contexteMainOeuvre,
   litigesAffaire, ouvrirLitige, avancerLitige, resoudreLitige, scenarioRetenu,
   etatFacturation, heuresAffaire, validerHeures,
 } from "../lib/adaptateur.js";
-import { calculerScenario } from "@domaine/chiffrage/moteur.js";
+import { chiffrerAffaire, manqueAuChiffrage }
+  from "@domaine/chiffrage/scenario-nature.js";
 import { catalogueSupplements, supplementsRetenus, libelleLigne, UNITES_SUPPLEMENT }
   from "@domaine/chiffrage/supplements.js";
 import { BAREME_HORAIRE, TARIFS } from "@domaine/chiffrage/bareme.js";
@@ -53,6 +54,12 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
   const [ref, setRef] = useState(null);          // barème + tarifs configurés
   const [catalogue, setCatalogue] = useState([]);  // suppléments définis (Barème)
   const [selSup, setSelSup] = useState({});         // { cle: quantité } cochés
+  // La nature commande le moteur de chiffrage. `mission` porte la saisie des
+  // natures sans relevé (hommes/heures/km), rangée dans scenarios.entrees.
+  const [mission, setMission] = useState({});
+  const [paramsPrix, setParamsPrix] = useState(null);
+  const [reglagesLift, setReglagesLift] = useState(null);
+  const nature = affaire?.nature || "demenagement";
 
   useEffect(() => {
     obtenirOrganisation().then(setOrg).catch(() => {});
@@ -63,7 +70,20 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
         if (a.faits.selSupplements) setSelSup(a.faits.selSupplements);
       }
       if (a?.couts) setCouts((c) => ({ ...c, ...a.couts }));
+      setMission(a?.faits?.mission || {});
     });
+    // Grilles des natures sans relevé : sous-traitance (org) et lift (par
+    // centre, avec repli maison mère — c'est le domaine qui gère le repli).
+    Promise.all([obtenirParametresPrix().catch(() => ({})),
+                 depots().catch(() => [])])
+      .then(([pp, cs]) => {
+        setParamsPrix(pp || {});
+        setReglagesLift({
+          maisonMere: pp?.lift_couronnes || [],
+          parCentre: Object.fromEntries(
+            (cs || []).map((c) => [c.id, c.tarifs?.lift_couronnes || []])),
+        });
+      });
     // Coût MO auto : équipe pressentie du dossier × leur taux horaire.
     // Les membres ARCHIVÉS sont chargés eux aussi : sans eux, un identifiant
     // brut s'affichait à la place du nom dès qu'une personne quittait l'équipe.
@@ -105,16 +125,31 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
   const supRetenus = useMemo(
     () => supplementsRetenus(catalogue, selSup), [catalogue, selSup]);
 
-  // Le moteur — recalcul à chaque frappe. L'écran n'additionne rien lui-même.
+  // Le moteur — recalcul à chaque frappe. L'écran n'additionne rien lui-même,
+  // et ne sait pas non plus QUEL moteur appeler : `chiffrerAffaire` aiguille
+  // selon la nature et rend toujours la même forme. Sans ça, la règle « un
+  // lift se chiffre par couronne » serait réécrite ici et dans l'offre.
   const scenario = useMemo(() => {
     try {
       const tvaPct = tauxTva(org || {});
-      return calculerScenario(
-        { ...faits, supplements: supRetenus },
-        coutsEffectifs, { ...(ref || {}), tvaPct });
+      return chiffrerAffaire(nature, {
+        faits: { ...faits, supplements: supRetenus },
+        couts: coutsEffectifs,
+        ref: { ...(ref || {}), tvaPct },
+        mission,
+        grille: paramsPrix?.sous_traitance,
+        reglages: reglagesLift,
+        supplements: paramsPrix?.lift_supplements,
+        centreId: mission?.centreId || affaire?.centreId,
+      });
     }
     catch { return null; }
-  }, [faits, supRetenus, coutsEffectifs, ref]);
+  }, [nature, faits, supRetenus, coutsEffectifs, ref, mission, paramsPrix,
+      reglagesLift, affaire]);
+
+  // Ce qui manque pour chiffrer : on le DIT, au lieu d'un bloc vide.
+  const manques = useMemo(
+    () => manqueAuChiffrage(nature, { mission }), [nature, mission]);
 
   function maj(champ, valeur) { setFaits((f) => ({ ...f, [champ]: valeur })); marquerTouche(); }
   function majCout(champ, valeur) { setCouts((c) => ({ ...c, [champ]: valeur })); marquerTouche(); }
@@ -190,17 +225,27 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
           clairement au lieu de laisser des blocs vides. */}
       {!scenario && (
         <div style={{ margin: "0 16px 12px", padding: "11px 13px", borderRadius: 12,
-          background: "#FEF2F2", border: "1px solid #FECACA" }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#991B1B" }}>
+          background: `${C.rouge}1F`, border: `1px solid ${C.rouge}55` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.rouge }}>
             Chiffrage indisponible
           </div>
-          <div style={{ fontSize: 11.5, color: "#B91C1C", marginTop: 2, lineHeight: 1.5 }}>
-            Vérifiez la formule, le nombre de déménageurs et le barème
-            (Configuration). Le calcul reprendra automatiquement.
+          <div style={{ fontSize: 11.5, color: C.rouge, marginTop: 2, lineHeight: 1.5 }}>
+            {/* On DIT ce qui manque quand on le sait, au lieu d'un conseil
+                générique qui envoie chercher au mauvais endroit. */}
+            {manques.length > 0
+              ? `Il manque : ${manques.join(", ").toLowerCase()}. À saisir dans le dossier.`
+              : nature === "demenagement"
+                ? "Vérifiez la formule, le nombre de déménageurs et le barème (Configuration). Le calcul reprendra automatiquement."
+                : "Vérifiez la grille de cette nature dans Paramètres → Services."}
           </div>
         </div>
       )}
 
+      {/* Formule, déménageurs, suppléments : la saisie du DÉMÉNAGEMENT.
+          Un lift et une sous-traitance se chiffrent depuis le dossier
+          (hommes, heures, km) — leur montrer « nombre de déménageurs » et
+          « formule tarifaire » proposerait des réglages sans effet. */}
+      {nature === "demenagement" && (<>
       {/* Formule */}
       <div style={S.carte}>
         <div style={{ display: "flex", gap: 8 }}>
@@ -354,6 +399,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
           </>
         )}
       </div>
+      </>)}
 
       {/* Coûts réels — CONFIDENTIEL : jamais dans un document client, et
           invisibles sans la capacité voir_prix (S3) — le domaine l'exigeait,
@@ -437,6 +483,29 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
       )}
 
       {/* Résultat — le moteur parle */}
+      {/* Les natures sans relevé rendent un DÉTAIL : on l'affiche, sinon le
+          client ne voit qu'un total qu'il ne peut pas discuter. */}
+      {scenario?.lignes?.length > 0 && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: C.muet,
+                        marginBottom: 8, textTransform: "uppercase",
+                        letterSpacing: ".03em" }}>Détail</div>
+          {scenario.lignes.map((l) => (
+            <Ligne key={l.cle} l={l.libelle} v={euros(l.centimes)} />
+          ))}
+          {scenario.remise_centimes > 0 && (
+            <Ligne l={`Remise négociée ${scenario.remise_pct} %`}
+                   v={`− ${euros(scenario.remise_centimes)}`} />
+          )}
+          {scenario.origine === "defaut" && (
+            <div style={{ fontSize: 11.5, color: C.ambre, marginTop: 6 }}>
+              Aucune grille n'est réglée : ces prix sont ceux par défaut, pas
+              les vôtres. À définir dans Paramètres → Services.
+            </div>
+          )}
+        </div>
+      )}
+
       {scenario && (
         <div style={S.carte}>
           <Ligne l="Total HTVA" v={euros(scenario.htva_centimes)} />
