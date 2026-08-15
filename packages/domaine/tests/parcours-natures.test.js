@@ -147,3 +147,48 @@ test("la sous-traitance sépare le donneur d'ordre du contact sur place", () => 
   assert.ok(dossier.includes("BlocDonneurOrdre"),
     "le bloc doit être monté dans le dossier");
 });
+
+/* ── Devis et offre ─────────────────────────────────────────────────────── */
+
+test("le devis n'appelle plus directement le moteur du déménagement", () => {
+  // Il passe par l'aiguillage : sinon la règle « un lift se chiffre par
+  // couronne » serait réécrite ici ET dans l'offre.
+  const src = lire("ecrans/Devis.jsx");
+  assert.ok(src.includes("chiffrerAffaire("),
+    "le devis doit passer par le point d'entrée unique");
+  assert.equal(/=\s*calculerScenario\(/.test(src), false,
+    "l'appel direct au moteur déménagement doit avoir disparu");
+});
+
+test("les saisies du déménagement ne s'affichent que pour lui", () => {
+  const src = lire("ecrans/Devis.jsx");
+  assert.ok(src.includes('{nature === "demenagement" && (<>'),
+    "formule, déménageurs et suppléments sont propres au déménagement");
+});
+
+test("le devis dit ce qui manque au lieu d'un bloc vide", () => {
+  const src = lire("ecrans/Devis.jsx");
+  assert.ok(src.includes("manqueAuChiffrage("));
+  assert.ok(src.includes("manques.length > 0"));
+});
+
+test("la nature voyage jusqu'au document et y reste figée", () => {
+  // Un contrat signé garde ce qu'il décrivait : on lit la nature DU DOCUMENT,
+  // pas celle de l'affaire aujourd'hui.
+  assert.ok(lire("lib/adaptateur.js").includes("nature: affaire?.nature"),
+    "composerOffre doit embarquer la nature");
+  const contrat = lire("ecrans/Contrat.jsx");
+  assert.ok(contrat.includes('const natureOffre = contenu.nature || "demenagement"'),
+    "le document lit SA nature, pas celle de l'affaire");
+});
+
+test("le récapitulatif d'une offre non-déménagement est adapté", () => {
+  const src = lire("ecrans/Contrat.jsx");
+  assert.ok(src.includes("function RecapNature"),
+    "un lift ne doit pas annoncer « volume estimé » ni « relevé »");
+  assert.ok(src.includes('natureOffre === "demenagement" ?'),
+    "les deux récapitulatifs doivent être exclusifs");
+  // Ce qui n'est pas compris doit être écrit : c'est de là que naissent les
+  // litiges.
+  assert.ok(/sans emballage ni fournitures/i.test(src));
+});
