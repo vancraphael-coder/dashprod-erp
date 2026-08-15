@@ -14,9 +14,15 @@
 /**
  * `etapes` : ce que le parcours comporte réellement.
  *   releve      — relevé de meubles pièce par pièce
- *   emballage   — emballage et fournitures
+ *   materiel    — l'écran Matériel existe pour cette nature
+ *   emballage   — l'emballage et les fournitures y figurent
  *   planning    — passe par le planning et l'affectation d'équipe
  *   recurrent   — facturé période après période, et non une fois
+ *
+ * `materiel` et `emballage` sont DEUX étapes distinctes, et c'est essentiel :
+ * une sous-traitance emporte du matériel de terrain (sangles, diable,
+ * couvertures) mais ne vend ni carton ni emballage. Les confondre supprimerait
+ * l'écran Matériel à une nature qui en a besoin.
  */
 export const NATURES = Object.freeze([
   {
@@ -24,7 +30,8 @@ export const NATURES = Object.freeze([
     titre: "Déménagement",
     resume: "Le parcours complet : relevé, emballage, fournitures, planning.",
     pourEntreprise: false,
-    etapes: { releve: true, emballage: true, planning: true, recurrent: false },
+    etapes: { releve: true, materiel: true, emballage: true,
+              planning: true, recurrent: false },
     // Le seul à passer par le chiffrage classique au volume.
     chiffrage: "volume",
   },
@@ -35,7 +42,10 @@ export const NATURES = Object.freeze([
           + "qui ne peut pas assurer une livraison simple. Prix négocié, "
           + "à l'homme, camion si besoin.",
     pourEntreprise: true,
-    etapes: { releve: false, emballage: false, planning: true, recurrent: false },
+    // Matériel OUI (terrain), emballage NON : on emporte des sangles, on ne
+    // vend pas de cartons.
+    etapes: { releve: false, materiel: true, emballage: false,
+              planning: true, recurrent: false },
     chiffrage: "main_doeuvre",
   },
   {
@@ -44,7 +54,8 @@ export const NATURES = Object.freeze([
     resume: "Monte-meubles seul. Ni relevé, ni emballage, ni fournitures. "
           + "Le prix suit la couronne kilométrique du centre.",
     pourEntreprise: false,
-    etapes: { releve: false, emballage: false, planning: true, recurrent: false },
+    etapes: { releve: false, materiel: false, emballage: false,
+              planning: true, recurrent: false },
     chiffrage: "couronne",
   },
   {
@@ -52,7 +63,8 @@ export const NATURES = Object.freeze([
     titre: "Boxe",
     resume: "Location d'un box. Facturé au mois, selon le volume.",
     pourEntreprise: false,
-    etapes: { releve: false, emballage: false, planning: false, recurrent: true },
+    etapes: { releve: false, materiel: false, emballage: false,
+              planning: false, recurrent: true },
     chiffrage: "palier_volume",
   },
   {
@@ -62,7 +74,8 @@ export const NATURES = Object.freeze([
           + "attachée à une livraison, avec ou sans étages, avec ou sans "
           + "montage de mobilier.",
     pourEntreprise: true,
-    etapes: { releve: false, emballage: false, planning: false, recurrent: true },
+    etapes: { releve: false, materiel: false, emballage: false,
+              planning: false, recurrent: true },
     chiffrage: "forfait",
   },
 ]);
