@@ -3406,6 +3406,18 @@ export async function definirAxesStockage(a) {
 }
 
 /**
+ * Les réglages tarifaires propres à un centre (couronnes lift notamment).
+ * Un centre sans grille suit celle de la maison mère : c'est le domaine qui
+ * gère ce repli, pas cette fonction.
+ */
+export async function definirTarifsCentre(id, tarifs) {
+  const { data, error } = await supabase.rpc("cmd_centre_tarifs_definir",
+    { p_id: id, p_tarifs: tarifs || {} });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
  * Archive un centre, ou le réactive. La base refuse d'archiver un centre qui
  * porte encore des membres, des véhicules, des dossiers ouverts ou des
  * contrats de stockage : le message d'erreur dit quoi déplacer d'abord.
