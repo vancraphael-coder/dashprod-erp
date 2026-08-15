@@ -10,7 +10,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   obtenirOrganisation,
-  obtenirAffaire, obtenirContact, sauverContact,
+  obtenirAffaire, obtenirContact, sauverContact, sauverMission,
   listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
   obtenirClientFacturation, sauverClientFacturation,
   obtenirClientIdentite, sauverClientIdentite,
@@ -27,6 +27,8 @@ import { adresseDepot } from "@domaine/organisation/identite.js";
 import { CIVILITES } from "@domaine/crm/civilite.js";
 import { synthese, verdict, pictoStatut, lignesBilan, mentionDerogation }
   from "@domaine/crm/cloture.js";
+import { BandeauNature, BlocSousTraitance, BlocLift }
+  from "../composants/BlocsNature.jsx";
 import { C, S, Badge, BadgeFacturation, euros, declarerModifs, Confirmation }
   from "../lib/theme.jsx";
 
@@ -55,13 +57,18 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   // `facturation`, qui désigne ici les données de facturation DU CLIENT.
   const [cycleFacture, setCycleFacture] = useState(null);
   const [archivage, setArchivage] = useState(false);
+  // La saisie propre aux natures sans relevé (sous-traitance, lift).
+  const [mission, setMission] = useState({});
   const enregistrerRef = useRef(null);
 
   useEffect(() => {
     // État de facturation : dérivé en base, jamais déduit de affaire.etat.
     etatFacturation(affaireId).then(setCycleFacture).catch(() => setCycleFacture(null));
     obtenirOrganisation().then(setOrg).catch(() => {});
-    obtenirAffaire(affaireId).then(setAffaire);
+    obtenirAffaire(affaireId).then((a) => {
+      setAffaire(a);
+      setMission(a?.faits?.mission || a?.mission || {});
+    });
     listerVehicules().then(setFlotte).catch(() => {});
     obtenirCamionsAffaire(affaireId).then(setCamions).catch(() => {});
     obtenirClientFacturation(affaireId).then(setFacturation).catch(() => {});
@@ -124,6 +131,11 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       await sauverCamionsAffaire(affaireId, camions);
       await sauverEquipeAffaire(affaireId, equipe);
       if (facturation) await sauverClientFacturation(affaireId, facturation);
+      // Les natures sans relevé portent leur saisie ici : sans cette ligne,
+      // hommes, heures et kilomètres seraient perdus à chaque enregistrement.
+      if (affaire?.nature === "sous_traitance" || affaire?.nature === "lift") {
+        await sauverMission(affaireId, mission);
+      }
       // Recharge l'affaire pour refléter le nom mis à jour dans l'en-tête.
       obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
       setSauve(true); setModifie(false);
@@ -368,6 +380,18 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             })}
           </div>
         </div>
+      )}
+
+      {/* Ce qu'on vend — et, pour les natures sans relevé, leur chiffrage. */}
+      <BandeauNature cle={affaire?.nature} />
+
+      {affaire?.nature === "sous_traitance" && (
+        <BlocSousTraitance valeur={mission}
+          onChange={(m) => { setMission(m); setModifie(true); }} />
+      )}
+      {affaire?.nature === "lift" && (
+        <BlocLift valeur={mission} centreId={affaire?.centreId}
+          onChange={(m) => { setMission(m); setModifie(true); }} />
       )}
 
       {/* Adresses */}
