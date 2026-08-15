@@ -164,3 +164,88 @@ export function tauxOccupation(boxes) {
     taux: Math.round((occupes / total) * 100),
   };
 }
+
+// =============================================================================
+// LE MONTANT D'UNE ÉCHÉANCE RÉELLE.
+//
+// Assemble ce qui existe déjà — tranches de box, forfait de zone, prorata —
+// pour répondre à la seule question qui compte au moment de facturer : que
+// doit ce client, pour ce mois-là ?
+//
+// Deux modèles distincts, et c'est voulu :
+//   · BOXE — le prix suit le VOLUME, box par box, par tranches de m³. Deux
+//     boxes se cumulent : ce sont deux emplacements loués.
+//   · ZONE — un forfait NÉGOCIÉ pour le contrat entier, quel que soit le
+//     nombre de zones. Attacher une deuxième zone à un client n'en double
+//     donc pas le prix : c'est le sens même d'un forfait.
+// =============================================================================
+
+/**
+ * Ce qui est dû pour une échéance rendue par `cmd_stock_echeances`.
+ *
+ * @param {object} e échéance : nature, tarif_centimes, boxes[], zones[],
+ *                   jours_couverts, jours_mois
+ * @param {Array} bareme tranches de box de l'entreprise
+ * @returns {{centimes, plein_centimes, proratise, lignes[], hors_bareme}}
+ */
+export function montantEcheance(e, bareme) {
+  if (!e) return { centimes: 0, plein_centimes: 0, proratise: false,
+                   lignes: [], hors_bareme: false };
+
+  const lignes = [];
+  let plein = 0;
+  let horsBareme = false;
+
+  if (e.nature === "box") {
+    for (const b of e.boxes || []) {
+      const m = montantPeriodeBox(bareme, b.volume_m3, e.periode || "mensuel");
+      if (m.hors_bareme) horsBareme = true;
+      plein += m.centimes;
+      lignes.push({
+        cle: `box:${b.id}`,
+        libelle: `Box ${b.numero}${b.volume_m3 ? ` — ${b.volume_m3} m³` : ""}`,
+        centimes: m.centimes,
+        hors_bareme: m.hors_bareme,
+      });
+    }
+  } else {
+    // Le forfait porte sur le CONTRAT, pas sur chaque zone.
+    plein = montantPeriodeZone(e);
+    const noms = (e.zones || []).map((z) => z.nom).filter(Boolean);
+    lignes.push({
+      cle: "zone",
+      libelle: noms.length
+        ? `Zone${noms.length > 1 ? "s" : ""} ${noms.join(", ")} — forfait`
+        : "Forfait de zone",
+      centimes: plein,
+    });
+  }
+
+  // Le prorata ne s'applique QUE si le contrat ne couvre pas tout le mois.
+  // `jours_couverts` absent ne vaut pas zéro : sans information, on facture le
+  // mois plein plutôt qu'un montant nul que personne ne remarquerait.
+  const jours = Number(e.jours_couverts);
+  const mois = Number(e.jours_mois);
+  const partiel = Number.isFinite(jours) && Number.isFinite(mois)
+                && mois > 0 && jours < mois;
+
+  return {
+    centimes: partiel ? prorata(plein, jours, mois) : plein,
+    plein_centimes: plein,
+    proratise: partiel,
+    jours_couverts: partiel ? jours : null,
+    jours_mois: partiel ? mois : null,
+    lignes,
+    hors_bareme: horsBareme,
+  };
+}
+
+/** Une échéance déjà facturée ne se refacture pas. */
+export function estFacturee(e) {
+  return Boolean(e?.facturee_le);
+}
+
+/** Ce qui reste à facturer, dans l'ordre chronologique. */
+export function echeancesDues(liste) {
+  return (liste || []).filter((e) => !estFacturee(e));
+}
