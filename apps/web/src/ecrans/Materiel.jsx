@@ -11,6 +11,7 @@
 
 import React, { useEffect, useMemo, useState, useRef} from "react";
 import { obtenirAffaire, obtenirEmballage, sauverEmballage } from "../lib/adaptateur.js";
+import { comporte } from "@domaine/commercial/natures.js";
 import {
   resumeEmballage, fournituresOffre, valoriserEmballage,
 } from "@domaine/stocks/emballage.js";
@@ -21,6 +22,7 @@ import { C, S, declarerModifs, euros as eur } from "../lib/theme.jsx";
 export default function Materiel({ affaireId, retour, modeTerrain }) {
   const [affaire, setAffaire] = useState(null);
   const [emballage, setEmballage] = useState({});
+  const [nature, setNature] = useState("demenagement");
   const [sauve, setSauve] = useState(false);
   // `sauve` signale « vient d'être enregistré » ; il vaut false à l'ouverture,
   // il ne peut donc pas servir de drapeau « modifié ». D'où `touche`, mis à
@@ -33,6 +35,7 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
   const fournituresCatalogue = useMemo(() => catalogue(cats, "fournitures"), [cats]);
   const materielTerrain = useMemo(() => catalogue(cats, "materiel_terrain"), [cats]);
   const terrain = emballage.terrain || {};
+  const vendEmballage = comporte(nature, "emballage");
   function majTerrain(cle, valeur) {
     const n = Math.max(0, parseInt(valeur, 10) || 0);
     setEmballage((e) => ({ ...e, terrain: { ...(e.terrain || {}), [cle]: n } }));
@@ -42,6 +45,10 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
   useEffect(() => {
     obtenirAffaire(affaireId).then(setAffaire);
     obtenirEmballage(affaireId).then((e) => setEmballage(e || {})).catch(() => {});
+    // La nature décide si l'emballage a sa place ici : une sous-traitance
+    // emporte du matériel de terrain mais ne vend ni carton ni fourniture.
+    obtenirAffaire(affaireId).then((a) => setNature(a?.nature || "demenagement"))
+      .catch(() => setNature("demenagement"));
     obtenirCatalogues().then(setCats).catch(() => {});
   }, [affaireId]);
 
@@ -92,7 +99,7 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
       </div>
 
       {/* Écarts : le matériel parti et non justifié */}
-      {resume.ecarts.length > 0 && (
+      {vendEmballage && resume.ecarts.length > 0 && (
         <div style={{ ...S.carte, background: "#FEF2F2", border: "1px solid #FECACA" }}>
           <div style={{ fontSize: 12.5, fontWeight: 800, color: "#991B1B" }}>
             ⚠ Matériel non justifié
@@ -108,7 +115,8 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
         </div>
       )}
 
-      {/* Grille E / U / R */}
+      {/* Grille E / U / R — emballage seulement. */}
+      {vendEmballage && (
       <div style={S.carte}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 52px 52px 52px",
                       gap: 6, alignItems: "center" }}>
@@ -166,6 +174,14 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
           })}
         </div>
       </div>
+      )}
+
+      {!vendEmballage && (
+        <div style={{ ...S.carte, fontSize: 12.5, color: C.muet, lineHeight: 1.55 }}>
+          Cette nature n'emporte pas d'emballage ni de fournitures : seul le
+          matériel de terrain est suivi ici.
+        </div>
+      )}
 
       {/* Ce qui partira sur l'offre */}
       {/* Matériel de terrain — non facturé, mais à charger dans le camion.
@@ -194,7 +210,7 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
         </div>
       )}
 
-      {fournitures.length > 0 && (
+      {vendEmballage && fournitures.length > 0 && (
         <div style={{ ...S.carte, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#1E40AF",
                         textTransform: "uppercase", letterSpacing: ".05em" }}>
@@ -209,7 +225,7 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
       {/* Valorisation du matériel consommé : dénomination + coût + montant.
           C'est ce qui se retranscrit sur l'offre / la facture. Masqué au
           terrain (aucun prix). */}
-      {!modeTerrain && valorisation.lignes.length > 0 && (
+      {vendEmballage && !modeTerrain && valorisation.lignes.length > 0 && (
         <div style={S.carte}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.encre,
                         textTransform: "uppercase", letterSpacing: ".05em",

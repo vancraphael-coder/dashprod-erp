@@ -18,7 +18,9 @@ import {
   axesStockage, definirAxesStockage,
 } from "../lib/adaptateur.js";
 import { tarif as tarifST } from "@domaine/chiffrage/sous-traitance.js";
-import { COURONNES_DEFAUT, couronnes, decrireGrille } from "@domaine/chiffrage/lift.js";
+import {
+  COURONNES_DEFAUT, couronnes, decrireGrille, supplements, formaterHeures,
+} from "@domaine/chiffrage/lift.js";
 import { axes, valeurAxe } from "@domaine/stocks/repere.js";
 import { C, S, euros } from "../lib/theme.jsx";
 
@@ -170,6 +172,13 @@ function Exemple({ grille }) {
 function BlocLift({ params, setParams, centres, setCentres, onErr, onOk }) {
   const [centreId, setCentreId] = useState(null);   // null = maison mère
 
+  const sup = supplements(params.lift_supplements);
+  function majSupp(cle, v) {
+    setParams((p) => ({ ...p,
+      lift_supplements: { ...supplements(p.lift_supplements),
+                          [cle]: v === "" ? 0 : Number(v) } }));
+  }
+
   const listeMaison = couronnes(params.lift_couronnes);
   const affichee = listeMaison.length ? listeMaison : couronnes(COURONNES_DEFAUT);
   const centre = centres.find((c) => c.id === centreId) || null;
@@ -195,18 +204,25 @@ function BlocLift({ params, setParams, centres, setCentres, onErr, onOk }) {
     const base = edite.length ? edite : [];
     const dernier = base[base.length - 1];
     poser([...base, { jusqua_km: (dernier?.jusqua_km || 0) + 15,
-                      prix_centimes: dernier?.prix_centimes || 20000 }]);
+                      prix_centimes: dernier?.prix_centimes || 20000,
+                      heures_incluses: dernier?.heures_incluses ?? 1 }]);
   }
   function retirer(i) { poser(edite.filter((_, j) => j !== i)); }
 
   async function enregistrer() {
     try {
       if (!centreId) {
-        await sauverParametresPrix({ ...params, lift_couronnes: couronnes(params.lift_couronnes) });
+        await sauverParametresPrix({ ...params,
+          lift_couronnes: couronnes(params.lift_couronnes),
+          lift_supplements: supplements(params.lift_supplements) });
         onOk("Grille de la maison mère enregistrée.");
       } else {
         await definirTarifsCentre(centreId,
           { ...(centre.tarifs || {}), lift_couronnes: listeCentre });
+        // Les suppléments sont communs : on les enregistre au passage, sinon
+        // les modifier depuis l'onglet d'un centre les perdrait en silence.
+        await sauverParametresPrix({ ...params,
+          lift_supplements: supplements(params.lift_supplements) });
         onOk(`Grille de « ${centre.nom} » enregistrée.`);
       }
     } catch (e) { onErr(e.message); }
@@ -251,7 +267,7 @@ function BlocLift({ params, setParams, centres, setCentres, onErr, onOk }) {
         {decrireGrille(edite).map((l, i) => (
           <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-end",
                                 marginBottom: 8 }}>
-            <div style={{ flex: "0 0 64px", fontSize: 12, color: C.muet,
+            <div style={{ flex: "0 0 58px", fontSize: 11.5, color: C.muet,
                           paddingBottom: 10 }}>
               dès {l.de_km} km
             </div>
@@ -267,11 +283,35 @@ function BlocLift({ params, setParams, centres, setCentres, onErr, onOk }) {
                      onChange={(e) => majCouronne(i, "prix_centimes",
                        Math.round(Number(e.target.value) * 100))} />
             </div>
+            <div style={{ flex: 1 }}>
+              <label style={S.label}>Temps inclus (h)</label>
+              <input style={S.input} type="number" min={0} step="0.25"
+                     value={l.heures_incluses ?? 0}
+                     onChange={(e) => majCouronne(i, "heures_incluses", e.target.value)} />
+            </div>
             <button style={{ ...S.boutonLien, color: C.rouge, paddingBottom: 10 }}
                     onClick={() => retirer(i)}>Retirer</button>
           </div>
         ))}
         <button style={S.boutonLien} onClick={ajouter}>+ Ajouter une couronne</button>
+      </div>
+
+      {/* Ce que le bureau fixe au-delà des anneaux. Commun à tous les centres :
+          un anneau change d'un dépôt à l'autre, pas le prix d'une heure. */}
+      <div style={S.carte}>
+        <Titre>Suppléments (tous centres)</Titre>
+        <Champ label="Heure au-delà du temps inclus" suffixe="€" centimes
+               value={sup.heure_centimes}
+               onChange={(v) => majSupp("heure_centimes", v)} />
+        <Champ label="Homme supplémentaire, par heure" suffixe="€" centimes
+               value={sup.homme_heure_centimes}
+               onChange={(v) => majSupp("homme_heure_centimes", v)}
+               aide="Un homme en plus reprend tout le temps sur place, mais ne
+                     double pas le prix : le déplacement et la machine sont
+                     déjà payés." />
+        <Champ label="Kilomètre au-delà du dernier anneau" suffixe="€" centimes
+               value={sup.km_centimes}
+               onChange={(v) => majSupp("km_centimes", v)} />
       </div>
 
       <div style={{ padding: "0 16px 24px" }}>
