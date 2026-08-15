@@ -1133,17 +1133,75 @@ export async function supprimerFermeture(id) {
   ecrireDemo(d);
 }
 
-export async function listerConges() {
+/**
+ * Les congés, par état. Défaut : les APPROUVÉS seuls — c'est ce dont le
+ * planning a besoin. Passer ["demande"] donne la corbeille du bureau.
+ *
+ * Passe par `cmd_conges` et non plus par un select direct : depuis 0121, la
+ * table n'a plus de politique d'écriture et sa lecture est bornée au
+ * périmètre de chacun.
+ */
+export async function listerConges(etats = ["approuve"]) {
   if (modeDonnees() === "reel") {
-    const { data, error } = await supabase.from("conges")
-      .select("id, utilisateur_id, debut, fin, etat, motif")
-      .eq("etat", "approuve").order("debut");
-    if (error) throw error;
+    const { data, error } = await supabase.rpc("cmd_conges", { p_etats: etats });
+    if (error) throw new Error(error.message);
     return data || [];
   }
   const d = lireDemo();
   if (!d.conges) { d.conges = CONGES_DEMO; ecrireDemo(d); }
-  return d.conges.filter((c) => c.etat === "approuve");
+  return d.conges.filter((c) => etats.includes(c.etat));
+}
+
+/**
+ * Une DEMANDE de congé, posée par le membre pour lui-même. Le bureau
+ * tranchera. Si `utilisateurId` désigne quelqu'un d'autre, la base traite
+ * l'acte comme une saisie directe de la direction et approuve d'emblée —
+ * c'est elle qui vérifie la capacité, pas cette fonction.
+ */
+export async function demanderConge({ debut, fin, motif, utilisateurId } = {}) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_conge_demander", {
+      p_debut: debut, p_fin: fin, p_motif: motif || null,
+      p_utilisateur: utilisateurId || null });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  const d = lireDemo();
+  d.conges = d.conges || [];
+  const etat = utilisateurId ? "approuve" : "demande";
+  d.conges.push({ id: idDemo(), utilisateur_id: utilisateurId || "moi",
+                  debut, fin, etat, motif: motif || null });
+  ecrireDemo(d);
+  return { ok: true, etat };
+}
+
+/** Approuver ou refuser. La base refuse qu'on décide de son propre congé. */
+export async function deciderConge(id, approuver, motif) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_conge_decider", {
+      p_id: id, p_approuver: !!approuver, p_motif: motif || null });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  const d = lireDemo();
+  const c = (d.conges || []).find((x) => x.id === id);
+  if (c) { c.etat = approuver ? "approuve" : "refuse"; c.motif_decision = motif || null; }
+  ecrireDemo(d);
+  return { ok: true };
+}
+
+/** Retirer sa demande (demandeur) ou annuler un congé accordé (bureau). */
+export async function annulerConge(id) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_conge_annuler", { p_id: id });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  const d = lireDemo();
+  const c = (d.conges || []).find((x) => x.id === id);
+  if (c) c.etat = "annule";
+  ecrireDemo(d);
+  return { ok: true };
 }
 
 /**
@@ -1153,10 +1211,9 @@ export async function listerConges() {
  */
 export async function ajouterConge({ utilisateurId, debut, fin, motif }) {
   if (modeDonnees() === "reel") {
-    const { error } = await supabase.from("conges").insert({
-      utilisateur_id: utilisateurId, debut, fin, motif: motif || null, etat: "approuve",
-    });
-    if (error) throw error;
+    // L'écriture directe est fermée depuis 0121 : on passe par la commande,
+    // qui approuve d'emblée quand le bureau pose un congé pour autrui.
+    await demanderConge({ debut, fin, motif, utilisateurId });
     return;
   }
   const d = lireDemo();
@@ -1169,8 +1226,9 @@ export async function ajouterConge({ utilisateurId, debut, fin, motif }) {
 /** Supprime un congé (saisi par erreur). */
 export async function supprimerConge(id) {
   if (modeDonnees() === "reel") {
-    const { error } = await supabase.from("conges").delete().eq("id", id);
-    if (error) throw error;
+    // On n'EFFACE plus : un congé annulé garde sa trace (qui, quand, pourquoi).
+    // Le DELETE direct est de toute façon refusé depuis 0121.
+    await annulerConge(id);
     return;
   }
   const d = lireDemo();
