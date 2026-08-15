@@ -296,13 +296,20 @@ const SECTIONS_DOSSIER = [
   ["facture", "facture", "Facture"],
 ];
 /**
- * `nature` atténue les sections qui n'ont pas lieu d'être : un lift n'a ni
- * relevé ni matériel. Conformément au principe posé plus haut, elles restent
- * VISIBLES et cliquables — la géographie de l'app ne bouge pas d'un dossier à
- * l'autre — mais leur atténuation dit qu'on n'a rien à y faire.
+ * `nature` RETIRE les sections qui n'ont pas lieu d'être.
+ *
+ * Le principe posé plus haut — « les sections non pertinentes restent
+ * affichées mais atténuées » — vaut pour ce qui est PRÉMATURÉ (l'offre avant
+ * chiffrage : elle viendra). Il ne vaut pas pour ce qui n'existera JAMAIS :
+ * un lift n'aura jamais de relevé de meubles, et la base le refuse (trigger
+ * 0117). Garder l'onglet grisé promettrait une étape qui ne peut pas arriver.
+ *
+ * D'où deux traitements distincts, et non une exception au principe.
  */
 function SousNavDossier({ actif, aller, nature }) {
-  const HORS_PARCOURS = { releve: "releve", materiel: "emballage" };
+    // Matériel se teste sur l'étape `materiel`, PAS sur `emballage` : la
+  // sous-traitance garde l'écran (matériel de terrain) sans vendre d'emballage.
+  const HORS_PARCOURS = { releve: "releve", materiel: "materiel" };
   return (
     <div style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
@@ -311,18 +318,18 @@ function SousNavDossier({ actif, aller, nature }) {
       paddingBottom: "env(safe-area-inset-bottom)",
       boxShadow: "0 -4px 16px -8px rgba(15,23,42,.12)",
     }}>
-      {SECTIONS_DOSSIER.map(([cle, icone, lib]) => {
-        const estActif = actif === cle;
+      {SECTIONS_DOSSIER.filter(([cle]) => {
+        // Retirées, pas grisées : ces étapes n'arriveront jamais pour cette
+        // nature. La sous-navigation d'un lift compte donc 4 entrées, pas 6.
         const etape = HORS_PARCOURS[cle];
-        const horsParcours = Boolean(etape) && nature
-          && !comporteEtape(nature, etape);
+        return !etape || !nature || comporteEtape(nature, etape);
+      }).map(([cle, icone, lib]) => {
+        const estActif = actif === cle;
         return (
           <button key={cle} onClick={() => aller(cle)}
-            title={horsParcours ? "Hors du parcours de cette nature" : undefined}
             style={{
               flex: "1 0 62px", padding: "8px 2px 6px", border: "none",
               background: "none", cursor: "pointer",
-              opacity: horsParcours && !estActif ? 0.38 : 1,
               borderTop: estActif ? `2px solid ${C.vert}` : "2px solid transparent",
             }}>
             <Icone nom={icone} taille={19} couleur={estActif ? C.vert : C.bleu} />
