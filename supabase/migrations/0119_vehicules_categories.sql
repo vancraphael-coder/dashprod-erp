@@ -1,0 +1,9 @@
+-- 0119 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- enum categorie_vehicule (camion|lift|voiture) + colonnes categorie,
+-- echelle_m, etage_max, carburant, permis, chassis sur `vehicules`.
+-- `type` (fourgon|porteur|hayon) RESTE : c'est la carrosserie d'un camion,
+-- un axe distinct de la catégorie.
+-- Index unique sur (org_id, upper(btrim(chassis))) : un châssis identifie
+-- physiquement un véhicule, il ne peut pas être partagé.
+-- Trigger trg_vehicule_coherent : seul un lift porte échelle/étage max, et la
+-- carrosserie est effacée dès que la catégorie n'est plus 'camion'.
