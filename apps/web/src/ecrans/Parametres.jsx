@@ -37,6 +37,7 @@ import { C, S } from "../lib/theme.jsx";
 import Apparence from "./Apparence.jsx";
 import Stockage from "./Stockage.jsx";
 import Services from "./Services.jsx";
+import Contrats from "./Contrats.jsx";
 import Centres from "./Centres.jsx";
 
 const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €";
@@ -60,6 +61,9 @@ export default function Parametres({
 
   if (ouvert === "identite" || ouvert === "facturation") {
     return <Identite page={ouvert} retour={() => setOuvert(null)} />;
+  }
+  if (ouvert === "contrats") {
+    return <Contrats retour={() => setOuvert(null)} />;
   }
   if (ouvert === "services") {
     return <Services retour={() => setOuvert(null)} />;
@@ -170,6 +174,9 @@ export default function Parametres({
         <Entree icone="📦" titre="Stockage"
                 resume="Zones au sol ou à étages, boxes numérotés, occupation."
                 onClick={() => setOuvert("stockage")} />
+        <Entree icone="📄" titre="Contrats"
+                resume="Boxes et zones loués : échéances mensuelles et litiges."
+                onClick={() => setOuvert("contrats")} />
         <Entree icone="⚙️" titre="Services"
                 resume="Grille de sous-traitance, couronnes du lift, axes du dépôt."
                 onClick={() => setOuvert("services")} />
