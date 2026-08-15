@@ -223,14 +223,46 @@ export function matiereCarte(app, C) {
         borderTop: "1px solid #fff",
       });
 
-  // ── La profondeur : l'ombre portée ────────────────────────────────────────
-  const reflet = nuit ? "inset 0 1px 0 rgba(255,255,255,.14)" : "inset 0 1px 0 #fff";
+  // ── La profondeur ─────────────────────────────────────────────────────────
+  //
+  // De jour, la profondeur est une OMBRE : la carte assombrit le fond clair.
+  //
+  // De nuit, ce raisonnement s'effondre. Le fond vaut #070B18, presque noir :
+  // une ombre noire posée dessus est INVISIBLE, et les trois profondeurs
+  // rendaient exactement la même chose. Sur fond sombre, ce qui est haut est
+  // plus CLAIR — c'est la luminance qui porte l'élévation, complétée par une
+  // arête haute d'autant plus vive que la carte monte. L'ombre ne sert plus
+  // qu'à détacher le bord, resserrée pour rester perceptible.
+  const reflet = nuit ? null : "inset 0 1px 0 #fff";
+
+  if (nuit) {
+    const paliers = {
+      plat:     { haut: "#141C2C", bas: "#101828", rim: 0.08,
+                  ombre: "none" },
+      relief:   { haut: "#1E2941", bas: "#151E31", rim: 0.20,
+                  ombre: "0 2px 5px -1px rgba(0,0,0,.65), 0 14px 30px -22px rgba(0,0,0,1)" },
+      flottant: { haut: "#293754", bas: "#1B2540", rim: 0.34,
+                  ombre: "0 4px 10px -2px rgba(0,0,0,.75), 0 26px 52px -24px rgba(0,0,0,1)" },
+    };
+    const p = paliers[app.profondeur] ?? paliers.relief;
+    const rimNuit = `inset 0 1px 0 rgba(255,255,255,${p.rim})`;
+    const lueur = verre ? `, 0 10px 30px -18px rgba(${rgb},.5)` : "";
+
+    return {
+      ...surface,
+      // En verre, la teinte d'accent prime : on ne remplace pas son fond, on
+      // se contente de faire monter l'arête et l'ombre.
+      ...(verre ? {} : {
+        background: `linear-gradient(180deg, ${p.haut}, ${p.bas})`,
+      }),
+      boxShadow: p.ombre === "none" ? rimNuit : `${p.ombre}, ${rimNuit}${lueur}`,
+    };
+  }
+
   const ombres = {
     plat: "none",
-    relief: nuit ? "0 18px 40px -28px rgba(0,0,0,.9)"
-                 : "0 6px 18px -10px rgba(15,23,42,.28)",
-    flottant: nuit ? "0 34px 64px -26px rgba(0,0,0,.95)"
-                   : "0 22px 48px -20px rgba(15,23,42,.38)",
+    relief: "0 6px 18px -10px rgba(15,23,42,.28)",
+    flottant: "0 22px 48px -20px rgba(15,23,42,.38)",
   };
   const ombre = ombres[app.profondeur] ?? ombres.relief;
   const lueurVerre = verre ? `, 0 10px 30px -18px rgba(${rgb},.5)` : "";
