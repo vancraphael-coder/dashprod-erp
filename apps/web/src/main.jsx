@@ -17,7 +17,8 @@ import Diagnostic from "./ecrans/Diagnostic.jsx";
 import NonInvite from "./ecrans/NonInvite.jsx";
 import Inscription from "./ecrans/Inscription.jsx";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
-import { creerDossierVide } from "./lib/adaptateur.js";
+import { creerDossierVide, obtenirAffaire } from "./lib/adaptateur.js";
+import { comporte as comporteEtape } from "@domaine/commercial/natures.js";
 import Terrain from "./ecrans/Terrain.jsx";
 import TerrainProfil from "./ecrans/TerrainProfil.jsx";
 import Bareme from "./ecrans/Bareme.jsx";
@@ -294,7 +295,14 @@ const SECTIONS_DOSSIER = [
   ["mail", "mail", "Mail"],
   ["facture", "facture", "Facture"],
 ];
-function SousNavDossier({ actif, aller }) {
+/**
+ * `nature` atténue les sections qui n'ont pas lieu d'être : un lift n'a ni
+ * relevé ni matériel. Conformément au principe posé plus haut, elles restent
+ * VISIBLES et cliquables — la géographie de l'app ne bouge pas d'un dossier à
+ * l'autre — mais leur atténuation dit qu'on n'a rien à y faire.
+ */
+function SousNavDossier({ actif, aller, nature }) {
+  const HORS_PARCOURS = { releve: "releve", materiel: "emballage" };
   return (
     <div style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
@@ -305,12 +313,18 @@ function SousNavDossier({ actif, aller }) {
     }}>
       {SECTIONS_DOSSIER.map(([cle, icone, lib]) => {
         const estActif = actif === cle;
+        const etape = HORS_PARCOURS[cle];
+        const horsParcours = Boolean(etape) && nature
+          && !comporteEtape(nature, etape);
         return (
-          <button key={cle} onClick={() => aller(cle)} style={{
-            flex: "1 0 62px", padding: "8px 2px 6px", border: "none",
-            background: "none", cursor: "pointer",
-            borderTop: estActif ? `2px solid ${C.vert}` : "2px solid transparent",
-          }}>
+          <button key={cle} onClick={() => aller(cle)}
+            title={horsParcours ? "Hors du parcours de cette nature" : undefined}
+            style={{
+              flex: "1 0 62px", padding: "8px 2px 6px", border: "none",
+              background: "none", cursor: "pointer",
+              opacity: horsParcours && !estActif ? 0.38 : 1,
+              borderTop: estActif ? `2px solid ${C.vert}` : "2px solid transparent",
+            }}>
             <Icone nom={icone} taille={19} couleur={estActif ? C.vert : C.bleu} />
             <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 2,
                           color: estActif ? C.vert : C.muet }}>{lib}</div>
@@ -418,10 +432,26 @@ function App() {
   // après, le nombre de hooks variait d'un rendu à l'autre — React refuse, et
   // l'application rendait un écran blanc.
   const [acces, setAcces] = useState(null);
+  // La nature du dossier ouvert, pour atténuer les sections hors parcours.
+  // Chargée ici plutôt que dans chaque écran : la sous-navigation est un
+  // élément d'App, elle ne peut pas la recevoir d'un enfant.
+  const [natureDossier, setNatureDossier] = useState(null);
   useEffect(() => {
     if (modeDonnees() !== "reel" || !org) return;
     monAcces().then(setAcces).catch(() => setAcces(null));
   }, [org]);
+
+  // La nature suit le dossier ouvert. On l'efface dès qu'on en sort, sinon la
+  // sous-navigation garderait l'atténuation du dossier précédent.
+  useEffect(() => {
+    const id = route?.affaireId;
+    if (!id) { setNatureDossier(null); return; }
+    let vivant = true;
+    obtenirAffaire(id)
+      .then((a) => { if (vivant) setNatureDossier(a?.nature || null); })
+      .catch(() => { if (vivant) setNatureDossier(null); });
+    return () => { vivant = false; };
+  }, [route?.affaireId]);
 
   if (!charge) return null;
   // Signature d'offre : accessible sans compte, c'est un lien ciblé.
@@ -613,7 +643,7 @@ function App() {
                   peutGererEquipe={peutGererEquipe} />
       )}
       {SECTIONS_DOSSIER.some(([cle]) => cle === route.ecran) && route.affaireId && (
-        <SousNavDossier actif={route.ecran}
+        <SousNavDossier actif={route.ecran} nature={natureDossier}
           aller={(cle) => naviguerAvecGarde(() =>
             setRoute({ ecran: cle, affaireId: route.affaireId }))} />
       )}
