@@ -941,6 +941,12 @@ export async function composerOffre(affaireId) {
     // que le client lit et signe — sinon le travail du métreur se perd.
     a_remonter: articlesARemonter(inventaire),
     remarques_articles: articlesAvecRemarque(inventaire),
+    // La NATURE voyage jusqu'au document : c'est elle qui décide de ce que le
+    // récapitulatif annonce. Sans elle, une offre de lift reprendrait « volume,
+    // déménageurs, relevé » — des rubriques qui n'ont pas de sens et que le
+    // client lirait comme une erreur.
+    nature: affaire?.nature || "demenagement",
+    mission: faits.mission || null,
     formule: faits.formule || "tarifaire",
     reduction: faits.remisePct
       ? { pct: faits.remisePct, motif: faits.remiseMotif || "promo" }
