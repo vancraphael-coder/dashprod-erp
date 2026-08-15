@@ -1,0 +1,5 @@
+-- 0123 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- CORRECTIF de 0122 : la fonction visait une table `affectations` inexistante.
+-- La vraie table est `mission_affectations`.
+-- 0122 s'était appliquée sans erreur : PL/pgSQL ne résout les noms de tables
+-- qu'à l'EXÉCUTION. La fonction aurait planté au premier transfert réel.

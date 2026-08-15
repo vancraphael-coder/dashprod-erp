@@ -1,0 +1,8 @@
+-- 0120 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- Le circuit demande → confirmation, enfin branché.
+-- peut_decider_conge() : bureau (maison mère OU responsable du centre du
+--   demandeur), capacité `approuver_conge`, et JAMAIS son propre congé.
+-- cmd_conge_demander : pour soi = demande ; pour autrui = saisie bureau,
+--   approuvée d'emblée. Refuse un chevauchement et une fin avant le début.
+-- cmd_conge_decider / cmd_conge_annuler / cmd_conges.
+-- Colonnes motif_decision + demande_le, contrainte fin >= debut.

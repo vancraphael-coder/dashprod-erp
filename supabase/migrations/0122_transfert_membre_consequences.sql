@@ -1,0 +1,4 @@
+-- 0122 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- cmd_centre_affecter_membre renvoie désormais les missions à venir laissées
+-- dans l'ancien centre et les congés en attente. Refuse un centre archivé.
+-- ⚠️ Contenait un bug corrigé par 0123 — voir ce fichier.

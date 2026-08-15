@@ -1,0 +1,7 @@
+-- 0121 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- La politique `conges_tenant` autorisait TOUTE opération sur simple
+-- appartenance à la société : un membre pouvait approuver son propre congé en
+-- écrivant en base, ou supprimer celui d'un collègue.
+-- Remplacée par `conges_lecture` (SELECT seul, borné au périmètre).
+-- Plus AUCUNE politique d'écriture : tout passe par les commandes cmd_conge_*.
+-- Vue conges_planning : période et état, sans le motif.
