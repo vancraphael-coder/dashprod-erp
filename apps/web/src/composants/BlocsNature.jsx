@@ -45,6 +45,58 @@ export function BandeauNature({ cle }) {
 
 /* ── Sous-traitance ──────────────────────────────────────────────────────── */
 
+/**
+ * Le donneur d'ordre et le contact SUR PLACE. Ce sont deux personnes
+ * différentes : on facture un vendeur de mobilier, mais le jour du chantier
+ * c'est un gérant de magasin ou un client final qui ouvre la porte. Confondre
+ * les deux fait appeler le mauvais numéro quand personne n'est là.
+ */
+export function BlocDonneurOrdre({ valeur, onChange }) {
+  const m = valeur || {};
+  function maj(cle, v) { onChange({ ...m, [cle]: v }); }
+  return (
+    <div style={S.carte}>
+      <Titre>Donneur d'ordre</Titre>
+      <label style={S.label}>Société</label>
+      <input style={S.input} value={m.societe || ""}
+             onChange={(e) => maj("societe", e.target.value)}
+             placeholder="Nom de l'entreprise qui vous confie la livraison" />
+
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muet,
+                    margin: "12px 0 4px" }}>
+        Contact sur place
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ flex: 1.4 }}>
+          <label style={S.label}>Nom</label>
+          <input style={S.input} value={m.contact_nom || ""}
+                 onChange={(e) => maj("contact_nom", e.target.value)}
+                 placeholder="Qui ouvre la porte" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={S.label}>Téléphone</label>
+          <input style={S.input} type="tel" inputMode="tel"
+                 value={m.contact_tel || ""}
+                 onChange={(e) => maj("contact_tel", e.target.value)}
+                 placeholder="04xx xx xx xx" />
+        </div>
+      </div>
+      {m.contact_tel && (
+        <a href={`tel:${String(m.contact_tel).replace(/\s/g, "")}`}
+           style={{ display: "inline-block", marginTop: 8, fontSize: 12.5,
+                    fontWeight: 700, color: C.bleu, textDecoration: "none" }}>
+          Appeler {m.contact_nom || "le contact"}
+        </a>
+      )}
+      {!m.contact_tel && (
+        <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
+          Sans numéro sur place, une porte fermée bloque l'équipe sans recours.
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function BlocSousTraitance({ valeur, onChange }) {
   const [grille, setGrille] = useState(null);
   const m = valeur || {};
