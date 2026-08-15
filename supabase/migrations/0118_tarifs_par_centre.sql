@@ -1,0 +1,7 @@
+-- 0118 — APPLIQUÉE EN LIVE via MCP le 13/08/2026 (stub de référence).
+-- centres_logistiques.tarifs jsonb : réglages tarifaires propres au centre
+-- (lift_couronnes notamment). cmd_centre_tarifs_definir pour les écrire,
+-- cmd_centres les renvoie.
+-- À NE PAS CONFONDRE avec parametres_prix.tarifs.elevateur, qui reste en
+-- place : celui-là est le lift facturé DANS un déménagement ; ici c'est le
+-- lift vendu SEUL (affaire de nature 'lift').
