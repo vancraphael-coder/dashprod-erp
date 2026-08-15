@@ -19,7 +19,7 @@ import { disponibiliteRessource, verdictMission }
 import { qualifierJour } from "@domaine/planning/jours-feries.js";
 import { hhmm, resumeHoraires, verifierHoraires, HEURE_DEFAUT }
   from "@domaine/operations/horaires.js";
-import { C, S, Confirmation } from "../lib/theme.jsx";
+import { C, S, Confirmation, couleurPlanning } from "../lib/theme.jsx";
 
 const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
               "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
@@ -150,10 +150,16 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
   // Trois niveaux, trois couleurs. Le congé (rouge) dit « la personne n'est
   // pas là » ; le doublon (orange) dit « elle est déjà prise ailleurs » — un
   // avertissement, pas une interdiction : le bureau décide.
+  // Les fonds sont des VOILES de la couleur d'état (suffixe alpha), pas des
+  // pastels opaques : `#FFFBEB` posait un rectangle blanc sur le fond nuit.
+  // Les couleurs elles-mêmes viennent d'Apparence → Planning, donc un réglage
+  // de l'utilisateur se répercute ici sans retoucher cet écran.
+  const cDouble = couleurPlanning("double");
+  const cConge = couleurPlanning("conge");
   const COULEURS_DISPO = {
-    libre:        { bord: C.bord,   fond: C.blanc,   texte: C.encre, signe: "" },
-    double:       { bord: "#FDE68A", fond: "#FFFBEB", texte: "#92400E", signe: "⚠ " },
-    indisponible: { bord: "#F3C7C7", fond: "#FEF2F2", texte: C.rouge,  signe: "⛔ " },
+    libre:        { bord: C.bord,        fond: C.blanc,      texte: C.encre, signe: "" },
+    double:       { bord: `${cDouble}66`, fond: `${cDouble}1F`, texte: cDouble, signe: "⚠ " },
+    indisponible: { bord: `${cConge}66`,  fond: `${cConge}1F`,  texte: cConge,  signe: "⛔ " },
   };
 
   function choisir(missionId, type, id, nom, present) {
@@ -217,15 +223,22 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
             const nbConges = conges.filter((c) =>
               c.debut && c.fin && j.date >= c.debut && j.date <= c.fin).length;
             // Priorité visuelle : fermeture entreprise, puis férié légal.
-            const fondSpecial = q.ferme ? "#FEF2F2" : q.ferie ? "#FFFBEB" : null;
+            // Teintes TRANSLUCIDES et non des pastels opaques : en nuit,
+            // #FEF2F2 posait un pavé blanc sur un fond presque noir. Un voile
+            // laisse passer le fond et fonctionne dans les deux modes.
+            const fondSpecial = q.ferme ? `${C.rouge}22`
+                              : q.ferie ? `${C.ambre}22` : null;
             return (
               <button key={j.date} onClick={() => { setJourSel(j.date); setOuvert(null); }}
                 style={{
                   position: "relative", aspectRatio: "1", borderRadius: 9,
                   border: selectionne ? `2px solid ${C.bleu}` : "1.5px solid transparent",
-                  background: estAujourdhui ? C.bleu : selectionne ? "#E7EFFC"
+                  // `#E7EFFC` était écrit en dur : un bleu TRÈS clair. En nuit,
+                  // l'encre est quasi blanche — le numéro du jour disparaissait
+                  // dans le fond. Le jeton `bleuClair` suit le mode.
+                  background: estAujourdhui ? C.bleu : selectionne ? C.bleuClair
                     : fondSpecial || "transparent",
-                  color: estAujourdhui ? "#fff" : C.encre,
+                  color: estAujourdhui ? C.blanc : C.encre,
                   fontSize: 13.5, fontWeight: (estAujourdhui || selectionne) ? 700 : 500,
                   cursor: "pointer",
                 }}>
@@ -240,11 +253,14 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                     transform: "translateX(-50%)", display: "flex", gap: 2 }}>
                     {j.nb > 0 && (
                       <span style={{ width: 5, height: 5, borderRadius: "50%",
-                        background: estAujourdhui ? "#fff" : C.ambre }} />
+                        background: estAujourdhui ? C.blanc : C.ambre }} />
                     )}
                     {nbConges > 0 && (
+                      // La couleur du congé est RÉGLABLE (Apparence → Planning).
+                      // `C.violet` en dur ignorait purement et simplement ce
+                      // réglage : on passe par l'assistant prévu pour ça.
                       <span style={{ width: 5, height: 5, borderRadius: "50%",
-                        background: estAujourdhui ? "#fff" : (C.violet || "#7C3AED") }} />
+                        background: estAujourdhui ? C.blanc : couleurPlanning("conge") }} />
                     )}
                   </span>
                 )}
@@ -281,18 +297,18 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
           <div style={{ margin: "0 16px 10px", display: "flex",
                         flexDirection: "column", gap: 6 }}>
             {q.ferme && (
-              <div style={bandeauStyle("#FEF2F2", "#FECACA", C.rouge)}>
+              <div style={bandeauStyle(`${C.rouge}1F`, `${C.rouge}55`, C.rouge)}>
                 <b>Entreprise fermée</b>
                 {q.motif_fermeture ? ` — ${q.motif_fermeture}` : ""}
               </div>
             )}
             {q.ferie && (
-              <div style={bandeauStyle("#FFFBEB", "#FDE68A", "#92400E")}>
+              <div style={bandeauStyle(`${C.ambre}1F`, `${C.ambre}55`, C.ambre)}>
                 <b>Jour férié</b> — {q.ferie}
               </div>
             )}
             {enConge.length > 0 && (
-              <div style={bandeauStyle("#F5F3FF", "#DDD6FE", (C.violet || "#6D28D9"))}>
+              <div style={bandeauStyle(`${cConge}1F`, `${cConge}55`, cConge)}>
                 <b>{enConge.length} en congé</b> :{" "}
                 {enConge.map((e) => e.nom.split(" ")[0]).join(", ")}
               </div>
@@ -404,7 +420,7 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                   return (
                     <span key={id} style={{ fontSize: 11.5, fontWeight: 600,
                       color: archive ? C.muet : C.bleu,
-                      background: archive ? "#F1F5F9" : "#E7EFFC",
+                      background: archive ? C.doux : C.bleuClair,
                       borderRadius: 999, padding: "3px 9px" }}>
                       {mem?.nom || "Membre supprimé"}{archive ? " (archivé)" : ""}
                     </span>
@@ -466,8 +482,8 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
                         border: `1.5px solid ${dispo.conflit ? teinte.bord
                                  : estAffecte ? C.bleu : C.bord}`,
                         background: dispo.conflit ? teinte.fond
-                                  : estAffecte ? "#E7EFFC"
-                                  : estArchive ? "#F1F5F9" : C.blanc,
+                                  : estAffecte ? C.bleuClair
+                                  : estArchive ? C.doux : C.blanc,
                         color: dispo.conflit ? teinte.texte
                              : estAffecte ? C.bleu
                              : estArchive ? C.muet : C.encre,
