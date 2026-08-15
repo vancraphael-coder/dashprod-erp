@@ -3242,6 +3242,30 @@ export async function ouvrirLitige(affaireId, { type, titre, montantCentimes, de
   return data;
 }
 
+/**
+ * Les litiges portant sur un CONTRAT de stockage. Un dégât survenu au
+ * cinquième mois d'entreposage ne concerne aucune affaire — il concerne le
+ * contrat. Voir la contrainte `litiges_porte_sur_une_chose` (0115).
+ */
+export async function litigesContrat(contratId) {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.rpc("cmd_litiges_contrat",
+    { p_contrat: contratId });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function ouvrirLitigeContrat(contratId, titre, type = "degat", extra = {}) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_ouvrir_litige_contrat", {
+    p_contrat: contratId, p_type: type, p_titre: titre || null,
+    p_montant_centimes: extra.montantCentimes ?? null,
+    p_description: extra.description || null,
+    p_reference: extra.reference || null });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function avancerLitige(litigeId, etape, note) {
   if (modeDonnees() !== "reel") return null;
   const { data, error } = await supabase.rpc("cmd_avancer_litige",
@@ -3491,6 +3515,27 @@ export async function definirDepot(d) {
     p_id: d.id || null, p_nom: d.nom, p_adresse: d.adresse || null,
     p_code_postal: d.code_postal || null, p_ville: d.ville || null,
     p_tel: d.tel || null, p_actif: d.actif !== false });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/**
+ * Les échéances d'un contrat, période par période, avec ce qui a déjà été
+ * facturé. Aucune facture n'est générée automatiquement : facturer sans
+ * regard humain un contrat résilié la veille fâche un client pour rien.
+ */
+export async function echeancesStockage(jusqua, contratId) {
+  const { data, error } = await supabase.rpc("cmd_stock_echeances", {
+    p_jusqua: jusqua || null, p_contrat: contratId || null });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Marque une période comme facturée. Idempotent : deux clics ne font qu'un. */
+export async function marquerEcheance(contratId, periode, montantCentimes, factureId) {
+  const { data, error } = await supabase.rpc("cmd_stock_echeance_marquer", {
+    p_contrat: contratId, p_periode: periode,
+    p_montant: montantCentimes, p_facture: factureId || null });
   if (error) throw new Error(error.message);
   return data;
 }
