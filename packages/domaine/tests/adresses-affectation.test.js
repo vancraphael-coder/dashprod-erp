@@ -294,11 +294,15 @@ test("chaque ton porte une CONTRE-LUMIÈRE, sinon ce n'est pas de l'huile", () =
   const bloc = m.slice(m.indexOf("export const TONS"),
                        m.indexOf("export const TAILLES"));
   const tons = [...bloc.matchAll(
-    /(\w+):\s*\{\s*a: "([^"]+)",\s*b: "([^"]+)",\s*contre: "([^"]+)"/g)];
+    /(\w+):\s*\{\s*a: "([^"]+)",\s*b: "([^"]+)",\s*ombre: "([^"]+)",\s*contre: "([^"]+)"/g)];
   assert.equal(tons.length, 6, "les six tons doivent être déclarés");
-  for (const [, nom, a, b, contre] of tons) {
+  for (const [, nom, a, b, ombre, contre] of tons) {
     assert.notEqual(contre, a, `${nom} : la contre-lumière ne peut pas être la teinte`);
     assert.notEqual(contre, b, `${nom} : la contre-lumière ne peut pas être l'ombre`);
+    // Trois teintes distinctes, sinon la sphère s'aplatit en gommette : c'est
+    // l'écart entre la lumière et le creux qui la fait tenir.
+    assert.equal(new Set([a, b, ombre]).size, 3,
+      `${nom} : lumière, teinte et ombre doivent différer`);
   }
 });
 
@@ -389,12 +393,25 @@ test("l'affectation se pose mission par mission", () => {
     "chaque mission a son volet dans le dossier");
 });
 
-test("le bouton + est une bulle, pas un disque plat", () => {
-  const src = lire("composants/MenuCreation.jsx");
-  assert.ok(src.includes("radial-gradient"), "le relief fait la bulle");
-  assert.ok(src.includes("inset"), "le creux du bord");
-  // Une ombre grise sous un objet bleu paraît sale.
-  assert.ok(/0 10px 24px -8px #1D4ED8/.test(src), "ombre portée colorée");
+test("le bouton + EST une bille, il ne l'imite pas", () => {
+  // Il avait sa propre recette de dégradé et d'ombre : une bulle dessinée à
+  // côté de la mascotte, donc condamnée à s'en écarter. Le relief, le verre
+  // et l'ombre colorée viennent maintenant de la matière partagée.
+  const src = sansCom(lire("composants/MenuCreation.jsx"));
+  assert.ok(/<Bille taille="bouton"/.test(src),
+    "le + doit être une bille en taille bouton");
+  assert.equal(src.includes("radial-gradient"), false,
+    "plus de recette de bulle recopiée dans le menu");
+  assert.ok(src.includes("matiereSurface("),
+    "le bouton flotte seul : il doit déclarer la surface qui l'éclaire");
+});
+
+test("les options du menu portent le même verre que la bille", () => {
+  // Une option opaque à côté d'une bille de verre trahit deux mains.
+  const src = sansCom(lire("composants/MenuCreation.jsx"));
+  assert.ok(src.includes("backdropFilter"), "le verre floute ce qu'il y a derrière");
+  assert.ok(src.includes(".option-verre:hover"),
+    "et elles bougent au survol, comme la bille");
 });
 
 test("le menu respecte prefers-reduced-motion", () => {
@@ -551,4 +568,36 @@ test("le miroir mission → dossier vaut pour TOUTES les natures", () => {
     "le miroir doit suivre le type principal de la nature");
   assert.ok(src.includes("emballage et visite non"),
     "l'emballage ne doit pas miroiter : il ferait chiffrer avec les emballeurs");
+});
+
+test("l'état est dit par la BARRE LATÉRALE, jamais par une bille", () => {
+  // La bille est la mascotte : repère et action. Lui faire porter aussi
+  // l'état lui donnait un métier de trop et multipliait les points de couleur
+  // au point qu'on ne savait plus lequel lire. Le liseré longe déjà ce qu'il
+  // qualifie et ne prend aucune place.
+  const aff = sansCom(lire("composants/Affectation.jsx"));
+  assert.ok(/export function Voyant\(\) \{ return null; \}/.test(aff),
+    "plus de pastille d'état");
+  assert.ok(aff.includes("LISERE[couleurVoyant("),
+    "c'est le liseré de la carte qui porte l'état");
+
+  const carte = sansCom(lire("composants/CarteDate.jsx"));
+  assert.ok(carte.includes("borderLeft: `3px solid"),
+    "la carte de date porte son état sur sa barre latérale");
+  assert.equal(/ton=\{posee \? TON\[couleur\]/.test(carte), false,
+    "la bille de tête ne code plus l'état");
+  assert.equal(carte.includes('signe="attention"'), false,
+    "plus de bille d'alerte : le texte teinté suffit");
+});
+
+test("la bille répond au survol et son signe s'agite", () => {
+  // Trop fade au premier essai : une mascotte doit tenir seule, et se sentir
+  // vivante quand on passe dessus.
+  const m = lire("lib/matiere-bille.js");
+  assert.ok(m.includes(".bille:hover"), "elle grossit légèrement au survol");
+  assert.ok(m.includes(".bille:hover .bille-signe svg"),
+    "le signe bouge PLUS que la bille : c'est l'écart qui fait la profondeur");
+  // Les traits fins : un signe à 52 % du diamètre avec un trait de 2.5 est gras.
+  const b = lire("composants/Bille.jsx");
+  assert.ok(/strokeWidth=\{1\.9\}/.test(b), "les traits doivent rester fins");
 });
