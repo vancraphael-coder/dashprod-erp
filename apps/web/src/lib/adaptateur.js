@@ -100,6 +100,26 @@ export async function listerClients() {
   return lireDemo().clients;
 }
 
+/**
+ * Le carnet : les clients avec leurs coordonnées ET leurs missions rangées
+ * par groupe. Bâti sur `clients` — pas de table parallèle, donc pas de
+ * seconde fiche à tenir à jour.
+ */
+export async function carnet(recherche) {
+  const { data, error } = await supabase.rpc("cmd_carnet",
+    { p_recherche: recherche || null });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Épingler un contact récurrent : il remonte en tête du carnet. */
+export async function epinglerContact(id, epingle) {
+  const { data, error } = await supabase.rpc("cmd_client_epingler",
+    { p_id: id, p_epingle: !!epingle });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 /** Liste les affaires avec leur client (pour la liste des dossiers). */
 export async function listerAffaires() {
   // Résumé des suites administratives (solde dû, litiges) pour les dossiers
@@ -1367,8 +1387,15 @@ export async function sauverClientIdentite(affaireId, { civilite, nom, tel, emai
  * Création rapide d'un dossier vide (client « Nouveau client » à renommer
  * dans la fiche). Le « + » ne passe plus par un écran intermédiaire.
  */
-export async function creerDossierVide(nature = "demenagement") {
-  return creerAffaire({ clientNom: "Nouveau client", nature });
+/**
+ * Un dossier vide. `clientId` permet de partir d'un contact EXISTANT au lieu
+ * de créer « Nouveau client » : c'est tout l'intérêt du carnet pour un client
+ * récurrent, et ça évite un doublon de fiche à chaque commande.
+ */
+export async function creerDossierVide(nature = "demenagement", clientId = null) {
+  return clientId
+    ? creerAffaire({ clientId, nature })
+    : creerAffaire({ clientNom: "Nouveau client", nature });
 }
 
 // ── Équipe pressentie du dossier (symétrique aux camions) ─────────────────────
