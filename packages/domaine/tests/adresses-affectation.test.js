@@ -233,7 +233,40 @@ test("le voyant a trois états, pas un dégradé", () => {
   for (const t of ["gris", "orange", "vert"]) {
     assert.ok(src.includes(`${t}:`), `teinte ${t} manquante`);
   }
-  assert.ok(src.includes("radial-gradient"), "le relief fait la bulle");
+  // Le relief vit désormais dans la MASCOTTE, pas recopié ici : une bille
+  // redessinée à chaque usage finirait par diverger de la vitrine.
+  assert.ok(src.includes("<Bille"), "le voyant doit être une Bille");
+});
+
+test("la bille est la mascotte : une seule définition, partout", () => {
+  const b = lire("composants/Bille.jsx");
+  // Les quatre ingrédients qui font la sphère, et qu'il ne faut pas simplifier.
+  assert.ok(b.includes("linear-gradient(${st.huile}deg"), "l'huile qui tourne");
+  assert.ok(/top: "8%", left: "15%"/.test(b), "le reflet spéculaire");
+  assert.ok(b.includes("inset"), "le creux interne");
+  assert.ok(b.includes("translate3d(${st.sx}px"), "la parallaxe du signe");
+  // Le signe se déplace À L'INVERSE du curseur : il flotte au-dessus du verre.
+  assert.ok(b.includes("sx: -x *") && b.includes("sy: -y *"),
+    "la parallaxe doit être inversée, sinon le signe colle au doigt");
+});
+
+test("la bille se décline en tailles et en signes nommés", () => {
+  const b = lire("composants/Bille.jsx");
+  for (const t of ["puce", "jeton", "bouton", "vedette"]) {
+    assert.ok(b.includes(`${t}:`), `taille ${t} manquante`);
+  }
+  for (const s of ["chevron", "fleche", "croix", "attention", "coche"]) {
+    assert.ok(b.includes(`${s}:`), `signe ${s} manquant`);
+  }
+  // Dessinés en SVG : une police manquante ferait une croix carrée vide.
+  assert.equal(/["']✕["']|["']⚠["']/.test(b), false);
+});
+
+test("le suivi s'arrête quand la personne demande moins d'animation", () => {
+  const b = lire("composants/Bille.jsx");
+  assert.ok(b.includes("prefers-reduced-motion"));
+  // Et sur une puce de 14 px, une parallaxe de 2 px n'est que du bruit.
+  assert.ok(b.includes("px >= TAILLES.bouton"));
 });
 
 test("rien n'est repris d'une mission à l'autre", () => {
