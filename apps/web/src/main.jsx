@@ -48,6 +48,7 @@ import RapportsDossier from "./ecrans/RapportsDossier.jsx";
 import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Conversations from "./ecrans/Conversations.jsx";
+import Carnet from "./ecrans/Carnet.jsx";
 import Stockage from "./ecrans/Stockage.jsx";
 import Centres from "./ecrans/Centres.jsx";
 import RapportCentres from "./ecrans/RapportCentres.jsx";
@@ -534,7 +535,10 @@ function App() {
   // l'objet ENTIER évite d'avoir à y penser à chaque nouvel écran.
   const navBrute = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
-    nouvelle: async (nature) => { const id = await creerDossierVide(nature); setRoute({ ecran: "dossier", affaireId: id }); },
+    nouvelle: async (nature, clientId) => {
+      const id = await creerDossierVide(nature, clientId);
+      setRoute({ ecran: "dossier", affaireId: id });
+    },
     dossier: (id) => setRoute({ ecran: "dossier", affaireId: id }),
     releve: (id) => setRoute({ ecran: "releve", affaireId: id }),
     devis: (id) => setRoute({ ecran: "devis", affaireId: id }),
@@ -545,6 +549,7 @@ function App() {
     planning: () => setRoute({ ecran: "planning", affaireId: null }),
     conversations: () => setRoute({ ecran: "conversations", affaireId: null }),
     stockage: () => setRoute({ ecran: "stockage", affaireId: null }),
+    carnet: () => setRoute({ ecran: "carnet", affaireId: null }),
     centres: () => setRoute({ ecran: "centres", affaireId: null }),
     rapport: () => setRoute({ ecran: "rapport", affaireId: null }),
     equipe: () => setRoute({ ecran: "equipe", affaireId: null }),
@@ -591,6 +596,9 @@ function App() {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
     ecran = <Planning ouvrirDossier={nav.dossier} />;
+  } else if (route.ecran === "carnet") {
+    ecran = <Carnet retour={nav.liste} ouvrirDossier={nav.dossier}
+                    nouvelleAffaire={nav.nouvelle} />;
   } else if (route.ecran === "conversations") {
     ecran = <Conversations ouvrirDossier={nav.dossier} />;
   } else if (route.ecran === "stockage") {
@@ -638,7 +646,8 @@ function App() {
   } else if (route.ecran === "facture") {
     ecran = <Facture affaireId={route.affaireId} retour={retourDossier} />;
   } else {
-    ecran = <ListeAffaires ouvrirAffaire={nav.dossier} nouvelleAffaire={nav.nouvelle} />;
+    ecran = <ListeAffaires ouvrirAffaire={nav.dossier} nouvelleAffaire={nav.nouvelle}
+                           versCarnet={nav.carnet} />;
   }
 
   return (
