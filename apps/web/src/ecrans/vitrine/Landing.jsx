@@ -1,11 +1,11 @@
 // =============================================================================
-// Landing publique — la vitrine de Dashprod.
+// Landing publique — la vitrine de Dashprod (Optimisée Apple Design).
 //
 // Trois publics arrivent sur la même page, et chacun doit trouver SA porte en
 // dix secondes :
-//   1. le patron de déménagement qui découvre       → « Créer ma société »
-//   2. le déménageur déjà client                    → « Se connecter »
-//   3. le particulier qui déménage                  → « Mon déménagement »
+//   1. le patron de déménagement qui découvre        → « Créer ma société »
+//   2. le déménageur déjà client                     → « Se connecter »
+//   3. le particulier qui déménage                   → « Mon déménagement »
 //
 // Le fil visuel : l'étiquette de colis. Le produit numérote les colis
 // (001/025, manifeste export) ; la page numérote ses sections pareil. Ce n'est
@@ -71,26 +71,26 @@ export default function Landing({ aller, orgId }) {
           Masquée sous 1100px — au pouce, la nav classique reprend la main. */}
       <VariateurNav sections={SECTIONS_NAV(Boolean(orgId))} />
 
-
       {/* ── HERO — la nuit du chargement ─────────────────────────────────── */}
       <section id="accueil" style={{ background:
         `radial-gradient(1100px 500px at 75% -10%, rgba(37,99,235,.28), transparent 60%),
          radial-gradient(700px 400px at 10% 110%, rgba(217,119,6,.14), transparent 55%),
          ${V.nuit}`, color: "#fff" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto",
-                      padding: "clamp(56px, 9vw, 110px) 20px clamp(48px, 7vw, 90px)",
-                      display: "grid", gap: 44, alignItems: "center",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
+                    padding: "clamp(56px, 9vw, 110px) 20px clamp(48px, 7vw, 90px)",
+                    display: "grid", gap: 44, alignItems: "center",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
           <div className="v-lever">
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8,
-                          fontFamily: MONO, fontSize: 12, fontWeight: 600,
-                          color: V.ciel, background: "rgba(37,99,235,.18)",
-                          border: "1px solid rgba(147,197,253,.25)",
-                          padding: "6px 12px", borderRadius: 999 }}>
+                        fontFamily: MONO, fontSize: 12, fontWeight: 600,
+                        color: V.ciel, background: "rgba(37,99,235,.18)",
+                        border: "1px solid rgba(147,197,253,.25)",
+                        padding: "6px 12px", borderRadius: 999 }}>
               L'ERP des déménageurs · Belgique
             </div>
             <h1 className="v-display" style={{ fontSize: "clamp(34px, 5.2vw, 58px)",
-                                               margin: "18px 0 0", color: "#fff" }}>
+                                            lineHeight: 1.06, letterSpacing: "-.022em",
+                                            margin: "18px 0 0", color: "#fff" }}>
               Chaque déménagement,<br />
               du premier appel<br />
               à la facture payée.
@@ -102,11 +102,19 @@ export default function Landing({ aller, orgId }) {
               Un seul outil, pensé pour le déménagement — pas adapté à la va-vite.
             </p>
             <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
-              <button className="v-btn v-btn-plein" onClick={() => aller("societe")}>
+              <button className="v-btn v-btn-plein" onClick={() => aller("societe")}
+                      style={{ transition: "transform 100ms cubic-bezier(0.16, 1, 0.3, 1)", cursor: "pointer" }}
+                      onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+                      onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}>
                 Créer ma société →
               </button>
               <button className="v-btn v-btn-fantome"
-                onClick={() => document.getElementById("commander")?.scrollIntoView({ behavior: "smooth" })}>
+                      onClick={() => document.getElementById("commander")?.scrollIntoView({ behavior: "smooth" })}
+                      style={{ transition: "transform 100ms cubic-bezier(0.16, 1, 0.3, 1)", cursor: "pointer" }}
+                      onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+                      onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}>
                 Commander mon déménagement
               </button>
             </div>
@@ -144,7 +152,8 @@ export default function Landing({ aller, orgId }) {
             Un seul formulaire · tout le réseau
           </div>
           <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
-                                             margin: "10px 0 8px" }}>
+                                            letterSpacing: "-.02em", lineHeight: 1.1,
+                                            margin: "10px 0 8px" }}>
             Commandez votre déménagement.
           </h2>
           <p style={{ color: "rgba(255,255,255,.72)", fontSize: 15, lineHeight: 1.6, margin: 0 }}>
@@ -161,7 +170,7 @@ export default function Landing({ aller, orgId }) {
       <section id="produit" style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(52px, 6vw, 80px) 20px 10px" }}>
         <div style={{ display: "grid", gap: 16,
-                      gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
           <Porte
             etiquette="PORTE A" titre="Créer ma société"
             texte="Votre entreprise de déménagement sur Dashprod : base vierge, vos barèmes, vos équipes. Opérationnel aujourd'hui."
@@ -183,7 +192,8 @@ export default function Landing({ aller, orgId }) {
         <div style={{ maxWidth: 560 }}>
           <Etiquette numero="006 colis" libelle="tout est compté" sombre />
           <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
-                                             margin: "14px 0 0" }}>
+                                            letterSpacing: "-.02em", lineHeight: 1.1,
+                                            margin: "14px 0 0" }}>
             Tout le métier, dans l'ordre du métier.
           </h2>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,.62)", lineHeight: 1.6,
@@ -193,18 +203,18 @@ export default function Landing({ aller, orgId }) {
           </p>
         </div>
         <div style={{ display: "grid", gap: 14, marginTop: 30,
-                      gridTemplateColumns: "repeat(auto-fit, minmax(min(270px, 100%), 1fr))" }}>
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(270px, 100%), 1fr))" }}>
           {MODULES.map((m) => (
             <PanneauVerre key={m.n} padding={20}>
               <div style={{ display: "flex", alignItems: "center",
-                            justifyContent: "space-between" }}>
+                          justifyContent: "space-between" }}>
                 <span style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 700,
                                color: "#60A5FA" }}>{m.n}/006</span>
                 <span aria-hidden="true" style={{ height: 4, width: 42,
-                        borderRadius: 2, background: "rgba(217,119,6,.55)" }} />
+                                borderRadius: 2, background: "rgba(217,119,6,.55)" }} />
               </div>
               <h3 style={{ fontSize: 16.5, fontWeight: 800, margin: "10px 0 6px",
-                           letterSpacing: "-.01em", color: "#fff" }}>{m.t}</h3>
+                          letterSpacing: "-.01em", color: "#fff" }}>{m.t}</h3>
               <p style={{ fontSize: 13.5, color: "rgba(255,255,255,.62)",
                           lineHeight: 1.55, margin: 0 }}>
                 {m.d}
@@ -219,15 +229,15 @@ export default function Landing({ aller, orgId }) {
         background: `radial-gradient(900px 420px at 80% -10%, rgba(37,99,235,.28), transparent 60%),
                      radial-gradient(600px 340px at 5% 100%, rgba(217,119,6,.12), transparent 55%),
                      ${V.nuit}`,
-        color: "#fff",
-        backgroundImage: undefined }}>
+        color: "#fff" }}>
         <div style={{ maxWidth: 1080, margin: "0 auto",
-                      padding: "clamp(44px, 6vw, 70px) 20px", display: "grid",
-                      gap: 36, alignItems: "center",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))" }}>
+                    padding: "clamp(44px, 6vw, 70px) 20px", display: "grid",
+                    gap: 36, alignItems: "center",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))" }}>
           <div>
             <Etiquette numero="3 offres" libelle="vous montez quand vous grandissez" sombre />
             <h2 className="v-display" style={{ fontSize: "clamp(26px, 3.6vw, 40px)",
+                                               letterSpacing: "-.02em", lineHeight: 1.1,
                                                margin: "14px 0 0", color: "#fff" }}>
               Une offre par taille d'entreprise.
             </h2>
@@ -238,13 +248,13 @@ export default function Landing({ aller, orgId }) {
               n'est jamais supprimé si vous redescendez.
             </p>
             <ul style={{ margin: "18px 0 0", padding: 0, listStyle: "none",
-                         display: "grid", gap: 9 }}>
+                       display: "grid", gap: 9 }}>
               {[`${ESSAI_JOURS} jours d'essai, sans carte bancaire`,
                 `Mensuel sans engagement, ou annuel remisé de ${REMISE_ANNUELLE_PCT} %`,
                 "Vos données cloisonnées, hébergées en Europe",
                 "Exportables à tout moment, même après résiliation"].map((x) => (
                 <li key={x} style={{ display: "flex", gap: 10, fontSize: 14,
-                                     color: "rgba(255,255,255,.82)" }}>
+                                    color: "rgba(255,255,255,.82)" }}>
                   <span style={{ color: "#60A5FA", fontWeight: 800 }}>✓</span>{x}
                 </li>
               ))}
@@ -284,15 +294,23 @@ export default function Landing({ aller, orgId }) {
       {/* ── APPEL FINAL ──────────────────────────────────────────────────── */}
       <section id="contact" style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(44px, 6vw, 76px) 20px", textAlign: "center" }}>
-        <h2 className="v-display" style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>
+        <h2 className="v-display" style={{ fontSize: "clamp(24px, 3.4vw, 38px)", letterSpacing: "-.02em", margin: 0 }}>
           Le prochain camion part avec Dashprod.
         </h2>
         <div style={{ display: "flex", gap: 12, justifyContent: "center",
-                      marginTop: 24, flexWrap: "wrap" }}>
-          <button className="v-btn v-btn-plein" onClick={() => aller("societe")}>
+                    marginTop: 24, flexWrap: "wrap" }}>
+          <button className="v-btn v-btn-plein" onClick={() => aller("societe")}
+                  style={{ transition: "transform 100ms cubic-bezier(0.16, 1, 0.3, 1)", cursor: "pointer" }}
+                  onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+                  onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}>
             Créer ma société
           </button>
-          <button className="v-btn v-btn-blanc" onClick={() => aller("connexion")}>
+          <button className="v-btn v-btn-blanc" onClick={() => aller("connexion")}
+                  style={{ transition: "transform 100ms cubic-bezier(0.16, 1, 0.3, 1)", cursor: "pointer" }}
+                  onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+                  onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}>
             Se connecter
           </button>
         </div>
@@ -320,7 +338,7 @@ function SectionAvis({ orgId }) {
 
   return (
     <section id="avis" style={{ borderTop: "1px solid rgba(255,255,255,.08)",
-                      padding: "clamp(44px, 6vw, 76px) 20px" }}>
+                    padding: "clamp(44px, 6vw, 76px) 20px" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", textAlign: "center" }}>
         <div style={{ fontSize: 34, letterSpacing: 2, color: "#F59E0B" }}>
           {"★".repeat(pleines)}{"☆".repeat(5 - pleines)}
@@ -332,8 +350,8 @@ function SectionAvis({ orgId }) {
           </span>
         </div>
         <div style={{ display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))",
-                      gap: 16, marginTop: 28, textAlign: "left" }}>
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))",
+                    gap: 16, marginTop: 28, textAlign: "left" }}>
           {(data.avis || []).slice(0, 6).map((a, i) => (
             <PanneauVerre key={i} padding={18} accent="245,158,11">
               <div style={{ color: "#F59E0B", fontSize: 15 }}>
@@ -373,6 +391,7 @@ function AvisDesOrganisations() {
           Ils déménagent sur le réseau
         </div>
         <h3 className="v-display" style={{ fontSize: "clamp(20px, 2.6vw, 28px)",
+                                           letterSpacing: "-.01em",
                                            margin: "10px 0 0" }}>
           Ce que disent leurs clients.
         </h3>
@@ -441,6 +460,7 @@ function AvisDeDashprod() {
                    libelle={`sur ${data.total} entreprise${data.total > 1 ? "s" : ""}`}
                    sombre style={{ marginBottom: 16 }} />
         <h2 className="v-display" style={{ fontSize: "clamp(24px, 3.4vw, 36px)",
+                                           letterSpacing: "-.02em",
                                            margin: "0 0 26px" }}>
           Ce que les déménageurs disent de Dashprod.
         </h2>
@@ -501,10 +521,14 @@ function Porte({ etiquette, titre, texte, action, onClick, pleine = false }) {
       <button onClick={onClick}
         style={{ width: "100%", padding: "12px 18px", fontSize: 14, fontWeight: 700,
                  borderRadius: 980, cursor: "pointer",
+                 transition: "transform 100ms cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease",
                  border: pleine ? "none" : "1px solid rgba(255,255,255,.18)",
                  background: pleine ? "#fff" : "rgba(255,255,255,.06)",
                  color: pleine ? V.route : "#fff",
-                 boxShadow: pleine ? "0 10px 26px rgba(0,0,0,.34)" : "none" }}>
+                 boxShadow: pleine ? "0 10px 26px rgba(0,0,0,.34)" : "none" }}
+        onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.97)"}
+        onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+        onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}>
         {action}
       </button>
     </PanneauVerre>
