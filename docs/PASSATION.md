@@ -3,7 +3,7 @@
 > **À lire en entier avant de coder.** Ce document permet à une nouvelle
 > conversation de reprendre le travail sans rien casser ni rien réinventer.
 >
-> **Dernière mise à jour :** 17/08/2026 — après le lot 10b.
+> **Dernière mise à jour :** 17/08/2026 — après le lot 10c.
 > **À mettre à jour tous les 7 messages**, ou en fin de conversation.
 > Procédure de mise à jour : §9.
 
@@ -101,14 +101,25 @@ clair y devient un pavé aveuglant. Toujours passer par les jetons `C.*` et
 `packages/domaine/tests/mode-nuit.test.js` refuse la récidive (liste noire de
 pastels, interdiction de `C.violet`).
 
-### 3.6 Les triggers d'état ne se testent pas au SQL nu
+### 3.6 Les colonnes NOT NULL sans valeur par défaut
+`scenarios.resultats` est **NOT NULL sans défaut**. Un insert qui l'omet fait
+échouer l'enregistrement avec un message Postgres brut, illisible pour
+l'utilisateur. Bug introduit au lot 2b-2, remonté par Raphaël en production.
+
+> Avant tout `insert` : vérifier `is_nullable` **et** `column_default`
+> ```sql
+> select column_name, is_nullable, column_default from information_schema.columns
+> where table_schema='public' and table_name='…';
+> ```
+
+### 3.7 Les triggers d'état ne se testent pas au SQL nu
 `affaires.etat` est protégé par `bloquer_update_etat()` : tout UPDATE hors
 `cmd_transition_affaire` est refusé, et `session_replication_role` n'est pas
 accessible sur Supabase. Pour valider un trigger de confirmation, **exercer
 séparément chaque lecture et chaque insert de son corps** dans un bloc
 `do $$ … rollback $$` — c'est ce qui a validé 0130.
 
-### 3.7 Les tests statiques
+### 3.8 Les tests statiques
 Plusieurs tests lisent les **sources** d'`apps/web` plutôt que d'importer
 (l'alias `@domaine` n'est résolu que par Vite). Ils ignorent les commentaires
 via `sansCommentaires()` — sinon un commentaire citant le bug fautif
@@ -180,7 +191,18 @@ Voyant à **trois états** : gris (vide) / orange (partiel) / vert (complet).
 Bulle en relief, liseré de carte assorti, flèche pour dérouler.
 **Rien n'est bloquant** : on signale avec le motif, on n'interdit pas.
 
-### 4.6 Autres invariants
+### 4.6 La Bille — la mascotte
+`apps/web/src/composants/Bille.jsx`. Vient des cartes d'abonnement de la
+vitrine, et **une seule définition sert partout** : voyants d'affectation,
+pastilles de métier, flèches de dépliage, croix, attentions.
+
+Quatre ingrédients à ne jamais simplifier : l'**huile** qui tourne avec le
+curseur, le **reflet spéculaire** décentré, le **creux interne**, et la
+**parallaxe INVERSÉE** du signe (il flotte au-dessus du verre au lieu de coller
+au doigt). Tailles nommées : `puce` / `jeton` / `bouton` / `vedette`.
+Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
+
+### 4.7 Autres invariants
 - Un **litige porte sur exactement une chose** : affaire **OU** contrat
   (contrainte `litiges_porte_sur_une_chose`, migration 0115)
 - Une **offre signée est figée** — le document garde SA nature, pas celle de
@@ -198,7 +220,7 @@ Bulle en relief, liseré de carte assorti, flèche pour dérouler.
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 865/865 ✓ — build `apps/web` ✓ (209 modules)**
+**`npm test` : 868/868 ✓ — build `apps/web` ✓ (210 modules)**
 **Migrations appliquées : jusqu'à `0131_affectation_par_mission`.**
 
 ### Lots livrés
@@ -218,6 +240,7 @@ Bulle en relief, liseré de carte assorti, flèche pour dérouler.
 | 9 | Messagerie : liens de téléchargement + raccourci boîte | — |
 | 10a | Adresses par métier + vérité des affectations | — |
 | 10b | Une mission par date, affectation par mission, menu « + » en bulle | 0130–0131 |
+| 10c | **Correctif `scenarios.resultats`** + la Bille (mascotte partagée) | — |
 
 ### Reste à faire
 
