@@ -206,6 +206,8 @@ import { fileURLToPath } from "node:url";
 const ICI = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(ICI, "../../../apps/web/src");
 const lire = (p) => fs.readFileSync(path.join(WEB, p), "utf8");
+const lireMigration = (f) =>
+  fs.readFileSync(path.join(ICI, "../../../supabase/migrations", f), "utf8");
 
 test("le dossier n'écrit plus « Chargement » en dur", () => {
   // C'est le vocabulaire du déménagement : le laisser en dur le ferait
@@ -246,4 +248,50 @@ test("le volet n'offre que les véhicules de la bonne catégorie", () => {
   const src = lire("composants/Affectation.jsx");
   assert.ok(src.includes("ex.categorie"));
   assert.ok(src.includes('(v.categorie || "camion") === ex.categorie'));
+});
+
+/* ── Lot 10b : une mission par date ─────────────────────────────────────── */
+
+test("le report d'équipe n'a lieu qu'À LA CRÉATION de la mission", () => {
+  // Le bug corrigé : il s'exécutait à CHAQUE confirmation. Retirer quelqu'un
+  // puis repasser l'affaire en « confirmé » le réajoutait en silence.
+  const src = lireMigration("0130_une_mission_par_date.sql");
+  assert.ok(src.includes("if v_neuve then"),
+    "le report doit être conditionné à la création");
+});
+
+test("un lift produit une mission de LIFT, pas de déménagement", () => {
+  const src = lireMigration("0130_une_mission_par_date.sql");
+  assert.ok(/when 'lift' then 'lift'/.test(src));
+  // Boxe et zone sont récurrents : aucune mission de chantier.
+  assert.ok(/in \('boxe', 'zone'\)/.test(src));
+});
+
+test("l'affectation se pose mission par mission", () => {
+  const ad = lire("lib/adaptateur.js");
+  assert.ok(ad.includes("cmd_mission_affecter"));
+  assert.ok(ad.includes("cmd_missions_affaire"));
+  const src = lire("ecrans/Dossier.jsx");
+  assert.ok(src.includes("VoletAffectation"),
+    "chaque mission a son volet dans le dossier");
+});
+
+test("le bouton + est une bulle, pas un disque plat", () => {
+  const src = lire("composants/MenuCreation.jsx");
+  assert.ok(src.includes("radial-gradient"), "le relief fait la bulle");
+  assert.ok(src.includes("inset"), "le creux du bord");
+  // Une ombre grise sous un objet bleu paraît sale.
+  assert.ok(/0 10px 24px -8px #1D4ED8/.test(src), "ombre portée colorée");
+});
+
+test("le menu respecte prefers-reduced-motion", () => {
+  // Une animation subie donne le mal des transports à qui y est sensible.
+  const src = lire("composants/MenuCreation.jsx");
+  assert.ok(src.includes("prefers-reduced-motion"));
+});
+
+test("chaque entrée du menu annonce son métier", () => {
+  const src = lire("composants/MenuCreation.jsx");
+  assert.ok(src.includes("metier(n.cle)"),
+    "c'est ce qui lève l'ambiguïté entre « lift » l'engin et la prestation");
 });
