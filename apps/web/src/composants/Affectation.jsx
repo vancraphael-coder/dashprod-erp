@@ -23,12 +23,21 @@ import { C, S } from "../lib/theme.jsx";
 
 /** Le voyant est une BILLE — la mascotte, en taille puce. Trois états, pas un
  *  dégradé : un dégradé de nuances ne se lit pas d'un coup d'œil. */
-const TON_ETAT = { gris: "gris", orange: "orange", vert: "vert" };
 const LISERE = { gris: "#94A3B8", orange: "#FB923C", vert: "#34D399" };
 
-export function Voyant({ etat, taille = "puce" }) {
-  return <Bille taille={taille} ton={TON_ETAT[couleurVoyant(etat)] || "gris"} />;
-}
+/**
+ * L'ÉTAT EST PORTÉ PAR LA BARRE LATÉRALE, plus par une pastille.
+ *
+ * La bille est la mascotte : elle sert de repère et d'action. En faire aussi
+ * un voyant lui donnait un troisième métier — et multipliait les points de
+ * couleur au point qu'on ne savait plus lequel regarder. Le liseré de la
+ * carte dit l'état sans rien ajouter à l'écran : il est déjà là, il longe
+ * exactement ce qu'il qualifie, et il ne prend aucune place.
+ *
+ * Conservé comme composant vide pour ne pas casser les appelants : le liseré
+ * est posé par la carte elle-même, via `LISERE[couleurVoyant(...)]`.
+ */
+export function Voyant() { return null; }
 
 /**
  * Le volet d'une mission : ligne repliée avec voyant et résumé, contenu
@@ -73,7 +82,6 @@ export function VoletAffectation({
           padding: "12px 14px", border: "none", background: "none",
           cursor: "pointer", textAlign: "left",
         }}>
-        <Voyant etat={verdict.etat} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: C.encre }}>
             {ex.titre}

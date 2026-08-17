@@ -108,7 +108,12 @@ export default function CarteDate({
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12,
                     padding: "13px 14px 11px" }}>
-        <Bille taille="bouton" ton={posee ? TON[couleur] : "gris"}
+        {/* La bille est le REPÈRE de la carte, pas son voyant : l'état est
+            dit par la barre latérale, qui longe déjà ce qu'elle qualifie.
+            Lui faire porter les deux lui donnait un métier de trop, et
+            multipliait les points de couleur au point qu'on ne savait plus
+            lequel lire. */}
+        <Bille taille="bouton" ton="bleu"
                signe={posee ? undefined : "plus"}
                titre={`${libelle} — ${resumeAffectation(a)}`} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -235,9 +240,6 @@ export default function CarteDate({
                                           gap: 7, fontSize: 11.5,
                                           color: d.niveau === "indisponible"
                                                  ? C.rouge : C.ambre }}>
-                      <Bille taille="puce"
-                             ton={d.niveau === "indisponible" ? "rouge" : "orange"}
-                             signe="attention" />
                       <span><strong>{nom || "Ressource"}</strong> — {d.raison}</span>
                     </div>
                   ))}
@@ -248,8 +250,6 @@ export default function CarteDate({
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 7,
                               marginTop: 12, fontSize: 11.5, lineHeight: 1.5,
                               color: verdict.etat === "vide" ? C.muet : C.ambre }}>
-                  <Bille taille="puce" ton={couleur} signe="attention"
-                         style={{ marginTop: 1 }} />
                   <span>{verdict.manques.join(" · ")}</span>
                 </div>
               )}
@@ -288,10 +288,6 @@ function Jeton({ actif, onClick, texte, alerte, raison }) {
         background: actif ? C.bleuClair : C.blanc,
         color: teinte || (actif ? C.bleu : C.muet),
       }}>
-      {alerte && (
-        <Bille taille="puce" signe="attention"
-               ton={alerte === "indisponible" ? "rouge" : "orange"} />
-      )}
       {texte}
     </button>
   );

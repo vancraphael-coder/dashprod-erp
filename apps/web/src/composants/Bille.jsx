@@ -82,7 +82,8 @@ export default function Bille({
         // Le diamètre pilote TOUT le reste : ombres, creux, reflet, parallaxe
         // et relief sont des fractions de `--b`. Une seule valeur à donner.
         "--b": px,
-        "--bille-a": t.a, "--bille-b": t.b, "--bille-contre": t.contre,
+        "--bille-a": t.a, "--bille-b": t.b,
+        "--bille-ombre": t.ombre, "--bille-contre": t.contre,
         cursor: onClick ? "pointer" : undefined,
         ...style,
       }}>
@@ -94,7 +95,7 @@ export default function Bille({
       {glyphe && (
         <span aria-hidden
               className={`bille-signe${signe === "chevron" ? " bille-pivote" : ""}`}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.9}
                strokeLinecap="round" strokeLinejoin="round">
             {glyphe}
           </svg>

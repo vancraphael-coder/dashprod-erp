@@ -20,6 +20,7 @@ import React, { useEffect, useRef } from "react";
 import { naturesDuMenu } from "@domaine/commercial/natures.js";
 import { metier } from "@domaine/commercial/adresses.js";
 import Bille from "./Bille.jsx";
+import { matiereSurface } from "../lib/matiere-bille.js";
 import { C, S } from "../lib/theme.jsx";
 
 /** Une teinte de BILLE par métier — la mascotte se décline, elle ne se
@@ -87,12 +88,22 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
                 // pastilles resteraient les seules billes éteintes de l'app.
                 // `data-champ` déclare la surface qui les éclaire.
                 data-champ=""
+                className="option-verre"
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 11,
                   textAlign: "left", padding: "13px 15px", borderRadius: 16,
-                  border: `1px solid ${C.bord}`, background: C.blanc,
                   cursor: "pointer",
-                  boxShadow: "0 10px 26px -14px rgba(8,12,26,.45)",
+                  // Le MÊME verre que la bille : translucide, flouté, avec un
+                  // liseré de lumière en haut. Une option opaque à côté d'une
+                  // bille de verre trahit deux mains différentes.
+                  border: "1px solid rgba(255,255,255,.55)",
+                  background: `linear-gradient(135deg,
+                    rgba(255,255,255,.86) 0%, rgba(255,255,255,.72) 100%)`,
+                  backdropFilter: "blur(14px)",
+                  WebkitBackdropFilter: "blur(14px)",
+                  boxShadow: `0 10px 26px -14px rgba(8,12,26,.45),
+                              inset 0 1px 0 rgba(255,255,255,.9)`,
+                  ...matiereSurface(false),
                   // Les entrées arrivent l'une après l'autre, du bas vers le
                   // haut : on suit le menu du regard depuis le bouton au lieu
                   // de le voir surgir d'un bloc.
@@ -100,8 +111,8 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
                            + `${(natures.length - 1 - i) * 34}ms both`,
                 }}>
                 {/* La pastille du métier : une bulle, comme le bouton. */}
-                <Bille taille={13} ton={TONS_METIER[n.cle] || "bleu"}
-                       style={{ marginTop: 3 }} />
+                <Bille taille="jeton" ton={TONS_METIER[n.cle] || "bleu"}
+                       style={{ marginTop: 2 }} />
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "baseline",
                                  gap: 7, flexWrap: "wrap" }}>
@@ -128,34 +139,28 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
         </div>
       )}
 
-      <button
-        onClick={() => basculer(!ouvert)}
-        aria-expanded={ouvert}
-        aria-haspopup="menu"
-        aria-label={ouvert ? "Fermer le menu de création" : "Créer"}
-        style={{
-          ...S.flottant,
-          zIndex: 42,
-          border: "none",
-          // La bulle : lumière en haut à gauche, creux en bas, halo coloré.
-          background: `radial-gradient(circle at 34% 26%, #ffffffcc 0%, `
-                    + `${C.bleu} 46%, #1D4ED8 100%)`,
-          boxShadow: ouvert
-            ? `inset 0 2px 6px #1D4ED8cc, 0 4px 12px -4px #1D4ED866`
-            : `inset 0 -3px 6px #1D4ED8aa, inset 0 2px 3px #ffffff66, `
-              + `0 10px 24px -8px #1D4ED899, 0 3px 8px -2px rgba(8,12,26,.3)`,
-          color: "#fff",
-          fontWeight: 300,
-          display: "grid",
-          placeItems: "center",
-          lineHeight: 1,
-          transform: ouvert ? "rotate(45deg) scale(.94)" : "none",
-          transition: "transform 220ms cubic-bezier(.16,.9,.3,1), "
-                    + "box-shadow 220ms ease-out",
-        }}>
-        <span style={{ display: "block", marginTop: -2,
-                       textShadow: "0 1px 2px rgba(8,12,26,.35)" }}>+</span>
-      </button>
+      {/* Le « + » EST une bille. C'était une bulle dessinée à part, avec sa
+          propre recette de dégradé et d'ombre — donc condamnée à diverger de
+          la mascotte qu'elle imitait. Elle est maintenant la même matière que
+          toutes les autres, en taille bouton : huile, verre, reflet mobile,
+          profondeur. Le signe passe de « + » à « croix » à l'ouverture, et la
+          rotation reste sur le conteneur. */}
+      <span style={{ ...S.flottant, zIndex: 42, border: "none", padding: 0,
+                     background: "none", boxShadow: "none",
+                     display: "grid", placeItems: "center",
+                     // La surface qui l'éclaire : le bouton flotte seul,
+                     // sans carte sous lui.
+                     ...matiereSurface(false) }}
+            data-champ="">
+        <Bille taille="bouton" ton="bleu" signe={ouvert ? "croix" : "plus"}
+               actif={ouvert} deplie={ouvert}
+               onClick={() => basculer(!ouvert)}
+               titre={ouvert ? "Fermer le menu de création" : "Créer"}
+               style={{
+                 transform: ouvert ? "rotate(90deg)" : "none",
+                 transition: "transform 220ms cubic-bezier(.16,.9,.3,1)",
+               }} />
+      </span>
 
       <style>{`
         @keyframes entreeMenu {
@@ -165,11 +170,26 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
         @keyframes voileEntre {
           from { opacity: 0; } to { opacity: 1; }
         }
+        /* Les options bougent comme la bille : elles avancent d'un cheveu et
+           leur verre s'éclaircit. Même courbe, même durée — sinon le menu et
+           sa mascotte n'ont pas l'air d'appartenir au même objet. */
+        .option-verre {
+          transition: transform .22s cubic-bezier(.34,1.4,.64,1),
+                      box-shadow .22s ease-out, background .22s ease-out;
+        }
+        .option-verre:hover {
+          transform: translateY(-2px) scale(1.015);
+          background: linear-gradient(135deg,
+            rgba(255,255,255,.96) 0%, rgba(255,255,255,.84) 100%);
+          box-shadow: 0 16px 32px -16px rgba(8,12,26,.5),
+                      inset 0 1px 0 rgba(255,255,255,1);
+        }
         @media (prefers-reduced-motion: reduce) {
           /* Une animation subie donne le mal des transports à qui y est
              sensible : on garde l'apparition, on retire le mouvement. */
           @keyframes entreeMenu { from { opacity: 0; } to { opacity: 1; } }
           @keyframes voileEntre { from { opacity: 0; } to { opacity: 1; } }
+          .option-verre, .option-verre:hover { transition: none; transform: none; }
         }
       `}</style>
     </div>
