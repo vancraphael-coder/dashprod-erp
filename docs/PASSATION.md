@@ -167,6 +167,18 @@ Trois requêtes de comptage ont montré qu'il **n'y avait aucun trou** : le code
 aurait été mort. Mais *chercher* le trou a révélé deux bugs de production bien
 réels. Compter d'abord coûte trois minutes et change ce qu'on écrit.
 
+### 3.13 Un doublon d'interface MASQUE les bugs de la donnée qu'il double
+En retirant le sélecteur « Équipe » du dossier (lot 10f), deux bugs sont
+apparus d'un coup — tous deux vieux, tous deux invisibles jusque-là :
+`sync_mission_vers_dossier` ne miroitait que le déménagement (donc un lift
+affecté au planning était chiffré sans personne), et l'avertissement « ce lift
+ne monte pas assez haut » vivait sous ce sélecteur.
+
+Un second chemin d'écriture **compense** silencieusement le premier : tant que
+les deux existent, la panne du premier ne se voit pas. C'est pourquoi
+supprimer un doublon doit se faire avec les tests statiques allumés — c'est le
+test des étages qui a rattrapé l'avertissement perdu.
+
 ---
 
 ## 4. Le modèle métier — décisions à ne pas défaire
@@ -352,10 +364,44 @@ Le garde-fou a été éprouvé sur ses quatre modes de panne (import direct,
 import transitif, dérogation retirée, module renommé) — il rend la chaîne
 complète, pas un booléen.
 
+
+### 4.9 Une donnée, une commande
+Règle posée par Raphaël au lot 10f : *« concentre-toi sur les relations entre
+informations et privilégie l'UX »*.
+
+L'écran Dossier avait **trois commandes pour une seule affectation** — la carte
+de date (l'équipe *prévue*, sur le dossier), le volet de la mission (la
+*vérité*, au planning), et le sélecteur « Équipe » du dossier (écrit à
+l'enregistrement). Elles se contredisaient à l'œil, et rien ne disait laquelle
+faisait foi.
+
+**La carte de date est la seule commande.** Elle vise la cible qui existe :
+
+| moment | cible | ce que la carte affiche |
+|---|---|---|
+| pas encore de mission | `affaires.affectations` | « Prévu — au planning à la confirmation » |
+| la mission existe | `mission_affectations` | « Au planning » |
+
+*La carte le DIT* : c'est la même équipe qui passe du prévu à l'engagement, pas
+deux équipes. Sans cette mention, on ne sait pas si l'on regarde une intention
+ou un engagement.
+
+Ce qui a disparu : le sélecteur « Équipe », le sélecteur « Véhicules », et la
+liste « Affectations » (qui rejouait les cartes avec d'autres mots). Une
+mission d'un type sans carte reste affichée sous « Autres missions » — sinon
+elle n'aurait plus de porte depuis le dossier.
+
+`affaires.equipe` / `camions` restent alimentés par le **miroir** depuis la
+mission principale (0136) et continuent de servir au chiffrage.
+
+**Le conflit de disponibilité se lit au moment du clic**, porté par le jeton
+lui-même : le signaler ailleurs obligerait à faire le lien de tête entre une
+liste et un avertissement, précisément quand on décide. Rien n'est bloquant.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 892/892 ✓ — build `apps/web` ✓**
-**Migrations appliquées : jusqu'à `0135_equipe_dossier_vers_mission_principale`.**
+**`npm test` : 901/901 ✓ — build `apps/web` ✓**
+**Migrations appliquées : jusqu'à `0136_miroir_mission_principale_toutes_natures`.**
 
 ### Lots livrés
 | lot | contenu | migrations |
@@ -377,6 +423,7 @@ complète, pas un booléen.
 | 10c | **Correctif `scenarios.resultats`** + la Bille (mascotte partagée) | — |
 | 10d | Cartes de date avec affectation (la Bille enfin visible) | 0132–0133 |
 | 10e | Bille refaite, test d'architecture, grille au m³ exact, 2 bugs de production | 0134, 0135 |
+| 10f | **Une seule commande par date** (3 doublons supprimés), conflits au point de décision, miroir toutes natures | 0136 |
 
 ### Reste à faire
 
@@ -397,7 +444,11 @@ complète, pas un booléen.
       *La leçon : vérifier l'existant AVANT d'écrire le correctif — le
       backfill aurait été du code mort, et le chercher a révélé deux vrais
       bugs (0134).*
-- [ ] Le conflit de disponibilité calculé **par mission**
+- [x] **Le conflit de disponibilité calculé par mission** — visible sur le
+      jeton, au moment du clic. La composition (rassembler engagements et
+      congés) est passée dans le domaine : `lecteurDisponibilite()`. Elle
+      vivait en closures dans `Planning.jsx` et il aurait fallu une troisième
+      copie. **Lot 10 clos.**
 
 **Lot 10e — LIVRÉ** (la matière, l'architecture, la grille, deux bugs)
 - [x] **La Bille refaite à la racine** — voir §4.6. Cinq écarts avec la bille
@@ -443,15 +494,10 @@ complète, pas un booléen.
    est une décision de design. Aujourd'hui accessible via *Dossiers → Carnet*.
 3. **Pièces jointes réelles dans Gmail** (API Google : OAuth, jeton,
    révocation). Non demandé formellement — proposé, sans réponse.
-4. **Trois commandes pour une seule affectation.** L'écran Dossier montre la
-   `CarteDate` principale (affectation *prévue*), le `VoletAffectation` de la
-   mission principale (la *vérité*), et le sélecteur « Équipe » du dossier —
-   qui pilote la même chose depuis 0135. Les trois sont désormais cohérents et
-   l'écran recharge les missions après enregistrement, mais **trois commandes
-   pour une donnée reste une odeur**. À trancher : laquelle disparaît ?
-5. **Le CMR** — décidé « généré par Dashprod » (voir plus bas), reste à cadrer :
+4. **Le CMR** — décidé « généré par Dashprod » (voir plus bas), reste à cadrer :
    quelles natures (sous-traitance seule, ou aussi déménagement international ?),
    série de numérotation, et 24 cases réglementaires. Mérite son lot.
+   **C'est le prochain lot.**
 
 ### Déjà répondu — ne pas reposer
 - Sous-traitance : **on est le prestataire** (recette), pour un vendeur de
@@ -468,6 +514,8 @@ complète, pas un booléen.
   déménagement est un vertical qui utilise l'horizontal (§4.8)
 - Équipe et véhicules : **toujours en relation avec le planning**, ils font
   partie de la vérité d'un dossier (§4.5)
+- Les doublons d'interface : **supprimer**, privilégier les relations entre
+  informations et l'UX. Une donnée, une commande (§4.9)
 
 ---
 
