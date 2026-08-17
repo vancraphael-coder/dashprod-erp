@@ -18,29 +18,16 @@ import React, { useState } from "react";
 import {
   etatAffectation, couleurVoyant, resumeAffectation, exigence,
 } from "@domaine/planning/affectation.js";
+import Bille from "./Bille.jsx";
 import { C, S } from "../lib/theme.jsx";
 
-const TEINTE = {
-  gris: { vif: "#94A3B8", sombre: "#64748B" },
-  orange: { vif: "#FB923C", sombre: "#EA580C" },
-  vert: { vif: "#34D399", sombre: "#059669" },
-};
+/** Le voyant est une BILLE — la mascotte, en taille puce. Trois états, pas un
+ *  dégradé : un dégradé de nuances ne se lit pas d'un coup d'œil. */
+const TON_ETAT = { gris: "gris", orange: "orange", vert: "vert" };
+const LISERE = { gris: "#94A3B8", orange: "#FB923C", vert: "#34D399" };
 
-/**
- * La bulle. Le relief vient d'un dégradé radial décentré et d'une ombre
- * interne : une pastille plate se confondrait avec les autres pastilles de
- * l'écran, alors que celle-ci doit accrocher l'œil.
- */
-export function Voyant({ etat, taille = 13 }) {
-  const t = TEINTE[couleurVoyant(etat)] || TEINTE.gris;
-  return (
-    <span aria-hidden="true" style={{
-      width: taille, height: taille, borderRadius: "50%", flexShrink: 0,
-      display: "inline-block",
-      background: `radial-gradient(circle at 32% 28%, #fff9 0%, ${t.vif} 42%, ${t.sombre} 100%)`,
-      boxShadow: `inset 0 -1px 2px ${t.sombre}99, 0 1px 3px ${t.sombre}55`,
-    }} />
-  );
+export function Voyant({ etat, taille = "puce" }) {
+  return <Bille taille={taille} ton={TON_ETAT[couleurVoyant(etat)] || "gris"} />;
 }
 
 /**
@@ -54,7 +41,7 @@ export function VoletAffectation({
   const a = valeur || { membres: [], vehicules: [] };
   const verdict = etatAffectation(mission.type, a, flotte);
   const ex = exigence(mission.type);
-  const t = TEINTE[couleurVoyant(verdict.etat)] || TEINTE.gris;
+  const bordEtat = LISERE[couleurVoyant(verdict.etat)] || LISERE.gris;
 
   function basculerMembre(id) {
     const l = a.membres || [];
@@ -76,7 +63,7 @@ export function VoletAffectation({
       ...S.carte,
       // Le liseré reprend la couleur du voyant : la carte entière signale son
       // état, comme une carte d'abonnement.
-      borderLeft: `3px solid ${t.vif}`,
+      borderLeft: `3px solid ${bordEtat}`,
       padding: 0, overflow: "hidden",
     }}>
       <button onClick={() => setOuvert(!ouvert)}
@@ -102,11 +89,9 @@ export function VoletAffectation({
               ? ` — ${verdict.manques[0].toLowerCase()}` : ""}
           </div>
         </div>
-        <span style={{
-          fontSize: 13, color: C.muet, flexShrink: 0,
-          transform: ouvert ? "rotate(90deg)" : "none",
-          transition: "transform 160ms ease-out",
-        }}>›</span>
+        {/* La flèche est une bille, avec le même suivi 3D que la vitrine :
+            elle tourne quand le volet s'ouvre. */}
+        <Bille taille="jeton" ton="bleu" signe="chevron" actif={ouvert} />
       </button>
 
       {ouvert && (

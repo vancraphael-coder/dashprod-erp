@@ -19,15 +19,25 @@
 import React, { useEffect, useRef } from "react";
 import { naturesDuMenu } from "@domaine/commercial/natures.js";
 import { metier } from "@domaine/commercial/adresses.js";
+import Bille from "./Bille.jsx";
 import { C, S } from "../lib/theme.jsx";
 
-/** Une teinte par métier — la même que celle du planning, pour se repérer. */
-const TEINTES = {
+/** Une teinte de BILLE par métier — la mascotte se décline, elle ne se
+ *  redessine pas. */
+const TONS_METIER = {
+  demenagement: "bleu",
+  sous_traitance: "rouge",
+  lift: "ambre",
+  boxe: "vert",
+  zone: "gris",
+};
+/** Les teintes d'étiquette, assorties aux billes. */
+const ETIQ = {
   demenagement: { vif: "#3B82F6", sombre: "#1D4ED8" },
-  sous_traitance: { vif: "#8B5CF6", sombre: "#6D28D9" },
+  sous_traitance: { vif: "#F87171", sombre: "#DC2626" },
   lift: { vif: "#F59E0B", sombre: "#B45309" },
-  boxe: { vif: "#10B981", sombre: "#047857" },
-  zone: { vif: "#06B6D4", sombre: "#0E7490" },
+  boxe: { vif: "#34D399", sombre: "#047857" },
+  zone: { vif: "#94A3B8", sombre: "#475569" },
 };
 
 export default function MenuCreation({ ouvert, basculer, choisir }) {
@@ -69,7 +79,7 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
           display: "flex", flexDirection: "column", gap: 9,
         }}>
           {natures.map((n, i) => {
-            const t = TEINTES[n.cle] || TEINTES.demenagement;
+            const t = ETIQ[n.cle] || ETIQ.demenagement;
             return (
               <button key={n.cle} role="menuitem"
                 onClick={() => { basculer(false); choisir(n.cle); }}
@@ -86,14 +96,8 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
                            + `${(natures.length - 1 - i) * 34}ms both`,
                 }}>
                 {/* La pastille du métier : une bulle, comme le bouton. */}
-                <span aria-hidden="true" style={{
-                  width: 11, height: 11, borderRadius: "50%", marginTop: 3,
-                  flexShrink: 0,
-                  background: `radial-gradient(circle at 32% 28%, #fff9 0%, `
-                            + `${t.vif} 44%, ${t.sombre} 100%)`,
-                  boxShadow: `inset 0 -1px 2px ${t.sombre}99, `
-                           + `0 1px 3px ${t.sombre}66`,
-                }} />
+                <Bille taille={13} ton={TONS_METIER[n.cle] || "bleu"}
+                       style={{ marginTop: 3 }} />
                 <span style={{ minWidth: 0 }}>
                   <span style={{ display: "flex", alignItems: "baseline",
                                  gap: 7, flexWrap: "wrap" }}>
