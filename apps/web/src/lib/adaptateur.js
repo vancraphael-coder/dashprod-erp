@@ -239,9 +239,14 @@ export async function sauverMission(affaireId, mission) {
         .update({ entrees }).eq("id", sc.id);
       if (error) throw error;
     } else {
+      // `resultats` est NOT NULL sans valeur par défaut. L'omettre faisait
+      // échouer TOUT enregistrement de dossier d'une nature sans relevé,
+      // avec un message Postgres incompréhensible pour l'utilisateur.
+      // Un objet vide est honnête ici : la mission est saisie, elle n'est pas
+      // encore chiffrée — c'est le devis qui remplira ce champ.
       const { error } = await supabase.from("scenarios")
         .insert({ affaire_id: affaireId, nom: "Scénario retenu",
-                  retenu: true, entrees });
+                  retenu: true, entrees, resultats: {} });
       if (error) throw error;
     }
     return;
