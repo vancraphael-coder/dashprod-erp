@@ -11,7 +11,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   obtenirOrganisation,
   obtenirAffaire, obtenirContact, sauverContact, sauverMission,
-  missionsAffaire, affecterMission,
+  missionsAffaire, affecterMission, sauverAffectationsPrevues,
   listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
   obtenirClientFacturation, sauverClientFacturation,
   obtenirClientIdentite, sauverClientIdentite,
@@ -28,6 +28,7 @@ import { adresseDepot } from "@domaine/organisation/identite.js";
 import { CIVILITES } from "@domaine/crm/civilite.js";
 import { synthese, verdict, pictoStatut, lignesBilan, mentionDerogation }
   from "@domaine/crm/cloture.js";
+import CarteDate from "../composants/CarteDate.jsx";
 import { VoletAffectation } from "../composants/Affectation.jsx";
 import { BandeauNature, BlocDonneurOrdre, BlocSousTraitance, BlocLift }
   from "../composants/BlocsNature.jsx";
@@ -38,6 +39,16 @@ import { planAdresses, titreAdresse, peutAjouter }
   from "@domaine/commercial/adresses.js";
 import { C, S, Badge, BadgeFacturation, euros, declarerModifs, Confirmation }
   from "../lib/theme.jsx";
+
+/** Ce que la date principale s'appelle, selon le métier. « Date souhaitée »
+ *  ne dit rien pour un lift : on nomme l'intervention. */
+const LIBELLE_PRINCIPALE = {
+  demenagement: "Déménagement",
+  lift: "Intervention lift",
+  sous_traitance: "Livraison",
+  boxe: "Entrée en boxe",
+  zone: "Mise à disposition",
+};
 
 function adrVide() {
   return { id: "a" + Math.random().toString(36).slice(2, 8), adresse: "", type: "maison",
@@ -69,6 +80,9 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   // Les missions du dossier, chacune avec son affectation propre. Depuis
   // 0131, c'est la mission qui fait foi au planning, plus l'affaire.
   const [missions, setMissions] = useState([]);
+  // L'affectation PRÉVUE par date. Elle vit sur l'affaire et existe donc dès
+  // la saisie, avant qu'une mission existe en base.
+  const [prevues, setPrevues] = useState({});
   const enregistrerRef = useRef(null);
 
   useEffect(() => {
@@ -78,6 +92,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     obtenirAffaire(affaireId).then((a) => {
       setAffaire(a);
       setMission(a?.faits?.mission || a?.mission || {});
+      setPrevues(a?.affectations || {});
     });
     listerVehicules().then(setFlotte).catch(() => {});
     obtenirCamionsAffaire(affaireId).then(setCamions).catch(() => {});
@@ -166,6 +181,19 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   // Le parcours complet = le déménagement. Les autres natures n'ont ni visite
   // d'estimation, ni jour d'emballage : une seule date les concerne.
   const parcoursComplet = comporteEtape(affaire.nature || "demenagement", "releve");
+
+  // Le type de la mission principale suit la nature : un lift produit une
+  // mission de lift, avec ses propres exigences d'affectation.
+  const typeMissionPrincipale = { lift: "lift", sous_traitance: "sous_traitance" }[
+    affaire.nature] || "demenagement";
+
+  /** Pose l'affectation d'une date et l'enregistre aussitôt. */
+  async function majPrevue(cle, a) {
+    const suivant = { ...prevues, [cle]: a };
+    setPrevues(suivant);
+    try { await sauverAffectationsPrevues(affaireId, suivant); }
+    catch (e) { setErreur(e.message); }
+  }
 
   // Un lift ne se réserve qu'avec un véhicule de catégorie « lift ». Pour les
   // autres natures, toute la flotte reste offerte.
@@ -308,64 +336,35 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         </div>
       )}
 
-      {/* Date & heure souhaitées */}
-      <div style={S.carte}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 4 }}>
-          Date souhaitée
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ flex: 2 }}>
-            <label style={S.label}>Date</label>
-            <input style={S.input} type="date" value={contact.date}
-                   onChange={(e) => maj("date", e.target.value)} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={S.label}>Heure</label>
-            <input style={S.input} type="time" value={contact.heure}
-                   onChange={(e) => maj("heure", e.target.value)} />
-          </div>
-        </div>
+      {/* Chaque date est une CARTE : la date et qui la fait, au même endroit.
+          Les séparer obligeait à redescendre plus bas dans l'écran, et
+          l'affectation finissait oubliée — le dossier semblait prêt et
+          personne n'était prévu. */}
+      <CarteDate
+        typeMission={typeMissionPrincipale}
+        libelle={LIBELLE_PRINCIPALE[affaire.nature || "demenagement"]}
+        date={contact.date} heure={contact.heure}
+        onDate={(v) => maj("date", v)} onHeure={(v) => maj("heure", v)}
+        affectation={prevues.principale} membres={membres} flotte={flotte}
+        onAffectation={(a) => majPrevue("principale", a)} />
 
-        {/* Visite préalable et jour d'emballage n'existent QUE pour un
-            déménagement : on ne passe pas estimer un lift, et une
-            sous-traitance n'emballe rien. Trois dates deviennent donc une
-            seule pour ces natures — c'est la date d'intervention. */}
-        {parcoursComplet && (<>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muet, margin: "12px 0 4px" }}>
-          Visite préalable (optionnel)
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ flex: 2 }}>
-            <label style={S.label}>Date de visite</label>
-            <input style={S.input} type="date" value={contact.dateVisite || ""}
-                   onChange={(e) => maj("dateVisite", e.target.value)} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={S.label}>Heure</label>
-            <input style={S.input} type="time" value={contact.heureVisite || ""}
-                   onChange={(e) => maj("heureVisite", e.target.value)} />
-          </div>
-        </div>
+      {parcoursComplet && (
+        <>
+          <CarteDate typeMission="visite" libelle="Visite préalable" facultative
+            date={contact.dateVisite} heure={contact.heureVisite}
+            onDate={(v) => maj("dateVisite", v)}
+            onHeure={(v) => maj("heureVisite", v)}
+            affectation={prevues.visite} membres={membres} flotte={flotte}
+            onAffectation={(a) => majPrevue("visite", a)} />
 
-        {/* Journée d'emballage, distincte : renseignée, elle génère sa propre
-            mission à la confirmation (trigger 0021). */}
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.muet, margin: "12px 0 4px" }}>
-          Emballage (jour séparé, optionnel)
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ flex: 2 }}>
-            <label style={S.label}>Date d'emballage</label>
-            <input style={S.input} type="date" value={contact.dateEmballage || ""}
-                   onChange={(e) => maj("dateEmballage", e.target.value)} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={S.label}>Heure</label>
-            <input style={S.input} type="time" value={contact.heureEmballage || ""}
-                   onChange={(e) => maj("heureEmballage", e.target.value)} />
-          </div>
-        </div>
-        </>)}
-      </div>
+          <CarteDate typeMission="emballage" libelle="Emballage" facultative
+            date={contact.dateEmballage} heure={contact.heureEmballage}
+            onDate={(v) => maj("dateEmballage", v)}
+            onHeure={(v) => maj("heureEmballage", v)}
+            affectation={prevues.emballage} membres={membres} flotte={flotte}
+            onAffectation={(a) => majPrevue("emballage", a)} />
+        </>
+      )}
 
       {/* Camions pressentis — reportés sur la mission à la confirmation (0022).
           Un camion en alerte (méca urgente, CT expiré) reste sélectionnable
