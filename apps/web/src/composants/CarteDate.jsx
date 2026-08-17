@@ -22,17 +22,35 @@ const TON = { gris: "gris", orange: "orange", vert: "vert" };
 const BORD = { gris: "#94A3B8", orange: "#FB923C", vert: "#34D399" };
 
 /**
+ * UNE SEULE COMMANDE PAR DATE. Il y en avait trois pour la même affectation :
+ * cette carte (l'équipe *prévue*, sur le dossier), le volet de la mission (la
+ * *vérité*, au planning) et le sélecteur « Équipe » du dossier. Trois endroits
+ * pour une donnée finissent toujours par se contredire — et à l'écran, on ne
+ * savait plus lequel disait vrai.
+ *
+ * La carte parle donc à UNE cible, celle qui existe :
+ *   · pas encore de mission → l'équipe PRÉVUE, gardée sur le dossier
+ *   · la mission existe     → l'affectation RÉELLE, au planning
+ * La carte le DIT, au lieu de laisser deviner : c'est la même équipe qui
+ * passe du prévu au planning à la confirmation, pas deux équipes différentes.
+ *
  * @param {string} typeMission visite | emballage | demenagement | lift | …
  * @param {string} libelle ce que l'écran annonce
  * @param {boolean} facultative une date optionnelle se dit
+ * @param {object|null} mission la mission réelle de cette date, si elle existe
+ * @param {object} dispo lecteur de disponibilité (`lecteurDisponibilite`)
  */
 export default function CarteDate({
   typeMission, libelle, facultative = false,
   date, heure, onDate, onHeure,
   affectation, onAffectation, membres, flotte,
+  mission = null, dispo = null,
 }) {
   const [ouvert, setOuvert] = useState(false);
-  const a = affectation || { membres: [], vehicules: [] };
+  // La mission fait foi dès qu'elle existe (0131). Avant, c'est le prévu.
+  const a = (mission ? mission.affectation : affectation)
+            || { membres: [], vehicules: [] };
+  const auPlanning = Boolean(mission);
   const ex = exigence(typeMission);
 
   // Sans date, il n'y a rien à affecter : le voyant reste éteint et ne réclame
@@ -53,6 +71,27 @@ export default function CarteDate({
     onAffectation({ ...a,
       vehicules: l.includes(id) ? l.filter((x) => x !== id) : [...l, id] });
   }
+
+  /**
+   * La disponibilité d'une ressource pour CETTE date. Le lecteur vient du
+   * domaine (`lecteurDisponibilite`) : la règle de conflit ne doit exister
+   * qu'à un seul endroit. Sans date posée, on n'invente aucun conflit.
+   */
+  function lireDispo(genre, id) {
+    if (!dispo || !date) return null;
+    const d = genre === "membre"
+      ? dispo.membre(id, { date, missionId: mission?.id })
+      : dispo.vehicule(id, { date, missionId: mission?.id });
+    return d.conflit ? d : null;
+  }
+
+  // Ce qui est engagé ET en conflit : le bureau doit le voir sans déplier.
+  const engages = [
+    ...(a.membres || []).map((id) => [lireDispo("membre", id),
+      (membres || []).find((m) => m.id === id)?.nom]),
+    ...(a.vehicules || []).map((id) => [lireDispo("vehicule", id),
+      (flotte || []).find((v) => v.id === id)?.nom]),
+  ].filter(([d]) => d);
 
   // Un lift ne se réserve qu'avec un lift : proposer un fourgon n'aurait
   // aucun sens.
@@ -88,6 +127,16 @@ export default function CarteDate({
                    ? ` — ${verdict.manques[0].toLowerCase()}` : "")
               : "Aucune date posée"}
           </div>
+          {/* D'où vient ce qui est affiché. Sans cette ligne, on ne sait pas
+              si l'on regarde une intention ou un engagement — et c'est
+              exactement ce qui rendait les trois commandes illisibles. */}
+          {posee && (
+            <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 3,
+                          color: auPlanning ? C.vert : C.muet,
+                          textTransform: "uppercase", letterSpacing: ".04em" }}>
+              {auPlanning ? "Au planning" : "Prévu — au planning à la confirmation"}
+            </div>
+          )}
         </div>
       </div>
 
@@ -137,10 +186,16 @@ export default function CarteDate({
                     Aucun membre actif.
                   </span>
                 )}
-                {(membres || []).map((m) => (
-                  <Jeton key={m.id} actif={(a.membres || []).includes(m.id)}
-                         onClick={() => basculerMembre(m.id)} texte={m.nom} />
-                ))}
+                {(membres || []).map((m) => {
+                  // Le conflit se lit AU MOMENT DU CLIC, pas dans un écran
+                  // qu'il faut aller ouvrir : c'est ici qu'on décide.
+                  const d = lireDispo("membre", m.id);
+                  return (
+                    <Jeton key={m.id} actif={(a.membres || []).includes(m.id)}
+                           onClick={() => basculerMembre(m.id)} texte={m.nom}
+                           alerte={d?.niveau} raison={d?.raison} />
+                  );
+                })}
               </div>
 
               {/* Une visite n'emporte pas de véhicule : ne pas proposer un
@@ -158,11 +213,34 @@ export default function CarteDate({
                           : "Aucun véhicule."}
                       </span>
                     )}
-                    {flotteOfferte.map((v) => (
-                      <Jeton key={v.id} actif={(a.vehicules || []).includes(v.id)}
-                             onClick={() => basculerVehicule(v.id)} texte={v.nom} />
-                    ))}
+                    {flotteOfferte.map((v) => {
+                      const d = lireDispo("vehicule", v.id);
+                      return (
+                        <Jeton key={v.id} actif={(a.vehicules || []).includes(v.id)}
+                               onClick={() => basculerVehicule(v.id)} texte={v.nom}
+                               alerte={d?.niveau} raison={d?.raison} />
+                      );
+                    })}
                   </div>
+                </div>
+              )}
+
+              {/* Les conflits d'abord : « il manque un camion » et « ce camion
+                  est déjà pris ailleurs » sont deux problèmes différents, et
+                  le second ne se voit nulle part ailleurs. */}
+              {engages.length > 0 && (
+                <div style={{ marginTop: 12, display: "grid", gap: 6 }}>
+                  {engages.map(([d, nom], i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center",
+                                          gap: 7, fontSize: 11.5,
+                                          color: d.niveau === "indisponible"
+                                                 ? C.rouge : C.ambre }}>
+                      <Bille taille="puce"
+                             ton={d.niveau === "indisponible" ? "rouge" : "orange"}
+                             signe="attention" />
+                      <span><strong>{nom || "Ressource"}</strong> — {d.raison}</span>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -188,14 +266,33 @@ const Titre = ({ children }) => (
                 textTransform: "uppercase", letterSpacing: ".04em" }}>{children}</div>
 );
 
-function Jeton({ actif, onClick, texte }) {
+/**
+ * Un nom qu'on coche. L'alerte est portée par le jeton lui-même : signaler le
+ * conflit ailleurs obligerait à faire le lien de tête entre une liste et un
+ * avertissement, au moment précis où l'on clique.
+ *
+ * RIEN N'EST BLOQUANT (§4.5) : deux chantiers courts dans la même journée sont
+ * parfois voulus, et le bureau peut passer outre un congé. Le jeton reste
+ * cliquable — il prévient, il n'interdit pas.
+ */
+function Jeton({ actif, onClick, texte, alerte, raison }) {
+  const teinte = alerte === "indisponible" ? C.rouge
+               : alerte === "double" ? C.ambre : null;
   return (
-    <button onClick={onClick} style={{
-      padding: "7px 12px", borderRadius: 999, cursor: "pointer",
-      fontSize: 12.5, fontWeight: 700,
-      border: `1.5px solid ${actif ? C.bleu : C.bord}`,
-      background: actif ? C.bleuClair : C.blanc,
-      color: actif ? C.bleu : C.muet,
-    }}>{texte}</button>
+    <button onClick={onClick} title={raison ? `${texte} — ${raison}` : undefined}
+      style={{
+        padding: "7px 12px", borderRadius: 999, cursor: "pointer",
+        fontSize: 12.5, fontWeight: 700, display: "inline-flex",
+        alignItems: "center", gap: 6,
+        border: `1.5px solid ${teinte || (actif ? C.bleu : C.bord)}`,
+        background: actif ? C.bleuClair : C.blanc,
+        color: teinte || (actif ? C.bleu : C.muet),
+      }}>
+      {alerte && (
+        <Bille taille="puce" signe="attention"
+               ton={alerte === "indisponible" ? "rouge" : "orange"} />
+      )}
+      {texte}
+    </button>
   );
 }
