@@ -14,9 +14,10 @@
 
 import React, { useRef, useState, useCallback } from "react";
 import { V, MONO } from "./theme-vitrine.jsx";
+import Bille from "../../composants/Bille.jsx";
+import { matiereSurface } from "../../lib/matiere-bille.js";
 
 const TILT_MAX = 9;      // degrés — au-delà, l'effet devient un gadget
-const DECALAGE = 6;      // parallaxe du chevron dans la bulle
 
 const mouvementReduit = () =>
   typeof window !== "undefined"
@@ -37,7 +38,7 @@ export default function CarteAbonnement({
   const ref = useRef(null);
   const [deplie, setDeplie] = useState(false);
   const [st, setSt] = useState({ rx: 0, ry: 0, gx: "50%", gy: "50%",
-                                 huile: 135, sx: 0, sy: 0 });
+                                 huile: 135, nx: 0, ny: 0, sx: 0, sy: 0 });
 
   const bouger = useCallback((e) => {
     if (!pointeurFin() || mouvementReduit()) return;
@@ -49,13 +50,18 @@ export default function CarteAbonnement({
       rx: -ny * TILT_MAX, ry: nx * TILT_MAX,
       gx: `${x}px`, gy: `${y}px`,
       huile: Math.atan2(ny, nx) * (180 / Math.PI) + 90,
-      sx: Math.sin(nx * Math.PI / 2) * DECALAGE,
-      sy: Math.sin(ny * Math.PI / 2) * DECALAGE,
+      // Deux formes du même regard : BRUT pour le reflet spéculaire, qui glisse
+      // linéairement, et ADOUCI en sinus pour la parallaxe du signe — presque
+      // immobile au centre, saturé aux bords. C'est cette courbe qui fait la
+      // crédibilité du mouvement ; un décalage linéaire est mécanique.
+      nx, ny,
+      sx: Math.sin(nx * Math.PI / 2), sy: Math.sin(ny * Math.PI / 2),
     });
   }, []);
 
   const quitter = useCallback(() => {
-    setSt({ rx: 0, ry: 0, gx: "50%", gy: "50%", huile: 135, sx: 0, sy: 0 });
+    setSt({ rx: 0, ry: 0, gx: "50%", gy: "50%", huile: 135,
+            nx: 0, ny: 0, sx: 0, sy: 0 });
   }, []);
 
   const prix = Math.round(plan.prix_centimes / 100);
@@ -79,6 +85,16 @@ export default function CarteAbonnement({
           backdropFilter: "blur(25px)", WebkitBackdropFilter: "blur(25px)",
           transform: `rotateX(${st.rx}deg) rotateY(${st.ry}deg)`,
           transformStyle: "preserve-3d", willChange: "transform",
+          // LA CARTE EST LA SOURCE DE LUMIÈRE : elle publie ce qu'elle a déjà
+          // calculé, au lieu de le garder pour elle. Les billes qu'elle porte
+          // l'héritent en CSS — la vitrine et l'application s'éclairent donc
+          // par le MÊME contrat, et la bille ne peut plus diverger d'un côté
+          // sans l'autre. C'était exactement le défaut : deux recettes.
+          "--carte-angle": `${st.huile}deg`,
+          "--carte-nx": st.nx, "--carte-ny": st.ny,
+          "--carte-sx": st.sx, "--carte-sy": st.sy,
+          // Sur le fond de nuit de la vitrine, la bille est du verre.
+          ...matiereSurface(true),
           transition: "transform .25s cubic-bezier(.1,1,.1,1)",
           boxShadow: vedette
             ? "0 34px 70px -20px rgba(37,99,235,.55), inset 0 1px 0 rgba(255,255,255,.25)"
@@ -112,45 +128,19 @@ export default function CarteAbonnement({
         </header>
 
         {/* Bulle : le geste. Elle déplie le détail des modules. */}
-        <button type="button" onClick={() => setDeplie((v) => !v)}
-          aria-expanded={deplie}
-          aria-label={deplie ? `Masquer le détail ${plan.nom}`
-                             : `Voir le détail de l'offre ${plan.nom}`}
-          style={{ position: "relative", width: 84, height: 84, margin: "18px 0 4px",
-                   border: "none", background: "none", padding: 0, cursor: "pointer",
-                   transform: "translateZ(35px)", transformStyle: "preserve-3d",
-                   zIndex: 10 }}>
-          <span aria-hidden style={{
-            position: "absolute", inset: 0, borderRadius: "50%",
-            background: `linear-gradient(${st.huile}deg,
-              rgba(59,130,246,.38) 0%, rgba(217,119,6,.22) 50%, rgba(59,130,246,.38) 100%)`,
-            border: "1px solid rgba(255,255,255,.4)",
-            boxShadow: `inset 0 0 15px rgba(255,255,255,.28),
-                        inset 6px 6px 18px rgba(59,130,246,.28),
-                        0 12px 25px rgba(0,0,0,.45)`,
-            backdropFilter: "blur(4px)",
-            transform: deplie ? "scale(1.06)" : "scale(1)",
-            transition: "transform .4s cubic-bezier(.34,1.56,.64,1)" }} />
-          {/* reflet spéculaire */}
-          <span aria-hidden style={{
-            position: "absolute", top: "8%", left: "15%", width: "70%", height: "35%",
-            borderRadius: "50%", pointerEvents: "none",
-            background: "linear-gradient(to bottom, rgba(255,255,255,.65), transparent)" }} />
-          {/* chevron avec parallaxe */}
-          <span aria-hidden style={{
-            position: "absolute", inset: 0, display: "grid", placeItems: "center",
-            transform: `translate3d(${st.sx}px, ${st.sy}px, 15px)`,
-            transition: "transform .1s ease-out" }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                 stroke="#fff" strokeWidth="2.5" strokeLinecap="round"
-                 strokeLinejoin="round"
-                 style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,.6))",
-                          transform: deplie ? "rotate(-180deg) scale(1.12)" : "none",
-                          transition: "transform .5s cubic-bezier(.34,1.56,.64,1)" }}>
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </span>
-        </button>
+        {/* UNE SEULE définition de bille pour tout le produit : celle-ci était
+            l'originale, elle est maintenant DANS le composant partagé. La
+            recopier ici, c'était la condamner à diverger — et c'est ce qui est
+            arrivé : les billes de l'app avaient perdu l'huile irisée, le verre
+            et la profondeur de celle-ci. */}
+        <span style={{ margin: "18px 0 4px", transform: "translateZ(35px)",
+                       transformStyle: "preserve-3d", zIndex: 10 }}>
+          <Bille taille="vedette" ton="bleu" signe="chevron" actif={deplie}
+                 onClick={() => setDeplie((v) => !v)} deplie={deplie}
+                 titre={deplie ? `Masquer le détail ${plan.nom}`
+                               : `Voir le détail de l'offre ${plan.nom}`}
+                 style={{ display: "block" }} />
+        </span>
 
         {/* Corps */}
         <div style={{ width: "100%", transform: "translateZ(25px)", zIndex: 2,
