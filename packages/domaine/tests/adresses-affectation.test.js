@@ -493,3 +493,62 @@ test("l'écran recharge les missions après enregistrement", () => {
   assert.ok(bloc.includes("missionsAffaire(affaireId).then(setMissions)"),
     "les missions doivent être relues après l'enregistrement du dossier");
 });
+
+/* ── Lot 10f : une seule commande par date ──────────────────────────────── */
+
+test("une date = une commande : plus de sélecteur d'équipe au niveau dossier", () => {
+  // Il y en avait TROIS pour la même affectation : la carte de date (le
+  // prévu), le volet de la mission (la vérité), et le sélecteur « Équipe »
+  // du dossier (à l'enregistrement). Elles se contredisaient à l'écran, et on
+  // ne savait plus laquelle disait vrai.
+  const src = sansCom(lire("ecrans/Dossier.jsx"));
+  assert.equal(src.includes("function basculerMembre"), false,
+    "le sélecteur d'équipe de niveau dossier doit rester supprimé");
+  assert.equal(src.includes("sauverEquipeAffaire"), false,
+    "le dossier ne réécrit plus l'équipe : la mission fait foi");
+  assert.equal(src.includes("sauverCamionsAffaire"), false,
+    "idem pour les véhicules");
+});
+
+test("la carte écrit sur la MISSION dès qu'elle existe, sinon sur le prévu", () => {
+  const src = lire("ecrans/Dossier.jsx");
+  const bloc = src.slice(src.indexOf("async function majAffectation"),
+                         src.indexOf("const missionDe ="));
+  assert.ok(bloc.includes("affecterMission("),
+    "avec une mission, la carte écrit au planning");
+  assert.ok(bloc.includes("sauverAffectationsPrevues("),
+    "sans mission, elle garde l'intention sur le dossier");
+});
+
+test("la carte DIT à quelle vérité elle parle", () => {
+  // Sans cela on ne sait pas si l'on regarde une intention ou un engagement :
+  // c'est ce qui rendait les trois commandes illisibles.
+  const src = lire("composants/CarteDate.jsx");
+  assert.ok(src.includes("Au planning"));
+  assert.ok(src.includes("Prévu"));
+});
+
+test("le conflit de disponibilité se voit AU MOMENT DU CLIC", () => {
+  // Dernier point ouvert du lot 10b. Un doublon signalé sur un autre écran
+  // n'empêche personne de le créer ici.
+  const src = lire("composants/CarteDate.jsx");
+  assert.ok(src.includes("lireDispo("), "la carte interroge la disponibilité");
+  assert.ok(/alerte=\{d\?\.niveau\}/.test(src),
+    "le jeton lui-même doit porter l'alerte");
+  // Et rien n'est bloquant (§4.5) : le jeton reste cliquable.
+  const jeton = src.slice(src.indexOf("function Jeton("));
+  assert.ok(jeton.includes("onClick={onClick}"),
+    "on signale, on n'interdit pas");
+});
+
+test("le miroir mission → dossier vaut pour TOUTES les natures", () => {
+  // `if v_type is distinct from 'demenagement'` : sur un lift, l'équipe ne
+  // remontait jamais sur le dossier — et c'est `affaires.equipe` que lit le
+  // chiffrage de la main-d'œuvre. Invisible tant qu'un doublon d'interface
+  // écrivait par ailleurs.
+  const src = lireMigration("0136_miroir_mission_principale_toutes_natures.sql");
+  assert.ok(src.includes("v_type_princ"),
+    "le miroir doit suivre le type principal de la nature");
+  assert.ok(src.includes("emballage et visite non"),
+    "l'emballage ne doit pas miroiter : il ferait chiffrer avec les emballeurs");
+});

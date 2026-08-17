@@ -51,11 +51,18 @@ test("les trois commandes du circuit sont câblées", () => {
 test("seuls les congés ACCORDÉS rendent un membre indisponible", () => {
   // Sinon un membre bloquerait son propre planning en demandant : la décision
   // reviendrait de fait au demandeur, pas au bureau.
-  const src = sansCommentaires(lire("ecrans/Planning.jsx"));
-  const bloc = src.slice(src.indexOf("function dispoMembre"),
-                         src.indexOf("function dispoCamion"));
+  // La composition a migré dans le domaine (lot 10f) : elle était recopiée en
+  // closures dans Planning.jsx, et il aurait fallu une troisième copie pour
+  // les cartes de date. On vérifie donc la règle là où elle vit désormais.
+  const src = fs.readFileSync(
+    path.join(ICI, "../src/operations/missions.js"), "utf8");
+  const bloc = src.slice(src.indexOf("export function lecteurDisponibilite"));
   assert.ok(bloc.includes('c.etat !== "demande"'),
-    "dispoMembre doit écarter les demandes en attente");
+    "le lecteur de disponibilité doit écarter les demandes en attente");
+  // Et l'écran ne doit pas en garder une copie divergente.
+  const ecran = sansCommentaires(lire("ecrans/Planning.jsx"));
+  assert.ok(ecran.includes("lecteurDisponibilite"),
+    "le planning doit déléguer au lecteur du domaine, pas le recopier");
 });
 
 test("le planning charge les demandes ET les congés accordés", () => {
