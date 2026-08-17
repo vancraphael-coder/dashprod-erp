@@ -15,6 +15,8 @@
 // Logique PURE : ni base, ni DOM. C'est ce qui la rend vérifiable.
 // =============================================================================
 
+import { nombre } from "../noyau/nombres.js";
+
 /** Les périodes de facturation possibles, et leur durée en mois. */
 export const PERIODES = Object.freeze([
   { cle: "mensuel", nom: "Mensuelle", mois: 1 },
@@ -74,6 +76,55 @@ export function montantPeriodeZone(contrat) {
   return Number.isFinite(t) && t > 0 ? Math.round(t) : 0;
 }
 
+// =============================================================================
+// LE BARÈME DES BOXES — deux façons de vendre le même mètre cube.
+//
+// PAR TRANCHES  Trois ou quatre paliers lisibles : « jusqu'à 5 m³, 45 € ».
+//               Le commercial n'a rien à calculer et le client compare vite.
+//               C'est le réflexe du déménageur local.
+//
+// PAR EXACTITUDE  Le volume exact, au m³, avec un minimum mensuel. C'est ainsi
+//                 que vend un garde-meubles industriel : le prix suit le
+//                 stockage réellement occupé, sans effet de seuil. Un client à
+//                 5,2 m³ ne saute pas d'un coup à la tranche des 10.
+//
+// Les deux coexistent, au choix de l'entreprise — remplacer l'un par l'autre
+// aurait défait un modèle déjà validé et déjà en production.
+//
+// LECTURE TOLÉRANTE, et ce n'est pas un détail : les barèmes DÉJÀ EN BASE sont
+// de simples tableaux de tranches (`parametres_prix.stockage_boxes`). Passer à
+// un objet sans savoir relire l'ancienne forme aurait mis à zéro le prix des
+// boxes de tous les contrats existants, sans le moindre message d'erreur.
+// =============================================================================
+
+export const MODES_BAREME = Object.freeze([
+  { cle: "tranches", nom: "Par tranches de volume",
+    resume: "Des paliers lisibles : jusqu'à 5 m³, jusqu'à 10 m³…" },
+  { cle: "exact", nom: "Au m³ exact",
+    resume: "Le volume réellement occupé, avec un minimum mensuel." },
+]);
+
+/**
+ * Ramène un barème à sa forme complète, quelle que soit celle où il est stocké.
+ * @param {Array|object|null} b tableau de tranches (ancienne forme) ou objet
+ * @returns {{mode, tranches, prix_m3_mensuel_centimes, minimum_mensuel_centimes}}
+ */
+export function lireBareme(b) {
+  if (Array.isArray(b)) {
+    return { mode: "tranches", tranches: b,
+             prix_m3_mensuel_centimes: null, minimum_mensuel_centimes: null };
+  }
+  const o = b || {};
+  return {
+    mode: o.mode === "exact" ? "exact" : "tranches",
+    tranches: Array.isArray(o.tranches) ? o.tranches : [],
+    // `nombre()` et non `Number()` : un prix au m³ absent ne vaut PAS zéro —
+    // il vaut « non renseigné », et doit se signaler au lieu de facturer 0 €.
+    prix_m3_mensuel_centimes: nombre(o.prix_m3_mensuel_centimes),
+    minimum_mensuel_centimes: nombre(o.minimum_mensuel_centimes),
+  };
+}
+
 /**
  * Le barème des boxes : des tranches de volume, chacune avec son prix mensuel.
  * On retient la PREMIÈRE tranche dont le volume maximal couvre le box — d'où
@@ -85,7 +136,7 @@ export function montantPeriodeZone(contrat) {
  */
 export function trancheBox(bareme, volumeM3) {
   const v = Number(volumeM3) || 0;
-  const tranches = [...(bareme || [])]
+  const tranches = [...(lireBareme(bareme).tranches || [])]
     .filter((t) => Number(t?.jusqua_m3) > 0)
     .sort((a, b) => Number(a.jusqua_m3) - Number(b.jusqua_m3));
   return tranches.find((t) => v <= Number(t.jusqua_m3)) || null;
@@ -93,18 +144,48 @@ export function trancheBox(bareme, volumeM3) {
 
 /**
  * Montant d'une période pour un BOX, depuis le barème de l'entreprise.
- * Si aucune tranche ne couvre le volume, on renvoie 0 ET on le signale : mieux
+ * Si le barème ne sait pas répondre, on renvoie 0 ET on le signale : mieux
  * vaut une facture visiblement à zéro qu'un montant inventé.
  *
- * @returns {{centimes: number, tranche: object|null, hors_bareme: boolean}}
+ * @returns {{centimes, mode, tranche, prix_m3_centimes, minimum_applique,
+ *            hors_bareme}}
  */
 export function montantPeriodeBox(bareme, volumeM3, clePeriode = "mensuel") {
-  const t = trancheBox(bareme, volumeM3);
-  if (!t) return { centimes: 0, tranche: null, hors_bareme: true };
+  const b = lireBareme(bareme);
   const mois = periode(clePeriode).mois;
+
+  if (b.mode === "exact") {
+    const prixM3 = b.prix_m3_mensuel_centimes;
+    const v = nombre(volumeM3);
+    // Sans prix au m³, ou sans volume connu, on ne peut RIEN calculer : un box
+    // dont le volume n'est pas renseigné n'a pas de prix « zéro », il a un
+    // prix inconnu. Le signaler laisse une chance de le corriger.
+    if (!Number.isFinite(prixM3) || prixM3 <= 0 || !Number.isFinite(v) || v <= 0) {
+      return { centimes: 0, mode: "exact", tranche: null,
+               prix_m3_centimes: Number.isFinite(prixM3) ? prixM3 : null,
+               minimum_applique: false, hors_bareme: true };
+    }
+    const brut = Math.round(v * prixM3);
+    const mini = Number.isFinite(b.minimum_mensuel_centimes)
+               ? b.minimum_mensuel_centimes : 0;
+    // Le minimum est MENSUEL : il s'applique au mois, puis on multiplie. Le
+    // poser sur le total d'un contrat annuel le rendrait insignifiant.
+    const parMois = Math.max(brut, mini);
+    return {
+      centimes: parMois * mois, mode: "exact", tranche: null,
+      prix_m3_centimes: prixM3, minimum_applique: parMois > brut,
+      hors_bareme: false,
+    };
+  }
+
+  const t = trancheBox(b, volumeM3);
+  if (!t) return { centimes: 0, mode: "tranches", tranche: null,
+                   prix_m3_centimes: null, minimum_applique: false,
+                   hors_bareme: true };
   return {
     centimes: Math.round(Number(t.prix_mensuel_centimes) * mois),
-    tranche: t, hors_bareme: false,
+    mode: "tranches", tranche: t, prix_m3_centimes: null,
+    minimum_applique: false, hors_bareme: false,
   };
 }
 
@@ -203,7 +284,14 @@ export function montantEcheance(e, bareme) {
       plein += m.centimes;
       lignes.push({
         cle: `box:${b.id}`,
-        libelle: `Box ${b.numero}${b.volume_m3 ? ` — ${b.volume_m3} m³` : ""}`,
+        // Au m³ exact, la ligne DIT son calcul : « 5,2 m³ × 9,00 €/m³ ». Sans
+        // cela le client reçoit un montant qu'il ne peut pas refaire — et la
+        // première question au téléphone est toujours « ça vient d'où ? ».
+        libelle: `Box ${b.numero}${b.volume_m3 ? ` — ${b.volume_m3} m³` : ""}`
+          + (m.mode === "exact" && !m.hors_bareme
+             ? ` × ${(m.prix_m3_centimes / 100).toFixed(2)} €/m³`
+               + (m.minimum_applique ? " (minimum appliqué)" : "")
+             : ""),
         centimes: m.centimes,
         hors_bareme: m.hors_bareme,
       });
