@@ -104,8 +104,12 @@ test("visite préalable et jour d'emballage n'existent que pour un déménagemen
   // « Trois dates deviennent une seule » : la date d'intervention subsiste,
   // la visite d'estimation et le jour d'emballage disparaissent.
   const src = lire("ecrans/Dossier.jsx");
-  assert.ok(src.includes("{parcoursComplet && (<>"),
+  // Les dates sont désormais des CARTES : la visite et l'emballage restent
+  // conditionnés au parcours complet, mais via leurs cartes.
+  assert.ok(src.includes("{parcoursComplet && ("),
     "les deux dates optionnelles doivent être conditionnées");
+  assert.ok(/typeMission="visite"/.test(src) && /typeMission="emballage"/.test(src),
+    "chaque date optionnelle a sa carte");
   assert.ok(/const parcoursComplet = comporteEtape\([^)]*"releve"\)/.test(src),
     "le drapeau doit venir du domaine, pas d'une liste de natures écrite sur place");
 });

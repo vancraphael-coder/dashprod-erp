@@ -328,3 +328,43 @@ test("chaque entrée du menu annonce son métier", () => {
   assert.ok(src.includes("metier(n.cle)"),
     "c'est ce qui lève l'ambiguïté entre « lift » l'engin et la prestation");
 });
+
+/* ── La bille doit être VISIBLE ─────────────────────────────────────────── */
+
+test("chaque date porte sa carte, avec une bille en taille bouton", () => {
+  // Le défaut du lot 10b : la bille ne vivait que dans les volets de mission,
+  // qui n'apparaissent QU'APRÈS confirmation. Sur un dossier en cours de
+  // saisie, on ne la voyait nulle part.
+  const src = lire("composants/CarteDate.jsx");
+  assert.ok(src.includes('taille="bouton"'),
+    "assez grande pour être le repère de la carte et montrer son suivi 3D");
+  assert.ok(src.includes("<CarteDate") === false, "pas d'auto-référence");
+  const dossier = lire("ecrans/Dossier.jsx");
+  assert.ok(dossier.includes("<CarteDate"),
+    "les cartes doivent être montées dans le dossier");
+});
+
+test("l'affectation existe AVANT la confirmation", () => {
+  // C'est au moment où l'on pose une date qu'on pense à l'équipe. L'exiger
+  // après confirmation faisait oublier l'affectation : le dossier semblait
+  // prêt et personne n'était prévu.
+  const ad = lire("lib/adaptateur.js");
+  assert.ok(ad.includes("cmd_affaire_affectations_definir"));
+  assert.ok(ad.includes("affectations: data.affectations"),
+    "obtenirAffaire doit remonter les prévisions");
+});
+
+test("sans date posée, aucune équipe n'est réclamée", () => {
+  // Réclamer une équipe pour un jour qui n'existe pas serait du bruit.
+  const src = lire("composants/CarteDate.jsx");
+  assert.ok(src.includes("const posee = Boolean(date)"));
+  assert.ok(src.includes("posee\n    ? etatAffectation") || src.includes("posee"),
+    "le verdict ne se calcule que si la date existe");
+});
+
+test("le libellé de la date principale suit le métier", () => {
+  // « Date souhaitée » ne dit rien pour un lift.
+  const src = lire("ecrans/Dossier.jsx");
+  assert.ok(src.includes("LIBELLE_PRINCIPALE"));
+  assert.ok(/lift: "Intervention lift"/.test(src));
+});
