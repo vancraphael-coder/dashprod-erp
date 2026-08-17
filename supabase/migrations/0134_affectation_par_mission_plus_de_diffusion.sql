@@ -1,0 +1,21 @@
+-- 0134 — APPLIQUÉE EN LIVE via MCP le 17/08/2026 (stub de référence).
+-- L'AFFECTATION PAR MISSION CESSE D'ÊTRE ÉCRASÉE.
+--
+-- BUG 1 (critique, constaté en production) : `sync_dossier_vers_missions`,
+-- déclenché à CHAQUE update d'affaire, supprimait les affectations de TOUTES
+-- les missions planifiées et les réécrivait depuis `affaires.equipe`. Chaque
+-- « Enregistrer » recopiait donc l'équipe du déménagement sur l'emballage et
+-- sur la visite. Même bug qu'en 0130 (« le report n'a lieu QU'À LA CRÉATION »),
+-- dans un second déclencheur oublié. Preuve : sur 09fd3035 la visite est faite
+-- par Elisa alors que l'équipe du dossier est Raphaël — l'enregistrement
+-- suivant aurait remplacé Elisa par Raphaël.
+--   → drop trigger trg_sync_dossier_missions + drop function.
+--
+-- BUG 2 : une date d'emballage posée APRÈS la confirmation ne créait aucune
+-- mission. Le déclencheur de confirmation sort si l'état ne transite pas, et
+-- `sync_date_vers_missions` ne faisait qu'un UPDATE, qui ne trouvait rien et
+-- ne disait rien. La visite, elle, était juste (`if not found then insert`) :
+-- c'est ce modèle qui est appliqué à la mission principale et à l'emballage.
+--   → create or replace function sync_date_vers_missions() avec insert de
+--     rattrapage, garde sur les états non confirmés et sur boxe/zone, et
+--     report de `affaires.affectations` sur la mission créée.

@@ -1,0 +1,30 @@
+-- 0135 — APPLIQUÉE EN LIVE via MCP le 17/08/2026 (stub de référence).
+-- L'ÉQUIPE ET LES VÉHICULES SONT UNE VÉRITÉ DU DOSSIER.
+--
+-- 0134 avait coupé la diffusion parce qu'elle écrasait TOUTES les missions.
+-- La couper entièrement rendait décoratifs les sélecteurs « Équipe » et
+-- « Véhicules » : on cochait trois déménageurs, le planning ne le savait pas.
+-- La relation est rétablie, mais elle VISE LE JOUR PRINCIPAL — l'équipe d'un
+-- dossier est celle qui fait le travail, pas celle qui passe en visite la
+-- semaine d'avant ni celle qui emballe la veille (§4.5).
+--
+-- Trois gardes, chacune contre un défaut constaté de l'ancienne version :
+--   1. inchangé → rien : `equipe`/`camions` non modifiés, on ne touche pas.
+--      Sinon renommer un client réécrivait l'affectation.
+--   2. équipe et véhicules traités SÉPARÉMENT : changer un camion ne
+--      réinjecte pas l'équipe.
+--   3. la mission principale seulement, et seulement `planifiee`/`en_cours` :
+--      on ne réaffecte pas une journée dont les heures sont pointées.
+--
+-- Le sens inverse existait déjà (`sync_mission_vers_dossier`). Les deux
+-- ensemble forment une boucle, tenue par `pg_trigger_depth()` de part et
+-- d'autre.
+--   → create or replace function sync_equipe_dossier_vers_principale()
+--   → create trigger trg_sync_equipe_principale after update on affaires
+--
+-- Éprouvée en `do $$ … rollback $$` avant livraison, cinq assertions :
+--   (a) l'équipe du dossier commande le jour principal
+--   (b) la visite garde la sienne
+--   (c) un enregistrement sans changement d'équipe ne touche rien
+--   (d) affecter la mission principale au planning se voit sur le dossier
+--   (e) décocher sur le dossier retire vraiment du planning
