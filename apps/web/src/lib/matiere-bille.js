@@ -42,13 +42,13 @@ const ID = "matiere-bille";
 
 /** Les teintes. Chacune dit une chose, et une seule. */
 export const TONS = Object.freeze({
-  //        a = la lumière       b = l'ombre        contre = l'irisation
-  bleu:   { a: "59,130,246",  b: "37,99,235",   contre: "217,119,6" },
-  vert:   { a: "52,211,153",  b: "5,150,105",   contre: "217,119,6" },
-  gris:   { a: "148,163,184", b: "100,116,139", contre: "217,119,6" },
-  orange: { a: "251,146,60",  b: "234,88,12",   contre: "37,99,235" },
-  rouge:  { a: "248,113,113", b: "220,38,38",   contre: "37,99,235" },
-  ambre:  { a: "245,158,11",  b: "180,83,9",    contre: "37,99,235" },
+  //        a = la lumière      b = la teinte      ombre = le creux    contre = l'irisation
+  bleu:   { a: "96,165,250",  b: "37,99,235",   ombre: "23,60,150",   contre: "217,119,6" },
+  vert:   { a: "74,222,161",  b: "5,150,105",   ombre: "4,95,68",     contre: "217,119,6" },
+  gris:   { a: "163,177,196", b: "100,116,139", ombre: "51,65,85",    contre: "217,119,6" },
+  orange: { a: "253,164,90",  b: "234,88,12",   ombre: "154,52,8",    contre: "37,99,235" },
+  rouge:  { a: "250,140,140", b: "220,38,38",   ombre: "145,25,25",   contre: "37,99,235" },
+  ambre:  { a: "251,180,40",  b: "217,119,6",   ombre: "133,60,5",    contre: "37,99,235" },
 });
 
 /** Les tailles, nommées plutôt que chiffrées : un badge ne « fait pas 18px ». */
@@ -63,12 +63,14 @@ export const TAILLES = Object.freeze({
  * Les fractions du diamètre. Elles viennent de la bille de la carte, mesurées :
  * 84 px de diamètre, `inset 0 0 15px` (18 %), `inset 6px 6px 18px` (7/7/21 %),
  * chevron de 22 px (52 %) décalé de 6 px (7 %) et posé à 15 px (18 %).
+ * La parallaxe et le relevé ont été DOUBLÉS après essai : au rapport d'origine
+ * le signe bougeait si peu qu'on ne voyait pas qu'il flottait.
  * Les changer, c'est changer la bille — pas l'adapter.
  */
 export const FRACTIONS = Object.freeze({
   lueurInterne: 0.18, creuxDecalage: 0.07, creuxFlou: 0.21,
   ombrePortee: 0.30, ombreDecalage: 0.14, ombreRetrait: 0.09,
-  signe: 0.52, parallaxe: 0.07, releve: 0.18, perspective: 10,
+  signe: 0.52, parallaxe: 0.13, releve: 0.26, perspective: 10,
 });
 
 /**
@@ -96,10 +98,14 @@ export function installerMatiereBille() {
     .bille-corps {
       position: absolute; inset: 0; border-radius: 50%;
       /* La forme : la lumière tombe en haut à gauche, l'ombre fuit en bas. */
+      /* Trois arrêts, pas deux : la teinte claire tient le haut-gauche, l'ombre
+         creuse le bas-droit. Un dégradé qui n'assombrit qu'à la fin donne une
+         gommette ; c'est l'écart entre les deux qui fait la sphère. */
       background: radial-gradient(circle at 32% 26%,
-        rgba(var(--bille-a), var(--bille-corps, .97)) 0%,
-        rgba(var(--bille-b), var(--bille-corps, .97)) 62%,
-        rgba(var(--bille-b), var(--bille-corps, .97)) 100%);
+        rgba(var(--bille-a), var(--bille-corps, 1)) 0%,
+        rgba(var(--bille-a), var(--bille-corps, 1)) 24%,
+        rgba(var(--bille-b), var(--bille-corps, 1)) 74%,
+        rgba(var(--bille-ombre), var(--bille-corps, 1)) 100%);
       border: 1px solid rgba(255,255,255,.4);
       box-shadow:
         inset 0 0 calc(var(--b) * ${f.lueurInterne}px) rgba(255,255,255,.30),
@@ -112,6 +118,19 @@ export function installerMatiereBille() {
       transition: transform .4s cubic-bezier(.34,1.56,.64,1);
     }
     .bille-actif .bille-corps { transform: scale(1.06); }
+    /* Au survol elle enfle à peine — assez pour qu'on sente qu'elle répond,
+       pas assez pour bousculer la ligne de texte qui l'entoure. Sur le
+       conteneur et non le corps : le signe et le reflet suivent avec. */
+    .bille:hover { transform: scale(1.09); }
+    .bille { transition: transform .22s cubic-bezier(.34,1.4,.64,1); }
+    .bille:hover .bille-corps {
+      box-shadow:
+        inset 0 0 calc(var(--b) * ${f.lueurInterne}px) rgba(255,255,255,.42),
+        inset calc(var(--b) * ${f.creuxDecalage}px) calc(var(--b) * ${f.creuxDecalage}px)
+              calc(var(--b) * ${f.creuxFlou}px) rgba(var(--bille-b), .62),
+        0 calc(var(--b) * ${f.ombreDecalage}px) calc(var(--b) * ${f.ombrePortee}px)
+          calc(var(--b) * -${f.ombreRetrait}px) rgba(var(--bille-b), .68);
+    }
     /* L'huile : la contre-lumière balaie la bille selon l'angle de la carte.
        Transparente aux bords — sinon elle ferait un trou, pas un reflet. */
     .bille-huile {
@@ -144,6 +163,11 @@ export function installerMatiereBille() {
       filter: drop-shadow(0 calc(var(--b) * .02px) calc(var(--b) * .07px) rgba(0,0,0,.55));
       transition: transform .5s cubic-bezier(.34,1.56,.64,1);
     }
+    /* Le signe s'agite : il flotte au-dessus du verre, donc il bouge plus que
+       la bille — c'est l'écart entre les deux qui donne la profondeur. Une
+       parallaxe timide se lit comme un décalage, pas comme du relief. */
+    .bille:hover .bille-signe svg { transform: scale(1.14); }
+    .bille:hover .bille-reflet { opacity: .85; }
     .bille-actif .bille-pivote svg { transform: rotate(-180deg) scale(1.1); }
 
     /* Le plaisir n'est pas une condition : au doigt et en mouvement réduit, la
@@ -162,7 +186,10 @@ export function installerMatiereBille() {
  * @param {boolean} verre
  */
 export function matiereSurface(verre) {
+  // Première version trop fade : sur un fond clair, un corps à .97 se lavait
+  // dans le blanc et l'huile à .30 ne se voyait plus qu'au survol. La bille
+  // est une MASCOTTE — elle doit tenir seule, sans qu'on passe dessus.
   return verre
-    ? { "--bille-corps": ".46", "--bille-huile": ".40", "--bille-flou": "blur(4px)" }
-    : { "--bille-corps": ".97", "--bille-huile": ".30", "--bille-flou": "none" };
+    ? { "--bille-corps": ".62", "--bille-huile": ".52", "--bille-flou": "blur(4px)" }
+    : { "--bille-corps": "1", "--bille-huile": ".46", "--bille-flou": "none" };
 }
