@@ -183,7 +183,7 @@ export async function obtenirAffaire(id) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase
       .from("affaires")
-      .select("id, etat, formule, nature, centre_id, created_at, date_souhaitee, heure_souhaitee, clients(id, nom, tel, email), scenarios(retenu, entrees, resultats)")
+      .select("id, etat, formule, nature, centre_id, affectations, created_at, date_souhaitee, heure_souhaitee, clients(id, nom, tel, email), scenarios(retenu, entrees, resultats)")
       .eq("id", id).single();
     if (error) throw error;
     // On relit le scénario retenu pour restituer les faits ET les coûts saisis :
@@ -198,6 +198,7 @@ export async function obtenirAffaire(id) {
       // écrans d'un déménagement. Repli explicite pour les lignes d'avant 0117.
       nature: data.nature || "demenagement",
       centreId: data.centre_id || null,
+      affectations: data.affectations || {},
       creeLe: data.created_at,
       date_souhaitee: data.date_souhaitee || null,
       client: data.clients,
@@ -1404,6 +1405,20 @@ export async function creerDossierVide(nature = "demenagement", clientId = null)
 }
 
 // ── Équipe pressentie du dossier (symétrique aux camions) ─────────────────────
+
+/**
+ * L'affectation PRÉVUE par date, rangée sur l'affaire. Elle existe dès la
+ * saisie d'une date — avant toute confirmation, donc avant qu'une mission
+ * existe en base. C'est au moment où l'on pose une date qu'on pense à qui la
+ * fera : l'écran doit le permettre là.
+ */
+export async function sauverAffectationsPrevues(affaireId, affectations) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_affaire_affectations_definir",
+    { p_affaire: affaireId, p_affectations: affectations || {} });
+  if (error) throw new Error(error.message);
+  return data;
+}
 
 /**
  * Les missions d'une affaire avec leur affectation propre. C'est la mission
