@@ -1,0 +1,23 @@
+-- 0136 — APPLIQUÉE EN LIVE via MCP le 17/08/2026 (stub de référence).
+-- LE MIROIR MISSION → DOSSIER VAUT POUR TOUTES LES NATURES.
+--
+-- `sync_mission_vers_dossier` sortait sur
+--   `if v_type is distinct from 'demenagement' then return null;`
+-- Écrit quand le déménagement était la seule nature, jamais rouvert à
+-- l'arrivée du lift et de la sous-traitance (lot 2a).
+--
+-- Conséquence, masquée par un doublon d'interface : sur un LIFT, affecter la
+-- mission au planning ne remontait jamais sur `affaires.equipe`. Le sélecteur
+-- « Équipe » du dossier écrivait quand même, donc on ne voyait rien — jusqu'à
+-- ce qu'on retire ce doublon (lot 10f). Or `affaires.equipe` est ce que lit le
+-- chiffrage de la main-d'œuvre (`rh/main-oeuvre.js`) : un lift affecté au
+-- planning aurait été chiffré sans personne.
+--
+--   → v_type_princ = case nature when 'lift' then 'lift'
+--                                when 'sous_traitance' then 'sous_traitance'
+--                                else 'demenagement' end
+--   → seule la mission PRINCIPALE miroite ; emballage et visite non, sinon le
+--     chantier serait chiffré avec les emballeurs.
+--
+-- Éprouvée en `do $$ … rollback $$` : un lift affecté remonte sur le dossier,
+-- un emballage affecté ne remonte pas.
