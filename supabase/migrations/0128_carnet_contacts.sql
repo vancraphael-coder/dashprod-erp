@@ -1,0 +1,5 @@
+-- 0128 — APPLIQUÉE EN LIVE via MCP le 15/08/2026 (stub de référence).
+-- clients.epingle (contact récurrent remonté en tête) + cmd_carnet
+-- (coordonnées, natures commandées, missions groupées) + cmd_client_epingler.
+-- Le carnet est une LECTURE de `clients` : aucune table parallèle.
+-- ⚠️ Contenait un bug corrigé par 0129.
