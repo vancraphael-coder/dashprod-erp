@@ -379,9 +379,20 @@ function PageBoxes({ depotId, axesOrg }) {
             <div style={{ fontSize: 11.5, color: C.muet, marginTop: 8 }}>
               Au barème : {(() => {
                 const p = montantPeriodeBox(bareme, Number(form.volume_m3), "mensuel");
-                return p.hors_bareme
-                  ? "aucune tranche ne couvre ce volume — complétez le barème."
-                  : `${euros(p.centimes)} par mois.`;
+                // Le message doit dire ce qui manque DANS LE MODE CHOISI :
+                // « aucune tranche ne couvre ce volume » n'a aucun sens quand
+                // l'entreprise vend au m³ exact — la personne chercherait une
+                // tranche qui n'existe pas.
+                if (p.hors_bareme) {
+                  return p.mode === "exact"
+                    ? "prix au m³ non renseigné — complétez le barème."
+                    : "aucune tranche ne couvre ce volume — complétez le barème.";
+                }
+                return `${euros(p.centimes)} par mois`
+                  + (p.mode === "exact"
+                     ? ` (${(p.prix_m3_centimes / 100).toFixed(2)} €/m³`
+                       + `${p.minimum_applique ? ", minimum appliqué" : ""}).`
+                     : ".");
               })()}
             </div>
           )}

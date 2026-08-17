@@ -173,6 +173,11 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       }
       // Recharge l'affaire pour refléter le nom mis à jour dans l'en-tête.
       obtenirAffaire(affaireId).then(setAffaire).catch(() => {});
+      // ET les missions : depuis 0135, l'équipe du dossier commande la mission
+      // du jour principal. Sans ce rechargement, le volet d'affectation
+      // afficherait encore l'équipe d'avant — deux vérités à l'écran, et
+      // l'impression que l'enregistrement n'a pas pris.
+      missionsAffaire(affaireId).then(setMissions).catch(() => {});
       setSauve(true); setModifie(false);
     } catch (e) { setErreur(e.message); }
   }
@@ -398,6 +403,10 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         <div style={S.carte}>
           <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
             Véhicules ({camions.length})
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.muet,
+                           marginLeft: 8 }}>
+              — {LIBELLE_PRINCIPALE[affaire?.nature || "demenagement"]}
+            </span>
           </div>
 
           {/* Un lift ne se réserve qu'avec un lift : proposer un fourgon ici
@@ -439,13 +448,20 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         </div>
       )}
 
-      {/* Équipe pressentie — sélectionnable comme les camions. Reportée sur la
-          mission à la confirmation (0026). Un membre en congé ce jour-là
-          pourrait être signalé ici à terme (données RH). */}
+      {/* L'équipe du dossier, c'est celle qui fait LE TRAVAIL : le jour
+          principal. Pas celle qui passe en visite la semaine d'avant, ni celle
+          qui emballe la veille — ces jours-là ont leur propre équipe, sur leur
+          propre carte. La relation avec le planning est réelle dans les deux
+          sens (0135) : cocher ici affecte la mission principale, et affecter
+          la mission principale au planning se voit ici. */}
       {membres.length > 0 && (
         <div style={S.carte}>
           <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
             Équipe ({equipe.length})
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.muet,
+                           marginLeft: 8 }}>
+              — {LIBELLE_PRINCIPALE[affaire?.nature || "demenagement"]}
+            </span>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {membres.map((m) => {

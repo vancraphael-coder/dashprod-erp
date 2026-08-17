@@ -9,6 +9,7 @@ import React, { useEffect, useState, useRef} from "react";
 import { obtenirParametresPrix, sauverParametresPrix } from "../lib/adaptateur.js";
 import { catalogueSupplements, ajouterSupplement, retirerSupplement, UNITES_SUPPLEMENT }
   from "@domaine/chiffrage/supplements.js";
+import { lireBareme, MODES_BAREME } from "@domaine/stocks/stockage.js";
 import { C, S, declarerModifs} from "../lib/theme.jsx";
 
 export default function Bareme({ retour }) {
@@ -35,24 +36,26 @@ export default function Bareme({ retour }) {
   /** Une modification réelle : le garde-fou s'arme. */
   function marquerTouche() { setSauve(false); setTouche(true); }
 
-  /** Les tranches du barème des boxes : ajouter, modifier, retirer. */
-  function ajouterTranche() {
+  // Le barème des boxes se lit toujours par `lireBareme` : il est stocké en
+  // TABLEAU chez les entreprises d'avant ce lot, en objet depuis. Écrire sans
+  // relire aurait remis à zéro les tranches déjà saisies.
+  function majStockage(champs) {
     setParams((p) => ({ ...p,
-      stockage_boxes: [...(p.stockage_boxes || []),
-                       { jusqua_m3: 0, prix_mensuel_centimes: 0 }] }));
+      stockage_boxes: { ...lireBareme(p.stockage_boxes), ...champs } }));
     marquerTouche();
   }
-  function majTranche(i, cle, v) {
-    setParams((p) => ({ ...p,
-      stockage_boxes: (p.stockage_boxes || []).map((t, j) =>
-        j === i ? { ...t, [cle]: v } : t) }));
+  function majTranches(f) {
+    setParams((p) => {
+      const b = lireBareme(p.stockage_boxes);
+      return { ...p, stockage_boxes: { ...b, tranches: f(b.tranches) } };
+    });
     marquerTouche();
   }
-  function retirerTranche(i) {
-    setParams((p) => ({ ...p,
-      stockage_boxes: (p.stockage_boxes || []).filter((_, j) => j !== i) }));
-    marquerTouche();
-  }
+  const ajouterTranche = () =>
+    majTranches((t) => [...t, { jusqua_m3: 0, prix_mensuel_centimes: 0 }]);
+  const majTranche = (i, cle, v) =>
+    majTranches((t) => t.map((x, j) => (j === i ? { ...x, [cle]: v } : x)));
+  const retirerTranche = (i) => majTranches((t) => t.filter((_, j) => j !== i));
 
   // Garde de modifications — AVANT tout return conditionnel (règle des hooks).
   // Toute navigation, y compris la flèche retour, demandera d'abord
@@ -69,6 +72,9 @@ export default function Bareme({ retour }) {
     catch (e) { setErreur(e.message); }
   }
 
+  // Lu une fois pour le rendu : tableau (entreprises d'avant ce lot) comme
+  // objet donnent la même forme complète.
+  const bareme = lireBareme(params?.stockage_boxes);
   const supplements = catalogueSupplements(params?.supplements || []);
   function majSup(cle, champ, valeur) {
     setParams((p) => ({ ...p, supplements:
@@ -176,13 +182,77 @@ export default function Bareme({ retour }) {
           barème qui s'applique, sans négociation, quand on loue un box.
           (Les ZONES, elles, se négocient au contrat — rien à régler ici.) */}
       <Section titre="Boxes de stockage (HTVA / mois)">
+        {/* Deux façons de vendre le même mètre cube, au choix de l'entreprise :
+            des paliers lisibles pour un déménageur local, le volume exact pour
+            un garde-meubles. Aucune n'est meilleure — elles ne s'adressent pas
+            au même client. */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {MODES_BAREME.map((m) => {
+            const choisi = bareme.mode === m.cle;
+            return (
+              <button key={m.cle} onClick={() => majStockage({ mode: m.cle })}
+                style={{
+                  flex: 1, textAlign: "left", padding: "10px 12px",
+                  borderRadius: 12, cursor: "pointer",
+                  border: `1.5px solid ${choisi ? C.bleu : C.bord}`,
+                  background: choisi ? C.bleuClair : C.blanc,
+                }}>
+                <span style={{ display: "block", fontSize: 13, fontWeight: 800,
+                               color: choisi ? C.bleu : C.encre }}>{m.nom}</span>
+                <span style={{ display: "block", fontSize: 11, color: C.muet,
+                               marginTop: 3, lineHeight: 1.4 }}>{m.resume}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {bareme.mode === "exact" ? (
+          <>
+            <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 10,
+                          lineHeight: 1.5 }}>
+              Le prix suit le volume réellement occupé : un client à 5,2 m³ ne
+              saute pas à la tranche des 10. Le minimum protège chaque mois, et
+              un box dont le volume n'est pas renseigné sera signalé plutôt que
+              facturé à zéro.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ ...S.label, marginTop: 0 }}>Prix / m³ / mois (€)</label>
+                <input style={S.input} type="number" inputMode="decimal"
+                       value={Number.isFinite(bareme.prix_m3_mensuel_centimes)
+                              ? bareme.prix_m3_mensuel_centimes / 100 : ""}
+                       onChange={(e) => majStockage({
+                         prix_m3_mensuel_centimes: e.target.value === "" ? null
+                           : Math.round(Number(e.target.value) * 100) })} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ ...S.label, marginTop: 0 }}>Minimum / mois (€)</label>
+                <input style={S.input} type="number" inputMode="decimal"
+                       value={Number.isFinite(bareme.minimum_mensuel_centimes)
+                              ? bareme.minimum_mensuel_centimes / 100 : ""}
+                       onChange={(e) => majStockage({
+                         minimum_mensuel_centimes: e.target.value === "" ? null
+                           : Math.round(Number(e.target.value) * 100) })} />
+              </div>
+            </div>
+            {/* Les tranches ne sont pas effacées : revenir en arrière doit
+                retrouver le barème d'avant, pas une page blanche. */}
+            {bareme.tranches.length > 0 && (
+              <div style={{ fontSize: 11, color: C.muet, marginTop: 10 }}>
+                Vos {bareme.tranches.length} tranches sont conservées : elles
+                reviendront si vous repassez « par tranches ».
+              </div>
+            )}
+          </>
+        ) : (
+        <>
         <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 10,
                       lineHeight: 1.5 }}>
           Un box est facturé selon son volume : on retient la première tranche
           qui le couvre. Un box plus grand que votre dernière tranche sera
           signalé « hors barème » plutôt que facturé au hasard.
         </div>
-        {(params.stockage_boxes || []).map((t, i) => (
+        {bareme.tranches.map((t, i) => (
           <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-end",
                                 marginBottom: 8 }}>
             <div style={{ flex: 1 }}>
@@ -208,6 +278,8 @@ export default function Bareme({ retour }) {
         <button onClick={ajouterTranche} style={{ ...S.boutonLien, paddingLeft: 0 }}>
           + Ajouter une tranche
         </button>
+        </>
+        )}
       </Section>
 
       {erreur && <div style={{ margin: "0 16px 8px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
