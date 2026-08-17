@@ -134,6 +134,39 @@ Plusieurs tests lisent les **sources** d'`apps/web` plutôt que d'importer
 via `sansCommentaires()` — sinon un commentaire citant le bug fautif
 déclencherait le garde-fou.
 
+### 3.10 Un déclencheur qui DIFFUSE : la vraie garde est « qu'est-ce qui a changé »
+Payé **trois fois** maintenant, toujours de la même façon : une fonction qui
+recopie une donnée depuis le parent vers ses enfants s'exécute *à chaque*
+update, y compris quand personne n'a touché à la donnée en question.
+
+- 0130 : le report d'équipe se refaisait à **chaque confirmation** — retirer
+  quelqu'un puis reconfirmer le réajoutait.
+- 0134 : `sync_dossier_vers_missions` réécrivait **toutes** les missions à
+  chaque enregistrement du dossier. Renommer un client suffisait à écraser
+  l'affectation de la visite.
+- 0135 : la version correcte compare d'abord — `if new.equipe is distinct from
+  old.equipe` — et traite équipe et véhicules **séparément** (les réécrire
+  ensemble faisait qu'un changement de camion réinjectait l'équipe).
+
+**La règle** : avant d'écrire, un déclencheur de synchronisation demande
+*qu'est-ce qui a changé*, *quelle cible exactement*, et *cette cible est-elle
+encore modifiable* (jamais une mission dont les heures sont pointées). Trois
+questions, trois gardes.
+
+### 3.11 Un `UPDATE` qui ne trouve rien ne dit rien
+`update missions … where type = 'emballage'` sur une affaire qui n'a pas encore
+de mission d'emballage : zéro ligne touchée, **aucune erreur**. La date était
+posée, le dossier semblait prêt, et personne n'était réclamé pour ce jour-là.
+Le modèle correct était déjà dans le code, deux fonctions plus loin
+(`sync_visite_vers_mission`) : `if not found then insert`. **Chaque UPDATE de
+synchronisation doit décider quoi faire quand il ne trouve rien.**
+
+### 3.12 Vérifier l'existant AVANT d'écrire le correctif
+Le rattrapage des dossiers confirmés (§5) était planifié depuis deux lots.
+Trois requêtes de comptage ont montré qu'il **n'y avait aucun trou** : le code
+aurait été mort. Mais *chercher* le trou a révélé deux bugs de production bien
+réels. Compter d'abord coûte trois minutes et change ce qu'on écrit.
+
 ---
 
 ## 4. Le modèle métier — décisions à ne pas défaire
@@ -172,6 +205,19 @@ d'où vient la grille (`origine`: `centre` | `maison_mere` | `defaut`).
 - **Zone** : forfait sur le **contrat entier**. Rattacher une deuxième zone
   **NE double PAS** le prix — c'est le sens d'un forfait.
 
+**Le box se vend de deux façons, au choix de l'entreprise** (0135 / lot 10e —
+Raphaël : « ajouter », pas remplacer) :
+
+| mode | pour qui | règle |
+|---|---|---|
+| `tranches` | déménageur local | premier palier qui couvre le volume ; au-delà du dernier → **hors barème**, jamais un prix inventé |
+| `exact` | garde-meubles type Shurgard | `volume × prix/m³`, **minimum mensuel** appliqué au mois *puis* multiplié par la période ; sans prix/m³ ou sans volume → **hors barème** |
+
+Stocké dans `organisations.parametres_prix.stockage_boxes`. **Lecture toujours
+via `lireBareme()`** : les entreprises d'avant ce lot y ont un simple *tableau*
+de tranches. Écrire sans relire aurait mis à zéro le prix de tous les boxes
+loués, en silence. Changer de mode **n'efface pas** les tranches saisies.
+
 ### 4.4 Les adresses suivent le métier
 `@domaine/commercial/adresses.js`. Les clés de stockage restent `charges` /
 `decharges` (pas de migration), mais leur **sens** change :
@@ -200,16 +246,63 @@ Voyant à **trois états** : gris (vide) / orange (partiel) / vert (complet).
 Bulle en relief, liseré de carte assorti, flèche pour dérouler.
 **Rien n'est bloquant** : on signale avec le motif, on n'interdit pas.
 
+**L'équipe et les véhicules du DOSSIER sont ceux du JOUR PRINCIPAL** (0135,
+décision de Raphaël : « les membres font partie de la vérité d'un dossier »).
+La relation vit dans les deux sens, mais elle ne vise **que** la mission
+principale — déménagement / lift / sous-traitance :
+
+| geste | effet |
+|---|---|
+| cocher un membre sur le dossier | affecte la mission principale |
+| affecter la mission principale au planning | se voit sur le dossier |
+| visite et emballage | **jamais touchés** : leur équipe est à eux |
+
+Trois gardes, chacune contre un défaut réellement constaté :
+`equipe`/`camions` inchangés → on ne touche à rien (renommer un client
+réécrivait l'affectation) ; équipe et véhicules traités **séparément** (changer
+un camion réinjectait l'équipe) ; missions `planifiee`/`en_cours` seulement (on
+ne réaffecte pas une journée dont les heures sont pointées).
+La boucle avec `sync_mission_vers_dossier` est tenue par `pg_trigger_depth()`
+des deux côtés.
+
 ### 4.6 La Bille — la mascotte
 `apps/web/src/composants/Bille.jsx`. Vient des cartes d'abonnement de la
 vitrine, et **une seule définition sert partout** : voyants d'affectation,
 pastilles de métier, flèches de dépliage, croix, attentions.
 
-Quatre ingrédients à ne jamais simplifier : l'**huile** qui tourne avec le
-curseur, le **reflet spéculaire** décentré, le **creux interne**, et la
-**parallaxe INVERSÉE** du signe (il flotte au-dessus du verre au lieu de coller
-au doigt). Tailles nommées : `puce` / `jeton` / `bouton` / `vedette`.
-Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
+La recette vit dans **`apps/web/src/lib/matiere-bille.js`**, une seule fois,
+**en fractions du diamètre `--b`** : une puce de 14 px et une vedette de 84 px
+sont le *même objet à deux échelles*. Toute mesure figée dans la matière est
+refusée par un test.
+
+Quatre ingrédients à ne jamais simplifier : l'**huile** irisée qui tourne avec
+la lumière (deux teintes — chaque ton porte sa **contre-lumière**, chaude sur
+les tons froids et l'inverse ; un dégradé monochrome ne dit qu'« ombre »), le
+**reflet spéculaire** décentré qui glisse à l'inverse du regard, le **creux
+interne**, et la **parallaxe** du signe avec sa profondeur réelle (perspective
+propre, `translateZ` — un décalage à plat n'est pas du relief).
+
+**La bille ne s'éclaire pas elle-même : elle est éclairée par la surface.**
+La carte publie `--carte-angle` (un vrai `atan2`), `--carte-nx/ny` (le regard)
+et `--carte-sx/sy` (le même, adouci en sinus) ; la bille les hérite en CSS,
+sans un seul rendu React. C'est ce qui fait vivre une puce de 14 px : elle ne
+peut pas se surveiller elle-même — sa boîte ne mesure que du bruit. Une surface
+qui n'est pas une carte se déclare champ de lumière avec `data-champ`.
+
+`CarteAbonnement` **consomme** la bille partagée. C'est la recopie qui avait
+permis la dérive : les billes de l'app avaient perdu l'huile, le verre et la
+profondeur pendant que l'original les gardait.
+
+La bille **n'importe pas `lib/theme.jsx`** : elle sert aussi la vitrine, qui a
+son thème. La matière (verre de nuit, peinte de jour) vient de la surface par
+`matiereSurface()`.
+
+Tailles nommées : `puce` / `jeton` / `bouton` / `vedette`.
+Tout mouvement s'arrête sous `prefers-reduced-motion` et au pointeur grossier.
+
+> **Divergence assumée, à confirmer** : ce document disait « parallaxe
+> INVERSÉE », la carte d'origine fait l'inverse (le signe suit le curseur).
+> Suivi la carte, puisque c'est la référence citée. Un signe à changer.
 
 ### 4.7 Autres invariants
 - Un **litige porte sur exactement une chose** : affaire **OU** contrat
@@ -227,10 +320,42 @@ Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
 
 ---
 
+### 4.8 L'horizontal et les verticaux — appliqué par un test
+`packages/domaine/architecture.js` (le manifeste) et
+`packages/domaine/tests/architecture.test.js` (la règle).
+
+**Dashprod est HORIZONTAL. Le déménagement est un VERTICAL qui l'utilise.**
+La flèche va toujours dans le même sens : un métier s'appuie sur le socle, le
+socle ne s'appuie jamais sur un métier. Le jour où le noyau importe le
+déménagement, Dashprod devient un logiciel de déménagement avec des options —
+et on ne s'en aperçoit qu'en essayant de vendre à un garde-meubles.
+
+Une arborescence ne garantit rien : rien n'empêche `crm/` d'importer `releve/`.
+**C'est le test qui fait tenir l'architecture**, et il suit la chaîne ENTIÈRE
+d'imports (une dépendance revient toujours par un intermédiaire anodin).
+
+- **Verticaux déclarés** : déménagement (`releve/*`, `stocks/emballage.js`,
+  `stocks/meubles-piece.js`), lift, sous-traitance, garde-meubles
+  (`stocks/stockage.js`). *Tout ce qui n'est pas déclaré est horizontal :
+  l'oubli penche du côté sûr.*
+- **Aiguillage** : `chiffrage/scenario-nature.js` — le seul autorisé à
+  connaître tous les métiers, parce que son travail est de choisir entre eux.
+  L'horizontal ne peut pas l'importer non plus, sinon l'interdiction se
+  contourne en une ligne.
+- **Dérogations** : datées, motivées, et vérifiées **encore réelles** — une
+  dérogation morte fait rougir la suite, pour qu'on la retire. La liste ne peut
+  que rétrécir. *Une seule aujourd'hui* : `lib/adaptateur.js` importe
+  `releve/volumetrie.js` pour composer l'instantané d'offre. Sortie prévue :
+  chaque nature contribue SES rubriques au document.
+
+Le garde-fou a été éprouvé sur ses quatre modes de panne (import direct,
+import transitif, dérogation retirée, module renommé) — il rend la chaîne
+complète, pas un booléen.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 872/872 ✓ — build `apps/web` ✓ (211 modules)**
-**Migrations appliquées : jusqu'à `0133_report_affectation_par_mission`.**
+**`npm test` : 892/892 ✓ — build `apps/web` ✓**
+**Migrations appliquées : jusqu'à `0135_equipe_dossier_vers_mission_principale`.**
 
 ### Lots livrés
 | lot | contenu | migrations |
@@ -251,6 +376,7 @@ Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
 | 10b | Une mission par date, affectation par mission, menu « + » en bulle | 0130–0131 |
 | 10c | **Correctif `scenarios.resultats`** + la Bille (mascotte partagée) | — |
 | 10d | Cartes de date avec affectation (la Bille enfin visible) | 0132–0133 |
+| 10e | Bille refaite, test d'architecture, grille au m³ exact, 2 bugs de production | 0134, 0135 |
 
 ### Reste à faire
 
@@ -262,14 +388,33 @@ Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
 - [x] **Deux bugs corrigés** : le report d'équipe s'exécutait à CHAQUE
       confirmation (retirer quelqu'un puis reconfirmer le réajoutait), et
       `centre_id` n'était pas repris sur les missions créées
-- [ ] ⚠️ **RESTE : la reprise des dossiers DÉJÀ confirmés.** Les affaires
-      confirmées avant 0130 n'ont ni mission d'emballage ni mission de visite,
-      même quand leurs dates existent. Le trigger ne se déclenche qu'à la
-      transition vers `confirme`. Il faut un **backfill** :
-      pour chaque affaire `confirme`+ avec `date_emballage` / `date_visite`
-      sans mission correspondante, créer la mission (affectation vide).
-      À écrire et à EXÉCUTER avant de considérer le lot clos.
+- [x] ⚠️ **La reprise des dossiers déjà confirmés : SANS OBJET.** Vérifié en
+      base le 17/08 — 2 dates d'emballage → 2 missions, 29 visites → 29
+      missions, 23 dates principales → 15 missions de déménagement (les 8
+      autres sont des lifts et sous-traitances). **Aucun trou.** Le rattrapage
+      n'avait pas lieu d'être : `sync_visite_vers_mission` créait déjà les
+      visites, et les emballages avaient tous été posés avant confirmation.
+      *La leçon : vérifier l'existant AVANT d'écrire le correctif — le
+      backfill aurait été du code mort, et le chercher a révélé deux vrais
+      bugs (0134).*
 - [ ] Le conflit de disponibilité calculé **par mission**
+
+**Lot 10e — LIVRÉ** (la matière, l'architecture, la grille, deux bugs)
+- [x] **La Bille refaite à la racine** — voir §4.6. Cinq écarts avec la bille
+      d'origine, dont la cause de fond : chaque bille écoutait sa propre boîte,
+      donc le suivi était coupé sous 44 px pendant que la carte calculait déjà
+      un champ de lumière que personne ne lisait
+- [x] **Le test d'architecture** — `packages/domaine/architecture.js` +
+      `tests/architecture.test.js`. Voir §4.8
+- [x] **La grille de box « par exactitude »**, en AJOUT du mode par tranches
+      (réponse de Raphaël). Barème au m³ + minimum mensuel, au choix de
+      l'entreprise. Stocké dans `parametres_prix.stockage_boxes` — aucune
+      migration, **lecture tolérante** de l'ancienne forme tableau
+- [x] **0134 — deux bugs de production** : la diffusion d'équipe sur toutes les
+      missions (critique, défaisait le lot 10d), et la mission jamais créée
+      quand une date est posée après la confirmation
+- [x] **0135 — l'équipe du dossier redevient celle du jour principal**, dans
+      les deux sens (§4.5)
 
 **Lot 11 — couleurs et vue du planning**
 - [ ] Une couleur par type de mission, réglable dans Apparence
@@ -298,6 +443,15 @@ Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
    est une décision de design. Aujourd'hui accessible via *Dossiers → Carnet*.
 3. **Pièces jointes réelles dans Gmail** (API Google : OAuth, jeton,
    révocation). Non demandé formellement — proposé, sans réponse.
+4. **Trois commandes pour une seule affectation.** L'écran Dossier montre la
+   `CarteDate` principale (affectation *prévue*), le `VoletAffectation` de la
+   mission principale (la *vérité*), et le sélecteur « Équipe » du dossier —
+   qui pilote la même chose depuis 0135. Les trois sont désormais cohérents et
+   l'écran recharge les missions après enregistrement, mais **trois commandes
+   pour une donnée reste une odeur**. À trancher : laquelle disparaît ?
+5. **Le CMR** — décidé « généré par Dashprod » (voir plus bas), reste à cadrer :
+   quelles natures (sous-traitance seule, ou aussi déménagement international ?),
+   série de numérotation, et 24 cases réglementaires. Mérite son lot.
 
 ### Déjà répondu — ne pas reposer
 - Sous-traitance : **on est le prestataire** (recette), pour un vendeur de
@@ -308,6 +462,12 @@ Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
 - Relevé & Matériel : **supprimés** pour les natures sans, pas grisés
 - Zones par centre : **fonctionne déjà**, l'unicité est
   `(org_id, centre_id, nom)`
+- Grille de box « par exactitude » : **AJOUTER**, ne pas remplacer les tranches
+- CMR : **généré par Dashprod**, pas seulement attaché depuis le donneur d'ordre
+- Architecture : **Dashprod ne doit pas dépendre du déménagement** — le
+  déménagement est un vertical qui utilise l'horizontal (§4.8)
+- Équipe et véhicules : **toujours en relation avec le planning**, ils font
+  partie de la vérité d'un dossier (§4.5)
 
 ---
 

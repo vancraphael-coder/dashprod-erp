@@ -1,94 +1,157 @@
-# Lot 10d — Cartes de date, et la Bille enfin visible
+# Lot 10e — la matière, l'architecture, la grille, et deux bugs de production
 
-Migrations **0132–0133**. `npm test` : **872/872 ✓** — build : **✓ (211 modules)**.
-
-## Tu avais raison : la bille n'était nulle part
-
-Je l'avais mise dans les volets d'affectation — qui ne s'affichent **que si le
-dossier a déjà des missions en base**, donc seulement après confirmation. Sur
-un dossier en cours de saisie, l'écran ne montrait rien. Techniquement
-intégrée, pratiquement invisible.
-
-Ta phrase donnait la solution : **c'est la section des dates** qui doit porter
-ces cartes. Chaque date est maintenant une carte avec :
-
-- une **bille en taille bouton** (44 px) — assez grande pour être le repère de
-  la carte et pour que son suivi 3D se voie
-- la date et l'heure
-- un **volet « Qui la fait »** avec chevron en bille, qui pivote à l'ouverture
-- l'équipe et les véhicules, filtrés par catégorie selon le type
-- un **avertissement en bille** quand il manque quelque chose
-
-Le liseré de la carte reprend la couleur du voyant. Sans date posée, la bille
-reste grise avec un « + » et **aucune équipe n'est réclamée** — demander qui
-travaille un jour qui n'existe pas serait du bruit.
-
-**L'affectation existe désormais avant la confirmation** (`affaires.affectations`,
-migration 0132), parce que c'est au moment où l'on pose une date qu'on pense à
-l'équipe. À la confirmation, **chaque mission reçoit SA prévision** — plus
-seulement le déménagement. Repli sur `affaires.equipe`/`camions` pour les
-dossiers d'avant, sinon leur équipe serait perdue.
-
-Le libellé de la date principale suit le métier : « Déménagement », mais
-« Intervention lift », « Livraison » pour la sous-traitance. « Date souhaitée »
-ne dit rien pour un lift.
+`npm test` : **892/892 ✓** — build `apps/web` ✓
+Migrations **0134** et **0135** déjà appliquées en live via MCP.
+16 fichiers + `PASSATION.md`.
 
 ---
 
-## Tes trois autres points : ce que j'ai compris, et ce qui me bloque
+## 1. La Bille — corrigée à la racine
 
-### Zone → événements, pas adresses
+Ta remarque était juste. Cinq écarts avec la bille de `CarteAbonnement` :
 
-Tu décris une **zone événement**, de deux sortes :
+| | l'original | les billes de l'app |
+|---|---|---|
+| **couleur** | bleu → **ambre** → bleu, deux teintes : de l'huile | teinte → même teinte plus sombre : de l'ombre |
+| **angle** | `atan2(ny, nx)`, un vrai angle | `135 + x * 90` — y ignoré, la lumière ne pouvait pas venir d'en bas |
+| **matière** | `.38` + `backdrop-filter` : du verre | `.95`, opaque : de la peinture |
+| **profondeur** | perspective + `translateZ` | aucune — le signe décalé à plat |
+| **la cause** | la carte suit le curseur | **chaque bille écoutait sa propre boîte** |
 
-- **avec livraison** → adresse(s), membre(s), camion(s), **coût trajet**, **CMR**
-- **entreposage** → m³, **multiples par client**
+Le commentaire de `Bille.jsx` annonçait « bleu, ambre, bleu » ; le code ne l'a
+jamais fait.
 
-C'est une refonte de la zone, pas un ajustement : il faut une table
-`zone_evenements` avec ces deux formes, le CMR comme document, et le coût de
-trajet dans le chiffrage. C'est un lot à part entière (lot 14).
+**Le cinquième point explique les quatre autres.** Une puce de 14 px ne peut
+pas se surveiller elle-même — sa boîte ne mesure que du bruit — donc le suivi
+était coupé sous 44 px. Pendant ce temps la carte qui les porte calculait déjà
+un champ de lumière complet, en un seul écouteur, que personne ne lisait.
 
-**Ce que je ne sais pas encore :** un CMR est un document de transport
-réglementaire (lettre de voiture CMR). Faut-il le **générer** depuis Dashprod,
-ou seulement **attacher** celui du donneur d'ordre ? Les deux sont légitimes et
-ne coûtent pas le même travail.
+**La bille ne s'éclaire plus elle-même : elle est éclairée par la surface.**
+`cartes-vives.js` publie `--carte-angle`, `--carte-nx/ny` et `--carte-sx/sy`
+(le regard adouci en sinus, comme la carte). La bille les hérite en CSS, sans
+un rendu React. Une puce de 14 px vit donc comme une vedette de 84, et toutes
+les billes d'une carte s'éclairent **ensemble** — c'est cet accord qui se lit
+comme du relief.
 
-### Boxe et lift → grille « par exactitude »
+Toute la recette est dans **`lib/matiere-bille.js`**, en fractions du diamètre
+`--b` : 14 px et 84 px sont le même objet à deux échelles. Un test refuse toute
+mesure figée dans la matière.
 
-Tu écris : *pas par tranches (ou couronne → lift aussi) mais par exactitude*.
+`CarteAbonnement` **consomme** désormais la bille partagée. C'est la recopie
+qui avait permis la dérive.
 
-Je le lis comme : **le prix se règle au m³ exact** (12 €/m³ → 7 m³ = 84 €)
-plutôt que par paliers, et **au km exact** pour le lift.
+> **À confirmer d'un mot** : la passation disait « parallaxe **inversée** », la
+> carte d'origine fait l'inverse (le signe suit le curseur, le reflet part à
+> contresens). Les deux documents se contredisaient. J'ai suivi **la carte**,
+> puisque c'est la référence que tu as citée. Un signe à changer si tu préfères
+> l'autre.
 
-Mais tu avais confirmé les couronnes il y a peu (« la couronne est bonne »), et
-je ne vais pas défaire un modèle validé sur une lecture. **Ma proposition :
-garder les deux modes, au choix de l'entreprise** — `paliers` ou `exact`. Un
-garde-meubles à la Shurgard vend au m³ exact ; un déménageur local préfère
-souvent trois paliers lisibles.
+## 2. L'architecture — le test qui la fait tenir
 
-Confirme-moi : **remplacer** les paliers, ou **ajouter** le mode exact ?
+`packages/domaine/architecture.js` déclare l'horizontal, les verticaux
+(déménagement, lift, sous-traitance, garde-meubles), l'aiguillage et les
+dérogations. Le test suit la **chaîne entière** d'imports : une dépendance
+revient toujours par un intermédiaire anodin.
 
-### L'arborescence CORE / MÉTIERS
+Éprouvé sur ses quatre modes de panne — import direct, import transitif,
+dérogation retirée, module renommé. Il rend la chaîne complète :
 
-Ton schéma décrit ce que devrait devenir `packages/domaine` : un **noyau**
-(CRM, Finance, Ops) et des **métiers** (Déménagement, Transport, Maintenance)
-qui s'appuient dessus.
+```
+Garde-meubles et logistique :
+      chiffrage/moteur.js
+      → commun/monnaie.js
+      → stocks/stockage.js
+```
 
-Aujourd'hui c'est déjà à moitié le cas — `crm/`, `chiffrage/`, `planning/`,
-`stocks/` sont des dossiers du noyau, et `commercial/natures.js` porte les
-métiers. Ce qui manque, c'est la **frontière explicite** : rien n'empêche
-aujourd'hui un module de noyau d'importer un module métier, ce qui finirait par
-rendre le noyau inutilisable sans le déménagement.
+**Une fuite réelle trouvée** : `lib/adaptateur.js`, la plomberie la plus
+horizontale de l'app, importe `@domaine/releve/volumetrie.js` pour composer
+l'instantané d'offre. Inscrite en **dérogation datée et motivée**, avec sa
+sortie prévue. Le test refuse qu'une dérogation devenue inutile y reste : la
+liste ne peut que rétrécir.
 
-C'est un travail de structure, à faire **avant** que les métiers grossissent —
-donc avant le lot 14. Il tient en deux choses : déplacer les fichiers en
-`noyau/` et `metiers/`, et **un test qui refuse toute importation du noyau vers
-un métier**. C'est ce test qui fait tenir l'architecture, pas l'arborescence.
+*Non corrigée dans ce lot volontairement* : une offre signée est opposable et
+figée (§4.7). Ce chemin ne se retouche pas en marge d'un autre travail.
 
-Dis-moi si je passe par là avant la zone.
+## 3. La grille au m³ exact — ajoutée, pas substituée
+
+Deux modes au choix de l'entreprise, dans l'écran Barème.
+
+| mode | règle |
+|---|---|
+| `tranches` | inchangé |
+| `exact` | `volume × prix/m³`, **minimum mensuel** appliqué au mois *puis* multiplié par la période |
+
+Sans prix au m³ ou sans volume connu → **hors barème**, jamais un prix inventé
+(`Number(null) === 0`, le piège payé six fois).
+
+**Aucune migration** : c'est du jsonb. Mais **lecture tolérante obligatoire** —
+les barèmes en base sont de simples *tableaux*. Ne pas savoir les relire aurait
+mis à zéro le prix de tous les boxes loués, en silence. Changer de mode
+n'efface pas les tranches saisies.
+
+La ligne de facture dit son calcul : `Box A1 — 5.2 m³ × 9.00 €/m³`.
+
+## 4. Le rattrapage 10b : sans objet — mais il a révélé deux bugs
+
+**Aucun trou en base.** 2 dates d'emballage → 2 missions, 29 visites → 29
+missions. Le backfill aurait été du code mort. Mais le chercher a trouvé ceci :
+
+### Bug critique, en production, qui défaisait le lot 10d (0134)
+
+`sync_dossier_vers_missions` se déclenchait à **chaque** update d'affaire et
+réécrivait les affectations de **toutes** les missions planifiées depuis
+`affaires.equipe`. Chaque « Enregistrer » recopiait l'équipe du déménagement
+sur l'emballage et sur la visite.
+
+Preuve en base : sur `09fd3035`, la visite est faite par **Elisa**, l'équipe du
+dossier est **Raphaël**. L'enregistrement suivant remplaçait Elisa par Raphaël.
+
+C'est le bug de 0130 (« le report n'a lieu qu'à la création ») dans un second
+déclencheur qui avait été oublié.
+
+### Une date posée après la confirmation ne créait aucune mission (0134)
+
+Le déclencheur de confirmation sort si l'état ne transite pas ; la synchro ne
+faisait qu'un `UPDATE`, qui ne trouvait rien et **ne disait rien**. Le dossier
+semblait prêt, personne n'était réclamé — ton diagnostic sur la bille, côté
+données. Le modèle correct était deux fonctions plus loin
+(`sync_visite_vers_mission` : `if not found then insert`).
+
+## 5. L'équipe redevient une vérité du dossier (0135)
+
+Ta réponse : les membres et les véhicules font partie de la vérité d'un
+dossier. La relation est donc rétablie — **mais elle vise le jour principal**.
+L'équipe d'un dossier est celle qui fait le travail, pas celle qui passe en
+visite la semaine d'avant.
+
+| geste | effet |
+|---|---|
+| cocher un membre sur le dossier | affecte la mission principale |
+| affecter la mission principale au planning | se voit sur le dossier |
+| visite, emballage | **jamais touchés** |
+
+Trois gardes contre les défauts constatés : rien ne bouge si `equipe` et
+`camions` sont inchangés ; équipe et véhicules traités **séparément** ; missions
+`planifiee`/`en_cours` seulement — on ne réaffecte pas une journée dont les
+heures sont pointées.
+
+Éprouvée en `do $$ … rollback $$` avant livraison, **cinq assertions** :
+(a) le dossier commande le jour principal · (b) la visite garde la sienne ·
+(c) un enregistrement sans changement d'équipe ne touche rien · (d) le planning
+nourrit toujours le dossier · (e) décocher retire vraiment.
+
+L'écran recharge les missions après enregistrement — sans quoi le volet
+d'affectation aurait affiché l'équipe d'avant, deux vérités à l'œil.
 
 ---
 
-## Reste du lot 10
+## Ce qui t'attend
 
-⚠️ Le **backfill des affaires déjà confirmées** n'est toujours pas fait.
+1. **La parallaxe de la bille** — un mot suffit (voir §1).
+2. **Trois commandes pour une affectation.** L'écran Dossier a la carte de date
+   principale, le volet de la mission principale, et le sélecteur « Équipe ».
+   Les trois sont cohérents maintenant, mais trois commandes pour une donnée
+   reste une odeur. Laquelle disparaît ?
+3. **Le CMR** — décidé « généré par Dashprod ». Reste à cadrer : quelles
+   natures, quelle série de numérotation, les 24 cases réglementaires. Ça
+   mérite son lot, je ne le fais pas en appoint d'un autre.
