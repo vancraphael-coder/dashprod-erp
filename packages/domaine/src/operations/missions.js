@@ -181,3 +181,51 @@ export function verdictMission({ date, missionId, membres, vehicules }) {
              : problemes.length > 0 ? "double" : "libre";
   return { niveau: pire, problemes, ok: pire === "libre" };
 }
+
+/**
+ * LE LECTEUR DE DISPONIBILITÉ — la composition, faite une seule fois.
+ *
+ * `disponibiliteRessource` est pur et ne connaît que sa ressource ; encore
+ * faut-il lui rassembler les engagements et les congés. Cette composition
+ * vivait en double, en closures dans l'écran Planning — et il aurait fallu la
+ * recopier une troisième fois pour l'afficher sur les cartes de date. Trois
+ * copies d'une règle de conflit, c'est trois occasions de diverger, et la
+ * divergence ne se voit pas : elle se traduit par un doublon non signalé.
+ *
+ * On rend un lecteur plutôt qu'un résultat : l'écran interroge ressource par
+ * ressource, au moment où il dessine chaque nom.
+ *
+ * @param {object} p
+ * @param {object[]} p.missions toutes les missions connues, avec `affectations`
+ *   (`{utilisateur_id}`) et `camions` (identifiants)
+ * @param {object[]} p.conges congés, avec `utilisateur_id`, `etat`, `debut`, `fin`
+ */
+export function lecteurDisponibilite({ missions = [], conges = [] } = {}) {
+  const engagementsMembre = (id) => missions
+    .filter((m) => (m.affectations || []).some((a) => a.utilisateur_id === id))
+    .map((m) => ({ missionId: m.id, date: m.date }));
+
+  const engagementsVehicule = (id) => missions
+    .filter((m) => (m.camions || []).includes(id))
+    .map((m) => ({ missionId: m.id, date: m.date }));
+
+  // SEULS les congés ACCORDÉS rendent indisponible. Une demande en attente
+  // n'est pas une absence : bloquer dessus laisserait le membre décider seul
+  // de son planning, alors que la décision revient au bureau.
+  const congesDe = (id) => conges
+    .filter((c) => c.utilisateur_id === id && c.etat !== "demande")
+    .map((c) => ({ debut: c.debut, fin: c.fin }));
+
+  return {
+    membre: (id, { date, missionId } = {}) => disponibiliteRessource({
+      date, missionId,
+      affectations: engagementsMembre(id), conges: congesDe(id),
+    }),
+    // Un véhicule ne prend pas de congé : seule la double réservation le
+    // concerne. Aucun contrôle n'existait avant — un camion pouvait être posé
+    // sur deux chantiers le même jour sans que rien ne le signale.
+    vehicule: (id, { date, missionId } = {}) => disponibiliteRessource({
+      date, missionId, affectations: engagementsVehicule(id), conges: [],
+    }),
+  };
+}
