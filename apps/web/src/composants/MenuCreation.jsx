@@ -83,6 +83,10 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
             return (
               <button key={n.cle} role="menuitem"
                 onClick={() => { basculer(false); choisir(n.cle); }}
+                // Le menu n'est pas fait de cartes : sans ce marqueur, ses
+                // pastilles resteraient les seules billes éteintes de l'app.
+                // `data-champ` déclare la surface qui les éclaire.
+                data-champ=""
                 style={{
                   display: "flex", alignItems: "flex-start", gap: 11,
                   textAlign: "left", padding: "13px 15px", borderRadius: 16,
