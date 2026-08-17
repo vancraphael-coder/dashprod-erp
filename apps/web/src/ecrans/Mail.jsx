@@ -18,6 +18,8 @@ import {
 import { emailOffre, urlMailto } from "@domaine/communication/brief.js";
 import { mailsEffectifs, remplirJetons } from "@domaine/communication/mails.js";
 import { genererCode } from "@domaine/portail/acces.js";
+import { piecesDuMail, corpsAvecLiens, avertissement }
+  from "@domaine/communication/pieces-jointes.js";
 import { C, S } from "../lib/theme.jsx";
 import FilMessages from "./FilMessages.jsx";
 
@@ -27,6 +29,9 @@ export default function Mail({ affaireId, retour, versOffre }) {
   const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState(null);
   const [lien, setLien] = useState(null);      // { code, url } une fois généré
+  // Insérer les liens de téléchargement dans le corps. Décoché par défaut :
+  // on n'ajoute pas d'URL au message de quelqu'un sans le lui demander.
+  const [avecLiens, setAvecLiens] = useState(false);
   const [validiteJours, setValiditeJours] = useState(30);
   const [cbd, setCbd] = useState(null);        // URL signée des conditions
   const [enCours, setEnCours] = useState(false);
@@ -96,6 +101,24 @@ export default function Mail({ affaireId, retour, versOffre }) {
     })();
   }, [affaireId, lien]);
 
+  // Ce qui PEUT voyager : une pièce n'accompagne le mail que si elle a un
+  // lien public. Le reste est à joindre à la main, et on le dit.
+  const pieces = useMemo(() => {
+    const modele = estOffreChoix(choix) ? "offre"
+                 : (modeles.find((x) => x.cle === choix) || {}).piece || "offre";
+    return piecesDuMail({
+      // Le lien de l'offre n'existe QUE si le code vient d'être généré dans
+      // cette session. Un accès déjà actif ne permet pas de le reconstruire :
+      // on n'en conserve que l'indice, jamais le code complet — c'est ce qui
+      // rend la signature opposable. Sans lien, la pièce est annoncée comme
+      // « à joindre à la main » plutôt que silencieusement absente.
+      offre: lien?.url || null,
+      conditions: cbd || null,
+    }, modele);
+  }, [choix, modeles, lien, cbd]);
+
+  const avisPieces = useMemo(() => avertissement(pieces), [pieces]);
+
   // Le mail réellement affiché : l'offre, ou un modèle rempli avec le contexte.
   const mail = useMemo(() => {
     let base;
@@ -116,8 +139,16 @@ export default function Mail({ affaireId, retour, versOffre }) {
       const rappel = texteRappelSignature(lien, acces);
       if (rappel) base = { ...base, corps: `${base.corps}\n\n${rappel}` };
     }
+
+    // Les liens de téléchargement, à la demande. C'est la seule façon de
+    // faire parvenir un document par « Ouvrir dans Mail » : `mailto:` ne
+    // transporte pas de fichier (RFC 6068), aucun navigateur n'y peut rien.
+    if (avecLiens && pieces.length > 0) {
+      base = { ...base, corps: corpsAvecLiens(base.corps, pieces) };
+    }
     return base;
-  }, [choix, mailOffre, modeles, contexte, raccourci, lien, acces]);
+  }, [choix, mailOffre, modeles, contexte, raccourci, lien, acces,
+      avecLiens, pieces]);
 
   async function copier() {
     const texte = `À : ${mail.a}\nObjet : ${mail.objet}\n\n${mail.corps}`;
@@ -293,6 +324,25 @@ export default function Mail({ affaireId, retour, versOffre }) {
           tap, prête à être enregistrée puis glissée dans le mail. Le bloc
           s'adapte au modèle choisi — l'offre a ses deux PJ, un autre mail peut
           n'en avoir aucune. */}
+      {pieces.some((p) => p.url) && (
+        <div style={S.carte}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8,
+                          cursor: "pointer", fontSize: 12.5, color: C.encre }}>
+            <input type="checkbox" checked={avecLiens} style={{ marginTop: 2 }}
+                   onChange={(e) => setAvecLiens(e.target.checked)} />
+            <span>
+              Insérer les liens de téléchargement dans le message
+              <span style={{ display: "block", fontSize: 11.5, color: C.muet,
+                             marginTop: 2, lineHeight: 1.5 }}>
+                Le client clique et télécharge. C'est la seule façon de faire
+                parvenir un document par « Ouvrir dans Mail » : un lien mail ne
+                transporte pas de fichier.
+              </span>
+            </span>
+          </label>
+        </div>
+      )}
+
       <PiecesJointes choix={choix} instance={instance} cbd={cbd}
         versOffre={() => versOffre(affaireId)}
         piece={choix === "offre" ? "offre"
@@ -332,12 +382,16 @@ export default function Mail({ affaireId, retour, versOffre }) {
           fontSize: 13.5, fontWeight: 700,
         }}>✉️ Ouvrir dans Mail</a>
       </div>
-      <div style={{ margin: "10px 16px 0", fontSize: 11, color: C.fantome,
-                    textAlign: "center", lineHeight: 1.5 }}>
-        {estOffre
-          ? "Joignez le PDF de l'offre dans votre application mail avant l'envoi."
-          : "Ajoutez vos pièces jointes dans votre application mail si nécessaire."}
-      </div>
+      {/* Ce qu'on dit sur les pièces : la CAUSE est nommée. Sans elle, le
+          bureau croit à une panne de Dashprod et cherche un réglage qui
+          n'existe pas. */}
+      {avisPieces.message && (
+        <div style={{ margin: "10px 16px 0", fontSize: 11.5, lineHeight: 1.5,
+                      textAlign: "center",
+                      color: avisPieces.ton === "ok" ? C.muet : C.ambre }}>
+          {avisPieces.message}
+        </div>
+      )}
 
       {/* Journal manuel : le bureau marque ce qu'il a réellement envoyé. */}
       <div style={{ margin: "16px 16px 0" }}>

@@ -9,6 +9,7 @@
 import React, { useEffect, useState } from "react";
 import { conversations } from "../lib/adaptateur.js";
 import FilMessages from "./FilMessages.jsx";
+import RaccourciBoite from "../composants/RaccourciBoite.jsx";
 import { C, S } from "../lib/theme.jsx";
 
 export default function Conversations({ ouvrirDossier }) {
@@ -43,7 +44,13 @@ export default function Conversations({ ouvrirDossier }) {
   return (
     <div style={S.page}>
       <div style={S.entete}>
-        <div style={S.titre}>Conversations</div>
+        <div style={{ display: "flex", justifyContent: "space-between",
+                      alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+          <div style={S.titre}>Conversations</div>
+          {/* Le bureau passe son temps entre Dashprod et sa boîte : un aller
+              simple évite de rechercher l'onglet à chaque fois. */}
+          <RaccourciBoite />
+        </div>
         <div style={{ fontSize: 12.5, color: C.muet, marginTop: 2 }}>
           Tous vos échanges avec les clients, au même endroit.
         </div>
