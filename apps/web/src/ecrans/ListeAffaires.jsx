@@ -27,7 +27,7 @@ import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 // avec son compteur. On retrouve d'un coup d'œil où est la charge. Les vues
 // vivent dans le domaine (crm/vues-dossiers), testées.
 
-export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
+export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarnet }) {
   const [affaires, setAffaires] = useState([]);
   const [menuOuvert, setMenuOuvert] = useState(false);
   const [recherche, setRecherche] = useState("");
@@ -72,7 +72,15 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire }) {
     <div style={S.page}>
       <div style={S.entete}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <div style={S.titre}>Dossiers</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+            <div style={S.titre}>Dossiers</div>
+            {/* Le carnet se consulte depuis la liste : c'est là qu'on cherche
+                un client, pas dans les réglages. */}
+            {versCarnet && (
+              <button style={{ ...S.boutonLien, padding: 0, fontSize: 12.5 }}
+                      onClick={versCarnet}>Carnet</button>
+            )}
+          </div>
           <div style={{ fontSize: 12.5, color: C.muet }}>
             {urgent.total > 0 ? (
               <span style={{ color: urgent.retard > 0 ? C.rouge : C.bleu,
