@@ -14,7 +14,7 @@ import {
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
-import { disponibiliteRessource, verdictMission }
+import { disponibiliteRessource, verdictMission, lecteurDisponibilite }
   from "@domaine/operations/missions.js";
 import { qualifierJour } from "@domaine/planning/jours-feries.js";
 import { hhmm, resumeHoraires, verifierHoraires, HEURE_DEFAUT }
@@ -102,35 +102,23 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
    * c'est ce qui rend un doublon visible au lieu de le masquer dès sa
    * création (INC-19).
    */
-  function dispoMembre(membreId, mission) {
-    const engagements = missions
-      .filter((m) => (m.affectations || []).some((a) => a.utilisateur_id === membreId))
-      .map((m) => ({ missionId: m.id, date: m.date }));
-    // SEULS les congés ACCORDÉS rendent indisponible. Une demande en attente
-    // n'est pas une absence : bloquer dessus reviendrait à laisser le membre
-    // décider seul de son planning, alors que la décision revient au bureau.
-    // Elle est signalée ailleurs (pastille creuse au calendrier).
-    const congesMembre = conges
-      .filter((c) => c.utilisateur_id === membreId && c.etat !== "demande")
-      .map((c) => ({ debut: c.debut, fin: c.fin }));
-    return disponibiliteRessource({
-      date: mission.date, missionId: mission.id,
-      conges: congesMembre, affectations: engagements,
-    });
-  }
+  // La composition (rassembler engagements et congés) vit dans le domaine
+  // depuis le lot 10f : elle était écrite ici, et il aurait fallu la recopier
+  // sur les cartes de date. Trois copies d'une règle de conflit, c'est trois
+  // occasions de diverger — et une divergence se traduit par un doublon que
+  // plus personne ne signale.
+  const dispo = useMemo(() => lecteurDisponibilite({ missions, conges }),
+                        [missions, conges]);
+
+  const dispoMembre = (membreId, mission) =>
+    dispo.membre(membreId, { date: mission.date, missionId: mission.id });
 
   /**
    * Disponibilité d'un VÉHICULE. Aucun contrôle n'existait : un camion pouvait
    * être posé sur deux chantiers le même jour sans que rien ne le signale.
    */
-  function dispoCamion(camionId, mission) {
-    const engagements = missions
-      .filter((m) => (m.camions || []).includes(camionId))
-      .map((m) => ({ missionId: m.id, date: m.date }));
-    return disponibiliteRessource({
-      date: mission.date, missionId: mission.id, affectations: engagements,
-    });
-  }
+  const dispoCamion = (camionId, mission) =>
+    dispo.vehicule(camionId, { date: mission.date, missionId: mission.id });
 
   /** Verdict d'ensemble d'une mission, pour l'alerte en tête de carte. */
   function verdictDe(mission) {

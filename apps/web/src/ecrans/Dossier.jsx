@@ -7,15 +7,16 @@
 // remarques. Les autres sections mènent aux écrans dédiés.
 // =============================================================================
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
   obtenirOrganisation,
   obtenirAffaire, obtenirContact, sauverContact, sauverMission,
   missionsAffaire, affecterMission, sauverAffectationsPrevues,
-  listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
+  listerMissions, listerConges,
+  listerVehicules,
   obtenirClientFacturation, sauverClientFacturation,
   obtenirClientIdentite, sauverClientIdentite,
-  listerMembresSimples, obtenirEquipeAffaire, sauverEquipeAffaire,
+  listerMembresSimples,
   validerDossierTerrain, obtenirInstance, confirmerAffaire, archiverAffaire,
   annulerAffaire, reporterAffaire, reprendreAffaire, etatFacturation,
   exigencesCloture, cloturerDossier, rouvrirDossier,
@@ -28,6 +29,8 @@ import { adresseDepot } from "@domaine/organisation/identite.js";
 import { CIVILITES } from "@domaine/crm/civilite.js";
 import { synthese, verdict, pictoStatut, lignesBilan, mentionDerogation }
   from "@domaine/crm/cloture.js";
+import { lecteurDisponibilite } from "@domaine/operations/missions.js";
+import Bille from "../composants/Bille.jsx";
 import CarteDate from "../composants/CarteDate.jsx";
 import { VoletAffectation } from "../composants/Affectation.jsx";
 import { BandeauNature, BlocDonneurOrdre, BlocSousTraitance, BlocLift }
@@ -63,12 +66,10 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
   const [flotte, setFlotte] = useState([]);
-  const [camions, setCamions] = useState([]);
   const [facturation, setFacturation] = useState(null);
   const [factOuvert, setFactOuvert] = useState(false);
   const [identite, setIdentite] = useState(null);
   const [membres, setMembres] = useState([]);
-  const [equipe, setEquipe] = useState([]);
   const [instance, setInstance] = useState(null);
   const [modifie, setModifie] = useState(false);
   // L'argent a son propre cycle, dérivé des factures (0064). Nom distinct de
@@ -80,6 +81,10 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   // Les missions du dossier, chacune avec son affectation propre. Depuis
   // 0131, c'est la mission qui fait foi au planning, plus l'affaire.
   const [missions, setMissions] = useState([]);
+  // Les AUTRES chantiers et les congés : sans eux, aucun conflit n'est
+  // visible. Un doublon ne se voit qu'en regardant au-delà du dossier courant.
+  const [toutesMissions, setToutesMissions] = useState([]);
+  const [conges, setConges] = useState([]);
   // L'affectation PRÉVUE par date. Elle vit sur l'affaire et existe donc dès
   // la saisie, avant qu'une mission existe en base.
   const [prevues, setPrevues] = useState({});
@@ -95,12 +100,12 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       setPrevues(a?.affectations || {});
     });
     listerVehicules().then(setFlotte).catch(() => {});
-    obtenirCamionsAffaire(affaireId).then(setCamions).catch(() => {});
     obtenirClientFacturation(affaireId).then(setFacturation).catch(() => {});
     obtenirClientIdentite(affaireId).then(setIdentite).catch(() => {});
     listerMembresSimples().then(setMembres).catch(() => {});
-    obtenirEquipeAffaire(affaireId).then(setEquipe).catch(() => {});
     missionsAffaire(affaireId).then(setMissions).catch(() => setMissions([]));
+    listerMissions().then(setToutesMissions).catch(() => setToutesMissions([]));
+    listerConges().then(setConges).catch(() => setConges([]));
     obtenirInstance(affaireId).then(setInstance).catch(() => {});
     // L'amorce suit le MÉTIER : créer une ligne de déchargement vide sur un
     // lift laisserait une adresse fantôme en base, dans un groupe que l'écran
@@ -126,6 +131,13 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     return () => declarerModifs(false, null);
   }, [modifie]);
 
+  // La règle de conflit vient du domaine : elle ne doit exister qu'une fois.
+  // AVANT le return conditionnel : un hook placé après ne serait pas appelé au
+  // premier rendu, et React rend un écran blanc (§3 — attrapé par le test).
+  const dispo = useMemo(
+    () => lecteurDisponibilite({ missions: toutesMissions, conges }),
+    [toutesMissions, conges]);
+
   if (!affaire || !contact) return null;
 
   function majAdr(liste, id, champ, valeur) {
@@ -147,24 +159,14 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   function majFact(champ, valeur) { setFacturation((f) => ({ ...f, [champ]: valeur })); setSauve(false); setModifie(true); }
   function majIdentite(champ, valeur) { setIdentite((x) => ({ ...x, [champ]: valeur })); setSauve(false); setModifie(true); }
 
-  async function basculerCamion(id) {
-    const suivant = camions.includes(id)
-      ? camions.filter((x) => x !== id) : [...camions, id];
-    setCamions(suivant);
-    setSauve(false); setModifie(true);
-  }
-  function basculerMembre(id) {
-    setEquipe((e) => e.includes(id) ? e.filter((x) => x !== id) : [...e, id]);
-    setSauve(false); setModifie(true);
-  }
-
   async function enregistrer() {
     setErreur(null);
     try {
       if (identite) await sauverClientIdentite(affaireId, identite);
       await sauverContact(affaireId, contact);
-      await sauverCamionsAffaire(affaireId, camions);
-      await sauverEquipeAffaire(affaireId, equipe);
+      // `equipe` et `camions` ne sont plus écrits ici : la mission principale
+      // fait foi et les miroite sur le dossier (0136). Les réécrire depuis un
+      // état d'écran périmé écraserait une affectation faite au planning.
       if (facturation) await sauverClientFacturation(affaireId, facturation);
       // Les natures sans relevé portent leur saisie ici : sans cette ligne,
       // hommes, heures et kilomètres seraient perdus à chaque enregistrement.
@@ -192,23 +194,48 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const typeMissionPrincipale = { lift: "lift", sous_traitance: "sous_traitance" }[
     affaire.nature] || "demenagement";
 
-  /** Pose l'affectation d'une date et l'enregistre aussitôt. */
-  async function majPrevue(cle, a) {
+  /**
+   * UNE SEULE COMMANDE PAR DATE. La carte écrit là où est la vérité :
+   * sur la MISSION dès qu'elle existe (0131), sur le dossier avant.
+   * Il y avait trois commandes pour cette donnée — la carte, le volet de la
+   * mission, et le sélecteur « Équipe ». Elles se contredisaient à l'écran.
+   */
+  async function majAffectation(cle, typeMission, a) {
+    const m = missionDe(typeMission);
+    if (m) {
+      setMissions((l) => l.map((x) =>
+        x.id === m.id ? { ...x, affectation: a } : x));
+      try { await affecterMission(m.id, a.membres, a.vehicules); }
+      catch (e) { setErreur(e.message); }
+      return;
+    }
     const suivant = { ...prevues, [cle]: a };
     setPrevues(suivant);
     try { await sauverAffectationsPrevues(affaireId, suivant); }
     catch (e) { setErreur(e.message); }
   }
 
+  const missionDe = (type) => missions.find((m) => m.type === type) || null;
+
+  // Les trois cartes de date couvrent la mission principale, la visite et
+  // l'emballage. Une mission d'un autre type (créée à la main au planning)
+  // n'aurait plus aucune porte depuis le dossier : elle reste affichée.
+  const typesAvecCarte = [typeMissionPrincipale, "visite", "emballage"];
+  const missionsSansCarte = missions.filter(
+    (m) => !typesAvecCarte.includes(m.type));
+
   // Un lift ne se réserve qu'avec un véhicule de catégorie « lift ». Pour les
   // autres natures, toute la flotte reste offerte.
-  const flotteOfferte = affaire.nature === "lift"
-    ? flotte.filter((v) => v.categorie === "lift")
-    : flotte;
 
   // L'étage maximal du lift choisi, confronté aux adresses du dossier. C'est
   // ce contrôle qui donne son utilité à la donnée saisie au lot 4 : une
   // information qu'on ne confronte jamais ne sert à rien.
+  // Les véhicules du dossier ne se chargent plus à part : ils SONT ceux de la
+  // mission principale — ou, avant qu'elle existe, ceux prévus sur sa carte.
+  // Deux sources pour une même liste, c'est deux réponses possibles à « quel
+  // camion part ce jour-là ».
+  const camions = (missionDe(typeMissionPrincipale)?.affectation
+                   || prevues.principale || {}).vehicules || [];
   const liftChoisi = flotte.find((v) => camions.includes(v.id) && v.categorie === "lift");
   const verdictLift = liftChoisi
     ? liftSuffit(liftChoisi, [...(contact?.charges || []), ...(contact?.decharges || [])])
@@ -351,7 +378,8 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         date={contact.date} heure={contact.heure}
         onDate={(v) => maj("date", v)} onHeure={(v) => maj("heure", v)}
         affectation={prevues.principale} membres={membres} flotte={flotte}
-        onAffectation={(a) => majPrevue("principale", a)} />
+        mission={missionDe(typeMissionPrincipale)} dispo={dispo}
+        onAffectation={(a) => majAffectation("principale", typeMissionPrincipale, a)} />
 
       {parcoursComplet && (
         <>
@@ -360,31 +388,31 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             onDate={(v) => maj("dateVisite", v)}
             onHeure={(v) => maj("heureVisite", v)}
             affectation={prevues.visite} membres={membres} flotte={flotte}
-            onAffectation={(a) => majPrevue("visite", a)} />
+            mission={missionDe("visite")} dispo={dispo}
+            onAffectation={(a) => majAffectation("visite", "visite", a)} />
 
           <CarteDate typeMission="emballage" libelle="Emballage" facultative
             date={contact.dateEmballage} heure={contact.heureEmballage}
             onDate={(v) => maj("dateEmballage", v)}
             onHeure={(v) => maj("heureEmballage", v)}
             affectation={prevues.emballage} membres={membres} flotte={flotte}
-            onAffectation={(a) => majPrevue("emballage", a)} />
+            mission={missionDe("emballage")} dispo={dispo}
+            onAffectation={(a) => majAffectation("emballage", "emballage", a)} />
         </>
       )}
 
-      {/* Camions pressentis — reportés sur la mission à la confirmation (0022).
-          Un camion en alerte (méca urgente, CT expiré) reste sélectionnable
-          mais s'affiche en rouge : le système signale, l'humain décide. */}
-      {/* Une affectation par mission. Vide par défaut : reprendre l'équipe du
-          déménagement sur l'emballage bloquerait trois personnes une journée
-          parce qu'on aurait oublié de corriger. */}
-      {missions.length > 0 && (
+      {/* La liste « Affectations » a disparu : elle rejouait exactement les
+          cartes de date, avec d'autres mots et une autre cible d'écriture. Une
+          mission qui n'a PAS de carte (créée à la main au planning) reste
+          affichée ici — sinon elle deviendrait invisible depuis le dossier. */}
+      {missionsSansCarte.length > 0 && (
         <>
           <div style={{ fontSize: 11.5, fontWeight: 800, color: C.muet,
                         margin: "14px 16px 6px", textTransform: "uppercase",
                         letterSpacing: ".04em" }}>
-            Affectations ({missions.length})
+            Autres missions ({missionsSansCarte.length})
           </div>
-          {missions.map((m) => (
+          {missionsSansCarte.map((m) => (
             <VoletAffectation key={m.id} mission={m}
               membres={membres} flotte={flotte}
               valeur={m.affectation}
@@ -399,88 +427,27 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         </>
       )}
 
-      {flotteOfferte.length > 0 && (
-        <div style={S.carte}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
-            Véhicules ({camions.length})
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.muet,
-                           marginLeft: 8 }}>
-              — {LIBELLE_PRINCIPALE[affaire?.nature || "demenagement"]}
-            </span>
-          </div>
-
-          {/* Un lift ne se réserve qu'avec un lift : proposer un fourgon ici
-              n'aurait aucun sens. Les autres natures gardent toute la flotte. */}
-          {affaire.nature === "lift" && (
-            <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
-              Seuls les lifts sont proposés pour cette nature.
-            </div>
-          )}
-          {verdictLift.motif && (
-            <div style={{ fontSize: 12, marginBottom: 8, padding: "8px 10px",
-                          borderRadius: 9, lineHeight: 1.45,
-                          color: verdictLift.ok ? C.ambre : C.rouge,
-                          background: `${verdictLift.ok ? C.ambre : C.rouge}1F` }}>
-              {verdictLift.ok ? "⚠ " : "⛔ "}{verdictLift.motif}
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {flotteOfferte.map((v) => {
-              const sel = camions.includes(v.id);
-              const alerte = alertesVehicule(v).niveau === "urgent";
-              return (
-                <button key={v.id} onClick={() => basculerCamion(v.id)} style={{
-                  padding: "7px 12px", borderRadius: 999, cursor: "pointer",
-                  fontSize: 12.5, fontWeight: 600,
-                  border: `1.5px solid ${sel ? C.bleu : alerte ? "#F3C7C7" : C.bord}`,
-                  background: sel ? "#E7EFFC" : alerte ? "#FEF2F2" : C.blanc,
-                  color: sel ? C.bleu : alerte ? C.rouge : C.encre,
-                }}>
-                  {alerte ? "⚠ " : "🚛 "}{v.nom}
-                  <span style={{ color: sel ? C.bleu : C.fantome, fontWeight: 500 }}>
-                    {" "}· {v.volume_m3 || "?"} m³
-                  </span>
-                </button>
-              );
-            })}
+      {/* Le lift choisi monte-t-il assez haut ? Cet avertissement vivait sous
+          l'ancien sélecteur de véhicules ; il suit désormais la carte qui
+          choisit le lift. Le perdre aurait rendu muette la donnée d'étage
+          saisie au lot 4 — on signale, on n'interdit pas. */}
+      {!verdictLift.ok && (
+        <div style={{ ...S.carte, display: "flex", alignItems: "flex-start",
+                      gap: 9, borderLeft: `3px solid ${C.ambre}` }}>
+          <Bille taille="jeton" ton="orange" signe="attention" />
+          <div style={{ fontSize: 12, color: C.encre, lineHeight: 1.5 }}>
+            <strong>{liftChoisi?.nom}</strong> — {verdictLift.motif}
           </div>
         </div>
       )}
 
-      {/* L'équipe du dossier, c'est celle qui fait LE TRAVAIL : le jour
-          principal. Pas celle qui passe en visite la semaine d'avant, ni celle
-          qui emballe la veille — ces jours-là ont leur propre équipe, sur leur
-          propre carte. La relation avec le planning est réelle dans les deux
-          sens (0135) : cocher ici affecte la mission principale, et affecter
-          la mission principale au planning se voit ici. */}
-      {membres.length > 0 && (
-        <div style={S.carte}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
-            Équipe ({equipe.length})
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.muet,
-                           marginLeft: 8 }}>
-              — {LIBELLE_PRINCIPALE[affaire?.nature || "demenagement"]}
-            </span>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {membres.map((m) => {
-              const sel = equipe.includes(m.id);
-              return (
-                <button key={m.id} onClick={() => basculerMembre(m.id)} style={{
-                  padding: "7px 12px", borderRadius: 999, cursor: "pointer",
-                  fontSize: 12.5, fontWeight: 600,
-                  border: `1.5px solid ${sel ? C.bleu : C.bord}`,
-                  background: sel ? "#E7EFFC" : C.blanc,
-                  color: sel ? C.bleu : C.encre,
-                }}>
-                  {sel ? "✓ " : "👤 "}{m.nom}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Les sélecteurs « Équipe » et « Véhicules » de niveau dossier ont
+          disparu. Ils pilotaient la même affectation que la carte du jour
+          principal, mais à l'enregistrement et non au clic — d'où deux
+          affichages qui se contredisaient jusqu'au prochain « Enregistrer ».
+          `affaires.equipe` et `affaires.camions` restent alimentés, par le
+          miroir depuis la mission principale (0136), et continuent de servir
+          au chiffrage de la main-d'œuvre. */}
 
       {/* Ce qu'on vend — et, pour les natures sans relevé, leur chiffrage. */}
       <BandeauNature cle={affaire?.nature} />
