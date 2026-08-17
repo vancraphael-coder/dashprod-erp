@@ -3,7 +3,7 @@
 > **À lire en entier avant de coder.** Ce document permet à une nouvelle
 > conversation de reprendre le travail sans rien casser ni rien réinventer.
 >
-> **Dernière mise à jour :** 17/08/2026 — après le lot 10c.
+> **Dernière mise à jour :** 17/08/2026 — après le lot 10d.
 > **À mettre à jour tous les 7 messages**, ou en fin de conversation.
 > Procédure de mise à jour : §9.
 
@@ -119,7 +119,16 @@ accessible sur Supabase. Pour valider un trigger de confirmation, **exercer
 séparément chaque lecture et chaque insert de son corps** dans un bloc
 `do $$ … rollback $$` — c'est ce qui a validé 0130.
 
-### 3.8 Les tests statiques
+### 3.8 Intégrer au bon endroit, pas seulement intégrer
+La Bille du lot 10c ne vivait que dans les volets de mission, qui ne
+s'affichent **qu'après confirmation**. Techniquement intégrée, pratiquement
+invisible — Raphaël l'a dit tel quel : « tu ne l'as mise nulle part ».
+
+> Après avoir posé un élément d'interface, se demander **dans quel état du
+> dossier il apparaît réellement**. Un composant derrière une condition rare
+> n'est pas livré.
+
+### 3.9 Les tests statiques
 Plusieurs tests lisent les **sources** d'`apps/web` plutôt que d'importer
 (l'alias `@domaine` n'est résolu que par Vite). Ils ignorent les commentaires
 via `sansCommentaires()` — sinon un commentaire citant le bug fautif
@@ -220,8 +229,8 @@ Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 868/868 ✓ — build `apps/web` ✓ (210 modules)**
-**Migrations appliquées : jusqu'à `0131_affectation_par_mission`.**
+**`npm test` : 872/872 ✓ — build `apps/web` ✓ (211 modules)**
+**Migrations appliquées : jusqu'à `0133_report_affectation_par_mission`.**
 
 ### Lots livrés
 | lot | contenu | migrations |
@@ -241,6 +250,7 @@ Le suivi s'arrête sous `bouton` et sous `prefers-reduced-motion`.
 | 10a | Adresses par métier + vérité des affectations | — |
 | 10b | Une mission par date, affectation par mission, menu « + » en bulle | 0130–0131 |
 | 10c | **Correctif `scenarios.resultats`** + la Bille (mascotte partagée) | — |
+| 10d | Cartes de date avec affectation (la Bille enfin visible) | 0132–0133 |
 
 ### Reste à faire
 

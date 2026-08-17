@@ -1,79 +1,94 @@
-# Lot 10c — Correctif d'enregistrement & la Bille
+# Lot 10d — Cartes de date, et la Bille enfin visible
 
-**Aucune migration.** `npm test` : **868/868 ✓** — build : **✓ (210 modules)**.
-⚠️ **À déployer en priorité** : contient le correctif du bug d'enregistrement.
+Migrations **0132–0133**. `npm test` : **872/872 ✓** — build : **✓ (211 modules)**.
 
-## Le bug — il venait de moi
+## Tu avais raison : la bille n'était nulle part
 
-> `null value in column "resultats" of relation "scenarios" violates
-> not-null constraint`
+Je l'avais mise dans les volets d'affectation — qui ne s'affichent **que si le
+dossier a déjà des missions en base**, donc seulement après confirmation. Sur
+un dossier en cours de saisie, l'écran ne montrait rien. Techniquement
+intégrée, pratiquement invisible.
 
-`scenarios.resultats` est **NOT NULL sans valeur par défaut**. Mon
-`sauverMission` (lot 2b-2) créait un scénario sans le fournir : impossible
-d'enregistrer un dossier de lift ou de sous-traitance qui n'avait pas encore
-de scénario.
+Ta phrase donnait la solution : **c'est la section des dates** qui doit porter
+ces cartes. Chaque date est maintenant une carte avec :
 
-Corrigé : `resultats: {}` à la création. Un objet vide est honnête ici — la
-mission est saisie, elle n'est pas encore chiffrée, et c'est le devis qui
-remplira ce champ. Vérifié en base : sans `resultats` l'insert échoue bien,
-avec `{}` il passe, et la relecture du montant sur un `resultats` vide ne
-casse rien (le carnet lit `resultats->>'tvac_centimes'`).
+- une **bille en taille bouton** (44 px) — assez grande pour être le repère de
+  la carte et pour que son suivi 3D se voie
+- la date et l'heure
+- un **volet « Qui la fait »** avec chevron en bille, qui pivote à l'ouverture
+- l'équipe et les véhicules, filtrés par catégorie selon le type
+- un **avertissement en bille** quand il manque quelque chose
 
-**Ce que j'aurais dû faire :** vérifier `is_nullable` **et** `column_default`
-avant d'écrire un insert. Je ne regardais que les noms de colonnes. C'est
-ajouté aux pièges de `PASSATION.md` (§3.6).
+Le liseré de la carte reprend la couleur du voyant. Sans date posée, la bille
+reste grise avec un « + » et **aucune équipe n'est réclamée** — demander qui
+travaille un jour qui n'existe pas serait du bruit.
 
-## La Bille — la mascotte
+**L'affectation existe désormais avant la confirmation** (`affaires.affectations`,
+migration 0132), parce que c'est au moment où l'on pose une date qu'on pense à
+l'équipe. À la confirmation, **chaque mission reçoit SA prévision** — plus
+seulement le déménagement. Repli sur `affaires.equipe`/`camions` pour les
+dossiers d'avant, sinon leur équipe serait perdue.
 
-`apps/web/src/composants/Bille.jsx`. Reprise **exactement** des cartes
-d'abonnement de la vitrine : ce que le visiteur touche en découvrant Dashprod
-doit être ce qu'il retrouve tous les jours. Une identité qui s'arrête à la page
-d'accueil n'est pas une identité, c'est une affiche.
+Le libellé de la date principale suit le métier : « Déménagement », mais
+« Intervention lift », « Livraison » pour la sous-traitance. « Date souhaitée »
+ne dit rien pour un lift.
 
-**Quatre ingrédients**, et c'est leur combinaison qui fait la sphère :
+---
 
-1. **L'huile qui tourne** avec le curseur — bleu, ambre, bleu. Un aplat
-   donnerait un jeton.
-2. **Le reflet spéculaire** ovale et décentré en haut : il place la source de
-   lumière.
-3. **Le creux interne** en bas, qui empêche la bille de paraître collée.
-4. **La parallaxe INVERSÉE du signe** — la flèche, la croix ou l'attention se
-   déplacent à l'**inverse** du curseur, comme si elles flottaient au-dessus du
-   verre. C'est ce détail qui fait le relief ; dans l'autre sens, le signe
-   collerait au doigt et la bille paraîtrait plate.
+## Tes trois autres points : ce que j'ai compris, et ce qui me bloque
 
-**Quatre tailles nommées** — `puce` (14), `jeton` (22), `bouton` (44),
-`vedette` (84). Nommées et non chiffrées : un badge ne « fait pas 18 px », il
-est une puce.
+### Zone → événements, pas adresses
 
-**Six signes**, dessinés en SVG : chevron, flèche, croix, plus, attention,
-coche. En SVG parce qu'une police manquante transformerait une croix en carré
-vide — et un signe illisible sur un bouton d'action est pire que pas de signe.
+Tu décris une **zone événement**, de deux sortes :
 
-**Six tons**, chacun disant une chose : bleu (action), vert (fait), orange
-(attention), rouge (refus), gris (vide), ambre (le lift).
+- **avec livraison** → adresse(s), membre(s), camion(s), **coût trajet**, **CMR**
+- **entreposage** → m³, **multiples par client**
 
-### Où elle sert déjà
+C'est une refonte de la zone, pas un ajustement : il faut une table
+`zone_evenements` avec ces deux formes, le CMR comme document, et le coût de
+trajet dans le chiffrage. C'est un lot à part entière (lot 14).
 
-- **Voyants d'affectation** — gris / orange / vert, en taille puce
-- **Flèche de dépliage** des volets — elle pivote à l'ouverture
-- **Pastilles de métier** du menu « + »
+**Ce que je ne sais pas encore :** un CMR est un document de transport
+réglementaire (lettre de voiture CMR). Faut-il le **générer** depuis Dashprod,
+ou seulement **attacher** celui du donneur d'ordre ? Les deux sont légitimes et
+ne coûtent pas le même travail.
 
-Le voyant que j'avais écrit au lot 10a est **supprimé** : il redessinait la
-bille à côté, et deux définitions auraient divergé de la vitrine à la première
-retouche. Un test le verrouille.
+### Boxe et lift → grille « par exactitude »
 
-### Réglages respectés
+Tu écris : *pas par tranches (ou couronne → lift aussi) mais par exactitude*.
 
-Le suivi du curseur s'arrête sous la taille `bouton` — sur une puce de 14 px,
-une parallaxe de 2 px n'est que du bruit — et sous
-`prefers-reduced-motion`.
+Je le lis comme : **le prix se règle au m³ exact** (12 €/m³ → 7 m³ = 84 €)
+plutôt que par paliers, et **au km exact** pour le lift.
+
+Mais tu avais confirmé les couronnes il y a peu (« la couronne est bonne »), et
+je ne vais pas défaire un modèle validé sur une lecture. **Ma proposition :
+garder les deux modes, au choix de l'entreprise** — `paliers` ou `exact`. Un
+garde-meubles à la Shurgard vend au m³ exact ; un déménageur local préfère
+souvent trois paliers lisibles.
+
+Confirme-moi : **remplacer** les paliers, ou **ajouter** le mode exact ?
+
+### L'arborescence CORE / MÉTIERS
+
+Ton schéma décrit ce que devrait devenir `packages/domaine` : un **noyau**
+(CRM, Finance, Ops) et des **métiers** (Déménagement, Transport, Maintenance)
+qui s'appuient dessus.
+
+Aujourd'hui c'est déjà à moitié le cas — `crm/`, `chiffrage/`, `planning/`,
+`stocks/` sont des dossiers du noyau, et `commercial/natures.js` porte les
+métiers. Ce qui manque, c'est la **frontière explicite** : rien n'empêche
+aujourd'hui un module de noyau d'importer un module métier, ce qui finirait par
+rendre le noyau inutilisable sans le déménagement.
+
+C'est un travail de structure, à faire **avant** que les métiers grossissent —
+donc avant le lot 14. Il tient en deux choses : déplacer les fichiers en
+`noyau/` et `metiers/`, et **un test qui refuse toute importation du noyau vers
+un métier**. C'est ce test qui fait tenir l'architecture, pas l'arborescence.
+
+Dis-moi si je passe par là avant la zone.
+
+---
 
 ## Reste du lot 10
 
-⚠️ **Le backfill des affaires déjà confirmées** n'est toujours pas fait : elles
-n'ont ni mission d'emballage ni mission de visite. C'est la prochaine chose,
-avec vérification d'exécution.
-
-Puis lots 11 (couleurs et filtres du planning — la Bille y servira pour les
-types de mission), 12 (terrain : thème et congé), 13 (écran Messages).
+⚠️ Le **backfill des affaires déjà confirmées** n'est toujours pas fait.
