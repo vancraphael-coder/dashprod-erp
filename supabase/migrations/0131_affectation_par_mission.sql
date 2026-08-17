@@ -1,0 +1,6 @@
+-- 0131 — APPLIQUÉE EN LIVE via MCP le 17/08/2026 (stub de référence).
+-- cmd_missions_affaire : les missions avec leur affectation propre.
+-- cmd_mission_affecter : REMPLACE l'affectation (pas de différentiel client).
+-- `affaires.equipe` / `affaires.camions` restent l'équipe PRESSENTIE, utile au
+-- chiffrage — elles ne commandent plus le planning une fois les missions
+-- créées. Les supprimer aurait cassé le devis.

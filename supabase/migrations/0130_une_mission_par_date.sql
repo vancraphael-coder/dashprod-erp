@@ -1,0 +1,10 @@
+-- 0130 — APPLIQUÉE EN LIVE via MCP le 17/08/2026 (stub de référence).
+-- CHAQUE DATE A SA MISSION : déménagement/lift/sous-traitance (principale),
+-- emballage, visite. Boxe et zone n'en produisent aucune (récurrents).
+-- Deux bugs corrigés :
+--   · le report de l'équipe s'exécutait à CHAQUE confirmation — retirer
+--     quelqu'un puis reconfirmer le réajoutait. Il n'a lieu qu'à la création
+--     de la mission désormais : `if v_neuve then`.
+--   · centre_id n'était pas repris : les missions échappaient au cloisonnement.
+-- La mission principale porte le type de la NATURE : `when 'lift' then 'lift'`.
+-- Les natures récurrentes sont écartées : `in ('boxe', 'zone')`.
