@@ -1,0 +1,7 @@
+-- 0132 — APPLIQUÉE EN LIVE via MCP le 17/08/2026 (stub de référence).
+-- affaires.affectations jsonb : l'affectation PRÉVUE par date
+-- { visite | emballage | principale : { membres[], vehicules[] } }.
+-- Elle existe dès la saisie d'une date, avant toute confirmation — c'est là
+-- qu'on pense à l'équipe. cmd_affaire_affectations_definir refuse une clé
+-- inconnue (une faute de frappe perdrait l'affectation en silence).
+-- reporter_affectation_prevue() : la brique de report vers une mission.

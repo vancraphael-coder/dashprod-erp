@@ -1,0 +1,5 @@
+-- 0133 — APPLIQUÉE EN LIVE via MCP le 17/08/2026 (stub de référence).
+-- creer_missions_a_la_confirmation reporte désormais la prévision de CHAQUE
+-- date sur SA mission (visite → commercial, emballage → emballeur,
+-- principale → demenageur), et plus seulement le déménagement.
+-- Repli sur affaires.equipe/camions pour les dossiers d'avant 0132.
