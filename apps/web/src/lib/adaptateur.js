@@ -1400,6 +1400,33 @@ export async function creerDossierVide(nature = "demenagement", clientId = null)
 
 // ── Équipe pressentie du dossier (symétrique aux camions) ─────────────────────
 
+/**
+ * Les missions d'une affaire avec leur affectation propre. C'est la mission
+ * qui fait foi depuis 0131 — `affaires.equipe` reste l'équipe PRESSENTIE,
+ * utile au chiffrage, mais ne commande plus le planning.
+ */
+export async function missionsAffaire(affaireId) {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.rpc("cmd_missions_affaire",
+    { p_affaire: affaireId });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/**
+ * Pose l'affectation complète d'une mission. On REMPLACE : l'écran envoie
+ * l'état voulu, un différentiel finirait par diverger de la base au premier
+ * aller-retour manqué.
+ */
+export async function affecterMission(missionId, membres, vehicules) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.rpc("cmd_mission_affecter", {
+    p_mission: missionId,
+    p_membres: membres || [], p_vehicules: vehicules || [] });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 /** Membres pressentis d'une affaire (identifiants). */
 export async function obtenirEquipeAffaire(affaireId) {
   if (modeDonnees() === "reel") {
