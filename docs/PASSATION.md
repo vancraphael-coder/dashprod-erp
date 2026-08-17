@@ -3,7 +3,7 @@
 > **À lire en entier avant de coder.** Ce document permet à une nouvelle
 > conversation de reprendre le travail sans rien casser ni rien réinventer.
 >
-> **Dernière mise à jour :** 17/08/2026 — après le lot 10a.
+> **Dernière mise à jour :** 17/08/2026 — après le lot 10b.
 > **À mettre à jour tous les 7 messages**, ou en fin de conversation.
 > Procédure de mise à jour : §9.
 
@@ -101,7 +101,14 @@ clair y devient un pavé aveuglant. Toujours passer par les jetons `C.*` et
 `packages/domaine/tests/mode-nuit.test.js` refuse la récidive (liste noire de
 pastels, interdiction de `C.violet`).
 
-### 3.6 Les tests statiques
+### 3.6 Les triggers d'état ne se testent pas au SQL nu
+`affaires.etat` est protégé par `bloquer_update_etat()` : tout UPDATE hors
+`cmd_transition_affaire` est refusé, et `session_replication_role` n'est pas
+accessible sur Supabase. Pour valider un trigger de confirmation, **exercer
+séparément chaque lecture et chaque insert de son corps** dans un bloc
+`do $$ … rollback $$` — c'est ce qui a validé 0130.
+
+### 3.7 Les tests statiques
 Plusieurs tests lisent les **sources** d'`apps/web` plutôt que d'importer
 (l'alias `@domaine` n'est résolu que par Vite). Ils ignorent les commentaires
 via `sansCommentaires()` — sinon un commentaire citant le bug fautif
@@ -191,8 +198,8 @@ Bulle en relief, liseré de carte assorti, flèche pour dérouler.
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 859/859 ✓ — build `apps/web` ✓ (207 modules)**
-**Migrations appliquées : jusqu'à `0129_carnet_correctif_montant`.**
+**`npm test` : 865/865 ✓ — build `apps/web` ✓ (209 modules)**
+**Migrations appliquées : jusqu'à `0131_affectation_par_mission`.**
 
 ### Lots livrés
 | lot | contenu | migrations |
@@ -210,25 +217,26 @@ Bulle en relief, liseré de carte assorti, flèche pour dérouler.
 | 8 | Carnet de contacts | 0128–0129 |
 | 9 | Messagerie : liens de téléchargement + raccourci boîte | — |
 | 10a | Adresses par métier + vérité des affectations | — |
+| 10b | Une mission par date, affectation par mission, menu « + » en bulle | 0130–0131 |
 
 ### Reste à faire
 
-**Lot 10b — le structurel, en cours**
-- [ ] Le lift devient un **type de mission**
-- [ ] Les quatre dates créent **chacune leur mission** (visite / emballage /
-      lift / déménagement)
-- [ ] `VoletAffectation` (déjà écrit, `apps/web/src/composants/Affectation.jsx`)
-      **branché sur les missions réelles** du dossier
-- [ ] **Reprise des données** : l'équipe vit aujourd'hui sur `affaires.equipe`
-      et `affaires.camions`, elle doit passer sur `mission_affectations` /
-      `mission_vehicules` de la mission de déménagement **sans rien perdre**.
-      ⚠️ C'est le point risqué du lot.
-- [ ] Le conflit de disponibilité se calcule **par mission**
-
-*État actuel de la base :* `missions` porte déjà `type`, `date`, `centre_id`
-et ses propres affectations. Le trigger `creer_missions_a_la_confirmation`
-crée `demenagement` + `emballage`, mais **ne recopie l'équipe et les véhicules
-que sur la mission de déménagement** — l'emballage naît sans personne.
+**Lot 10b — LIVRÉ**, sauf un point :
+- [x] Le lift est un **type de mission** (la mission principale porte le type
+      de la nature ; boxe et zone n'en produisent aucune, elles sont récurrentes)
+- [x] Les dates créent chacune leur mission : principale + emballage + visite
+- [x] `VoletAffectation` branché sur les missions réelles du dossier
+- [x] **Deux bugs corrigés** : le report d'équipe s'exécutait à CHAQUE
+      confirmation (retirer quelqu'un puis reconfirmer le réajoutait), et
+      `centre_id` n'était pas repris sur les missions créées
+- [ ] ⚠️ **RESTE : la reprise des dossiers DÉJÀ confirmés.** Les affaires
+      confirmées avant 0130 n'ont ni mission d'emballage ni mission de visite,
+      même quand leurs dates existent. Le trigger ne se déclenche qu'à la
+      transition vers `confirme`. Il faut un **backfill** :
+      pour chaque affaire `confirme`+ avec `date_emballage` / `date_visite`
+      sans mission correspondante, créer la mission (affectation vide).
+      À écrire et à EXÉCUTER avant de considérer le lot clos.
+- [ ] Le conflit de disponibilité calculé **par mission**
 
 **Lot 11 — couleurs et vue du planning**
 - [ ] Une couleur par type de mission, réglable dans Apparence
