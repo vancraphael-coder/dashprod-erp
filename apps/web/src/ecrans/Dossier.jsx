@@ -32,6 +32,8 @@ import { BandeauNature, BlocDonneurOrdre, BlocSousTraitance, BlocLift }
 import { comporte as comporteEtape } from "@domaine/commercial/natures.js";
 import { ETAGES_RAPIDES, libelleEtage, niveau, estRelisible, liftSuffit }
   from "@domaine/planning/etages.js";
+import { planAdresses, titreAdresse, peutAjouter }
+  from "@domaine/commercial/adresses.js";
 import { C, S, Badge, BadgeFacturation, euros, declarerModifs, Confirmation }
   from "../lib/theme.jsx";
 
@@ -79,11 +81,20 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     listerMembresSimples().then(setMembres).catch(() => {});
     obtenirEquipeAffaire(affaireId).then(setEquipe).catch(() => {});
     obtenirInstance(affaireId).then(setInstance).catch(() => {});
-    obtenirContact(affaireId).then((c) => setContact({
-      ...c,
-      charges: c.charges.length ? c.charges : [adrVide()],
-      decharges: c.decharges.length ? c.decharges : [adrVide()],
-    }));
+    // L'amorce suit le MÉTIER : créer une ligne de déchargement vide sur un
+    // lift laisserait une adresse fantôme en base, dans un groupe que l'écran
+    // n'affiche même pas.
+    Promise.all([obtenirAffaire(affaireId), obtenirContact(affaireId)])
+      .then(([a, c]) => {
+        const groupes = planAdresses(a?.nature || "demenagement").map((g) => g.cle);
+        const amorce = { ...c };
+        for (const cle of ["charges", "decharges"]) {
+          const existantes = c?.[cle] || [];
+          amorce[cle] = existantes.length ? existantes
+            : (groupes.includes(cle) ? [adrVide()] : []);
+        }
+        setContact(amorce);
+      });
   }, [affaireId]);
 
   // Garde de modifications — DOIT être avant tout return conditionnel (règle
@@ -441,15 +452,16 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           onChange={(m) => { setMission(m); setModifie(true); }} />
       )}
 
-      {/* Adresses */}
-      <BlocAdresses titre="Chargement" liste={contact.charges}
-        onMaj={(id, ch, v) => majAdr("charges", id, ch, v)}
-        onAjouter={() => ajouterAdr("charges")}
-        onRetirer={(id) => retirerAdr("charges", id)} />
-      <BlocAdresses titre="Déchargement" liste={contact.decharges}
-        onMaj={(id, ch, v) => majAdr("decharges", id, ch, v)}
-        onAjouter={() => ajouterAdr("decharges")}
-        onRetirer={(id) => retirerAdr("decharges", id)} />
+      {/* Les adresses suivent le vocabulaire du MÉTIER, pas un moule commun :
+          un lift ne charge rien, il se pose devant une façade ; une
+          sous-traitance part d'un enlèvement vers plusieurs livraisons ; une
+          zone est un flux, pas un trajet. Voir @domaine/commercial/adresses. */}
+      {planAdresses(affaire.nature || "demenagement").map((g) => (
+        <BlocAdresses key={g.cle} groupe={g} liste={contact[g.cle] || []}
+          onMaj={(id, ch, v) => majAdr(g.cle, id, ch, v)}
+          onAjouter={() => ajouterAdr(g.cle)}
+          onRetirer={(id) => retirerAdr(g.cle, id)} />
+      ))}
 
       {/* Itinéraire multi-arrêts : zéro API payante — Maps s'ouvre, on lit
           distance et durée (alignement 02 §3). */}
@@ -1194,15 +1206,29 @@ function ZoneDesistement({ affaire, affaireId, onFait }) {
   );
 }
 
-function BlocAdresses({ titre, liste, onMaj, onAjouter, onRetirer }) {
+function BlocAdresses({ groupe, liste, onMaj, onAjouter, onRetirer }) {
   return (
     <div style={S.carte}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 4 }}>
-        {titre} ({liste.length})
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 2 }}>
+        {groupe.titre}{liste.length > 1 ? ` (${liste.length})` : ""}
       </div>
+      {/* La phrase qui évite une mauvaise saisie : « vide si le donneur
+          d'ordre livre lui-même » vaut mieux qu'un champ obligatoire mal
+          rempli. */}
+      {groupe.aide && (
+        <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 8,
+                      lineHeight: 1.45 }}>{groupe.aide}</div>
+      )}
       {liste.map((a, i) => (
         <div key={a.id} style={{ borderTop: i > 0 ? `1px solid ${C.bord}` : "none",
                                   paddingTop: i > 0 ? 10 : 0, marginTop: i > 0 ? 10 : 0 }}>
+          {(groupe.numerote || liste.length > 1) && (
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.muet,
+                          marginBottom: 5, textTransform: "uppercase",
+                          letterSpacing: ".04em" }}>
+              {titreAdresse(groupe, i, liste.length)}
+            </div>
+          )}
           <label style={S.label}>Adresse {liste.length > 1 ? i + 1 : ""}</label>
           <input style={S.input} value={a.adresse}
                  onChange={(e) => onMaj(a.id, "adresse", e.target.value)}
@@ -1290,9 +1316,17 @@ function BlocAdresses({ titre, liste, onMaj, onAjouter, onRetirer }) {
           </div>
         </div>
       ))}
-      <button style={{ ...S.boutonLien, paddingLeft: 0, marginTop: 8 }} onClick={onAjouter}>
-        + Ajouter une adresse
-      </button>
+      {/* Un maximum par métier : cinq livraisons dans une tournée se gèrent,
+          quinze ne se gèrent plus dans un formulaire. */}
+      {peutAjouter(groupe, liste) ? (
+        <button style={{ ...S.boutonLien, paddingLeft: 0, marginTop: 8 }} onClick={onAjouter}>
+          + Ajouter {groupe.numerote ? `${groupe.titre.toLowerCase()} ${liste.length + 1}` : "une adresse"}
+        </button>
+      ) : (
+        <div style={{ fontSize: 11.5, color: C.muet, marginTop: 8 }}>
+          Maximum {groupe.max} atteint.
+        </div>
+      )}
     </div>
   );
 }
