@@ -9,6 +9,7 @@ import React from "react";
 import { lireApparence, jetons, matiereCarte, fondPage, rgbAccent, couleurUtilite }
   from "./apparence.js";
 import { installerCartesVives } from "./cartes-vives.js";
+import { matiereSurface } from "./matiere-bille.js";
 
 // Le réglage d'apparence choisi par la personne (mode, accent, matière). Il est
 // lu UNE fois au chargement : les styles étant en ligne, un changement à chaud
@@ -27,6 +28,18 @@ if (typeof document !== "undefined") {
 // Relief 3D et lueur au curseur sur toutes les cartes, en un seul écouteur.
 installerCartesVives(APP.relief !== false, rgbAccent(APP.accent),
                      APP.matiere === "verre");
+
+// La matière de la BILLE suit la surface, et c'est la même règle que §3.5 : de
+// nuit ou en « verre », il y a quelque chose derrière elle — elle est
+// translucide et le trouble. De jour sur blanc, un verre transparent ne montre
+// rien : elle est peinte. Une seule opacité pour les deux modes donnerait soit
+// un pavé opaque de nuit, soit un lavis pâle de jour.
+if (typeof document !== "undefined") {
+  const m = matiereSurface(APP.mode === "nuit" || APP.matiere === "verre");
+  for (const [cle, val] of Object.entries(m)) {
+    document.documentElement.style.setProperty(cle, val);
+  }
+}
 
 // Typographie du modèle validé (roovers-mobile) : Fira Sans pour le texte,
 // Fira Code pour les libellés techniques et les montants. Injectées une fois.

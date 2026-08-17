@@ -15,10 +15,25 @@
 //
 // Sobriété : rien ne s'active au doigt (pointeur grossier) ni si la personne a
 // demandé « mouvement réduit » — l'effet est un plaisir, pas une condition.
+//
+// LA CARTE EST LA SOURCE DE LUMIÈRE. Elle ne garde pas sa position de curseur
+// pour elle : elle publie aussi l'ANGLE d'où vient la lumière et la position
+// normalisée du regard. Les billes posées dessus n'ont donc plus à se
+// surveiller elles-mêmes — une bille de 14 px qui écoute sa propre boîte ne
+// mesure que du bruit, et c'est pour ça qu'elles étaient mortes. Une seule
+// source, un seul écouteur, et tout ce qui est sur la carte s'éclaire
+// ensemble : c'est cet accord qui se lit comme du relief.
+//
+// Ces variables sont héritées par les descendants — aucun câblage à faire côté
+// composant, et une surface qui n'est pas une carte peut se déclarer champ de
+// lumière avec `data-champ` (un item de menu, un panneau flottant).
 // =============================================================================
 
 const ID = "cartes-vives";
 const INCLINAISON = 6;      // degrés — au-delà, un tableau de bord donne le tournis
+
+/** Les surfaces qui éclairent ce qu'elles portent. */
+const CHAMPS = '[style*="--carte-vive"], [data-champ]';
 
 export function installerCartesVives(actif, accentRgb = "37,99,235", verre = false) {
   if (typeof document === "undefined") return;
@@ -66,7 +81,7 @@ export function installerCartesVives(actif, accentRgb = "37,99,235", verre = fal
     enAttente = true;
     requestAnimationFrame(() => {
       enAttente = false;
-      const carte = e.target?.closest?.('[style*="--carte-vive"]');
+      const carte = e.target?.closest?.(CHAMPS);
       if (carte !== dernier && dernier) reposer(dernier);
       dernier = carte;
       if (!carte) return;
@@ -82,6 +97,24 @@ export function installerCartesVives(actif, accentRgb = "37,99,235", verre = fal
       carte.style.setProperty("--carte-rx", `${(-ny * INCLINAISON).toFixed(2)}deg`);
       carte.style.setProperty("--carte-ry", `${(nx * INCLINAISON).toFixed(2)}deg`);
       carte.style.setProperty("--carte-lueur", verre ? ".22" : ".13");
+
+      // D'OÙ VIENT LA LUMIÈRE — un vrai angle, par atan2. Une approximation
+      // linéaire sur x seul (l'ancien calcul de la bille) ne sait pas dire que
+      // la lumière vient d'en bas : le reflet ne tourne jamais complètement.
+      carte.style.setProperty("--carte-angle",
+        `${(Math.atan2(ny, nx) * (180 / Math.PI) + 90).toFixed(1)}deg`);
+      // Le regard, normalisé −1…1 : le reflet spéculaire glisse dessus.
+      carte.style.setProperty("--carte-nx", nx.toFixed(3));
+      carte.style.setProperty("--carte-ny", ny.toFixed(3));
+      // Le même regard ADOUCI en sinus, comme la carte d'abonnement d'origine :
+      // il ne bouge presque pas au centre et sature aux bords. Un décalage
+      // linéaire donne un glissement mécanique — c'est cette courbe qui rend le
+      // mouvement crédible. Calculé ici plutôt qu'en CSS : `sin()` en CSS
+      // invaliderait toute la transformation là où il n'est pas connu.
+      carte.style.setProperty("--carte-sx",
+        Math.sin(nx * Math.PI / 2).toFixed(3));
+      carte.style.setProperty("--carte-sy",
+        Math.sin(ny * Math.PI / 2).toFixed(3));
     });
   }
 
@@ -89,6 +122,13 @@ export function installerCartesVives(actif, accentRgb = "37,99,235", verre = fal
     carte.style.setProperty("--carte-rx", "0deg");
     carte.style.setProperty("--carte-ry", "0deg");
     carte.style.setProperty("--carte-lueur", "0");
+    // Sans cette remise à zéro, la dernière carte survolée garderait sa lumière
+    // figée de travers — une carte éclairée alors que le curseur est ailleurs.
+    carte.style.setProperty("--carte-angle", "135deg");
+    carte.style.setProperty("--carte-nx", "0");
+    carte.style.setProperty("--carte-ny", "0");
+    carte.style.setProperty("--carte-sx", "0");
+    carte.style.setProperty("--carte-sy", "0");
   }
 
   document.addEventListener("mousemove", surMouvement, { passive: true });
