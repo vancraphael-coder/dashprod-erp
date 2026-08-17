@@ -238,35 +238,115 @@ test("le voyant a trois états, pas un dégradé", () => {
   assert.ok(src.includes("<Bille"), "le voyant doit être une Bille");
 });
 
-test("la bille est la mascotte : une seule définition, partout", () => {
-  const b = lire("composants/Bille.jsx");
-  // Les quatre ingrédients qui font la sphère, et qu'il ne faut pas simplifier.
-  assert.ok(b.includes("linear-gradient(${st.huile}deg"), "l'huile qui tourne");
-  assert.ok(/top: "8%", left: "15%"/.test(b), "le reflet spéculaire");
-  assert.ok(b.includes("inset"), "le creux interne");
-  assert.ok(b.includes("translate3d(${st.sx}px"), "la parallaxe du signe");
-  // Le signe se déplace À L'INVERSE du curseur : il flotte au-dessus du verre.
-  assert.ok(b.includes("sx: -x *") && b.includes("sy: -y *"),
-    "la parallaxe doit être inversée, sinon le signe colle au doigt");
+/* ── La Bille : la matière, et une seule ────────────────────────────────── */
+
+/** Les commentaires CITENT les recettes fautives pour expliquer le bug : les
+ *  retirer avant d'inspecter, sinon ils déclenchent leur propre garde-fou. */
+const sansCom = (s) => s
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/^[ \t]*\/\/.*$/gm, "")
+  .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+
+test("la bille est la mascotte : UNE SEULE définition, partout", () => {
+  // Le défaut de fond : la bille d'origine était RECOPIÉE dans la carte
+  // d'abonnement. Deux recettes, donc dérive garantie — et c'est arrivé : les
+  // billes de l'app avaient perdu l'huile irisée, le verre et la profondeur.
+  // Ce test refuse la recopie ; l'ancien, qui ne lisait que Bille.jsx, ne
+  // pouvait pas la voir.
+  const carte = sansCom(lire("ecrans/vitrine/CarteAbonnement.jsx"));
+  assert.ok(carte.includes("<Bille"),
+    "la carte d'abonnement doit CONSOMMER la bille partagée");
+  assert.equal(/borderRadius: "50%"/.test(carte), false,
+    "une sphère redessinée à la main dans la carte : elle divergera à nouveau");
+  assert.equal(carte.includes("rgba(217,119,6,.22)"), false,
+    "l'huile doit venir de la matière partagée, pas d'une copie");
+});
+
+test("les quatre ingrédients de la sphère, en fractions du diamètre", () => {
+  const m = lire("lib/matiere-bille.js");
+  // 1. l'huile qui tourne — pilotée par l'angle publié par la surface
+  assert.ok(m.includes("linear-gradient(var(--carte-angle"), "l'huile qui tourne");
+  // 2. le reflet spéculaire, décentré ET mobile
+  assert.ok(m.includes(".bille-reflet") && m.includes("var(--carte-nx"),
+    "le reflet spéculaire doit glisser avec le regard");
+  // 3. le creux interne
+  assert.ok(/inset [^;]*rgba\(var\(--bille-b\)/.test(m), "le creux interne");
+  // 4. la parallaxe du signe, et son relief RÉEL
+  assert.ok(m.includes("translate3d(") && m.includes("perspective:"),
+    "sans perspective, le signe est décalé à plat : ce n'est pas du relief");
+
+  // ET la condition pour qu'une puce de 14 px soit le MÊME objet qu'une
+  // vedette de 84 px : aucune mesure figée dans la matière. Une seule valeur
+  // en dur ici, et les petites billes redeviennent des ronds colorés.
+  const regle = m.slice(m.indexOf(".bille {"));
+  const figees = [...regle.matchAll(/(?<![-\w(.])(\d+(?:\.\d+)?)px/g)]
+    .map((x) => x[1])
+    .filter((v) => v !== "1");   // le liseré de 1 px ne s'échelonne pas
+  assert.deepEqual(figees, [],
+    `mesures figées dans la matière : ${figees.join(", ")} — passer par var(--b)`);
+});
+
+test("chaque ton porte une CONTRE-LUMIÈRE, sinon ce n'est pas de l'huile", () => {
+  // Le bug : le dégradé allait d'une teinte à la MÊME teinte en plus sombre.
+  // Un dégradé monochrome ne dit qu'« ombre », jamais « verre ». Il en faut
+  // deux — bleu vers ambre et retour, comme la carte d'origine.
+  const m = lire("lib/matiere-bille.js");
+  const bloc = m.slice(m.indexOf("export const TONS"),
+                       m.indexOf("export const TAILLES"));
+  const tons = [...bloc.matchAll(
+    /(\w+):\s*\{\s*a: "([^"]+)",\s*b: "([^"]+)",\s*contre: "([^"]+)"/g)];
+  assert.equal(tons.length, 6, "les six tons doivent être déclarés");
+  for (const [, nom, a, b, contre] of tons) {
+    assert.notEqual(contre, a, `${nom} : la contre-lumière ne peut pas être la teinte`);
+    assert.notEqual(contre, b, `${nom} : la contre-lumière ne peut pas être l'ombre`);
+  }
+});
+
+test("la lumière vient d'un vrai angle, et elle se repose", () => {
+  const cv = lire("lib/cartes-vives.js");
+  // `135 + x * 90` ignorait y : la lumière ne pouvait pas venir d'en bas.
+  assert.ok(cv.includes("Math.atan2"), "l'angle de lumière se calcule par atan2");
+  assert.ok(cv.includes("--carte-sx") && cv.includes("Math.sin"),
+    "la parallaxe suit une courbe en sinus : linéaire, le mouvement est mécanique");
+  // Une variable écrite mais jamais remise à zéro laisserait la dernière carte
+  // survolée éclairée de travers, curseur parti depuis longtemps.
+  const repos = cv.slice(cv.indexOf("function reposer"));
+  for (const v of ["--carte-angle", "--carte-nx", "--carte-ny",
+                   "--carte-sx", "--carte-sy"]) {
+    assert.ok(repos.includes(v), `${v} n'est jamais remise au repos`);
+  }
 });
 
 test("la bille se décline en tailles et en signes nommés", () => {
-  const b = lire("composants/Bille.jsx");
+  const m = lire("lib/matiere-bille.js");
   for (const t of ["puce", "jeton", "bouton", "vedette"]) {
-    assert.ok(b.includes(`${t}:`), `taille ${t} manquante`);
+    assert.ok(m.includes(`${t}:`), `taille ${t} manquante`);
   }
+  const b = lire("composants/Bille.jsx");
   for (const s of ["chevron", "fleche", "croix", "attention", "coche"]) {
     assert.ok(b.includes(`${s}:`), `signe ${s} manquant`);
   }
   // Dessinés en SVG : une police manquante ferait une croix carrée vide.
-  assert.equal(/["']✕["']|["']⚠["']/.test(b), false);
+  assert.equal(/['"]✕['"]|['"]⚠['"]/.test(b), false);
 });
 
-test("le suivi s'arrête quand la personne demande moins d'animation", () => {
+test("le mouvement s'arrête quand la personne en demande moins", () => {
+  const m = lire("lib/matiere-bille.js");
+  assert.ok(m.includes("prefers-reduced-motion"),
+    "la bille garde sa matière, mais cesse de bouger");
+  const cv = lire("lib/cartes-vives.js");
+  assert.ok(cv.includes("prefers-reduced-motion") && cv.includes("pointer: coarse"),
+    "aucun suivi au doigt ni en mouvement réduit : un plaisir, pas une condition");
+});
+
+test("la bille n'embarque pas le thème de l'application", () => {
+  // Elle sert AUSSI la vitrine, qui a le sien. Importer `lib/theme.jsx` ici
+  // poserait le fond de page de l'app et ses polices sur la page d'accueil,
+  // par simple effet de bord d'import. La matière vient donc de la surface,
+  // en variables héritées.
   const b = lire("composants/Bille.jsx");
-  assert.ok(b.includes("prefers-reduced-motion"));
-  // Et sur une puce de 14 px, une parallaxe de 2 px n'est que du bruit.
-  assert.ok(b.includes("px >= TAILLES.bouton"));
+  assert.equal(/from "\.\.\/lib\/theme/.test(b), false,
+    "la bille ne doit pas importer le thème de l'app");
 });
 
 test("rien n'est repris d'une mission à l'autre", () => {
@@ -367,4 +447,49 @@ test("le libellé de la date principale suit le métier", () => {
   const src = lire("ecrans/Dossier.jsx");
   assert.ok(src.includes("LIBELLE_PRINCIPALE"));
   assert.ok(/lift: "Intervention lift"/.test(src));
+});
+
+/* ── Lot 10e : à qui appartient l'équipe d'un dossier ───────────────────── */
+
+test("aucune diffusion d'équipe sur TOUTES les missions d'un dossier", () => {
+  // Le bug le plus coûteux de la session : un déclencheur écrasait, à chaque
+  // enregistrement du dossier, les affectations de toutes les missions
+  // planifiées. L'équipe du déménagement se recopiait sur l'emballage et sur
+  // la visite — et le choix par date, tout juste livré, disparaissait au
+  // premier « Enregistrer ». Il ne doit jamais revenir.
+  const src = lireMigration("0134_affectation_par_mission_plus_de_diffusion.sql");
+  assert.ok(src.includes("drop trigger trg_sync_dossier_missions"),
+    "la diffusion large doit rester supprimée");
+});
+
+test("une date posée APRÈS la confirmation crée quand même sa mission", () => {
+  // Sinon le dossier semble prêt et personne n'est réclamé pour ce jour-là :
+  // exactement le défaut de la bille invisible, côté données.
+  const src = lireMigration("0134_affectation_par_mission_plus_de_diffusion.sql");
+  assert.ok(/if not found then insert/.test(src),
+    "l'UPDATE seul ne trouve rien et ne dit rien");
+});
+
+test("l'équipe du dossier est celle du JOUR PRINCIPAL, pas de la visite", () => {
+  // La demande de Raphaël : membres et véhicules font partie de la vérité d'un
+  // dossier, la relation avec le planning doit vivre. Elle vise donc la
+  // mission principale — la visite et l'emballage gardent la leur.
+  const src = lireMigration("0135_equipe_dossier_vers_mission_principale.sql");
+  assert.ok(src.includes("VISE LE JOUR PRINCIPAL"));
+  for (const garde of ["inchangé → rien", "SÉPARÉMENT", "planifiee`/`en_cours"]) {
+    assert.ok(src.includes(garde), `garde manquante : ${garde}`);
+  }
+});
+
+test("l'écran recharge les missions après enregistrement", () => {
+  // Deux commandes pilotent la même affectation : le sélecteur du dossier et
+  // le volet de la mission principale. Sans rechargement, le volet afficherait
+  // l'équipe d'avant — deux vérités à l'écran, et l'impression que
+  // l'enregistrement n'a pas pris.
+  const src = lire("ecrans/Dossier.jsx");
+  const debut = src.indexOf("async function enregistrer");
+  const bloc = src.slice(debut, src.indexOf("enregistrerRef.current = enregistrer"));
+  assert.ok(debut > 0 && bloc.length > 0, "bloc `enregistrer` introuvable");
+  assert.ok(bloc.includes("missionsAffaire(affaireId).then(setMissions)"),
+    "les missions doivent être relues après l'enregistrement du dossier");
 });

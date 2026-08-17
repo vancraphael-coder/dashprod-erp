@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   PERIODES, periode, TYPES_ZONE, volumeZone, surfaceExploitable,
   montantPeriodeZone, trancheBox, montantPeriodeBox, prorata, echeances,
+  lireBareme, montantEcheance, MODES_BAREME,
   tauxOccupation,
 } from "../src/stocks/stockage.js";
 
@@ -108,4 +109,70 @@ test("tauxOccupation : ce qui est pris, ce qui reste", () => {
   assert.equal(r.libres, 2);
   assert.equal(r.taux, 50);
   assert.equal(tauxOccupation([]).taux, 0, "un dépôt vide n'est pas une division par zéro");
+});
+
+/* ── Le mode « au m³ exact » (ajouté, pas substitué) ─────────────────────── */
+
+const EXACT = { mode: "exact", prix_m3_mensuel_centimes: 900,
+                minimum_mensuel_centimes: 3500, tranches: [] };
+
+test("les barèmes DÉJÀ EN BASE, simples tableaux, continuent de fonctionner", () => {
+  // Le vrai risque du lot : `parametres_prix.stockage_boxes` est un TABLEAU en
+  // production. Ne pas savoir le relire aurait mis à zéro le prix de tous les
+  // boxes loués, sans un seul message d'erreur.
+  assert.equal(lireBareme(BAREME).mode, "tranches");
+  assert.deepEqual(lireBareme(BAREME).tranches, BAREME);
+  assert.equal(montantPeriodeBox(BAREME, 8, "mensuel").centimes, 7500);
+  // Et un barème absent ne prétend rien savoir.
+  assert.equal(montantPeriodeBox(null, 8).hors_bareme, true);
+});
+
+test("au m³ exact : le prix suit le volume réel, sans effet de seuil", () => {
+  // C'est tout l'intérêt : 5,2 m³ ne saute pas à la tranche des 10 m³.
+  const r = montantPeriodeBox(EXACT, 5.2, "mensuel");
+  assert.equal(r.centimes, 4680, "5,2 × 9,00 €");
+  assert.equal(r.mode, "exact");
+  assert.equal(r.hors_bareme, false);
+  assert.equal(r.minimum_applique, false);
+});
+
+test("au m³ exact : le minimum est MENSUEL, puis multiplié par la période", () => {
+  // Posé sur le total d'un contrat annuel, un minimum de 35 € ne vaudrait plus
+  // rien : il doit protéger chaque mois.
+  const petit = montantPeriodeBox(EXACT, 2, "mensuel");
+  assert.equal(petit.centimes, 3500, "1 800 c relevés au minimum de 3 500 c");
+  assert.equal(petit.minimum_applique, true);
+  assert.equal(montantPeriodeBox(EXACT, 2, "annuel").centimes, 3500 * 12);
+  assert.equal(montantPeriodeBox(EXACT, 5.2, "trimestriel").centimes, 4680 * 3);
+});
+
+test("au m³ exact : sans prix au m³ ou sans volume, on SIGNALE, on n'invente pas", () => {
+  // `Number(null) === 0` ferait ici facturer 0 € en silence — le piège payé
+  // six fois dans ce projet.
+  const sansPrix = montantPeriodeBox({ mode: "exact" }, 5);
+  assert.equal(sansPrix.hors_bareme, true);
+  assert.equal(sansPrix.centimes, 0);
+  const sansVolume = montantPeriodeBox(EXACT, null);
+  assert.equal(sansVolume.hors_bareme, true, "un volume inconnu n'est pas un volume nul");
+  assert.equal(montantPeriodeBox(EXACT, 0).hors_bareme, true);
+});
+
+test("au m³ exact : deux boxes se cumulent toujours, et la ligne dit son calcul", () => {
+  const r = montantEcheance({
+    nature: "box", periode: "mensuel",
+    boxes: [{ id: 1, numero: "A1", volume_m3: 5.2 },
+            { id: 2, numero: "A2", volume_m3: 4 }],
+  }, EXACT);
+  assert.equal(r.centimes, 4680 + 3600, "deux emplacements loués, deux prix");
+  assert.match(r.lignes[0].libelle, /9\.00 €\/m³/,
+    "le client doit pouvoir refaire le calcul lui-même");
+  assert.match(r.lignes[1].libelle, /9\.00 €\/m³/);
+});
+
+test("changer de mode ne touche pas aux ZONES : elles restent au forfait", () => {
+  // Le forfait porte sur le contrat entier — c'est un modèle de prix distinct,
+  // pas une variante du box.
+  const r = montantEcheance({ nature: "zone", tarif_centimes: 25000,
+                              zones: [{ nom: "A" }, { nom: "B" }] }, EXACT);
+  assert.equal(r.centimes, 25000, "une seconde zone ne double pas un forfait");
 });
