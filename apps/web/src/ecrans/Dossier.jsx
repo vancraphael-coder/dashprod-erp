@@ -11,6 +11,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   obtenirOrganisation,
   obtenirAffaire, obtenirContact, sauverContact, sauverMission,
+  missionsAffaire, affecterMission,
   listerVehicules, obtenirCamionsAffaire, sauverCamionsAffaire,
   obtenirClientFacturation, sauverClientFacturation,
   obtenirClientIdentite, sauverClientIdentite,
@@ -27,6 +28,7 @@ import { adresseDepot } from "@domaine/organisation/identite.js";
 import { CIVILITES } from "@domaine/crm/civilite.js";
 import { synthese, verdict, pictoStatut, lignesBilan, mentionDerogation }
   from "@domaine/crm/cloture.js";
+import { VoletAffectation } from "../composants/Affectation.jsx";
 import { BandeauNature, BlocDonneurOrdre, BlocSousTraitance, BlocLift }
   from "../composants/BlocsNature.jsx";
 import { comporte as comporteEtape } from "@domaine/commercial/natures.js";
@@ -64,6 +66,9 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   const [archivage, setArchivage] = useState(false);
   // La saisie propre aux natures sans relevé (sous-traitance, lift).
   const [mission, setMission] = useState({});
+  // Les missions du dossier, chacune avec son affectation propre. Depuis
+  // 0131, c'est la mission qui fait foi au planning, plus l'affaire.
+  const [missions, setMissions] = useState([]);
   const enregistrerRef = useRef(null);
 
   useEffect(() => {
@@ -80,6 +85,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     obtenirClientIdentite(affaireId).then(setIdentite).catch(() => {});
     listerMembresSimples().then(setMembres).catch(() => {});
     obtenirEquipeAffaire(affaireId).then(setEquipe).catch(() => {});
+    missionsAffaire(affaireId).then(setMissions).catch(() => setMissions([]));
     obtenirInstance(affaireId).then(setInstance).catch(() => {});
     // L'amorce suit le MÉTIER : créer une ligne de déchargement vide sur un
     // lift laisserait une adresse fantôme en base, dans un groupe que l'écran
@@ -364,6 +370,31 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       {/* Camions pressentis — reportés sur la mission à la confirmation (0022).
           Un camion en alerte (méca urgente, CT expiré) reste sélectionnable
           mais s'affiche en rouge : le système signale, l'humain décide. */}
+      {/* Une affectation par mission. Vide par défaut : reprendre l'équipe du
+          déménagement sur l'emballage bloquerait trois personnes une journée
+          parce qu'on aurait oublié de corriger. */}
+      {missions.length > 0 && (
+        <>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: C.muet,
+                        margin: "14px 16px 6px", textTransform: "uppercase",
+                        letterSpacing: ".04em" }}>
+            Affectations ({missions.length})
+          </div>
+          {missions.map((m) => (
+            <VoletAffectation key={m.id} mission={m}
+              membres={membres} flotte={flotte}
+              valeur={m.affectation}
+              onChange={async (a) => {
+                setMissions((l) => l.map((x) =>
+                  x.id === m.id ? { ...x, affectation: a } : x));
+                try {
+                  await affecterMission(m.id, a.membres, a.vehicules);
+                } catch (e) { setErreur(e.message); }
+              }} />
+          ))}
+        </>
+      )}
+
       {flotteOfferte.length > 0 && (
         <div style={S.carte}>
           <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
