@@ -206,6 +206,8 @@ import { fileURLToPath } from "node:url";
 const ICI = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(ICI, "../../../apps/web/src");
 const lire = (p) => fs.readFileSync(path.join(WEB, p), "utf8");
+const lireDomaine = (rel) =>
+  fs.readFileSync(path.join(ICI, "../src", rel), "utf8");
 const lireMigration = (f) =>
   fs.readFileSync(path.join(ICI, "../../../supabase/migrations", f), "utf8");
 
@@ -600,4 +602,54 @@ test("la bille répond au survol et son signe s'agite", () => {
   // Les traits fins : un signe à 52 % du diamètre avec un trait de 2.5 est gras.
   const b = lire("composants/Bille.jsx");
   assert.ok(/strokeWidth=\{1\.9\}/.test(b), "les traits doivent rester fins");
+});
+
+/* ── Lot 11 : couleurs par type et filtres du planning ──────────────────── */
+
+test("lift et sous-traitance ont leur couleur, comme tout type de mission", () => {
+  // Ce sont des types réels (0130). Sans couleur propre, ils tombaient sur le
+  // défaut gris et devenaient illisibles au planning.
+  const app = lire("lib/apparence.js");
+  const bloc = app.slice(app.indexOf('cle: "missions"'), app.indexOf('cle: "planning"'));
+  for (const t of ["lift", "sous_traitance", "demenagement", "visite", "emballage"]) {
+    assert.ok(bloc.includes(`cle: "${t}"`), `type ${t} sans couleur réglable`);
+  }
+  // Et le domaine porte les MÊMES défauts : un écart ferait clignoter la
+  // couleur entre le planning bureau et la fiche terrain au rechargement.
+  const dom = lireDomaine("operations/missions.js");
+  for (const t of ["lift", "sous_traitance"]) {
+    assert.ok(dom.includes(`${t}:`), `type ${t} absent de TYPES_MISSION`);
+  }
+});
+
+test("le liseré du planning suit la couleur RÉGLABLE, plus le codage en dur", () => {
+  const src = sansCom(lire("ecrans/Planning.jsx"));
+  assert.equal(/m\.type === "emballage" \? "#6366F1"/.test(src), false,
+    "le liseré ne doit plus ignorer le réglage d'Apparence");
+  assert.ok(src.includes("couleurMission(m.type)"),
+    "le liseré et le libellé prennent la couleur du type");
+});
+
+test("masquer au planning ne fausse jamais les conflits", () => {
+  // Le filtre agit sur l'AFFICHAGE. S'il retirait un membre du calcul de
+  // disponibilité, masquer quelqu'un effacerait ses doublons et on réserverait
+  // par-dessus. Le lecteur de conflits lit toujours la réalité complète.
+  const src = lire("ecrans/Planning.jsx");
+  const iDispo = src.indexOf("lecteurDisponibilite({ missions, conges }");
+  const iFiltre = src.indexOf("filtrerMissions(duJourComplet");
+  assert.ok(iDispo > 0, "la disponibilité doit lire les missions non filtrées");
+  assert.ok(iFiltre > 0, "le filtre agit sur une liste déjà calculée");
+  // Le filtre prend `duJourComplet`, pas `missions` : il n'entre pas dans le
+  // calcul de conflit, il ne fait que restreindre l'affichage.
+  assert.equal(src.includes("filtrerMissions(missions"), false,
+    "le filtre ne doit pas se glisser avant le calcul de disponibilité");
+});
+
+test("les préférences d'affichage restent sur l'appareil, jamais en base", () => {
+  // C'est un confort de lecture, pas une décision d'entreprise : l'imposer à
+  // tout le monde via la base serait un contresens.
+  const pref = lire("lib/preferences-planning.js");
+  assert.ok(pref.includes("localStorage"), "gardé localement");
+  assert.equal(/from "@domaine|supabase/.test(pref), false,
+    "aucune écriture en base pour un filtre d'affichage");
 });

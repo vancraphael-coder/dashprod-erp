@@ -5,8 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  grouperParJour, chargeDuJour, missionsDuMembre, grilleMois, missionsDuJour,
-} from "../src/operations/agenda.js";
+  grouperParJour, chargeDuJour, missionsDuMembre, grilleMois, missionsDuJour, filtrerMissions } from "../src/operations/agenda.js";
 
 test("grouperParJour trie les jours et les missions par heure", () => {
   const missions = [
@@ -87,4 +86,39 @@ test("missionsDuJour filtre et trie par heure", () => {
     { id: "c", date: "2026-07-15", heure: "09:00" },
   ];
   assert.deepEqual(missionsDuJour(missions, "2026-07-14").map((m) => m.id), ["a", "b"]);
+});
+
+/* ── Le filtre d'affichage du planning ──────────────────────────────────── */
+
+const JOUR = [
+  { id: "m1", type: "demenagement", affectations: [{ utilisateur_id: "u1" }, { utilisateur_id: "u2" }] },
+  { id: "m2", type: "visite", affectations: [{ utilisateur_id: "u1" }] },
+  { id: "m3", type: "emballage", affectations: [{ utilisateur_id: "u3" }] },
+];
+
+test("masquer un TYPE retire la mission entière, pas une carte vide", () => {
+  const r = filtrerMissions(JOUR, { typesMasques: ["visite", "emballage"] });
+  assert.deepEqual(r.map((m) => m.id), ["m1"]);
+});
+
+test("masquer un MEMBRE retire ses affectations, jamais les missions", () => {
+  // Une mission faite par l'équipe qu'on cache reste du travail réel : elle
+  // doit rester visible, sans ce membre dans sa liste.
+  const r = filtrerMissions(JOUR, { membresMasques: ["u1"] });
+  assert.equal(r.length, 3, "aucune mission ne disparaît");
+  assert.deepEqual(r[0].affectations.map((a) => a.utilisateur_id), ["u2"]);
+  assert.deepEqual(r[1].affectations, [], "u1 retiré de la visite, la visite reste");
+});
+
+test("sans filtre, les missions passent inchangées", () => {
+  // Et surtout : les objets ne sont pas recopiés inutilement quand aucun
+  // membre n'est masqué — le rendu ne doit pas repartir pour rien.
+  const r = filtrerMissions(JOUR, {});
+  assert.equal(r[0], JOUR[0], "même référence : aucune copie superflue");
+});
+
+test("les deux filtres se combinent", () => {
+  const r = filtrerMissions(JOUR, { typesMasques: ["emballage"], membresMasques: ["u2"] });
+  assert.deepEqual(r.map((m) => m.id), ["m1", "m2"]);
+  assert.deepEqual(r[0].affectations.map((a) => a.utilisateur_id), ["u1"]);
 });
