@@ -691,3 +691,25 @@ test("on ne retire QUE ses demandes en attente", () => {
   assert.ok(src.includes('conge.etat === "demande" && ('),
     "le bouton de retrait n'apparaît que sur une demande en attente");
 });
+
+/* ── Lot 12 (2) : l'apparence côté terrain ──────────────────────────────── */
+
+test("le terrain ouvre le MÊME écran Apparence que le bureau, pas une copie", () => {
+  // L'apparence est un réglage d'appareil, pas un privilège bureau. Le membre
+  // terrain doit pouvoir passer en mode nuit sous le soleil. On réutilise
+  // l'écran existant — dupliquer sa logique et son aperçu serait deux vérités.
+  const src = lire("ecrans/TerrainProfil.jsx");
+  assert.ok(src.includes('import Apparence from "./Apparence.jsx"'),
+    "le profil terrain doit importer l'écran Apparence partagé");
+  assert.ok(src.includes("<Apparence retour={"),
+    "et l'ouvrir avec un retour, comme les Paramètres bureau");
+});
+
+test("le profil terrain ne pose plus de fond blanc en dur qui ignore le mode nuit", () => {
+  // Ces pastilles gardaient `#fff` : un pavé blanc sur le fond nuit. Le jeton
+  // C.blanc suit le mode. Le blanc du TEXTE sur pastille colorée reste, lui,
+  // légitimement en dur — il est posé sur une couleur pleine.
+  const src = sansCom(lire("ecrans/TerrainProfil.jsx"));
+  assert.equal(/background: "#fff"/.test(src), false,
+    "aucun fond de conteneur en blanc dur : passer par C.blanc");
+});
