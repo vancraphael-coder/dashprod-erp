@@ -713,3 +713,45 @@ test("le profil terrain ne pose plus de fond blanc en dur qui ignore le mode nui
   assert.equal(/background: "#fff"/.test(src), false,
     "aucun fond de conteneur en blanc dur : passer par C.blanc");
 });
+
+/* ── Lot 13 : Messages — la chaîne va jusqu'à la mission ─────────────────── */
+
+test("les zones d'écriture ont un état de focus, en un seul endroit", () => {
+  // Le vrai défaut des champs : styles en ligne, donc AUCUN `:focus` possible.
+  // On ne voyait pas où l'on écrivait. Une feuille globale les corrige tous —
+  // 32 champs — sans toucher un écran.
+  const th = lire("lib/theme.jsx");
+  assert.ok(th.includes('id = "champs-dashprod"'),
+    "la feuille des champs doit être injectée");
+  assert.ok(th.includes("input:focus, textarea:focus"),
+    "un anneau de focus, pour voir le champ actif");
+  assert.ok(th.includes("::placeholder"),
+    "le texte d'invite doit se distinguer de la saisie");
+});
+
+test("la conversation descend jusqu'aux missions du dossier", () => {
+  // boîte → conversation → client → mission(s) : la chaîne allait au dossier,
+  // pas jusqu'aux missions. Un client qui parle d'une date doit pouvoir
+  // l'ouvrir sans rouvrir le dossier pour la chercher.
+  const src = lire("ecrans/Conversations.jsx");
+  assert.ok(src.includes("missionsAffaire("),
+    "la conversation charge les missions de son dossier");
+  assert.ok(src.includes("ouvrirPlanning"),
+    "et permet de sauter au planning à la bonne date");
+});
+
+test("le lien conversation → planning porte la DATE de la mission", () => {
+  // Sans la date, le clic tomberait sur aujourd'hui : le pont serait décoratif.
+  const conv = lire("ecrans/Conversations.jsx");
+  assert.ok(/ouvrirPlanning\(m\.date\)/.test(conv),
+    "on saute au jour de la mission, pas au jour courant");
+  const pl = lire("ecrans/Planning.jsx");
+  assert.ok(pl.includes("jourInitial"),
+    "le planning doit accepter un jour d'arrivée");
+});
+
+test("le fil de messages ne reste plus tassé dans une carte à hauteur fixe", () => {
+  const src = lire("ecrans/FilMessages.jsx");
+  assert.ok(src.includes("pleineHauteur"),
+    "en pleine hauteur, le fil occupe l'espace au lieu d'un maxHeight figé");
+});
