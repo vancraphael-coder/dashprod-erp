@@ -171,3 +171,65 @@ export function resumeCapacite(v) {
   }
   return "";
 }
+
+/**
+ * LES PERMIS S'EMBOÎTENT : détenir le « plus grand » couvre le « plus petit ».
+ * Qui peut conduire un poids lourd (C) conduit un camion léger (C1) et une
+ * voiture (B). Ne comparer que l'égalité stricte signalerait à tort un chef
+ * d'équipe titulaire du CE qu'on met sur un fourgon.
+ *
+ * L'ordre de couverture (chaque permis couvre ceux qui le suivent) :
+ */
+const COUVERTURE_PERMIS = {
+  CE: ["CE", "C", "C1E", "C1", "BE", "B"],
+  C:  ["C", "C1", "B"],
+  C1E: ["C1E", "C1", "BE", "B"],
+  C1: ["C1", "B"],
+  BE: ["BE", "B"],
+  B:  ["B"],
+};
+
+/** L'ensemble des catégories réellement couvertes par les permis détenus. */
+export function permisCouverts(permisDetenus = []) {
+  const set = new Set();
+  for (const p of permisDetenus || []) {
+    for (const c of COUVERTURE_PERMIS[p] || [p]) set.add(c);
+  }
+  return set;
+}
+
+/**
+ * Un membre est-il en règle pour conduire un véhicule donné ?
+ *
+ * Rend un {ok, motif} motivé plutôt qu'un booléen : le planning doit pouvoir
+ * DIRE « il n'a pas le permis C » ou « code 95 expiré », pas juste teinter un
+ * jeton. Deux signaux distincts, parce qu'ils appellent des actions
+ * différentes — passer un permis, ou renouveler une formation.
+ *
+ * RIEN N'EST BLOQUANT (décision Raphaël, §4.5) : cette fonction SIGNALE. C'est
+ * l'appelant qui décide d'afficher un avertissement, jamais d'interdire.
+ *
+ * @param {{permis?: string}} vehicule le véhicule à conduire (permis requis)
+ * @param {{permis_detenus?: string[], code95_echeance?: string}} membre
+ * @param {string} dateMission AAAA-MM-JJ — le code 95 doit être valide CE jour-là
+ */
+export function permisConduite(vehicule, membre, dateMission) {
+  const requis = vehicule?.permis;
+  // Un véhicule sans permis requis (petit utilitaire) ne réclame rien.
+  if (!requis) return { ok: true };
+
+  const couverts = permisCouverts(membre?.permis_detenus);
+  if (!couverts.has(requis)) {
+    return { ok: false, manque: "permis",
+             motif: `permis ${requis} requis` };
+  }
+
+  // Le code 95 n'est vérifié QUE si une échéance est renseignée : une donnée
+  // absente n'est pas une donnée expirée. On ne crie pas sur ce qu'on ignore.
+  const ech = membre?.code95_echeance;
+  if (ech && dateMission && ech < dateMission) {
+    return { ok: false, manque: "code95",
+             motif: "code 95 expiré à cette date" };
+  }
+  return { ok: true };
+}
