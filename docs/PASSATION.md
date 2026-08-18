@@ -421,9 +421,31 @@ sous-traitance, et remplacé le liseré codé en dur du planning). Défauts alig
 entre l'app et le domaine, sinon la couleur clignoterait au rechargement entre
 le planning bureau et la fiche terrain.
 
+### 4.11 Congés : deux portes, une seule table
+Le circuit vit depuis le module 8. Deux façons d'y entrer, un seul stockage :
+
+- **le bureau** saisit un congé (`ajouterConge`) → créé directement **approuvé**,
+  c'est la direction qui décide.
+- **le terrain** demande (`demanderConge` SANS utilisateurId) → état **demande**,
+  le bureau tranche (`deciderConge`) depuis le planning.
+
+Ce qui distingue les deux, c'est la présence ou non d'`utilisateurId` : passer
+le sien depuis le terrain ferait auto-approuver sa propre demande. La règle est
+côté base (elle refuse qu'on décide de son propre congé) ET côté écran (l'onglet
+terrain n'envoie jamais d'utilisateurId).
+
+Une **demande** en attente s'affiche au planning en pastille creuse (§4.5) :
+une absence probable doit se voir pour ne pas réserver par-dessus, mais elle ne
+bloque rien tant qu'elle n'est pas accordée. Le membre peut retirer sa demande
+tant qu'elle est en attente ; un congé accordé s'annule au bureau.
+
+Validation de la demande dans le domaine (`validerDemandeConge`, pure, date du
+jour injectée) : dates présentes, fin ≥ début, pas dans le passé. Le motif de
+refus s'affiche — pas de bouton grisé muet.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 912/912 ✓ — build `apps/web` ✓**
+**`npm test` : 921/921 ✓ — build `apps/web` ✓**
 **Migrations appliquées : jusqu'à `0136_miroir_mission_principale_toutes_natures`.**
 
 ### Lots livrés
@@ -449,6 +471,7 @@ le planning bureau et la fiche terrain.
 | 10f | **Une seule commande par date** (3 doublons supprimés), conflits au point de décision, miroir toutes natures | 0136 |
 | 10g | Bille moins fade, survol, icônes affinées, « + » en bille, options en verre, voyants retirés | — |
 | 11 | Couleurs par type réglables (édition déjà là), lift+sous-traitance ajoutés, **filtres du planning** (type + membres) | — |
+| 12 | **Demande de congé côté terrain** (onglet manquant ; circuit du lot 5 réutilisé) | — |
 
 ### Reste à faire
 
@@ -502,11 +525,13 @@ le planning bureau et la fiche terrain.
 - [x] **Masquer un membre** (`filtrerMissions`, préférences sur l'appareil)
 - [x] Les filtres **ne faussent pas les conflits** (verrouillé par test)
 
-**Lot 12 — app terrain**
-- [ ] Le terrain peut changer son thème (Apparence)
-- [ ] Le terrain peut demander un congé
-      *(le circuit du lot 5 existe — il manque la porte dans `TerrainProfil.jsx`,
-      qui n'a que les onglets Véhicule / Inventaire / Paie)*
+**Lot 12 — app terrain (partiellement livré)**
+- [x] **Le terrain peut demander un congé** — onglet Congés dans
+      `TerrainProfil.jsx`. Le circuit (`demanderConge`/`annulerConge`) existait,
+      il manquait la porte. Demande SANS utilisateurId (donc à approuver),
+      validée avant envoi (`validerDemandeConge`), motif visible, retrait tant
+      qu'elle est en attente. Le bureau tranche depuis le planning.
+- [ ] Le terrain peut changer son thème (Apparence) — reste à faire
 
 **Lot 13 — écran Messages**
 - [ ] Centrage et mise en page
