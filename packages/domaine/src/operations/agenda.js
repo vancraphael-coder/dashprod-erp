@@ -102,3 +102,35 @@ export function missionsDuJour(missions, date) {
     .filter((m) => m.date && String(m.date).slice(0, 10) === date)
     .sort((a, b) => (a.heure || "").localeCompare(b.heure || ""));
 }
+
+/**
+ * FILTRE D'AFFICHAGE du planning. Ne montrer que certains types de mission,
+ * et sortir certains membres de la vue.
+ *
+ * Deux masquages, deux logiques :
+ *   · un TYPE masqué retire la mission entière — cacher « visite » ne laisse
+ *     pas une carte de visite vide, elle disparaît.
+ *   · un MEMBRE masqué retire ses AFFECTATIONS, pas les missions : une mission
+ *     faite par l'équipe qu'on cache continue d'exister, on ne voit simplement
+ *     plus ce membre dans sa liste. Retirer la mission ferait disparaître du
+ *     travail réel de la vue — l'inverse de ce qu'on cherche.
+ *
+ * MASQUER N'EST PAS SUPPRIMER : rien n'est écrit, la disponibilité se calcule
+ * toujours sur la réalité complète (sinon masquer un membre effacerait ses
+ * conflits, et on réserverait par-dessus). Le filtre ne touche qu'à ce qui
+ * s'affiche.
+ *
+ * @param {any[]} missions missions déjà réduites au jour
+ * @param {{typesMasques?: string[], membresMasques?: string[]}} filtres
+ */
+export function filtrerMissions(missions, { typesMasques = [], membresMasques = [] } = {}) {
+  const typesÔtés = new Set(typesMasques);
+  const membresÔtés = new Set(membresMasques);
+  return (missions || [])
+    .filter((m) => !typesÔtés.has(m.type))
+    .map((m) => membresÔtés.size === 0 ? m : {
+      ...m,
+      affectations: (m.affectations || [])
+        .filter((a) => !membresÔtés.has(a.utilisateur_id)),
+    });
+}

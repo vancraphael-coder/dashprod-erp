@@ -13,6 +13,8 @@
  */
 const TYPES_MISSION = {
   demenagement: { libelle: "Déménagement", couleur: "#16A34A" },
+  lift: { libelle: "Lift", couleur: "#D97706" },
+  sous_traitance: { libelle: "Sous-traitance", couleur: "#DC2626" },
   visite: { libelle: "Visite", couleur: "#2563EB" },
   emballage: { libelle: "Emballage", couleur: "#7C3AED" },
 };
