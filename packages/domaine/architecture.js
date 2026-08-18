@@ -61,8 +61,30 @@ export const VERTICAUX = Object.freeze({
  * ne peut pas les importer non plus, sinon l'interdiction se contourne en une
  * ligne.
  */
-export const AIGUILLAGE = Object.freeze([
-  "chiffrage/scenario-nature.js",
+/**
+ * L'AIGUILLAGE : les rares modules qui ont le DROIT de connaître tous les
+ * verticaux, parce que leur travail est justement de choisir entre eux.
+ *
+ * Deux familles, parce qu'elles n'ont pas le même appelant :
+ *
+ *   · `chiffrage` — choisit le moteur de PRIX (`chiffrerAffaire`). Il importe
+ *     plusieurs métiers (lift, sous-traitance), donc la plomberie web ne peut
+ *     PAS l'appeler sans les hériter : il reste INTERNE au domaine.
+ *   · `composition` — choisit les RUBRIQUES d'un document selon la nature.
+ *     Chacun n'importe qu'UN métier (celui qui a des rubriques propres), donc
+ *     l'appeler n'entraîne aucun autre métier : la plomberie PEUT l'appeler.
+ *
+ * Dans les deux cas, le socle interne ne les importe jamais — ils sont au
+ * sommet de l'édifice.
+ */
+export const AIGUILLAGE = Object.freeze({
+  chiffrage: ["chiffrage/scenario-nature.js"],
+  composition: ["releve/rubriques-offre.js"],
+});
+
+/** Tous les aiguillages confondus — pour les règles internes au domaine. */
+export const TOUS_AIGUILLAGES = Object.freeze([
+  ...AIGUILLAGE.chiffrage, ...AIGUILLAGE.composition,
 ]);
 
 /**
@@ -79,16 +101,10 @@ export const PLOMBERIE_WEB = Object.freeze(["lib"]);
  * Cette liste ne peut donc que rétrécir. C'est tout l'intérêt d'un cliquet.
  */
 export const DEROGATIONS = Object.freeze([
-  {
-    fichier: "lib/adaptateur.js",
-    module: "releve/volumetrie.js",
-    depuis: "2026-08-17",
-    motif:
-      "L'instantané d'offre (`figerInstance`) compose lui-même les rubriques "
-      + "du déménagement : volume, articles à démonter, à remonter, remarques. "
-      + "Sortie prévue : chaque nature contribue SES rubriques au document, au "
-      + "lieu que le composeur les connaisse. Non fait ici parce qu'une offre "
-      + "signée est opposable et figée (§4.7) — ce chemin ne se retouche pas "
-      + "en marge d'un autre lot.",
-  },
+  // Plus aucune dérogation. Celle de `lib/adaptateur.js → releve/volumetrie.js`
+  // (2026-08-17) a été levée : le composeur d'offre passe désormais par
+  // `releve/rubriques-offre.js`, un module du vertical déménagement qui assemble
+  // les rubriques. La flèche est repartie dans le bon sens. Le test refuse
+  // qu'on rouvre une dérogation morte, et il refuserait aussi que la fuite
+  // revienne.
 ]);
