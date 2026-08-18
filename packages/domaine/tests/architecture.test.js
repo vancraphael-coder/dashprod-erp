@@ -20,7 +20,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { VERTICAUX, AIGUILLAGE, PLOMBERIE_WEB, DEROGATIONS }
+import { VERTICAUX, AIGUILLAGE, TOUS_AIGUILLAGES, PLOMBERIE_WEB, DEROGATIONS }
   from "../architecture.js";
 
 const ICI = path.dirname(fileURLToPath(import.meta.url));
@@ -62,6 +62,12 @@ for (const [cle, v] of Object.entries(VERTICAUX)) {
   for (const m of v.modules) VERTICAL_DE.set(m, { cle, nom: v.nom });
 }
 
+// Tout module d'aiguillage : il a le DROIT de connaître les métiers, donc une
+// chaîne d'imports ne doit pas le « traverser » pour conclure qu'un module
+// horizontal dépend d'un métier. C'est le rôle même de l'aiguillage
+// d'encapsuler cette connaissance.
+const EST_AIGUILLAGE = new Set(TOUS_AIGUILLAGES);
+
 /**
  * Le premier chemin d'imports qui mène d'un module à un vertical, ou null.
  * On rend la CHAÎNE et pas un booléen : « crm/affaire.js dépend du
@@ -83,6 +89,10 @@ function cheminVersVertical(depart, base = SRC, dansLeDomaine = true) {
       vus.add(s);
       const suite = [...chemin, s];
       if (VERTICAL_DE.has(s)) return suite;
+      // On ne descend PAS dans un aiguillage : ce qu'il importe (les métiers)
+      // est précisément ce qu'il a le droit de connaître. Sans cet arrêt,
+      // appeler un aiguillage reviendrait à « dépendre » de tout ce qu'il route.
+      if (EST_AIGUILLAGE.has(s)) continue;
       if (fs.existsSync(path.join(SRC, s))) file.push([s, suite]);
     }
   }
@@ -103,7 +113,7 @@ test("chaque module déclaré vertical existe encore", () => {
         `${cle} déclare ${m}, qui n'existe pas — manifeste à corriger`);
     }
   }
-  for (const m of AIGUILLAGE) {
+  for (const m of TOUS_AIGUILLAGES) {
     assert.ok(fs.existsSync(path.join(SRC, m)), `aiguillage introuvable : ${m}`);
   }
 });
@@ -112,7 +122,7 @@ test("chaque module déclaré vertical existe encore", () => {
 
 test("l'horizontal Dashprod n'importe AUCUN métier, même de loin", () => {
   const horizontaux = modulesDomaine()
-    .filter((m) => !VERTICAL_DE.has(m) && !AIGUILLAGE.includes(m));
+    .filter((m) => !VERTICAL_DE.has(m) && !EST_AIGUILLAGE.has(m));
 
   const fautes = [];
   for (const m of horizontaux) {
@@ -134,9 +144,9 @@ test("l'horizontal n'importe pas non plus l'aiguillage", () => {
   // SOMMET de l'édifice, jamais dans ses fondations.
   const fautes = [];
   for (const m of modulesDomaine()) {
-    if (AIGUILLAGE.includes(m) || VERTICAL_DE.has(m)) continue;
+    if (EST_AIGUILLAGE.has(m) || VERTICAL_DE.has(m)) continue;
     for (const i of importsDe(m, SRC)) {
-      if (AIGUILLAGE.includes(i)) fautes.push(`${m} → ${i}`);
+      if (EST_AIGUILLAGE.has(i)) fautes.push(`${m} → ${i}`);
     }
   }
   assert.deepEqual(fautes, [], `le socle importe l'aiguillage : ${fautes.join(", ")}`);
@@ -165,14 +175,22 @@ test("la plomberie web ne connaît aucun métier, sauf dérogation déclarée", 
       const src = fs.readFileSync(path.join(base, f), "utf8");
       for (const m of src.matchAll(/from\s+["']@domaine\/([^"']+)["']/g)) {
         const cible = m[1];
-        const chemin = VERTICAL_DE.has(cible)
-          ? [cible] : cheminVersVertical(cible);
+        // L'aiguillage de COMPOSITION est fait pour être appelé par la
+        // plomberie : il n'entraîne aucun métier au-delà de ce qu'il route.
+        // Celui de CHIFFRAGE, lui, importe lift + sous-traitance : l'appeler
+        // depuis la plomberie ferait rentrer ces métiers, donc on l'interdit
+        // en le traitant comme un chemin vers vertical.
+        if (AIGUILLAGE.composition.includes(cible)) continue;
+        const chemin = AIGUILLAGE.chiffrage.includes(cible)
+          ? [cible, ...cheminVersVertical(cible) ? cheminVersVertical(cible).slice(1) : []]
+          : VERTICAL_DE.has(cible) ? [cible] : cheminVersVertical(cible);
         if (!chemin) continue;
         const derog = DEROGATIONS.find(
           (d) => d.fichier === rel && d.module === chemin[chemin.length - 1]);
         if (derog) { utilisees.add(`${derog.fichier}|${derog.module}`); continue; }
-        const v = VERTICAL_DE.get(chemin[chemin.length - 1]);
-        fautes.push(`  ${rel} dépend de ${v.nom} :\n        ${fleche(chemin)}`);
+        const dernier = chemin[chemin.length - 1];
+        const v = VERTICAL_DE.get(dernier);
+        fautes.push(`  ${rel} dépend de ${v ? v.nom : dernier} :\n        ${fleche(chemin)}`);
       }
     }
   }

@@ -755,3 +755,51 @@ test("le fil de messages ne reste plus tassé dans une carte à hauteur fixe", (
   assert.ok(src.includes("pleineHauteur"),
     "en pleine hauteur, le fil occupe l'espace au lieu d'un maxHeight figé");
 });
+
+/* ── Permis : signaler, pas bloquer ──────────────────────────────────────── */
+
+test("le permis manquant se signale au point d'affectation, jamais bloquant", () => {
+  const src = lire("composants/CarteDate.jsx");
+  assert.ok(src.includes("permisConduite("),
+    "la carte de date croise membre et véhicule pour le permis");
+  // Le jeton reste cliquable — c'est un signal, comme la disponibilité (§4.5).
+  const jeton = sansCom(src).slice(sansCom(src).indexOf("function Jeton("));
+  assert.ok(jeton.includes("onClick={onClick}"), "on signale, on n'interdit pas");
+});
+
+test("les permis d'un membre s'éditent au bureau, avec l'échéance code 95", () => {
+  const src = lire("ecrans/Equipe.jsx");
+  assert.ok(src.includes("definirPermis("), "édition des permis dans la fiche membre");
+  assert.ok(src.includes("code95"), "l'échéance code 95 se saisit");
+});
+
+test("l'aptitude médicale (donnée de santé) n'est PAS stockée", () => {
+  // Décision explicite : elle mérite sa propre base légale RGPD. On vérifie
+  // qu'aucune colonne d'aptitude médicale n'a été introduite à la légère.
+  const mig = lireMigration("0137_permis_detenus_membre.sql");
+  assert.equal(/apte_medical|aptitude_medical/.test(mig), false,
+    "pas de colonne d'aptitude médicale dans cette migration");
+});
+
+/* ── La dérogation d'architecture est LEVÉE ─────────────────────────────── */
+
+test("plus aucune dérogation d'architecture", () => {
+  // La fuite `adaptateur.js → volumetrie.js` est résorbée : le composeur d'offre
+  // passe par l'aiguillage de composition (`rubriques-offre.js`), qui choisit
+  // les rubriques selon la nature. La liste des dérogations est vide, et le
+  // test d'architecture (lui) refuse qu'on en rouvre une inutile.
+  const arch = lireDomaine("../architecture.js");
+  const bloc = arch.slice(arch.indexOf("export const DEROGATIONS"),
+                          arch.indexOf("]);", arch.indexOf("export const DEROGATIONS")));
+  assert.equal(/fichier:/.test(bloc), false,
+    "aucune dérogation ne doit subsister");
+});
+
+test("le composeur d'offre ne connaît aucun module de métier", () => {
+  // Il passe par l'aiguillage de composition, pas par le relevé en direct.
+  const src = sansCom(lire("lib/adaptateur.js"));
+  assert.equal(/@domaine\/releve\/volumetrie/.test(src), false,
+    "plus d'import direct du relevé");
+  assert.ok(src.includes("@domaine/releve/rubriques-offre"),
+    "le composeur passe par l'aiguillage de composition");
+});
