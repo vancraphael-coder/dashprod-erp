@@ -369,7 +369,15 @@ d'imports (une dépendance revient toujours par un intermédiaire anodin).
   connaître tous les métiers, parce que son travail est de choisir entre eux.
   L'horizontal ne peut pas l'importer non plus, sinon l'interdiction se
   contourne en une ligne.
-- **Dérogations** : datées, motivées, et vérifiées **encore réelles** — une
+- **Deux familles d'AIGUILLAGE**, distinguées par leur appelant :
+  · *chiffrage* (`chiffrage/scenario-nature.js`) choisit le moteur de prix,
+    importe lift + sous-traitance → INTERNE au domaine, la plomberie ne peut
+    pas l'appeler ; · *composition* (`releve/rubriques-offre.js`) choisit les
+    rubriques d'un document selon la nature, n'importe qu'un métier → la
+    plomberie PEUT l'appeler. Le test connaît la différence.
+- **Plus AUCUNE dérogation.** La seule (`adaptateur.js → volumetrie.js`) a été
+  LEVÉE : le composeur d'offre passe par l'aiguillage de composition. La liste
+  reste vérifiée « encore réelle » — une
   dérogation morte fait rougir la suite, pour qu'on la retire. La liste ne peut
   que rétrécir. *Une seule aujourd'hui* : `lib/adaptateur.js` importe
   `releve/volumetrie.js` pour composer l'instantané d'offre. Sortie prévue :
@@ -467,10 +475,28 @@ déménageur en plein soleil a autant besoin du mode nuit. Corollaire : les fond
 mode ; un `#fff` de conteneur posait un pavé blanc sur le fond nuit. (Le blanc
 du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 
+### 4.12 Permis : signaler, jamais bloquer
+`utilisateurs.permis_detenus` (text[]) + `code95_echeance` (date), commande
+`cmd_definir_permis` (garde bureau, 0137). Règle pure dans
+`flotte/vehicules.js` → `permisConduite(vehicule, membre, date)`, qui rend
+`{ok, motif}`.
+
+- **les permis s'emboîtent** : détenir le grand couvre le petit (un CE conduit
+  tout). Ne comparer que l'égalité crierait à tort sur un fourgon.
+- **deux signaux distincts** : permis absent (passer un permis) vs code 95
+  expiré (renouveler une formation) — actions différentes, motifs différents.
+- **une échéance absente n'est pas expirée** : on ne crie pas sur ce qu'on
+  ignore.
+- **SIGNALE, ne bloque pas** (comme la disponibilité, §4.5) : le jeton de la
+  carte de date se teinte, jamais désactivé. Édition dans la fiche membre.
+- **PAS l'aptitude médicale groupe 2** : donnée de SANTÉ, sa propre décision
+  RGPD (consentement, base légale, durée) reste à prendre. Le signalement de
+  base fonctionne sans.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 927/927 ✓ — build `apps/web` ✓**
-**Migrations appliquées : jusqu'à `0136_miroir_mission_principale_toutes_natures`.**
+**`npm test` : 938/938 ✓ — build `apps/web` ✓**
+**Migrations appliquées : jusqu'à `0137_permis_detenus_membre`.**
 
 ### Lots livrés
 | lot | contenu | migrations |
@@ -497,6 +523,7 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 | 11 | Couleurs par type réglables (édition déjà là), lift+sous-traitance ajoutés, **filtres du planning** (type + membres) | — |
 | 12 | **Demande de congé + apparence côté terrain** (portes manquantes ; écrans existants réutilisés) | — |
 | 13 | **Messages** : chaîne jusqu'à la mission, mise en page du fil, **focus des zones d'écriture** (global) | — |
+| 14 | **Permis membres** (signalement), **dérogation d'architecture LEVÉE** | 0137 |
 
 ### Reste à faire
 
@@ -588,6 +615,18 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
    quelles natures (sous-traitance seule, ou aussi déménagement international ?),
    série de numérotation, et 24 cases réglementaires. Mérite son lot.
    **C'est le prochain lot.**
+
+> **CMR — EN ATTENTE de décisions produit (bloquant, ne pas coder à l'aveugle).**
+> Un document réglementaire à 24 cases ne se devine pas. Trois réponses requises
+> avant d'écrire : (1) natures — la CMR EXCLUT le déménagement (art. 1er §4), le
+> module ne vaut donc QUE pour la sous-traitance internationale ; confirmer ce
+> périmètre et le blocage sur déménagement. (2) numérotation — série propre à
+> Dashprod, ou carnet pré-imprimé existant chez Roovers ? (3) poids brut
+> (case 6.1.h, plafond d'indemnité 8,33 DTS/kg) — saisi au chargement, ou tenu
+> par article ? Rappels acquis : la BE n'a PAS ratifié l'e-CMR → papier
+> obligatoire, Dashprod génère et imprime, 3 exemplaires signés. Case 6.1.k
+> (mention du régime CMR) EN DUR, jamais saisissable — c'est la seule omission
+> sanctionnée nommément (art. 7 §3).
 
 ### Déjà répondu — ne pas reposer
 - Sous-traitance : **on est le prestataire** (recette), pour un vendeur de

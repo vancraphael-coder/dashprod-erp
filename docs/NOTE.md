@@ -1,53 +1,78 @@
-# Lot 13 — Messages, et le design de toutes les zones d'écriture
+# Lot 14 — permis membres + dérogation d'architecture levée
 
-`npm test` : **927/927 ✓** — build `apps/web` ✓ — 7 fichiers.
-**Aucune migration.** Se pose par-dessus `dashprod-lot-12`.
+`npm test` : **938/938 ✓** — build `apps/web` ✓ — 11 fichiers.
+Migration **0137** déjà appliquée en live. Se pose par-dessus `dashprod-lot-13`.
 
-## Les zones d'écriture — le défaut était de fond
+## 1. Les permis — signaler, jamais bloquer
 
-Tu as vu juste : elles avaient un mauvais design, et la cause n'était pas
-cosmétique. Toute l'app style **en ligne** (`S.input`, etc.), et un style en
-ligne **ne peut pas porter de `:focus`, `:hover` ni `::placeholder`** — ces
-pseudo-classes n'existent qu'en CSS. Résultat : un champ ne réagissait pas au
-clic. Bordure inerte, aucun anneau, un texte d'invite de la même encre que la
-saisie. On ne voyait pas où l'on écrivait. Ça touchait **les 32 champs** de
-l'app.
+Dashprod savait quel permis un VÉHICULE exige, rien de ce que les MEMBRES
+possèdent. On ne pouvait donc pas signaler qu'un chauffeur n'a pas le permis du
+camion affecté. Tu voulais que ça **signale** — c'est fait, jamais bloquant,
+comme les conflits de disponibilité.
 
-La correction est faite à un seul endroit : une feuille de style
-(`champs-dashprod`, dans `theme.jsx`) appliquée par sélecteur. Une source,
-effet global, sans toucher un écran. Chaque champ a maintenant :
-- un **anneau de focus** à la couleur d'accent (pas le halo bleu du navigateur,
-  qui ignore le thème et jure en nuit) ;
-- un **survol** qui prévient qu'il est cliquable ;
-- un **placeholder** distinct de la saisie, qui s'efface au focus ;
-- un **état désactivé** qui a l'air désactivé.
+**En base (0137)** : `utilisateurs.permis_detenus` (les catégories que le
+membre possède) et `code95_echeance`. Commande `cmd_definir_permis` réservée au
+bureau, cloisonnée, tracée, qui filtre les catégories inconnues. Éprouvée en
+rollback avant livraison.
 
-## Messages — la chaîne va jusqu'au bout
+**Pas l'aptitude médicale groupe 2** : c'est de la donnée de santé. Elle mérite
+sa propre décision RGPD (consentement, base légale, durée). Le signalement de
+base fonctionne sans — on ne l'embarque pas à la légère.
 
-**boîte → conversation → client → mission(s).** La conversation ne connaissait
-que le dossier. Quand un client écrit « on peut décaler mercredi ? », le bureau
-devait rouvrir le dossier pour trouver la mission. Désormais un **bandeau des
-missions** s'affiche en tête de conversation — chaque mission avec sa couleur de
-type et sa date — et un clic saute **au planning, à la bonne date**
-(`jourInitial`, ajouté au planning et routé depuis `main.jsx`). Sans la date, le
-pont serait décoratif ; il atterrit au bon jour.
+**La règle (domaine, pure)** : `permisConduite(vehicule, membre, date)`.
+- **les permis s'emboîtent** : un CE conduit tout ; ne comparer que l'égalité
+  crierait à tort sur un fourgon confié à un titulaire du CE ;
+- **deux signaux distincts** : permis absent vs code 95 expiré — deux actions
+  différentes (passer un permis / renouveler une formation) ;
+- **une échéance absente n'est pas expirée** : on ne crie pas sur ce qu'on
+  ignore.
 
-**Mise en page.** Le fil vivait à l'étroit dans une carte à hauteur fixe de
-380px. La conversation ouverte prend maintenant la hauteur de l'écran :
-en-tête collant, bandeau des missions, fil qui défile seul, lien « Ouvrir le
-dossier » en pied. On lit une conversation, plus un encadré.
+**Où ça se voit** : sur la carte de date, le jeton d'un membre affecté se
+teinte s'il n'a pas le permis d'un véhicule affecté à la même mission — au
+moment du clic, jamais désactivé. Édition dans la fiche membre (Ressources →
+Membres), avec l'échéance code 95 qui s'alarme si elle approche.
 
-**La barre de composition.** Le champ grandit avec le texte (auto-hauteur) au
-lieu d'une poignée de redimensionnement qui désalignait le bouton. Entrée
-envoie, Maj+Entrée passe à la ligne. Les fonds `#fff` en dur des chips (modèles,
-pièces jointes) passés au jeton, pour suivre le mode nuit.
+## 2. La dérogation d'architecture, levée
+
+C'était la dette laissée depuis le lot 10 : `adaptateur.js` (plomberie
+horizontale) importait `releve/volumetrie.js` (déménagement) en direct.
+
+**La sortie** : un **aiguillage de composition**, `releve/rubriques-offre.js`,
+qui choisit les rubriques d'un document selon la nature — exactement comme
+`chiffrerAffaire` choisit le moteur de prix. Le composeur d'offre reçoit un
+objet déjà prêt et le fusionne, sans importer aucun module de métier.
+
+Ça a demandé de distinguer **deux familles d'aiguillage** dans le test :
+- *chiffrage* (`scenario-nature.js`) importe lift + sous-traitance → reste
+  interne au domaine, la plomberie ne peut pas l'appeler ;
+- *composition* (`rubriques-offre.js`) n'importe qu'un métier → la plomberie
+  PEUT l'appeler.
+
+Le premier jet passait par l'aiguillage de chiffrage — **le test l'a refusé, à
+juste titre** : ça faisait rentrer lift et sous-traitance dans la plomberie. Le
+cliquet a été vérifié : il rougit toujours sur un import métier direct ET sur
+l'aiguillage de chiffrage, il n'autorise que la composition.
+
+**Plus aucune dérogation dans `architecture.js`.** La liste est vide, et le
+test refuse qu'on en rouvre une inutile.
+
+## Le CMR reste bloqué sur tes décisions
+
+Je ne l'ai pas touché — un document réglementaire à 24 cases ne se devine pas.
+Rappel du cadre déjà établi : la CMR **exclut le déménagement** (art. 1er §4),
+donc le module ne vaut que pour la **sous-traitance internationale** ; la
+Belgique n'a pas ratifié l'e-CMR, donc **papier obligatoire** (Dashprod génère
+et imprime, 3 exemplaires signés) ; la case 6.1.k sera en dur (seule omission
+sanctionnée). Trois questions avant que je code : périmètre exact + blocage sur
+déménagement, numérotation (série propre ou carnet Roovers), poids brut (saisi
+ou par article).
 
 ## À vérifier à l'œil
 
-1. N'importe quel champ (recherche, devis, connexion) : au clic, bordure et
-   anneau à la couleur d'accent ; en nuit, l'anneau suit — pas de halo bleu.
-2. Une conversation avec des missions : les puces colorées en tête ; cliquer
-   saute au planning **sur le jour de la mission**.
-3. Le fil : il remplit l'écran, l'en-tête reste en haut, la saisie en bas.
-4. Écrire un long message : le champ s'agrandit jusqu'à une limite puis défile ;
-   Entrée envoie.
+1. Ressources → Membres → un membre : cocher B, C ; poser une échéance code 95
+   passée → l'alerte « expiré » s'affiche.
+2. Dossier → carte de date : affecter un camion « permis C » et un membre qui
+   n'a que B → son jeton se teinte, avec « permis C requis ». Le jeton reste
+   cliquable.
+3. Générer une offre de déménagement : le volume et les articles à démonter
+   apparaissent toujours (rien cassé par le passage via l'aiguillage).
