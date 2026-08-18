@@ -72,3 +72,37 @@ export function chevauchementsApprouves(demande, congesExistants) {
     .filter((c) => periodesSeChevauchent(demande, c))
     .length;
 }
+
+/**
+ * Valide une demande de congé AVANT de l'envoyer. Règle métier pure : ni base,
+ * ni fuseau — on compare des chaînes AAAA-MM-JJ, qui s'ordonnent
+ * lexicographiquement, donc pas de piège de `Date` selon l'heure locale.
+ *
+ * On rend un {ok, motif} motivé plutôt qu'un booléen : le terrain doit pouvoir
+ * DIRE pourquoi la demande est refusée, pas juste griser un bouton. Et le motif
+ * s'affiche tel quel — c'est pour ça qu'il est rédigé, pas codé.
+ *
+ * @param {{debut: string, fin: string}} demande
+ * @param {string} aujourdhui AAAA-MM-JJ (injecté : le domaine ne lit pas l'horloge)
+ */
+export function validerDemandeConge({ debut, fin } = {}, aujourdhui) {
+  if (!debut || !fin) {
+    return { ok: false, motif: "Choisissez une date de début et une date de fin." };
+  }
+  if (fin < debut) {
+    return { ok: false, motif: "La date de fin précède la date de début." };
+  }
+  // On peut demander pour aujourd'hui (un imprévu du matin), pas pour hier :
+  // un congé rétroactif n'a pas de sens, et masquerait une absence déjà passée.
+  if (aujourdhui && debut < aujourdhui) {
+    return { ok: false, motif: "On ne demande pas un congé pour une date passée." };
+  }
+  return { ok: true };
+}
+
+/** Nombre de jours COUVERTS par une période, bornes incluses (1 jour minimum). */
+export function joursCouverts({ debut, fin } = {}) {
+  if (!debut || !fin || fin < debut) return 0;
+  const ms = new Date(fin).getTime() - new Date(debut).getTime();
+  return Math.round(ms / 86400000) + 1;
+}
