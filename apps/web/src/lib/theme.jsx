@@ -52,6 +52,42 @@ if (typeof document !== "undefined" && !document.getElementById("polices-roovers
   document.head.appendChild(l);
 }
 
+// LE DESIGN DES ZONES D'ÉCRITURE, en un seul endroit. Les styles étant en
+// ligne, `S.input` ne peut pas porter de `:focus`, de `::placeholder` ni de
+// `:hover` — un champ ne réagissait donc pas au clic : bordure inerte, aucun
+// anneau, impossible de voir où l'on écrit. Un défaut qui touchait TOUS les
+// champs de l'app. Cette feuille les corrige d'un coup, par sélecteur, sans
+// toucher un seul écran.
+if (typeof document !== "undefined" && !document.getElementById("champs-dashprod")) {
+  const rgb = rgbAccent(APP.accent);
+  const st = document.createElement("style");
+  st.id = "champs-dashprod";
+  st.textContent = `
+    input, textarea, select {
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+      outline: none;
+    }
+    /* Le survol PRÉVIENT qu'un champ est cliquable ; le focus MONTRE où l'on
+       écrit, avec un anneau à la couleur d'accent — pas le halo bleu par
+       défaut du navigateur, qui ignore le thème et jure en mode nuit. */
+    input:hover, textarea:hover, select:hover { border-color: rgba(${rgb}, .55); }
+    input:focus, textarea:focus, select:focus {
+      border-color: rgb(${rgb}) !important;
+      box-shadow: 0 0 0 3px rgba(${rgb}, .18);
+    }
+    /* Le texte d'invite était de la même encre que la saisie : on ne
+       distinguait pas un champ vide d'un champ rempli. Il s'efface au focus,
+       pour ne pas gêner la frappe. */
+    input::placeholder, textarea::placeholder { color: ${C.fantome}; opacity: 1; }
+    input:focus::placeholder, textarea:focus::placeholder { opacity: .4; }
+    /* Un champ désactivé doit AVOIR l'air désactivé, pas ramollir le texte. */
+    input:disabled, textarea:disabled, select:disabled {
+      opacity: .55; cursor: not-allowed;
+    }
+  `;
+  document.head.appendChild(st);
+}
+
 /** États d'affaire → libellé + couleur (Réf. 2, annexe F). */
 // ── Le CYCLE OPÉRATIONNEL : où en est le déménagement ────────────────────────
 // « facture » et « paye » n'en font plus partie (0064) : l'argent a son propre
