@@ -1,18 +1,26 @@
 // =============================================================================
 // CONVERSATIONS — la boîte de réception Mailprod du bureau.
 //
-// Regroupe tous les échanges avec les clients : une ligne par dossier ayant des
-// messages, triée par activité récente, avec le dernier message et le nombre de
-// non-lus. Ouvrir une ligne affiche le fil complet (FilMessages).
+// La logique du lot 13 va jusqu'au bout de la chaîne :
+//   boîte → conversation → client → mission(s).
+// Une conversation n'était reliée qu'au DOSSIER ; on la relie désormais aux
+// missions de ce dossier. Quand un client écrit « on peut décaler mercredi ? »,
+// le bureau voit tout de suite QUELLE mission est concernée et l'ouvre d'un
+// geste, au lieu de rouvrir le dossier pour la chercher.
+//
+// Mise en page : le fil vivait à l'étroit dans une carte à hauteur fixe. Ici
+// il occupe la hauteur disponible et l'en-tête reste collé — on lit une
+// conversation, pas un encadré.
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
-import { conversations } from "../lib/adaptateur.js";
+import { conversations, missionsAffaire } from "../lib/adaptateur.js";
+import { libelleTypeMission } from "@domaine/operations/missions.js";
 import FilMessages from "./FilMessages.jsx";
 import RaccourciBoite from "../composants/RaccourciBoite.jsx";
-import { C, S } from "../lib/theme.jsx";
+import { C, S, couleurMission } from "../lib/theme.jsx";
 
-export default function Conversations({ ouvrirDossier }) {
+export default function Conversations({ ouvrirDossier, ouvrirPlanning }) {
   const [liste, setListe] = useState(null);
   const [ouvert, setOuvert] = useState(null);   // {affaire_id, client}
   const [erreur, setErreur] = useState(null);
@@ -23,21 +31,8 @@ export default function Conversations({ ouvrirDossier }) {
 
   if (ouvert) {
     return (
-      <div style={S.page}>
-        <div style={S.entete}>
-          <button style={S.boutonLien} onClick={() => setOuvert(null)}>← Conversations</button>
-          <div style={S.titre}>{ouvert.client || "Conversation"}</div>
-        </div>
-        <div style={S.carte}>
-          <FilMessages affaireId={ouvert.affaire_id} cote="entreprise" />
-          {ouvrirDossier && (
-            <button style={{ ...S.boutonLien, paddingLeft: 0, marginTop: 10 }}
-                    onClick={() => ouvrirDossier(ouvert.affaire_id)}>
-              Ouvrir le dossier →
-            </button>
-          )}
-        </div>
-      </div>
+      <VueConversation conv={ouvert} onRetour={() => setOuvert(null)}
+        ouvrirDossier={ouvrirDossier} ouvrirPlanning={ouvrirPlanning} />
     );
   }
 
@@ -98,6 +93,89 @@ export default function Conversations({ ouvrirDossier }) {
       ))}
     </div>
   );
+}
+
+/**
+ * Une conversation ouverte : le pont client → mission(s) en tête, puis le fil.
+ * L'en-tête est collant et le fil prend la hauteur restante — on lit vraiment
+ * l'échange, il ne reste plus tassé dans une petite carte.
+ */
+function VueConversation({ conv, onRetour, ouvrirDossier, ouvrirPlanning }) {
+  const [missions, setMissions] = useState(null);
+
+  useEffect(() => {
+    missionsAffaire(conv.affaire_id)
+      .then((m) => setMissions(m || []))
+      .catch(() => setMissions([]));
+  }, [conv.affaire_id]);
+
+  return (
+    <div style={{ ...S.page, display: "flex", flexDirection: "column",
+                  height: "100vh", paddingBottom: 0 }}>
+      <div style={S.entete}>
+        <button style={S.boutonLien} onClick={onRetour}>← Conversations</button>
+        <div style={S.titre}>{conv.client || "Conversation"}</div>
+      </div>
+
+      {/* LE PONT VERS LES MISSIONS. Ce dont on parle dans le fil, ce sont
+          presque toujours des dates : les montrer ici, cliquables, évite
+          l'aller-retour par le dossier. */}
+      {missions && missions.length > 0 && (
+        <div style={{ padding: "0 16px 10px", display: "flex", gap: 7,
+                      flexWrap: "wrap" }}>
+          {missions.map((m) => {
+            const coul = couleurMission(m.type);
+            return (
+              <button key={m.id}
+                onClick={() => ouvrirPlanning
+                  ? ouvrirPlanning(m.date)
+                  : ouvrirDossier && ouvrirDossier(conv.affaire_id)}
+                title={ouvrirPlanning ? "Voir au planning" : "Ouvrir le dossier"}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+                  padding: "6px 11px", borderRadius: 999,
+                  border: `1.5px solid ${coul}`, background: coul + "14",
+                  color: coul }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%",
+                               background: coul }} />
+                {libelleTypeMission(m.type)}
+                {m.date && (
+                  <span style={{ color: C.muet, fontWeight: 600 }}>
+                    · {jourCourt(m.date)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Le fil occupe tout le reste et défile seul. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto",
+                    padding: "0 16px 12px" }}>
+        <FilMessages affaireId={conv.affaire_id} cote="entreprise" pleineHauteur />
+      </div>
+
+      {ouvrirDossier && (
+        <div style={{ padding: "8px 16px",
+                      borderTop: `1px solid ${C.bord}`, background: S.page.background }}>
+          <button style={{ ...S.boutonLien, paddingLeft: 0 }}
+                  onClick={() => ouvrirDossier(conv.affaire_id)}>
+            Ouvrir le dossier complet →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function jourCourt(iso) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("fr-BE",
+      { day: "2-digit", month: "short" });
+  } catch { return ""; }
 }
 
 function horodate(iso) {

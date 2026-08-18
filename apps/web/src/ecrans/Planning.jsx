@@ -55,7 +55,7 @@ const bandeauStyle = (fond, bord, couleur) => ({
  *      non publiée reste au bureau — c'est la règle posée en 0044, et la
  *      contourner ici viderait le partage de son sens.
  */
-export default function Planning({ ouvrirDossier, lectureSeule = false }) {
+export default function Planning({ ouvrirDossier, lectureSeule = false, jourInitial }) {
   const [missions, setMissions] = useState([]);
   const [membres, setMembres] = useState([]);       // actifs (sélection)
   const [tousMembres, setTousMembres] = useState([]); // + archivés (affichage)
@@ -65,9 +65,13 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
   // Sélection en attente : 1er clic choisit, 2e confirme (Retirer/Ajouter).
   const [selection, setSelection] = useState(null); // {missionId, type, id, nom, present}
   const now = new Date();
-  const [annee, setAnnee] = useState(now.getFullYear());
-  const [mois, setMois] = useState(now.getMonth());
-  const [jourSel, setJourSel] = useState(aujourdhui());
+  // Un lien depuis une conversation arrive avec une date (la mission dont on
+  // parle) : on ouvre ce jour-là, dans son mois, plutôt qu'aujourd'hui.
+  const depart = jourInitial && /^\d{4}-\d{2}-\d{2}$/.test(jourInitial)
+    ? new Date(jourInitial + "T00:00:00") : now;
+  const [annee, setAnnee] = useState(depart.getFullYear());
+  const [mois, setMois] = useState(depart.getMonth());
+  const [jourSel, setJourSel] = useState(jourInitial || aujourdhui());
   const [ouvert, setOuvert] = useState(null);
   const [copie, setCopie] = useState(null); // id de mission dont le brief vient d'être copié
   // Le planning se lit à plusieurs métiers en même temps. Deux filtres, gardés

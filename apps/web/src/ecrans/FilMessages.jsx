@@ -13,7 +13,7 @@ import { C as C0, S as S0 } from "../lib/theme.jsx";
  * @param {string} affaireId
  * @param {"entreprise"|"client"} cote  qui utilise l'écran (détermine la commande d'envoi)
  */
-export default function FilMessages({ affaireId, cote, amorce, modeles, theme }) {
+export default function FilMessages({ affaireId, cote, amorce, modeles, theme, pleineHauteur }) {
   // Le fil sert deux mondes : le bureau (thème clair) et l'espace client
   // (thème de nuit). On accepte donc un thème injecté plutôt que d'en figer un.
   const C = theme?.C || C0;
@@ -73,7 +73,9 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme })
         inaltérable — il fait foi en cas de litige.
       </div>
 
-      <div style={{ maxHeight: 380, overflowY: "auto", padding: "4px 2px",
+      <div style={{ maxHeight: pleineHauteur ? "none" : 380,
+                    overflowY: pleineHauteur ? "visible" : "auto",
+                    padding: "4px 2px",
                     display: "flex", flexDirection: "column", gap: 8 }}>
         {messages == null && (
           <div style={{ fontSize: 13, color: C.muet, textAlign: "center", padding: 12 }}>
@@ -129,7 +131,7 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme })
             <button key={m.cle} onClick={() =>
               setTexte((t) => (t ? t + "\n\n" : "") + m.corps)}
               style={{ fontSize: 11.5, fontWeight: 700, cursor: "pointer",
-                       border: `1.5px solid ${C.bord}`, background: "#fff",
+                       border: `1.5px solid ${C.bord}`, background: S.input.background,
                        color: C.bleu, borderRadius: 999, padding: "5px 11px" }}>
               + {m.titre}
             </button>
@@ -150,7 +152,7 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme })
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
           {pieces.map((p, i) => (
             <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 11.5, background: "#EEF2F8", borderRadius: 8, padding: "4px 8px",
+              fontSize: 11.5, background: theme ? "#22304A" : "#EEF2F8", borderRadius: 8, padding: "4px 8px",
               color: C.encre }}>
               {p.type === "application/pdf" ? "📄" : "🖼️"} {raccourciNom(p.nom)}
               <button onClick={() => setPieces((l) => l.filter((_, j) => j !== i))}
@@ -165,7 +167,7 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme })
         <button onClick={() => fichierRef.current && fichierRef.current.click()}
           disabled={chargePiece} title="Joindre une image ou un PDF"
           style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 12,
-                   cursor: "pointer", border: `1px solid ${C.bord}`,
+                   cursor: "pointer", border: `1.5px solid ${C.bord}`,
                    background: S.input.background, fontSize: 17, color: C.muet,
                    display: "flex", alignItems: "center", justifyContent: "center" }}>
           {chargePiece ? "…" : "📎"}
@@ -173,11 +175,25 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme })
         <input ref={fichierRef} type="file" multiple hidden
           accept="image/*,application/pdf"
           onChange={(e) => e.target.files.length && ajouterFichiers([...e.target.files])} />
-        <textarea value={texte} onChange={(e) => setTexte(e.target.value)}
-          placeholder="Écrire un message…" rows={2}
+        {/* Le champ grandit avec le texte (auto-hauteur), au lieu d'une poignée
+            de redimensionnement qui désaligne le bouton. Le focus et l'anneau
+            d'accent viennent de la feuille globale des champs (theme.jsx). */}
+        <textarea value={texte}
+          onChange={(e) => setTexte(e.target.value)}
+          onInput={(e) => {
+            e.target.style.height = "44px";
+            e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
+          }}
+          onKeyDown={(e) => {
+            // Entrée envoie, Maj+Entrée passe à la ligne : le réflexe d'une
+            // messagerie. Sur mobile, le bouton reste là pour ceux qui
+            // préfèrent.
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); }
+          }}
+          placeholder="Écrire un message…" rows={1}
           style={{ ...S.input, flex: 1, minWidth: 0, height: 44, minHeight: 44,
                    maxHeight: 140, lineHeight: 1.4, paddingTop: 11, paddingBottom: 11,
-                   resize: "vertical" }} />
+                   resize: "none", overflowY: "auto" }} />
         <button onClick={envoyer} disabled={envoi || (!texte.trim() && pieces.length === 0)}
           style={{ ...S.boutonPlein, flexShrink: 0, width: "auto", height: 44,
                    padding: "0 18px",
