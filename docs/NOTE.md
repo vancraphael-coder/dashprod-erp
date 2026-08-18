@@ -1,53 +1,60 @@
-# Lot 12 (partie 1) — la demande de congé côté terrain
+# Lot 12 — app terrain : congés + apparence
 
-`npm test` : **921/921 ✓** — build `apps/web` ✓ — 5 fichiers.
+`npm test` : **923/923 ✓** — build `apps/web` ✓ — 5 fichiers.
 **Aucune migration.** Se pose par-dessus `dashprod-lot-11`.
 
-## Ce que j'ai trouvé avant de coder
+> Ce paquet REMPLACE le `dashprod-lot-12` précédent (partie 1 seule). Il
+> contient le lot 12 complet — congés ET apparence.
 
-Le circuit des congés **existait entièrement** depuis le module 8 :
-`demanderConge`, `deciderConge`, `annulerConge`, et les règles côté base (on ne
-décide pas de son propre congé). Il manquait juste **la porte côté terrain** —
-`TerrainProfil.jsx` n'avait que Véhicule / Inventaire / Heures.
+## Le fil du lot : réutiliser, pas copier
 
-## Ce qui change
+Les deux besoins terrain de ce lot existaient déjà côté bureau. Dans les deux
+cas, le travail n'était pas de construire une logique, mais d'**ouvrir la
+porte** — et surtout de ne pas en dupliquer une seconde qui finirait par
+diverger.
 
-**Un onglet Congés** dans le profil terrain. Le membre choisit deux dates, un
-motif facultatif, et envoie. La demande part en état « demande » — pas
-approuvée. Le bureau tranche depuis le planning, où elle apparaît déjà en
-pastille creuse.
+## 1. Demander un congé
 
-**La distinction qui compte : demande ≠ décision.** L'onglet appelle
-`demanderConge` **sans utilisateurId**. C'est ce qui fait la différence : avec
-un utilisateurId, la base traite l'acte comme une saisie de la direction et
-approuve d'emblée. Le membre demande pour lui-même, donc pas d'utilisateurId,
-donc ça reste à approuver. Verrouillé par test — passer son propre id
-ferait auto-approuver sa demande.
+Le circuit `demanderConge` / `deciderConge` / `annulerConge` vit depuis le
+module 8. Il manquait l'onglet dans `TerrainProfil.jsx`.
 
-**Validation avant envoi, motif visible.** `validerDemandeConge` (nouvelle,
-dans le domaine, pure, date du jour injectée) refuse : dates manquantes, fin
-avant début, date passée. Le motif du refus s'affiche sous les champs — pas de
-bouton grisé qui laisse deviner ce qui cloche. On peut demander pour
-aujourd'hui (un imprévu du matin), pas pour hier (un congé rétroactif masquerait
-une absence déjà passée).
+**Un onglet Congés** : deux dates, un motif facultatif, envoi. La demande part
+en état « demande », le bureau tranche depuis le planning.
 
-**Retrait tant que c'est en attente.** La liste « Mes demandes » montre l'état
-(en attente / accordé / refusé) et, pour un refus, son motif. Le bouton × ne
-paraît que sur une demande en attente : un congé accordé s'annule au bureau, un
-refus est déjà clos.
+**La distinction technique qui compte** : l'onglet appelle `demanderConge`
+**sans utilisateurId**. Avec un id, la base approuverait d'emblée (saisie
+direction). Sans, ça reste une demande à valider. Verrouillé par test — passer
+son propre id ferait auto-approuver sa demande.
 
-## Reste du lot 12
+**Validé avant l'envoi, motif visible** : `validerDemandeConge` (nouvelle, dans
+le domaine, pure, date du jour injectée) refuse dates manquantes, fin avant
+début, date passée. On peut demander pour aujourd'hui (imprévu du matin), pas
+pour hier. Le motif du refus s'affiche sous les champs.
 
-Le thème réglable côté terrain (Apparence dans l'app terrain) n'est pas dans ce
-paquet — c'est l'autre moitié du lot 12, à faire au prochain tour.
+**Retrait tant que c'est en attente** : le × n'apparaît que sur une demande non
+tranchée. Un congé accordé s'annule au bureau, un refus est déjà clos.
+
+## 2. Changer d'apparence
+
+Le terrain n'avait aucun accès à Apparence — c'était un écran bureau. Or
+l'apparence est un réglage d'**appareil**, pas un privilège : un déménageur en
+plein soleil a autant besoin du mode nuit.
+
+**Une entrée Apparence** dans le profil terrain, qui ouvre le MÊME écran
+`Apparence.jsx` que les Paramètres bureau (un état qui bascule le rendu, avec un
+`retour`). Aucune copie — la logique, l'aperçu et les réglages vivent à un seul
+endroit.
+
+**Corollaire mode nuit** : quelques fonds `#fff` en dur du profil terrain
+posaient un pavé blanc sur le fond nuit. Passés au jeton `C.blanc`, qui suit le
+mode. Le blanc du texte sur une pastille de couleur pleine reste en dur — il est
+posé sur une couleur, il doit rester blanc dans les deux modes.
 
 ## À vérifier à l'œil
 
-1. Onglet Congés → deux dates → « Envoyer » : la demande apparaît en « En
-   attente », et se voit au planning bureau en pastille creuse le même jour.
-2. Une date de fin avant le début : message ambre sous les champs, bouton
-   inactif.
-3. Retirer une demande en attente (×) : elle disparaît, et la pastille creuse
-   du planning aussi.
-4. Une demande approuvée par le bureau : elle passe à « Accordé », le × ne
-   s'affiche plus.
+1. Profil → Congés → deux dates → « Envoyer » : « En attente », visible au
+   planning bureau en pastille creuse le même jour.
+2. Fin avant début : message ambre, bouton inactif. Retirer une demande (×) :
+   elle et sa pastille disparaissent.
+3. Profil → Apparence → Mode nuit → Appliquer : toute l'app terrain passe en
+   sombre, sans pavé blanc résiduel sur les onglets Véhicule / Inventaire.

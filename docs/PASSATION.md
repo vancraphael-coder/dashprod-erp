@@ -443,9 +443,18 @@ Validation de la demande dans le domaine (`validerDemandeConge`, pure, date du
 jour injectée) : dates présentes, fin ≥ début, pas dans le passé. Le motif de
 refus s'affiche — pas de bouton grisé muet.
 
+**L'apparence côté terrain suit le même principe qu'ici : réutiliser, pas
+copier.** Le profil terrain ouvre le MÊME écran `Apparence.jsx` que les
+Paramètres bureau (un état `reglageApparence` qui bascule le rendu), avec un
+`retour`. L'apparence est un réglage d'APPAREIL, pas un privilège bureau — un
+déménageur en plein soleil a autant besoin du mode nuit. Corollaire : les fonds
+`#fff` en dur du profil terrain ont dû passer au jeton `C.blanc`, qui suit le
+mode ; un `#fff` de conteneur posait un pavé blanc sur le fond nuit. (Le blanc
+du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 921/921 ✓ — build `apps/web` ✓**
+**`npm test` : 923/923 ✓ — build `apps/web` ✓**
 **Migrations appliquées : jusqu'à `0136_miroir_mission_principale_toutes_natures`.**
 
 ### Lots livrés
@@ -471,7 +480,7 @@ refus s'affiche — pas de bouton grisé muet.
 | 10f | **Une seule commande par date** (3 doublons supprimés), conflits au point de décision, miroir toutes natures | 0136 |
 | 10g | Bille moins fade, survol, icônes affinées, « + » en bille, options en verre, voyants retirés | — |
 | 11 | Couleurs par type réglables (édition déjà là), lift+sous-traitance ajoutés, **filtres du planning** (type + membres) | — |
-| 12 | **Demande de congé côté terrain** (onglet manquant ; circuit du lot 5 réutilisé) | — |
+| 12 | **Demande de congé + apparence côté terrain** (portes manquantes ; écrans existants réutilisés) | — |
 
 ### Reste à faire
 
@@ -525,13 +534,15 @@ refus s'affiche — pas de bouton grisé muet.
 - [x] **Masquer un membre** (`filtrerMissions`, préférences sur l'appareil)
 - [x] Les filtres **ne faussent pas les conflits** (verrouillé par test)
 
-**Lot 12 — app terrain (partiellement livré)**
+**Lot 12 — app terrain — LIVRÉ**
 - [x] **Le terrain peut demander un congé** — onglet Congés dans
-      `TerrainProfil.jsx`. Le circuit (`demanderConge`/`annulerConge`) existait,
-      il manquait la porte. Demande SANS utilisateurId (donc à approuver),
-      validée avant envoi (`validerDemandeConge`), motif visible, retrait tant
-      qu'elle est en attente. Le bureau tranche depuis le planning.
-- [ ] Le terrain peut changer son thème (Apparence) — reste à faire
+      `TerrainProfil.jsx`. Circuit existant réutilisé. Demande SANS
+      utilisateurId (donc à approuver), validée avant envoi
+      (`validerDemandeConge`), motif visible, retrait tant qu'en attente.
+- [x] **Le terrain peut changer son thème** — entrée Apparence dans le profil,
+      qui ouvre le MÊME écran que les Paramètres bureau (aucune copie). Mode
+      nuit, accent, taille. Quelques fonds `#fff` en dur du profil terrain
+      passés au jeton `C.blanc` pour suivre le mode nuit.
 
 **Lot 13 — écran Messages**
 - [ ] Centrage et mise en page
