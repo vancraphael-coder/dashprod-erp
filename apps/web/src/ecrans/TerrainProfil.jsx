@@ -22,6 +22,7 @@ import { formaterDuree } from "@domaine/operations/pointage.js";
 import { validerDemandeConge, joursCouverts } from "@domaine/rh/conges.js";
 import { deconnecter } from "../lib/supabase.js";
 import { C, S, FC } from "../lib/theme.jsx";
+import Apparence from "./Apparence.jsx";
 
 // La même date du jour que les autres écrans terrain : une chaîne AAAA-MM-JJ,
 // injectée dans le domaine qui, lui, ne lit jamais l'horloge.
@@ -48,6 +49,15 @@ const INVENTAIRE_STANDARD = [
 
 export default function TerrainProfil({ profil }) {
   const [onglet, setOnglet] = useState("vehicule");
+  // L'apparence (mode nuit, accent, taille) est un réglage d'APPAREIL, pas un
+  // privilège bureau : un déménageur en plein soleil a autant besoin du mode
+  // nuit que le bureau. On ouvre le MÊME écran que les Paramètres — aucune
+  // copie, la logique et l'aperçu vivent à un seul endroit.
+  const [reglageApparence, setReglageApparence] = useState(false);
+
+  if (reglageApparence) {
+    return <Apparence retour={() => setReglageApparence(false)} />;
+  }
 
   return (
     <div style={S.page}>
@@ -76,6 +86,26 @@ export default function TerrainProfil({ profil }) {
       {onglet === "conges" && <OngletConges />}
 
       <div style={{ margin: "18px 16px 0" }}>
+        {/* L'apparence, comme au bureau : mode nuit pour le plein soleil,
+            taille du texte, couleur. Placée avant la déconnexion — un réglage,
+            pas une sortie. */}
+        <button onClick={() => setReglageApparence(true)}
+                style={{ ...S.carte, width: "100%", textAlign: "left",
+                         display: "flex", alignItems: "center", gap: 12,
+                         cursor: "pointer", border: `1px solid ${C.bord}`,
+                         marginBottom: 10 }}>
+          <span style={{ fontSize: 20 }}>🎨</span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: "block", fontSize: 14, fontWeight: 700,
+                           color: C.encre }}>Apparence</span>
+            <span style={{ display: "block", fontSize: 11.5, color: C.muet,
+                           marginTop: 1 }}>
+              Mode clair ou nuit, couleur, taille du texte.
+            </span>
+          </span>
+          <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
+        </button>
+
         <button onClick={async () => { await deconnecter(); window.location.reload(); }}
                 style={{ ...S.boutonLien, color: C.rouge, width: "100%", textAlign: "center" }}>
           Se déconnecter
@@ -151,7 +181,7 @@ function CarteVehicule({ v, ouvert, onToggle, onEnvoye }) {
                 flex: 1, padding: "8px", borderRadius: 10, cursor: "pointer",
                 fontSize: 12, fontWeight: 700,
                 border: `1.5px solid ${etat === e ? COULEUR_MECA[e] : C.bord}`,
-                background: etat === e ? COULEUR_MECA[e] : "#fff",
+                background: etat === e ? COULEUR_MECA[e] : C.blanc,
                 color: etat === e ? "#fff" : C.muet,
               }}>{LIBELLE_MECA[e]}</button>
             ))}
@@ -202,7 +232,7 @@ function OngletInventaire({ profil }) {
     <button key={art.id} onClick={() => cycler(art)} style={{
       display: "flex", width: "100%", justifyContent: "space-between",
       alignItems: "center", padding: "10px 12px", marginBottom: 6,
-      borderRadius: 10, cursor: "pointer", background: "#fff",
+      borderRadius: 10, cursor: "pointer", background: C.blanc,
       border: `1.5px solid ${art.etat === "a_remplacer" ? "#FECACA" : C.bord}`,
     }}>
       <span style={{ fontSize: 13.5, color: C.encre, fontWeight: 600 }}>{art.article}</span>
