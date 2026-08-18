@@ -12,15 +12,86 @@ import {
   definirMetier, listerMembresSimples,
   listerEquipement, ajouterEquipement, changerEtatEquipement, archiverMembre,
   listerCapacitesMembre, definirCreationComplete, CAPACITES_DEVIS_COMPLET,
-  capacitesMembre, definirCapacite,
+  capacitesMembre, definirCapacite, definirPermis,
 } from "../lib/adaptateur.js";
 import { ROLES } from "@domaine/noyau/permissions.js";
+import { PERMIS } from "@domaine/flotte/vehicules.js";
 import {
   capacitesTerrain, capacitesBureau, capacitesEffectives, origineCapacite,
   resumeAcces,
 } from "@domaine/rh/capacites.js";
 import { DemandesConges } from "../composants/Conges.jsx";
 import { C, S, Confirmation } from "../lib/theme.jsx";
+
+/**
+ * Les permis d'un membre : cases à cocher + échéance code 95. On enregistre à
+ * la volée (comme le métier) — pas de bouton « sauver » à oublier.
+ */
+function PermisMembre({ membre, onRecharger }) {
+  const [permis, setPermis] = React.useState(membre.permis_detenus || []);
+  const [code95, setCode95] = React.useState(membre.code95_echeance || "");
+  const [etat, setEtat] = React.useState(null); // "envoi" | "ok" | message d'erreur
+
+  async function enregistrer(nextPermis, nextCode95) {
+    setEtat("envoi");
+    try {
+      await definirPermis(membre.id, nextPermis, nextCode95 || null);
+      setEtat("ok");
+      onRecharger && onRecharger();
+      setTimeout(() => setEtat(null), 1500);
+    } catch (e) { setEtat(e.message || "Échec"); }
+  }
+
+  function basculer(cle) {
+    const suite = permis.includes(cle)
+      ? permis.filter((x) => x !== cle) : [...permis, cle];
+    setPermis(suite);
+    enregistrer(suite, code95);
+  }
+
+  // Le code 95 bientôt échu se signale ici même — inutile d'attendre une
+  // affectation pour découvrir qu'une formation est à refaire.
+  const bientot = code95 && (() => {
+    const j = Math.round((new Date(code95) - new Date()) / 86400000);
+    return j < 0 ? "expiré" : j < 90 ? `expire dans ${j} j` : null;
+  })();
+
+  return (
+    <>
+      <label style={S.label}>Permis détenus</label>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {PERMIS.map((p) => {
+          const a = permis.includes(p.cle);
+          return (
+            <button key={p.cle} onClick={() => basculer(p.cle)} title={p.resume}
+              style={{ padding: "6px 12px", borderRadius: 999, cursor: "pointer",
+                fontSize: 12.5, fontWeight: 700,
+                border: `1.5px solid ${a ? C.bleu : C.bord}`,
+                background: a ? C.bleuClair : C.blanc,
+                color: a ? C.bleu : C.muet }}>
+              {p.nom}
+            </button>
+          );
+        })}
+      </div>
+
+      <label style={S.label}>Échéance du code 95</label>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <input type="date" value={code95} style={{ ...S.input, flex: 1 }}
+          onChange={(e) => { setCode95(e.target.value); enregistrer(permis, e.target.value); }} />
+        {bientot && (
+          <span style={{ fontSize: 11.5, fontWeight: 700,
+            color: bientot === "expiré" ? C.rouge : C.ambre, whiteSpace: "nowrap" }}>
+            {bientot}
+          </span>
+        )}
+      </div>
+      {etat && etat !== "envoi" && etat !== "ok" && (
+        <div style={{ fontSize: 11.5, color: C.rouge, marginTop: 4 }}>{etat}</div>
+      )}
+    </>
+  );
+}
 
 function DroitDevisComplet({ membreId }) {
   const [actif, setActif] = React.useState(null); // null = chargement
@@ -303,11 +374,18 @@ export default function Equipe({ retour, integre }) {
                       flex: 1, padding: "8px", borderRadius: 10, cursor: "pointer",
                       fontSize: 12, fontWeight: 700,
                       border: `1.5px solid ${metier === cle ? COULEUR_METIER[cle] : C.bord}`,
-                      background: metier === cle ? COULEUR_METIER[cle] : "#fff",
+                      background: metier === cle ? COULEUR_METIER[cle] : C.blanc,
                       color: metier === cle ? "#fff" : C.muet,
                     }}>{lib}</button>
                   ))}
                 </div>
+
+                {/* Permis détenus — SIGNALE une affectation risquée, ne la bloque
+                    jamais. Le code 95 se périme : son échéance est un vrai signal
+                    (renouvellement de formation). L'aptitude médicale groupe 2,
+                    donnée de santé, n'est pas ici : elle mérite sa décision RGPD. */}
+                <PermisMembre membre={m} onRecharger={recharger} />
+
 
                 {/* Congés : saisie directe direction (créés approuvés) */}
                 <label style={S.label}>Congés</label>
