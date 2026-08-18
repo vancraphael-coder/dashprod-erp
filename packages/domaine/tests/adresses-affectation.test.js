@@ -653,3 +653,41 @@ test("les préférences d'affichage restent sur l'appareil, jamais en base", () 
   assert.equal(/from "@domaine|supabase/.test(pref), false,
     "aucune écriture en base pour un filtre d'affichage");
 });
+
+/* ── Lot 12 : la demande de congé côté terrain ──────────────────────────── */
+
+test("le terrain a enfin sa porte pour demander un congé", () => {
+  // Le circuit demande→décision existait (module 8) ; il manquait l'onglet.
+  const src = lire("ecrans/TerrainProfil.jsx");
+  assert.ok(src.includes('"conges"'), "l'onglet Congés doit exister");
+  assert.ok(src.includes("demanderConge("),
+    "le terrain doit consommer le circuit existant, pas en créer un autre");
+});
+
+test("la demande terrain part SANS utilisateurId : c'est une demande, pas une décision", () => {
+  // Avec un utilisateurId, la base approuverait d'emblée (saisie direction).
+  // Le membre demande pour lui-même : le bureau tranche.
+  const src = sansCom(lire("ecrans/TerrainProfil.jsx"));
+  const bloc = src.slice(src.indexOf("async function envoyer"),
+                         src.indexOf("async function retirer"));
+  assert.ok(bloc.includes("demanderConge({ debut, fin, motif"),
+    "aucun utilisateurId : la demande reste à approuver");
+  assert.equal(/utilisateurId/.test(bloc), false,
+    "passer un utilisateurId ferait auto-approuver la demande du membre");
+});
+
+test("la demande est validée avant l'envoi, avec un motif visible", () => {
+  const src = lire("ecrans/TerrainProfil.jsx");
+  assert.ok(src.includes("validerDemandeConge("),
+    "on valide côté domaine avant d'envoyer");
+  // Le motif s'affiche : pas de bouton grisé muet.
+  assert.ok(src.includes("controle.motif"),
+    "le motif du refus doit se lire, pas se deviner");
+});
+
+test("on ne retire QUE ses demandes en attente", () => {
+  // Un congé accordé s'annule au bureau ; un refus est déjà clos.
+  const src = sansCom(lire("ecrans/TerrainProfil.jsx"));
+  assert.ok(src.includes('conge.etat === "demande" && ('),
+    "le bouton de retrait n'apparaît que sur une demande en attente");
+});

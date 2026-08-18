@@ -13,6 +13,7 @@
 // =============================================================================
 import test from "node:test";
 import assert from "node:assert/strict";
+import { validerDemandeConge, joursCouverts } from "../src/rh/conges.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -111,4 +112,37 @@ test("l'écran ne propose pas des boutons que la base refuserait", () => {
   const src = lire("composants/Conges.jsx");
   assert.ok(src.includes("c.decidable"),
     "les boutons Approuver/Refuser doivent suivre `decidable` renvoyé par la base");
+});
+
+/* ── Valider une demande côté terrain (lot 12) ──────────────────────────── */
+
+test("une demande sans date est refusée avec un motif lisible", () => {
+  const r = validerDemandeConge({ debut: "", fin: "" }, "2026-06-01");
+  assert.equal(r.ok, false);
+  assert.match(r.motif, /date de début/);
+});
+
+test("une fin avant le début est refusée", () => {
+  const r = validerDemandeConge({ debut: "2026-06-10", fin: "2026-06-08" }, "2026-06-01");
+  assert.equal(r.ok, false);
+  assert.match(r.motif, /précède/);
+});
+
+test("un congé pour aujourd'hui passe, pour hier non", () => {
+  // Un imprévu du matin est légitime ; un congé rétroactif masquerait une
+  // absence déjà passée.
+  assert.equal(validerDemandeConge({ debut: "2026-06-01", fin: "2026-06-01" }, "2026-06-01").ok, true);
+  assert.equal(validerDemandeConge({ debut: "2026-05-31", fin: "2026-06-02" }, "2026-06-01").ok, false);
+});
+
+test("sans date de référence, on ne juge pas du passé", () => {
+  // Le domaine ne lit pas l'horloge : si l'écran n'injecte pas la date, on ne
+  // bloque que sur l'incohérence des bornes, pas sur le passé.
+  assert.equal(validerDemandeConge({ debut: "2020-01-01", fin: "2020-01-02" }).ok, true);
+});
+
+test("les jours couverts incluent les deux bornes", () => {
+  assert.equal(joursCouverts({ debut: "2026-06-01", fin: "2026-06-01" }), 1);
+  assert.equal(joursCouverts({ debut: "2026-06-01", fin: "2026-06-05" }), 5);
+  assert.equal(joursCouverts({ debut: "2026-06-05", fin: "2026-06-01" }), 0, "bornes inversées");
 });
