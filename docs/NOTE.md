@@ -1,60 +1,53 @@
-# Lot 12 — app terrain : congés + apparence
+# Lot 13 — Messages, et le design de toutes les zones d'écriture
 
-`npm test` : **923/923 ✓** — build `apps/web` ✓ — 5 fichiers.
-**Aucune migration.** Se pose par-dessus `dashprod-lot-11`.
+`npm test` : **927/927 ✓** — build `apps/web` ✓ — 7 fichiers.
+**Aucune migration.** Se pose par-dessus `dashprod-lot-12`.
 
-> Ce paquet REMPLACE le `dashprod-lot-12` précédent (partie 1 seule). Il
-> contient le lot 12 complet — congés ET apparence.
+## Les zones d'écriture — le défaut était de fond
 
-## Le fil du lot : réutiliser, pas copier
+Tu as vu juste : elles avaient un mauvais design, et la cause n'était pas
+cosmétique. Toute l'app style **en ligne** (`S.input`, etc.), et un style en
+ligne **ne peut pas porter de `:focus`, `:hover` ni `::placeholder`** — ces
+pseudo-classes n'existent qu'en CSS. Résultat : un champ ne réagissait pas au
+clic. Bordure inerte, aucun anneau, un texte d'invite de la même encre que la
+saisie. On ne voyait pas où l'on écrivait. Ça touchait **les 32 champs** de
+l'app.
 
-Les deux besoins terrain de ce lot existaient déjà côté bureau. Dans les deux
-cas, le travail n'était pas de construire une logique, mais d'**ouvrir la
-porte** — et surtout de ne pas en dupliquer une seconde qui finirait par
-diverger.
+La correction est faite à un seul endroit : une feuille de style
+(`champs-dashprod`, dans `theme.jsx`) appliquée par sélecteur. Une source,
+effet global, sans toucher un écran. Chaque champ a maintenant :
+- un **anneau de focus** à la couleur d'accent (pas le halo bleu du navigateur,
+  qui ignore le thème et jure en nuit) ;
+- un **survol** qui prévient qu'il est cliquable ;
+- un **placeholder** distinct de la saisie, qui s'efface au focus ;
+- un **état désactivé** qui a l'air désactivé.
 
-## 1. Demander un congé
+## Messages — la chaîne va jusqu'au bout
 
-Le circuit `demanderConge` / `deciderConge` / `annulerConge` vit depuis le
-module 8. Il manquait l'onglet dans `TerrainProfil.jsx`.
+**boîte → conversation → client → mission(s).** La conversation ne connaissait
+que le dossier. Quand un client écrit « on peut décaler mercredi ? », le bureau
+devait rouvrir le dossier pour trouver la mission. Désormais un **bandeau des
+missions** s'affiche en tête de conversation — chaque mission avec sa couleur de
+type et sa date — et un clic saute **au planning, à la bonne date**
+(`jourInitial`, ajouté au planning et routé depuis `main.jsx`). Sans la date, le
+pont serait décoratif ; il atterrit au bon jour.
 
-**Un onglet Congés** : deux dates, un motif facultatif, envoi. La demande part
-en état « demande », le bureau tranche depuis le planning.
+**Mise en page.** Le fil vivait à l'étroit dans une carte à hauteur fixe de
+380px. La conversation ouverte prend maintenant la hauteur de l'écran :
+en-tête collant, bandeau des missions, fil qui défile seul, lien « Ouvrir le
+dossier » en pied. On lit une conversation, plus un encadré.
 
-**La distinction technique qui compte** : l'onglet appelle `demanderConge`
-**sans utilisateurId**. Avec un id, la base approuverait d'emblée (saisie
-direction). Sans, ça reste une demande à valider. Verrouillé par test — passer
-son propre id ferait auto-approuver sa demande.
-
-**Validé avant l'envoi, motif visible** : `validerDemandeConge` (nouvelle, dans
-le domaine, pure, date du jour injectée) refuse dates manquantes, fin avant
-début, date passée. On peut demander pour aujourd'hui (imprévu du matin), pas
-pour hier. Le motif du refus s'affiche sous les champs.
-
-**Retrait tant que c'est en attente** : le × n'apparaît que sur une demande non
-tranchée. Un congé accordé s'annule au bureau, un refus est déjà clos.
-
-## 2. Changer d'apparence
-
-Le terrain n'avait aucun accès à Apparence — c'était un écran bureau. Or
-l'apparence est un réglage d'**appareil**, pas un privilège : un déménageur en
-plein soleil a autant besoin du mode nuit.
-
-**Une entrée Apparence** dans le profil terrain, qui ouvre le MÊME écran
-`Apparence.jsx` que les Paramètres bureau (un état qui bascule le rendu, avec un
-`retour`). Aucune copie — la logique, l'aperçu et les réglages vivent à un seul
-endroit.
-
-**Corollaire mode nuit** : quelques fonds `#fff` en dur du profil terrain
-posaient un pavé blanc sur le fond nuit. Passés au jeton `C.blanc`, qui suit le
-mode. Le blanc du texte sur une pastille de couleur pleine reste en dur — il est
-posé sur une couleur, il doit rester blanc dans les deux modes.
+**La barre de composition.** Le champ grandit avec le texte (auto-hauteur) au
+lieu d'une poignée de redimensionnement qui désalignait le bouton. Entrée
+envoie, Maj+Entrée passe à la ligne. Les fonds `#fff` en dur des chips (modèles,
+pièces jointes) passés au jeton, pour suivre le mode nuit.
 
 ## À vérifier à l'œil
 
-1. Profil → Congés → deux dates → « Envoyer » : « En attente », visible au
-   planning bureau en pastille creuse le même jour.
-2. Fin avant début : message ambre, bouton inactif. Retirer une demande (×) :
-   elle et sa pastille disparaissent.
-3. Profil → Apparence → Mode nuit → Appliquer : toute l'app terrain passe en
-   sombre, sans pavé blanc résiduel sur les onglets Véhicule / Inventaire.
+1. N'importe quel champ (recherche, devis, connexion) : au clic, bordure et
+   anneau à la couleur d'accent ; en nuit, l'anneau suit — pas de halo bleu.
+2. Une conversation avec des missions : les puces colorées en tête ; cliquer
+   saute au planning **sur le jour de la mission**.
+3. Le fil : il remplit l'écran, l'en-tête reste en haut, la saisie en bas.
+4. Écrire un long message : le champ s'agrandit jusqu'à une limite puis défile ;
+   Entrée envoie.

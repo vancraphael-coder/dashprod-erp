@@ -181,7 +181,22 @@ test des étages qui a rattrapé l'avertissement perdu.
 
 ---
 
-## 4. Le modèle métier — décisions à ne pas défaire
+### 3.14 Styles EN LIGNE : pas de `:focus`, `:hover` ni `::placeholder`
+Tout l'app style en ligne (`S.input`, etc.). Conséquence longtemps invisible :
+un champ ne pouvait PAS réagir au clic — pas d'anneau de focus, pas de survol,
+un placeholder de la même encre que la saisie. On ne voyait pas où l'on
+écrivait. Les pseudo-classes n'existent qu'en CSS.
+
+La bonne réponse n'est pas de bricoler chaque champ mais **une feuille unique
+appliquée par sélecteur** (`input, textarea, select`) — injectée dans
+`theme.jsx` (`id="champs-dashprod"`). Une source, effet sur les 32 champs. Le
+`!important` du `:focus` l'emporte volontairement sur le style en ligne.
+
+Même principe pour tout comportement d'état d'un élément stylé en ligne : si
+ça a besoin d'un `:hover`/`:focus`/`:nth`/media-query, ça va dans une feuille,
+pas dans mille attributs `style`.
+
+## 4. Le modèle du produit — invariants à respecterpas défaire
 
 ### 4.1 Cinq NATURES, quatre MÉTIERS distincts
 `@domaine/commercial/natures.js` est la **source unique**.
@@ -454,7 +469,7 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 923/923 ✓ — build `apps/web` ✓**
+**`npm test` : 927/927 ✓ — build `apps/web` ✓**
 **Migrations appliquées : jusqu'à `0136_miroir_mission_principale_toutes_natures`.**
 
 ### Lots livrés
@@ -481,6 +496,7 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 | 10g | Bille moins fade, survol, icônes affinées, « + » en bille, options en verre, voyants retirés | — |
 | 11 | Couleurs par type réglables (édition déjà là), lift+sous-traitance ajoutés, **filtres du planning** (type + membres) | — |
 | 12 | **Demande de congé + apparence côté terrain** (portes manquantes ; écrans existants réutilisés) | — |
+| 13 | **Messages** : chaîne jusqu'à la mission, mise en page du fil, **focus des zones d'écriture** (global) | — |
 
 ### Reste à faire
 
@@ -544,9 +560,18 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
       nuit, accent, taille. Quelques fonds `#fff` en dur du profil terrain
       passés au jeton `C.blanc` pour suivre le mode nuit.
 
-**Lot 13 — écran Messages**
-- [ ] Centrage et mise en page
-- [ ] Logique : **boîte → conversation → client → mission(s)**
+**Lot 13 — écran Messages — LIVRÉ**
+- [x] **Mise en page du fil** : il occupait une carte à hauteur fixe (380px) ;
+      la conversation ouverte prend maintenant la hauteur disponible, en-tête
+      collant, fil qui défile seul.
+- [x] **La chaîne va jusqu'à la mission** : boîte → conversation → client →
+      mission(s). Un bandeau des missions du dossier en tête de conversation,
+      cliquable vers le planning **à la bonne date** (`jourInitial`).
+- [x] **Focus des zones d'écriture** — le vrai défaut de fond : styles en
+      ligne, donc aucun `:focus`. Feuille globale `champs-dashprod` (theme.jsx)
+      qui donne à TOUS les champs (32) un anneau d'accent au focus, un
+      survol, un placeholder distinct, un état désactivé. Plus les fonds `#fff`
+      en dur du fil passés au jeton (mode nuit).
 
 ---
 
