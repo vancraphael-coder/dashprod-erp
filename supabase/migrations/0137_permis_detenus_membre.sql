@@ -1,0 +1,16 @@
+-- 0137 — APPLIQUÉE EN LIVE via MCP le 18/08/2026 (stub de référence).
+-- LES PERMIS DÉTENUS PAR UN MEMBRE — signalement, jamais blocage (§4.5).
+--
+-- Dashprod savait quel permis un VÉHICULE exige, rien de ce que les MEMBRES
+-- possèdent : impossible de signaler qu'un chauffeur n'a pas le permis du
+-- camion affecté.
+--   → alter table utilisateurs add permis_detenus text[] default '{}',
+--     add code95_echeance date
+--   → cmd_definir_permis(uuid, text[], date), garde `gerer_referentiels`,
+--     filtre les catégories inconnues, cloisonnée par org, tracée.
+--
+-- On ne stocke PAS l'aptitude médicale groupe 2 : donnée de SANTÉ, elle mérite
+-- sa propre décision RGPD. Le signalement de base fonctionne sans.
+--
+-- Éprouvée en `do $$ … rollback $$` : le filtre retient {B,C,CE} d'une entrée
+-- {B,C,XYZ,CE,bidon} ; l'échéance code 95 s'enregistre.
