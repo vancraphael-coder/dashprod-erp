@@ -87,6 +87,8 @@ export const UTILITES = Object.freeze([
     resume: "Les cartes du planning et de la fiche terrain.",
     entrees: [
       { cle: "demenagement", nom: "Déménagement", defaut: "#16A34A" },
+      { cle: "lift", nom: "Lift", defaut: "#D97706" },
+      { cle: "sous_traitance", nom: "Sous-traitance", defaut: "#DC2626" },
       { cle: "visite", nom: "Visite", defaut: "#2563EB" },
       { cle: "emballage", nom: "Emballage", defaut: "#7C3AED" },
     ],
