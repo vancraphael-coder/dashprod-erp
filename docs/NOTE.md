@@ -1,50 +1,64 @@
-# Lot 10 — paquet consolidé (10e + 10f). **Lot 10 clos.**
+# Lot 11 — couleurs par type et filtres du planning
 
-`npm test` : **901/901 ✓** — build `apps/web` ✓
-23 fichiers + `PASSATION.md`.
+`npm test` : **912/912 ✓** — build `apps/web` ✓ — 8 fichiers.
+**Aucune migration.** Se pose par-dessus le paquet `dashprod-lot-10`.
 
-Un seul glisser-déposer pour les deux livraisons de la session. Si tu avais
-déjà posé `dashprod-lot-10e.zip`, ce paquet le remplace intégralement.
+## Ce que j'ai trouvé avant de coder
 
-## Migrations — RIEN À FAIRE
+L'essentiel du lot 11 **était déjà fait** : l'édition des couleurs par type
+existe dans Apparence depuis longtemps (molette + réinitialisation, moteur
+`UTILITES` / `couleurUtilite` / `ecrireCouleur`). Le vrai périmètre restant
+était plus étroit — et deux bugs traînaient.
 
-`0134`, `0135` et `0136` sont **déjà appliquées en live** via MCP. Les trois
-fichiers SQL du paquet sont des **stubs de référence** : ils documentent ce qui
-a été fait et pourquoi, ils ne s'exécutent pas. Ils ont leur place dans le
-dépôt pour que l'historique reste lisible, mais ils n'ont aucun effet au
-déploiement.
+## Ce qui change
 
-## Ce que contient le paquet
+**Lift et sous-traitance ajoutés aux types de mission.** Ce sont des types
+réels (0130), mais ils n'avaient pas de couleur propre : ils tombaient sur le
+défaut gris, illisibles au planning. Ajoutés dans Apparence (réglables) ET dans
+le domaine (`TYPES_MISSION`), avec les **mêmes défauts** — un écart ferait
+clignoter la couleur au rechargement entre le planning bureau et la fiche
+terrain.
 
-**La Bille** (`lib/matiere-bille.js`, `Bille.jsx`, `cartes-vives.js`,
-`CarteAbonnement.jsx`, `theme.jsx`, `MenuCreation.jsx`)
-Refaite à la racine : huile irisée à deux teintes, angle par `atan2`, verre ou
-peinture selon la surface, profondeur réelle. La bille ne s'éclaire plus
-elle-même — la carte publie son champ de lumière, la bille l'hérite en CSS.
-Une puce de 14 px vit comme une vedette de 84.
+**Le liseré du planning suivait `emballage → violet, sinon bleu` en dur.** Il
+ignorait purement le réglage d'Apparence, et lift comme sous-traitance
+tombaient tous deux sur le même bleu — indistinguables. Remplacé par
+`couleurMission(type)`, et le libellé brut capitalisé par
+`libelleTypeMission(type)`.
 
-**L'architecture** (`packages/domaine/architecture.js` + son test)
-Le noyau ne peut plus importer un métier, chaîne d'imports entière vérifiée.
-Éprouvé sur ses quatre modes de panne. Une dérogation déclarée :
-`lib/adaptateur.js` → `releve/volumetrie.js`.
+**Filtre par type au planning.** Des puces colorées, sous la journée
+sélectionnée. Elles n'apparaissent que s'il y a **plusieurs** types ce jour-là
+— un seul type ne se filtre pas, la barre serait un bouton qui cache la seule
+chose à voir. La puce active porte la couleur du type : elle dit quelle couleur
+elle commande sur les cartes en dessous.
 
-**La grille de box au m³ exact** (`stocks/stockage.js`, `Bareme.jsx`,
-`Stockage.jsx`) — en ajout du mode par tranches, lecture tolérante des barèmes
-déjà en base.
+**Masquer un membre.** Un panneau replié (« Membres affichés — N masqués »),
+qui liste les membres actifs. Besoin ponctuel — sortir un intérimaire, se
+concentrer sur une équipe — d'où le repli par défaut.
 
-**Une seule commande par date** (`CarteDate.jsx`, `Dossier.jsx`)
-Trois commandes pilotaient la même affectation ; il n'en reste qu'une, et elle
-dit à quelle vérité elle parle (« Prévu » / « Au planning »).
+## La décision qui compte : masquer n'est pas supprimer
 
-**Le conflit de disponibilité par mission** (`operations/missions.js`,
-`Planning.jsx`) — dernier point du lot 10b. Porté par le jeton, au moment du
-clic. Rien n'est bloquant.
+`filtrerMissions()` (domaine) applique deux logiques distinctes :
+- un TYPE masqué retire la mission entière ;
+- un MEMBRE masqué retire ses **affectations**, pas les missions — une mission
+  faite par l'équipe qu'on cache reste du travail réel, elle doit rester
+  visible.
 
-## Après déploiement, à vérifier à l'œil
+Et surtout : **le filtre n'entre jamais dans le calcul de conflit.** Il agit
+sur `duJourComplet`, après que la disponibilité a été calculée sur `missions`
+complètes. S'il retirait un membre du calcul, masquer quelqu'un effacerait ses
+doublons et on réserverait par-dessus. C'est verrouillé par un test qui vérifie
+l'ordre des deux opérations dans l'écran.
 
-1. Une carte de date d'un dossier **confirmé** affiche « Au planning » ; un
-   dossier en devis affiche « Prévu ».
-2. Sur un dossier de **lift**, cocher un membre au planning doit se voir sur le
-   dossier (c'était cassé — 0136).
-3. Les petites billes (voyants d'affectation, pastilles de nature) suivent la
-   lumière quand la souris balaie la carte.
+Les préférences vivent dans `lib/preferences-planning.js`, **sur l'appareil** —
+comme l'apparence. Un confort de lecture n'a pas à s'imposer à toute
+l'entreprise via la base.
+
+## À vérifier à l'œil
+
+1. Un jour avec déménagement + visite + emballage : trois puces colorées ;
+   cliquer « Visite » fait disparaître les visites, la puce s'éteint (barrée).
+2. Un lift au planning : liseré ambre, plus le même bleu qu'un déménagement.
+3. Masquer un membre affecté à une mission : la mission reste, son nom
+   disparaît de la liste des affectés — et son éventuel conflit sur une AUTRE
+   mission reste signalé.
+4. Recharger la page : les filtres masqués sont conservés.

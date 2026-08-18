@@ -398,9 +398,32 @@ mission principale (0136) et continuent de servir au chiffrage.
 lui-même : le signaler ailleurs obligerait à faire le lien de tête entre une
 liste et un avertissement, précisément quand on décide. Rien n'est bloquant.
 
+### 4.10 Les filtres du planning MASQUENT, ils ne suppriment pas
+`operations/agenda.js` → `filtrerMissions()`, préférences dans
+`lib/preferences-planning.js` (sur l'appareil).
+
+Le planning se lit à plusieurs métiers à la fois. Deux filtres d'affichage :
+masquer des **types** (ne montrer que les déménagements), masquer des
+**membres** (sortir un intérimaire de la vue). Règles :
+
+- masquer un TYPE retire la mission entière ; masquer un MEMBRE retire ses
+  affectations mais **garde la mission** — une mission faite par l'équipe qu'on
+  cache reste du travail réel.
+- **le filtre n'entre JAMAIS dans le calcul de conflit** : la disponibilité lit
+  la réalité complète. Sinon masquer un membre effacerait ses doublons, et on
+  réserverait par-dessus. Verrouillé par test.
+- **sur l'appareil, jamais en base** : c'est un confort de lecture, l'imposer à
+  toute l'entreprise serait un contresens.
+
+La couleur des types est réglable dans **Apparence → Types de travail** (le
+moteur `UTILITES` / `couleurUtilite` existait ; le lot 11 a ajouté lift et
+sous-traitance, et remplacé le liseré codé en dur du planning). Défauts alignés
+entre l'app et le domaine, sinon la couleur clignoterait au rechargement entre
+le planning bureau et la fiche terrain.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 901/901 ✓ — build `apps/web` ✓**
+**`npm test` : 912/912 ✓ — build `apps/web` ✓**
 **Migrations appliquées : jusqu'à `0136_miroir_mission_principale_toutes_natures`.**
 
 ### Lots livrés
@@ -424,6 +447,8 @@ liste et un avertissement, précisément quand on décide. Rien n'est bloquant.
 | 10d | Cartes de date avec affectation (la Bille enfin visible) | 0132–0133 |
 | 10e | Bille refaite, test d'architecture, grille au m³ exact, 2 bugs de production | 0134, 0135 |
 | 10f | **Une seule commande par date** (3 doublons supprimés), conflits au point de décision, miroir toutes natures | 0136 |
+| 10g | Bille moins fade, survol, icônes affinées, « + » en bille, options en verre, voyants retirés | — |
+| 11 | Couleurs par type réglables (édition déjà là), lift+sous-traitance ajoutés, **filtres du planning** (type + membres) | — |
 
 ### Reste à faire
 
@@ -467,11 +492,15 @@ liste et un avertissement, précisément quand on décide. Rien n'est bloquant.
 - [x] **0135 — l'équipe du dossier redevient celle du jour principal**, dans
       les deux sens (§4.5)
 
-**Lot 11 — couleurs et vue du planning**
-- [ ] Une couleur par type de mission, réglable dans Apparence
-- [ ] Appliquée **côté bureau ET côté terrain**
-- [ ] Sous le planning : filtre par type de mission
-- [ ] Sous le planning : masquer un membre **en un clic, cas par cas**
+**Lot 11 — LIVRÉ** (couleurs par type + filtres du planning)
+- [x] Édition des couleurs par type : **existait déjà** (Apparence → UTILITES)
+- [x] Lift et sous-traitance **ajoutés** aux types (défaut gris auparavant),
+      défauts alignés app ↔ domaine
+- [x] Liseré du planning `emballage → violet, sinon bleu` en dur **remplacé**
+      par `couleurMission(type)`
+- [x] **Filtre par type** (puces colorées, seulement si plusieurs types)
+- [x] **Masquer un membre** (`filtrerMissions`, préférences sur l'appareil)
+- [x] Les filtres **ne faussent pas les conflits** (verrouillé par test)
 
 **Lot 12 — app terrain**
 - [ ] Le terrain peut changer son thème (Apparence)
