@@ -15,6 +15,7 @@ import React, { useState } from "react";
 import {
   etatAffectation, couleurVoyant, resumeAffectation, exigence,
 } from "@domaine/planning/affectation.js";
+import { permisConduite } from "@domaine/flotte/vehicules.js";
 import Bille from "./Bille.jsx";
 import { C, S } from "../lib/theme.jsx";
 
@@ -87,11 +88,36 @@ export default function CarteDate({
 
   // Ce qui est engagé ET en conflit : le bureau doit le voir sans déplier.
   const engages = [
-    ...(a.membres || []).map((id) => [lireDispo("membre", id),
-      (membres || []).find((m) => m.id === id)?.nom]),
+    ...(a.membres || []).map((id) => {
+      const nom = (membres || []).find((m) => m.id === id)?.nom;
+      // Un membre peut cumuler indisponibilité ET permis manquant : on garde
+      // le signal le plus fort (indisponible), sinon le permis.
+      const d = lireDispo("membre", id);
+      const p = permisManquant(id);
+      const signal = d || (p && { niveau: "double", raison: p.motif });
+      return [signal, nom];
+    }),
     ...(a.vehicules || []).map((id) => [lireDispo("vehicule", id),
       (flotte || []).find((v) => v.id === id)?.nom]),
   ].filter(([d]) => d);
+
+  // Signalement de PERMIS : un membre affecté doit pouvoir conduire les
+  // véhicules affectés à la MÊME mission. On ne le vérifie que si un véhicule
+  // à permis est présent — sinon la question ne se pose pas. Comme le reste,
+  // ça SIGNALE (§4.5) : le jeton n'est jamais désactivé.
+  const vehiculesAffectes = (a.vehicules || [])
+    .map((id) => (flotte || []).find((v) => v.id === id))
+    .filter((v) => v && v.permis);
+  const permisManquant = (membreId) => {
+    if (!date || vehiculesAffectes.length === 0) return null;
+    const membre = (membres || []).find((m) => m.id === membreId);
+    if (!membre) return null;
+    for (const v of vehiculesAffectes) {
+      const r = permisConduite(v, membre, date);
+      if (!r.ok) return r;   // le premier manque suffit à signaler
+    }
+    return null;
+  };
 
   // Un lift ne se réserve qu'avec un lift : proposer un fourgon n'aurait
   // aucun sens.
@@ -193,12 +219,17 @@ export default function CarteDate({
                 )}
                 {(membres || []).map((m) => {
                   // Le conflit se lit AU MOMENT DU CLIC, pas dans un écran
-                  // qu'il faut aller ouvrir : c'est ici qu'on décide.
+                  // qu'il faut aller ouvrir : c'est ici qu'on décide. Deux
+                  // signaux se cumulent : disponibilité et permis. La
+                  // disponibilité prime (une personne absente ne conduit rien).
                   const d = lireDispo("membre", m.id);
+                  const p = (a.membres || []).includes(m.id) ? permisManquant(m.id) : null;
+                  const alerte = d?.niveau || (p ? "double" : null);
+                  const raison = d?.raison || p?.motif;
                   return (
                     <Jeton key={m.id} actif={(a.membres || []).includes(m.id)}
                            onClick={() => basculerMembre(m.id)} texte={m.nom}
-                           alerte={d?.niveau} raison={d?.raison} />
+                           alerte={alerte} raison={raison} />
                   );
                 })}
               </div>
