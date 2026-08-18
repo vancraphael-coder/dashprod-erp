@@ -13,13 +13,16 @@ import {
   definirHorairesMission,
 } from "../lib/adaptateur.js";
 import { urlWhatsApp } from "@domaine/communication/brief.js";
-import { grilleMois, missionsDuJour, chargeDuJour } from "@domaine/operations/agenda.js";
+import { grilleMois, missionsDuJour, chargeDuJour, filtrerMissions }
+  from "@domaine/operations/agenda.js";
+import { libelleTypeMission } from "@domaine/operations/missions.js";
 import { disponibiliteRessource, verdictMission, lecteurDisponibilite }
   from "@domaine/operations/missions.js";
 import { qualifierJour } from "@domaine/planning/jours-feries.js";
 import { hhmm, resumeHoraires, verifierHoraires, HEURE_DEFAUT }
   from "@domaine/operations/horaires.js";
-import { C, S, Confirmation, couleurPlanning } from "../lib/theme.jsx";
+import { C, S, Confirmation, couleurPlanning, couleurMission } from "../lib/theme.jsx";
+import { lireFiltre, ecrireFiltre, basculerMasque } from "../lib/preferences-planning.js";
 
 const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
               "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
@@ -67,6 +70,16 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
   const [jourSel, setJourSel] = useState(aujourdhui());
   const [ouvert, setOuvert] = useState(null);
   const [copie, setCopie] = useState(null); // id de mission dont le brief vient d'être copié
+  // Le planning se lit à plusieurs métiers en même temps. Deux filtres, gardés
+  // sur l'appareil comme le reste des préférences d'affichage :
+  //   · les TYPES masqués — ne montrer que les déménagements, cacher les visites
+  //   · les MEMBRES masqués — sortir un intérimaire, un chef d'équipe, du calcul
+  // Masquer, pas supprimer : la mission et l'affectation restent en base, seul
+  // l'affichage se resserre. Un filtre qui écrit serait un piège.
+  const [typesMasques, setTypesMasques] = useState(() => lireFiltre("types"));
+  const [membresMasques, setMembresMasques] = useState(() => lireFiltre("membres"));
+  useEffect(() => ecrireFiltre("types", typesMasques), [typesMasques]);
+  useEffect(() => ecrireFiltre("membres", membresMasques), [membresMasques]);
 
   async function recharger() {
     const toutes = await listerMissions();
@@ -85,8 +98,20 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
   useEffect(() => { recharger(); }, []);
 
   const grille = useMemo(() => grilleMois(annee, mois, missions), [annee, mois, missions]);
-  const duJour = useMemo(() => missionsDuJour(missions, jourSel), [missions, jourSel]);
+  // Les filtres agissent APRÈS le calcul de disponibilité mais AVANT l'affichage.
+  // Placés ici, ils ne faussent pas les conflits — un doublon reste un doublon
+  // même si l'on masque son type — ils ne font que taire ce qu'on ne veut pas
+  // voir aujourd'hui.
+  const duJourComplet = useMemo(() => missionsDuJour(missions, jourSel), [missions, jourSel]);
+  const duJour = useMemo(
+    () => filtrerMissions(duJourComplet, { typesMasques, membresMasques }),
+    [duJourComplet, typesMasques, membresMasques]);
   const charge = useMemo(() => chargeDuJour(duJour), [duJour]);
+  // Les types réellement présents ce jour-là : inutile d'offrir de masquer un
+  // type qui n'a aucune mission, la barre de filtres resterait pleine de cases
+  // sans effet.
+  const typesPresents = useMemo(
+    () => [...new Set(duJourComplet.map((m) => m.type))], [duJourComplet]);
 
   function moisPrecedent() {
     if (mois === 0) { setMois(11); setAnnee(annee - 1); } else setMois(mois - 1);
@@ -336,6 +361,84 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
         );
       })()}
 
+      {/* Filtres par type : n'apparaissent que s'il y a plusieurs types à
+          trier ce jour-là. Un seul type ne se filtre pas — la barre serait un
+          bouton qui cache la seule chose à voir. */}
+      {typesPresents.length > 1 && (
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap",
+                      padding: "0 16px 10px" }}>
+          {typesPresents.map((t) => {
+            const masque = typesMasques.includes(t);
+            const coul = couleurMission(t);
+            return (
+              <button key={t}
+                onClick={() => setTypesMasques((l) => basculerMasque(l, t))}
+                aria-pressed={!masque}
+                title={masque ? `Afficher ${libelleTypeMission(t)}`
+                              : `Masquer ${libelleTypeMission(t)}`}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+                  padding: "5px 11px", borderRadius: 999,
+                  // Masqué = éteint : contour seul, texte grisé. Actif = la
+                  // couleur du type, pour que la puce DISE quelle couleur elle
+                  // commande sur les cartes en dessous.
+                  border: `1.5px solid ${masque ? C.bord : coul}`,
+                  background: masque ? "transparent" : coul + "1A",
+                  color: masque ? C.fantome : coul,
+                  textDecoration: masque ? "line-through" : "none",
+                }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%",
+                               background: masque ? C.bord : coul }} />
+                {libelleTypeMission(t)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Masquer des membres : replié par défaut, car c'est un besoin ponctuel
+          (sortir un intérimaire, se concentrer sur une équipe). Le compteur dit
+          combien sont masqués sans qu'on ait à déplier. */}
+      {!lectureSeule && membres.length > 0 && (
+        <details style={{ margin: "0 16px 10px" }}>
+          <summary style={{ fontSize: 11.5, color: C.muet, cursor: "pointer",
+                            fontWeight: 700, userSelect: "none",
+                            listStyle: "none" }}>
+            Membres affichés
+            {membresMasques.length > 0
+              ? ` — ${membresMasques.length} masqué${membresMasques.length > 1 ? "s" : ""}`
+              : ""}
+          </summary>
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 8 }}>
+            {membres.map((m) => {
+              const masque = membresMasques.includes(m.id);
+              return (
+                <button key={m.id}
+                  onClick={() => setMembresMasques((l) => basculerMasque(l, m.id))}
+                  aria-pressed={!masque}
+                  style={{
+                    fontSize: 11.5, fontWeight: 600, cursor: "pointer",
+                    padding: "5px 10px", borderRadius: 999,
+                    border: `1.5px solid ${masque ? C.bord : C.bleu}`,
+                    background: masque ? "transparent" : C.bleuClair,
+                    color: masque ? C.fantome : C.bleu,
+                    textDecoration: masque ? "line-through" : "none",
+                  }}>
+                  {m.nom}
+                </button>
+              );
+            })}
+          </div>
+          {membresMasques.length > 0 && (
+            <button onClick={() => setMembresMasques([])}
+              style={{ ...S.boutonLien, fontSize: 11, marginTop: 8, paddingLeft: 0 }}>
+              Tout réafficher
+            </button>
+          )}
+        </details>
+      )}
+
       {duJour.length === 0 && (
         <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13 }}>
           Aucune mission ce jour.
@@ -347,15 +450,20 @@ export default function Planning({ ouvrirDossier, lectureSeule = false }) {
         const ouvertIci = ouvert === m.id;
         return (
           <div key={m.id} style={{ ...S.carte,
-            borderLeft: `4px solid ${m.type === "emballage" ? "#6366F1" : C.bleu}` }}>
+            // La couleur du type est RÉGLABLE (Apparence → Types de travail).
+            // Le liseré était codé « emballage violet, sinon bleu » : il
+            // ignorait le réglage, et lift comme sous-traitance tombaient tous
+            // deux sur le même bleu, donc indistinguables.
+            borderLeft: `4px solid ${couleurMission(m.type)}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div onClick={() => ouvrirDossier && m.affaire_id && ouvrirDossier(m.affaire_id)}
                    style={{ cursor: ouvrirDossier ? "pointer" : "default", flex: 1 }}>
                 <div style={{ fontSize: 14.5, fontWeight: 700, color: C.encre }}>
                   {(m.heure || "").slice(0, 5)} · {m.client || "—"}
                 </div>
-                <div style={{ fontSize: 12, color: C.muet, textTransform: "capitalize" }}>
-                  {m.type}
+                <div style={{ fontSize: 12, color: couleurMission(m.type),
+                              fontWeight: 700 }}>
+                  {libelleTypeMission(m.type)}
                 </div>
               </div>
               {lectureSeule ? (
