@@ -547,6 +547,7 @@ function App() {
     mail: (id) => setRoute({ ecran: "mail", affaireId: id }),
     materiel: (id) => setRoute({ ecran: "materiel", affaireId: id }),
     planning: () => setRoute({ ecran: "planning", affaireId: null }),
+    planningJour: (jour) => setRoute({ ecran: "planning", affaireId: null, jour }),
     conversations: () => setRoute({ ecran: "conversations", affaireId: null }),
     stockage: () => setRoute({ ecran: "stockage", affaireId: null }),
     carnet: () => setRoute({ ecran: "carnet", affaireId: null }),
@@ -595,12 +596,12 @@ function App() {
   } else if (route.ecran === "equipe") {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
-    ecran = <Planning ouvrirDossier={nav.dossier} />;
+    ecran = <Planning ouvrirDossier={nav.dossier} jourInitial={route.jour} />;
   } else if (route.ecran === "carnet") {
     ecran = <Carnet retour={nav.liste} ouvrirDossier={nav.dossier}
                     nouvelleAffaire={nav.nouvelle} />;
   } else if (route.ecran === "conversations") {
-    ecran = <Conversations ouvrirDossier={nav.dossier} />;
+    ecran = <Conversations ouvrirDossier={nav.dossier} ouvrirPlanning={nav.planningJour} />;
   } else if (route.ecran === "stockage") {
     ecran = <Stockage retour={nav.liste} />;
   } else if (route.ecran === "centres") {
