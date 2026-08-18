@@ -11,8 +11,7 @@ import { supabase, configPresente } from "./supabase.js";
 import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
 import { CGV_VERSION_COURANTE, cgv , validiteJours } from "@domaine/documents/cgv.js";
-import { volumeTotal, articlesADemonter, articlesARemonter, articlesAvecRemarque }
-  from "@domaine/releve/volumetrie.js";
+import { rubriquesOffre } from "@domaine/releve/rubriques-offre.js";
 import { briefMission } from "@domaine/communication/brief.js";
 
 const CLE = "dashprod-demo-v1";
@@ -361,13 +360,30 @@ export async function monProfil() {
 export async function listerMembres() {
   const { data, error } = await supabase
     .from("utilisateurs")
-    .select("id, nom, email, actif, utilisateur_roles(roles(cle, libelle))")
+    .select("id, nom, email, actif, permis_detenus, code95_echeance, utilisateur_roles(roles(cle, libelle))")
     .eq("actif", true);
   if (error) throw error;
   return (data || []).map((u) => ({
     id: u.id, nom: u.nom, email: u.email, actif: u.actif,
+    permis_detenus: u.permis_detenus || [], code95_echeance: u.code95_echeance || null,
     roles: (u.utilisateur_roles || []).map((r) => r.roles?.cle).filter(Boolean),
   }));
+}
+
+/** Bureau : enregistre les permis détenus et l'échéance code 95 d'un membre. */
+export async function definirPermis(utilisateurId, permis, code95) {
+  if (modeDonnees() === "reel") {
+    const { error } = await supabase.rpc("cmd_definir_permis", {
+      p_utilisateur: utilisateurId, p_permis: permis || [],
+      p_code95: code95 || null,
+    });
+    if (error) throw error;
+    return;
+  }
+  const d = lireDemo();
+  d.permis = d.permis || {};
+  d.permis[utilisateurId] = { permis: permis || [], code95: code95 || null };
+  ecrireDemo(d);
 }
 
 /**
@@ -956,17 +972,15 @@ export async function composerOffre(affaireId) {
     decharges: contact?.decharges || [],
     date_dem: contact?.date || "", heure_dem: contact?.heure || "",
     remarques: contact?.notes || "",
-    volume_m3: volumeTotal(inventaire),
+    // Les rubriques PROPRES à la nature (pour un déménagement : volume, à
+    // démonter, à remonter, remarques). L'AIGUILLAGE choisit selon la nature —
+    // le composeur ne connaît aucun module de métier (dérogation levée).
+    ...rubriquesOffre(affaire?.nature || "demenagement", { inventaire }),
     // Validité FIGÉE ici : le document garde ce qu'il annonçait le jour du gel.
     validite_jours: validiteJours(textes),
     // La civilité voyage jusqu'au document : « M. et Mme Dupont » sur une
     // offre que le couple va lire et signer.
     client_civilite: cli?.civilite || null,
-    a_demonter: articlesADemonter(inventaire),
-    // Remontage et remarques : posés au relevé, ils doivent atteindre l'offre
-    // que le client lit et signe — sinon le travail du métreur se perd.
-    a_remonter: articlesARemonter(inventaire),
-    remarques_articles: articlesAvecRemarque(inventaire),
     // La NATURE voyage jusqu'au document : c'est elle qui décide de ce que le
     // récapitulatif annonce. Sans elle, une offre de lift reprendrait « volume,
     // déménageurs, relevé » — des rubriques qui n'ont pas de sens et que le
