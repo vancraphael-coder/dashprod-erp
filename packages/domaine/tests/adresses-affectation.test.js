@@ -297,7 +297,7 @@ test("chaque ton porte une CONTRE-LUMIÈRE, sinon ce n'est pas de l'huile", () =
                        m.indexOf("export const TAILLES"));
   const tons = [...bloc.matchAll(
     /(\w+):\s*\{\s*a: "([^"]+)",\s*b: "([^"]+)",\s*ombre: "([^"]+)",\s*contre: "([^"]+)"/g)];
-  assert.equal(tons.length, 6, "les six tons doivent être déclarés");
+  assert.ok(tons.length >= 6, "au moins les tons d'état + la palette de marque");
   for (const [, nom, a, b, ombre, contre] of tons) {
     assert.notEqual(contre, a, `${nom} : la contre-lumière ne peut pas être la teinte`);
     assert.notEqual(contre, b, `${nom} : la contre-lumière ne peut pas être l'ombre`);
@@ -306,6 +306,12 @@ test("chaque ton porte une CONTRE-LUMIÈRE, sinon ce n'est pas de l'huile", () =
     assert.equal(new Set([a, b, ombre]).size, 3,
       `${nom} : lumière, teinte et ombre doivent différer`);
   }
+  // La bille de marque (`bleu`) traverse bleu clair → mauve → rose : la demande
+  // de Raphaël. On vérifie que les trois teintes vont du bleu au rose, pas
+  // qu'elles restent dans le même bleu.
+  const noms = tons.map((t) => t[1]);
+  assert.ok(noms.includes("mauve") && noms.includes("rose"),
+    "la palette doit inclure mauve et rose");
 });
 
 test("la lumière vient d'un vrai angle, et elle se repose", () => {
@@ -430,14 +436,18 @@ test("chaque entrée du menu annonce son métier", () => {
 
 /* ── La bille doit être VISIBLE ─────────────────────────────────────────── */
 
-test("chaque date porte sa carte, avec une bille en taille bouton", () => {
+test("chaque date porte sa carte, avec la PETITE bille (jeton)", () => {
   // Le défaut du lot 10b : la bille ne vivait que dans les volets de mission,
   // qui n'apparaissent QU'APRÈS confirmation. Sur un dossier en cours de
-  // saisie, on ne la voyait nulle part.
+  // saisie, on ne la voyait nulle part — d'où une bille en tête de carte.
+  // Depuis, Raphaël a demandé de retirer la GROSSE bille (bouton) : la carte
+  // est dense, la `jeton` suffit comme repère et garde le mouvement.
   const src = lire("composants/CarteDate.jsx");
-  assert.ok(src.includes('taille="bouton"'),
-    "assez grande pour être le repère de la carte et montrer son suivi 3D");
-  assert.ok(src.includes("<CarteDate") === false, "pas d'auto-référence");
+  const tete = src.slice(0, src.indexOf('signe="chevron"'));
+  assert.ok(tete.includes('taille="jeton"'),
+    "la bille de tête est la petite (jeton), plus la grosse");
+  assert.equal(tete.includes('taille="bouton"'), false,
+    "la grosse bille de tête doit avoir disparu");
   const dossier = lire("ecrans/Dossier.jsx");
   assert.ok(dossier.includes("<CarteDate"),
     "les cartes doivent être montées dans le dossier");
@@ -802,4 +812,32 @@ test("le composeur d'offre ne connaît aucun module de métier", () => {
     "plus d'import direct du relevé");
   assert.ok(src.includes("@domaine/releve/rubriques-offre"),
     "le composeur passe par l'aiguillage de composition");
+});
+
+/* ── Lot bille : palette bleu-mauve-rose + grosse bille retirée des cartes ── */
+
+test("la bille de marque descend du bleu clair au rose", () => {
+  // Demande explicite : bleu clair (lumière), bleu foncé/mauve (cœur), rose
+  // (creux). On vérifie que le ton `bleu` — celui de la bille par défaut —
+  // n'est plus un bleu monochrome mais traverse la famille jusqu'au rose.
+  const m = lire("lib/matiere-bille.js");
+  const bleu = m.slice(m.indexOf("bleu:"), m.indexOf("mauve:"));
+  // La lumière est bleutée, le creux tire vers le rose/magenta (rouge élevé).
+  const ombre = bleu.match(/ombre:\s*"(\d+),(\d+),(\d+)"/);
+  assert.ok(ombre, "le ton bleu doit déclarer un creux");
+  const [, r, g, b] = ombre.map(Number);
+  assert.ok(r > b, "le creux tire vers le rose (composante rouge dominante)");
+});
+
+test("la grosse bille a quitté les cartes de date, la petite porte le mouvement", () => {
+  const src = lire("composants/CarteDate.jsx");
+  // Le mouvement (survol, parallaxe) est global sur `.bille` : toute bille en
+  // hérite, quelle que soit sa taille. On vérifie donc juste que la tête a
+  // basculé sur `jeton`.
+  const tete = src.slice(0, src.indexOf('signe="chevron"'));
+  assert.equal(tete.includes('taille="bouton"'), false,
+    "plus de grosse bille en tête de carte");
+  const mat = lire("lib/matiere-bille.js");
+  assert.ok(mat.includes(".bille:hover"),
+    "le mouvement reste global : la petite bille en profite aussi");
 });
