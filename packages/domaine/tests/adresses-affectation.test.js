@@ -874,3 +874,33 @@ test("le tri du planning offre un / plusieurs / tout type", () => {
   assert.ok(src.includes("basculerMasque(l, t)"),
     "chaque puce bascule son type");
 });
+
+/* ── Lot design 3 : vocabulaire de boutons cohérent ─────────────────────── */
+
+test("le thème offre un vrai vocabulaire de boutons, pas seulement deux styles", () => {
+  // Avant : seulement `boutonPlein` et `boutonLien`. Chaque écran réinventait
+  // le secondaire (25×) et le danger (100×+) avec des rayons de 8 à 14 au
+  // hasard — d'où l'incohérence. Ces styles nommés donnent la même forme
+  // partout.
+  const th = lire("lib/theme.jsx");
+  for (const v of ["boutonPlein", "boutonSecondaire", "boutonDanger",
+                   "boutonPuce", "boutonLien"]) {
+    assert.ok(th.includes(`${v}:`), `le style ${v} doit exister dans le thème`);
+  }
+});
+
+test("tous les boutons ont enfin un retour au geste", () => {
+  // L'inertie des boutons (aucun survol, aucun focus clavier) était une grande
+  // part de l'impression d'incohérence. Une feuille globale les anime tous,
+  // sans toucher leur couleur ni leur forme.
+  const th = lire("lib/theme.jsx");
+  assert.ok(th.includes("button:not(:disabled):hover"),
+    "un retour au survol, universel");
+  assert.ok(th.includes("button:focus-visible"),
+    "un anneau au focus CLAVIER seulement");
+  assert.ok(th.includes("button:not(:disabled):active"),
+    "un enfoncement au clic");
+  // Le danger se remplit au survol : contour au repos, aplat à l'intention.
+  assert.ok(th.includes('button[data-bouton="danger"]'),
+    "le bouton danger se remplit quand on s'apprête à cliquer");
+});

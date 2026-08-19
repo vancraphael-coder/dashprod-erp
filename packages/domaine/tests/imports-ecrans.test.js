@@ -68,8 +68,14 @@ test("aucun écran n'utilise un symbole du domaine sans l'importer", () => {
   const fautes = [];
 
   for (const f of fichiers(SRC_APP, ".jsx")) {
-    const src = readFileSync(f, "utf8");
-    const importes = importsDe(src);
+    const brut = readFileSync(f, "utf8");
+    // On retire les commentaires AVANT d'analyser : un mot comme « en ligne »
+    // dans une phrase ne doit pas passer pour un appel `ligne(`. Sans ça, le
+    // test accuse à tort un fichier selon la prose de ses commentaires.
+    const src = brut
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    const importes = importsDe(brut);
     // On ignore ce que le fichier définit lui-même — y compris les noms issus
     // d'une déstructuration (`const [facture, setFacture] = useState()`), sans
     // quoi une variable d'état homonyme d'un export du domaine passerait pour
