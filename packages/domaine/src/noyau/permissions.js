@@ -26,6 +26,31 @@ export const CAPACITES = Object.freeze({
 });
 
 /**
+ * Le libellé HUMAIN de chaque capacité. Un compte doit pouvoir DIRE ce que la
+ * personne peut faire — « 4 capacités actives » n'apprend rien, on le retire au
+ * profit des noms. C'est aussi pour ça que ces libellés vivent ici, à côté des
+ * clés : une capacité sans nom lisible n'a rien à afficher.
+ */
+export const LIBELLE_CAPACITE = Object.freeze({
+  voir_prix: "Voir les prix",
+  creer_affaire: "Créer des dossiers",
+  valider_intake: "Valider les demandes",
+  faire_signer: "Faire signer les offres",
+  gerer_planning: "Gérer le planning",
+  voir_paie: "Voir la paie",
+  gerer_referentiels: "Gérer les référentiels",
+  emettre_facture: "Émettre des factures",
+  signaler_materiel: "Signaler du matériel",
+  demander_conge: "Demander des congés",
+  approuver_conge: "Approuver les congés",
+});
+
+/** Le libellé d'une capacité, ou sa clé si aucun libellé n'est défini. */
+export function libelleCapacite(cle) {
+  return LIBELLE_CAPACITE[cle] || cle;
+}
+
+/**
  * Composition des rôles en capacités — la matrice S3 (extrait normatif).
  * "direction" reçoit tout ; les autres reçoivent un sous-ensemble explicite.
  * Le seed SQL (supabase/seed) matérialisera exactement cette table.
