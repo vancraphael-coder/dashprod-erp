@@ -904,3 +904,33 @@ test("tous les boutons ont enfin un retour au geste", () => {
   assert.ok(th.includes('button[data-bouton="danger"]'),
     "le bouton danger se remplit quand on s'apprête à cliquer");
 });
+
+/* ── Lot design 4 : le sélecteur rotatif, geste de la vitrine dans l'app ─── */
+
+test("le sélecteur rotatif réutilise le geste du variateur, sans copier son code", () => {
+  const sel = lire("composants/SelecteurRotatif.jsx");
+  // Le MOUVEMENT signature : molette qui tourne, aiguille ambre, rotation par
+  // le chemin le plus court (le même calcul de diff que la vitrine).
+  assert.ok(/rotate\(\$\{angle\}deg\)/.test(sel),
+    "la molette tourne");
+  assert.ok(sel.includes("if (diff > 180) diff -= 360"),
+    "rotation par le chemin le plus court, comme le variateur");
+  // Mais il pilote un ÉCRAN, pas un défilement : pas d'IntersectionObserver.
+  // (on lit le code sans les commentaires, où le mot peut apparaître.)
+  assert.equal(sansCom(sel).includes("IntersectionObserver"), false,
+    "dans l'app on change d'écran : rien à observer");
+  assert.ok(sel.includes("aller(o.cle)"),
+    "un clic commute l'écran actif");
+});
+
+test("bureau et terrain montent le sélecteur avec leurs propres entrées", () => {
+  const m = lire("main.jsx");
+  assert.ok(m.includes("import SelecteurRotatif"),
+    "le sélecteur est monté dans les coquilles d'app");
+  // Les deux commandes (barre + molette) partagent la même liste d'entrées :
+  // pas deux vérités de navigation.
+  assert.ok(m.includes("<SelecteurRotatif"),
+    "au moins une coquille l'affiche");
+  assert.ok(m.includes('className="selecteur-rotatif-cadre"'),
+    "posé dans son cadre flottant, masqué sur mobile où la barre suffit");
+});
