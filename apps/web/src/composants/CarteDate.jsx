@@ -137,14 +137,14 @@ export default function CarteDate({
       borderLeft: `3px solid ${posee ? BORD[couleur] : C.bord}`,
       opacity: posee ? 1 : 0.88,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12,
+      <div style={{ display: "flex", alignItems: "center", gap: 10,
                     padding: "13px 14px 11px" }}>
-        {/* La bille est le REPÈRE de la carte, pas son voyant : l'état est
-            dit par la barre latérale, qui longe déjà ce qu'elle qualifie.
-            Lui faire porter les deux lui donnait un métier de trop, et
-            multipliait les points de couleur au point qu'on ne savait plus
-            lequel lire. */}
-        <Bille taille="bouton" ton="bleu"
+        {/* La PETITE bille, pas la grosse. Raphaël a demandé de retirer la
+            grosse bille de tête (taille bouton) : elle pesait sur une carte
+            déjà dense. La `jeton` suffit comme repère et porte le même
+            mouvement (survol, parallaxe) — l'état, lui, reste dit par la barre
+            latérale, jamais par la bille. */}
+        <Bille taille="jeton" ton="bleu"
                signe={posee ? undefined : "plus"}
                titre={`${libelle} — ${resumeAffectation(a)}`} />
         <div style={{ flex: 1, minWidth: 0 }}>
