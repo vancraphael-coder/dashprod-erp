@@ -934,3 +934,54 @@ test("bureau et terrain montent le sélecteur avec leurs propres entrées", () =
   assert.ok(m.includes('className="selecteur-rotatif-cadre"'),
     "posé dans son cadre flottant, masqué sur mobile où la barre suffit");
 });
+
+/* ── Lot design 4 : le sélecteur rotatif dans les TROIS espaces ─────────── */
+
+test("le sélecteur rotatif de la vitrine est décliné dans bureau, terrain ET client", () => {
+  // Le geste de la boussole de la landing, porté dans l'app. Le bureau et le
+  // terrain l'avaient déjà ; le client était le seul des trois sans. Les trois
+  // le montent maintenant avec leurs propres entrées.
+  const main = lire("main.jsx");
+  const nbMain = (main.match(/<SelecteurRotatif/g) || []).length;
+  assert.ok(nbMain >= 2, "bureau et terrain montent la molette");
+  const client = lire("ecrans/EspaceClient.jsx");
+  assert.ok(client.includes("<SelecteurRotatif"),
+    "l'espace client monte la même molette");
+  // Réutilisé, pas recopié : un seul composant partagé.
+  assert.ok(client.includes('from "../composants/SelecteurRotatif.jsx"'),
+    "c'est le composant partagé, pas une copie");
+});
+
+test("le sélecteur rotatif garde une seule vérité : l'onglet actif vient de l'écran", () => {
+  // La molette ne détient pas d'état propre : elle reçoit `actif` et `aller`.
+  // Que le changement vienne d'un clic sur la molette ou de la barre du bas,
+  // l'aiguille s'aligne pareil — pas deux sources qui divergent.
+  const sel = lire("composants/SelecteurRotatif.jsx");
+  assert.ok(sel.includes("actif") && sel.includes("aller"),
+    "l'écran actif est piloté de l'extérieur");
+  assert.equal(/useState\(\s*["']/.test(sel), false,
+    "la molette ne garde pas son propre onglet actif");
+});
+
+/* ── Lot design 5 : l'en-tête de la landing, mise en scène ──────────────── */
+
+test("le hero de la landing est une scène, pas le gabarit SaaS par défaut", () => {
+  const src = lire("ecrans/vitrine/Landing.jsx");
+  const hero = src.slice(src.indexOf('id="accueil"'), src.indexOf('id="commander"'));
+  // L'aube ambre à l'horizon (le petit matin du chargement), pas le halo bleu
+  // générique en haut : l'ambre domine désormais le bas de la scène.
+  assert.ok(hero.includes("118%") && hero.includes("217,119,6"),
+    "un lever de jour ambre en bas de scène");
+  // Le titre porte sa ligne-force ambre qui se tend au chargement.
+  assert.ok(hero.includes("v-trait"),
+    "le trait ambre sous le mot-clé (la sangle qu'on tend)");
+  // L'entrée est mise en scène : les éléments montent en cascade.
+  for (const c of ["v-lever-2", "v-lever-3", "v-lever-4", "v-lever-5"]) {
+    assert.ok(hero.includes(c), `la cascade d'entrée utilise ${c}`);
+  }
+  // Les étoiles ont des positions FIXES (pas de random au rendu → SSR stable).
+  assert.ok(src.includes("const ETOILES"),
+    "les étoiles sont un semis déterministe, pas un Math.random au rendu");
+  assert.equal(/Math\.random\(\)/.test(hero), false,
+    "aucun aléa au rendu du hero");
+});
