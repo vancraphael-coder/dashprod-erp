@@ -841,3 +841,36 @@ test("la grosse bille a quitté les cartes de date, la petite porte le mouvement
   assert.ok(mat.includes(".bille:hover"),
     "le mouvement reste global : la petite bille en profite aussi");
 });
+
+/* ── Lot design 2 : capacités citées + tri planning « Tous » ────────────── */
+
+test("le Compte cite les capacités au lieu de les compter", () => {
+  // « 4 capacités actives » n'apprend rien. Règle de Raphaël : citer, ou
+  // retirer. On cite — et seulement celles qui ont un libellé lisible.
+  const src = lire("ecrans/Profil.jsx");
+  assert.equal(/\.length\}\s*capacités actives/.test(src), false,
+    "le compteur muet doit avoir disparu");
+  assert.ok(src.includes("libelleCapacite("),
+    "les capacités sont nommées");
+  assert.ok(src.includes("libelleCapacite(c) !== c"),
+    "une capacité sans libellé n'est pas affichée (elle ne saurait se dire)");
+});
+
+test("chaque capacité a un libellé humain, à côté de sa clé", () => {
+  const perm = lireDomaine("noyau/permissions.js");
+  assert.ok(perm.includes("LIBELLE_CAPACITE"), "table de libellés définie");
+  assert.ok(perm.includes("export function libelleCapacite"),
+    "un accès qui retombe sur la clé si le libellé manque");
+});
+
+test("le tri du planning offre un / plusieurs / tout type", () => {
+  const src = lire("ecrans/Planning.jsx");
+  // « Tous » remet la vue complète ; le double-clic isole un type ; chaque
+  // puce bascule le sien.
+  assert.ok(src.includes("setTypesMasques([])"),
+    "le bouton Tous réaffiche tout");
+  assert.ok(src.includes("onDoubleClick"),
+    "un raccourci pour isoler un seul type");
+  assert.ok(src.includes("basculerMasque(l, t)"),
+    "chaque puce bascule son type");
+});
