@@ -302,7 +302,7 @@ export default function Equipe({ retour, integre }) {
             <button key={cle} onClick={() => setRole(cle)} style={{
               padding: "7px 12px", borderRadius: 999, cursor: "pointer",
               border: `1.5px solid ${role === cle ? C.bleu : C.bord}`,
-              background: role === cle ? "#E7EFFC" : C.blanc,
+              background: role === cle ? C.bleuClair : C.blanc,
               color: role === cle ? C.bleu : C.muet, fontSize: 12, fontWeight: 600,
             }}>{LIBELLES_ROLE[cle] || cle}</button>
           ))}
@@ -514,7 +514,7 @@ function Autorisations({ membre }) {
             display: "flex", justifyContent: actif ? "flex-end" : "flex-start",
           }}>
           <span style={{ width: 16, height: 16, borderRadius: "50%",
-                         background: "#fff", display: "block" }} />
+                         background: C.blanc, display: "block" }} />
         </button>
         <span style={{ flex: 1 }}>
           <span style={{ display: "block", fontSize: 12.5, fontWeight: 700,

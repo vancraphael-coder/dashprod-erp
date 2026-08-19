@@ -120,7 +120,7 @@ export default function Journal({ retour, affaireId }) {
           onChange={(e) => setNote(e.target.value)}
           style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px",
             borderRadius: 10, border: `1.5px solid ${C.bord}`, fontSize: 13,
-            fontFamily: "inherit", resize: "vertical", background: "#fff" }} />
+            fontFamily: "inherit", resize: "vertical", background: C.blanc }} />
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
           <button style={{ ...S.boutonPlein, margin: 0, flex: 1,
                            opacity: note.trim().length > 2 ? 1 : .5 }}
@@ -143,7 +143,7 @@ export default function Journal({ retour, affaireId }) {
             padding: "7px 13px", borderRadius: 999, whiteSpace: "nowrap",
             cursor: "pointer", fontSize: 12.5, fontWeight: 700,
             border: `1.5px solid ${famille === c ? C.bleu : C.bord}`,
-            background: famille === c ? "#E7EFFC" : C.blanc,
+            background: famille === c ? C.bleuClair : C.blanc,
             color: famille === c ? C.bleu : C.muet }}>{lib}</button>
         ))}
       </div>
@@ -162,7 +162,7 @@ export default function Journal({ retour, affaireId }) {
 
       {sujetFiltre && (
         <div style={{ margin: "0 16px 10px", padding: "9px 12px",
-          borderRadius: 10, background: "#E7EFFC", border: `1px solid ${C.bord}`,
+          borderRadius: 10, background: C.bleuClair, border: `1px solid ${C.bord}`,
           display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ flex: 1, fontSize: 12.5, color: C.encre }}>
             Filtré sur <b>{sujetFiltre}</b>

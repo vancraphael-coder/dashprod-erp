@@ -233,7 +233,7 @@ function Inventaire({ profil }) {
   const rendre = (arr) => arr.map((art) => (
     <div key={art.id} style={{
       display: "flex", width: "100%", alignItems: "center", gap: 8,
-      padding: "10px 12px", marginBottom: 6, borderRadius: 10, background: "#fff",
+      padding: "10px 12px", marginBottom: 6, borderRadius: 10, background: C.blanc,
       border: `1.5px solid ${art.etat === "a_remplacer" ? "#FECACA" : C.bord}` }}>
       <span onClick={() => cycler(art)}
             style={{ flex: 1, fontSize: 13.5, color: C.encre, fontWeight: 600,

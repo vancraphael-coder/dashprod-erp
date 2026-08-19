@@ -100,7 +100,7 @@ export default function Cout({ retour }) {
             flex: 1, padding: "9px 6px", borderRadius: 10, cursor: "pointer",
             fontSize: 12.5, fontWeight: 700,
             border: `1.5px solid ${vue === cle ? C.bleu : C.bord}`,
-            background: vue === cle ? "#E7EFFC" : C.blanc,
+            background: vue === cle ? C.bleuClair : C.blanc,
             color: vue === cle ? C.bleu : C.muet }}>{lib}</button>
         ))}
       </div>

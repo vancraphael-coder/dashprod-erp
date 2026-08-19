@@ -275,7 +275,7 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
                 )}
                 {modifie && (
                   <span style={{ marginLeft: "auto", fontSize: 9.5, fontWeight: 700,
-                    color: C.bleu, background: "#E7EFFC", borderRadius: 20,
+                    color: C.bleu, background: C.bleuClair, borderRadius: 20,
                     padding: "1px 7px", textTransform: "none", letterSpacing: 0 }}>
                     modifié
                   </span>

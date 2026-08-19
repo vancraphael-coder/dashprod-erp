@@ -373,7 +373,7 @@ export default function Mail({ affaireId, retour, versOffre }) {
       <div style={{ margin: "0 16px", display: "flex", gap: 8 }}>
         <button onClick={copier} style={{
           flex: 1, padding: "13px", borderRadius: 12, cursor: "pointer",
-          border: `1.5px solid ${C.bord}`, background: "#fff",
+          border: `1.5px solid ${C.bord}`, background: C.blanc,
           fontSize: 13.5, fontWeight: 700, color: C.encre,
         }}>{copie ? "✓ Copié" : "📋 Copier"}</button>
         <a href={mail ? urlMailto(mail) : "#"} style={{

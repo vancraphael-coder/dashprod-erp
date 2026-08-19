@@ -587,7 +587,7 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
               <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
                 <button onClick={() => copierBrief(m)} style={{
                   flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer",
-                  border: `1.5px solid ${C.bord}`, background: "#fff",
+                  border: `1.5px solid ${C.bord}`, background: C.blanc,
                   fontSize: 12.5, fontWeight: 700, color: C.encre,
                 }}>{copie === m.id ? "✓ Copié" : "📋 Copier le brief"}</button>
                 <button onClick={() => whatsappBrief(m)} style={{
@@ -701,7 +701,7 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
 
 const btnFleche = {
   width: 38, height: 38, borderRadius: 10, border: `1.5px solid ${C.bord}`,
-  background: "#fff", cursor: "pointer", fontSize: 16, color: C.encre, fontWeight: 700,
+  background: C.blanc, cursor: "pointer", fontSize: 16, color: C.encre, fontWeight: 700,
 };
 
 /**

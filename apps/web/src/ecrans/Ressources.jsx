@@ -34,7 +34,7 @@ export default function Ressources() {
             <button key={cle} onClick={() => setOnglet(cle)} style={{
               flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer",
               border: `1.5px solid ${onglet === cle ? C.bleu : C.bord}`,
-              background: onglet === cle ? "#E7EFFC" : C.blanc,
+              background: onglet === cle ? C.bleuClair : C.blanc,
               color: onglet === cle ? C.bleu : C.muet, fontSize: 13, fontWeight: 700,
             }}>{lib}</button>
           ))}

@@ -39,7 +39,7 @@ export default function Heures({ retour }) {
             <button key={cle} onClick={() => setVue(cle)} style={{
               flex: 1, padding: "9px", borderRadius: 10, cursor: "pointer",
               border: `1.5px solid ${vue === cle ? C.bleu : C.bord}`,
-              background: vue === cle ? "#E7EFFC" : C.blanc,
+              background: vue === cle ? C.bleuClair : C.blanc,
               color: vue === cle ? C.bleu : C.muet, fontSize: 12.5, fontWeight: 700,
             }}>{lib}</button>
           ))}

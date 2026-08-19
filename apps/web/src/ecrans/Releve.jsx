@@ -344,7 +344,7 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
                   <span style={{ fontSize: 11, color: C.fantome }}>{it.piece}</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 2,
-                                 background: "#fff", border: `1px solid ${C.bord}`,
+                                 background: C.blanc, border: `1px solid ${C.bord}`,
                                  borderRadius: 6, padding: "1px 4px", marginLeft: "auto" }}>
                     <button onClick={() => ajusterVolume(it.id, -0.1)} style={btnVol}>−</button>
                     <span style={{ fontSize: 11, fontWeight: 600, minWidth: 58,
@@ -399,7 +399,7 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
                       onChange={(e) => definirRemarque(it.id, e.target.value)}
                       style={{ width: "100%", boxSizing: "border-box", marginTop: 6,
                         padding: "8px 10px", borderRadius: 8, fontSize: 12.5,
-                        border: `1px solid ${C.bord}`, background: "#fff",
+                        border: `1px solid ${C.bord}`, background: C.blanc,
                         color: C.encre, outline: "none" }} />
                     </>
                     )}
@@ -441,7 +441,7 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
 
 const btnQ = {
   width: 30, height: 30, borderRadius: 8, border: `1.5px solid #DCE4F0`,
-  background: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", color: "#0F172A",
+  background: C.blanc, fontSize: 15, fontWeight: 700, cursor: "pointer", color: C.encre,
 };
 const btnOption = {
   flex: 1, padding: "8px 10px", borderRadius: 9, cursor: "pointer",

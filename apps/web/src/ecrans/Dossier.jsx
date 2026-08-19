@@ -871,7 +871,7 @@ function ZoneReconciliation({ affaire, affaireId, onFait }) {
         <div key={m.id} style={{ marginTop: 10, padding: 11, borderRadius: 10,
           border: "1px solid #FDE68A", background: "#FFFBEB" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: "#0F172A" }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>
               {m.type ? m.type.charAt(0).toUpperCase() + m.type.slice(1) : "Chantier"}
               {m.date ? ` · ${new Date(m.date + "T00:00:00").toLocaleDateString("fr-BE",
                 { day: "numeric", month: "short" })}` : ""}
@@ -1137,7 +1137,7 @@ function ZoneDesistement({ affaire, affaireId, onFait }) {
   const bouton = (cle, libelle, couleur) => (
     <button onClick={() => { setMode(cle); setErreur(null); }} style={{
       flex: 1, padding: "10px", borderRadius: 10, cursor: "pointer",
-      fontSize: 12.5, fontWeight: 700, background: "#fff",
+      fontSize: 12.5, fontWeight: 700, background: C.blanc,
       border: `1.5px solid ${C.bord}`, color: couleur,
     }}>{libelle}</button>
   );
@@ -1209,7 +1209,7 @@ function ZoneDesistement({ affaire, affaireId, onFait }) {
             </button>
             <button disabled={enCours} onClick={() => { setMode(null); setMotif(""); }} style={{
               padding: "11px 16px", borderRadius: 10, cursor: "pointer",
-              fontSize: 13, fontWeight: 700, background: "#fff",
+              fontSize: 13, fontWeight: 700, background: C.blanc,
               border: `1.5px solid ${C.bord}`, color: C.muet,
             }}>Retour</button>
           </div>
