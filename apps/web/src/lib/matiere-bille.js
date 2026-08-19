@@ -43,12 +43,21 @@ const ID = "matiere-bille";
 /** Les teintes. Chacune dit une chose, et une seule. */
 export const TONS = Object.freeze({
   //        a = la lumière      b = la teinte      ombre = le creux    contre = l'irisation
-  bleu:   { a: "96,165,250",  b: "37,99,235",   ombre: "23,60,150",   contre: "217,119,6" },
-  vert:   { a: "74,222,161",  b: "5,150,105",   ombre: "4,95,68",     contre: "217,119,6" },
-  gris:   { a: "163,177,196", b: "100,116,139", ombre: "51,65,85",    contre: "217,119,6" },
-  orange: { a: "253,164,90",  b: "234,88,12",   ombre: "154,52,8",    contre: "37,99,235" },
-  rouge:  { a: "250,140,140", b: "220,38,38",   ombre: "145,25,25",   contre: "37,99,235" },
-  ambre:  { a: "251,180,40",  b: "217,119,6",   ombre: "133,60,5",    contre: "37,99,235" },
+  //
+  // Le ton `bleu` EST la bille de marque : Raphaël la veut bleu clair en haut,
+  // bleu foncé/mauve au cœur, rose dans le creux. La sphère traverse donc les
+  // trois couleurs de haut en bas — c'est cette transition qui fait l'identité
+  // de la mascotte, pas une teinte plate.
+  bleu:     { a: "125,185,255", b: "99,91,236",   ombre: "196,64,158",  contre: "236,72,153" },
+  // Deux tons autonomes tirés de la même famille, pour colorer une bille
+  // isolée sans repasser par le dégradé complet.
+  mauve:    { a: "167,139,250", b: "124,90,224",  ombre: "76,44,140",   contre: "236,72,153" },
+  rose:     { a: "244,164,208", b: "219,80,158",  ombre: "134,34,96",   contre: "99,102,241" },
+  vert:     { a: "74,222,161",  b: "5,150,105",   ombre: "4,95,68",     contre: "217,119,6" },
+  gris:     { a: "163,177,196", b: "100,116,139", ombre: "51,65,85",    contre: "217,119,6" },
+  orange:   { a: "253,164,90",  b: "234,88,12",   ombre: "154,52,8",    contre: "37,99,235" },
+  rouge:    { a: "250,140,140", b: "220,38,38",   ombre: "145,25,25",   contre: "37,99,235" },
+  ambre:    { a: "251,180,40",  b: "217,119,6",   ombre: "133,60,5",    contre: "37,99,235" },
 });
 
 /** Les tailles, nommées plutôt que chiffrées : un badge ne « fait pas 18px ». */
