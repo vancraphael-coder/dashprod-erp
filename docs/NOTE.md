@@ -1,43 +1,59 @@
-# Lot 16 — Compte : capacités citées, et tri du planning
+# Lot 17 — cohérence des boutons
 
-`npm test` : **944/944 ✓** — build `apps/web` ✓ — 5 fichiers.
-**Aucune migration.** Se pose par-dessus le lot 15 (bille).
+`npm test` : **946/946 ✓** — build `apps/web` ✓ — 4 fichiers.
+**Aucune migration.** Se pose par-dessus le lot 16.
 
-## 1. Le Compte cite ses capacités au lieu de les compter
+## Le diagnostic
 
-« X capacités actives » n'apprenait rien. Ta règle : les citer, ou les retirer.
-J'ai choisi de les citer — un compte gagne à montrer ce qu'on peut faire.
+L'app a 391 boutons ; 184 seulement passaient par un style partagé. Les ~200
+autres improvisaient leur style en ligne, avec des rayons de 8 à 14 au hasard.
+Et surtout : le thème n'offrait que **deux** styles de bouton (`plein` et
+`lien`), donc chaque écran réinventait le bouton secondaire (25 fois) et le
+bouton danger (plus de 100 fois). Voilà la source de l'incohérence.
 
-Il fallait pour ça des noms lisibles : les capacités n'avaient que des clés
-techniques (`voir_prix`). J'ai ajouté une table `LIBELLE_CAPACITE` dans le
-domaine, à côté des clés — leur place naturelle. Le Compte affiche maintenant
-les capacités comme des puces nommées (« Voir les prix », « Gérer le
-planning »…).
+Deux causes, deux corrections.
 
-Garde-fou fidèle à ta règle : une capacité **sans** libellé n'est pas affichée
-du tout — elle retomberait sur sa clé technique, donc elle « ne sait pas se
-dire », donc on ne la montre pas. Le filtre `libelleCapacite(c) !== c` s'en
-charge.
+## 1. Un vrai vocabulaire de boutons
 
-## 2. Le tri du planning : un / plusieurs / tout type
+Ajoutés au thème, à côté des deux existants :
+- **plein** — action principale (aplat bleu). *(existait déjà)*
+- **secondaire** — second rang (Annuler, Retour) : contour, pas remplissage,
+  pour ne pas rivaliser avec l'action principale.
+- **danger** — destructif (Supprimer) : contour rouge au repos, qui se remplit
+  au survol. Un gros bouton rouge plein crie ; on veut prévenir, pas alarmer.
+- **puce** — petit bouton en ligne (filtre, étiquette) : rayon pleinement
+  arrondi, jamais les rayons intermédiaires qui traînaient.
+- **lien** — texte seul. *(existait déjà)*
 
-Le filtre par type existait depuis le lot 11 (une puce par type, qu'on
-masque). Il manquait le « tout » explicite. Ajouté :
+Un écran qui a un besoin standard s'y sert désormais, au lieu d'improviser.
 
-- un bouton **« Tous »** en tête, actif quand rien n'est masqué, qui remet la
-  vue complète d'un clic ;
-- le **double-clic** sur une puce **isole** ce type (masque tous les autres) —
-  le raccourci « ne montrer que les déménagements » sans éteindre le reste un
-  par un ;
-- chaque puce continue de basculer son propre type.
+## 2. Tous les boutons répondent enfin au geste
 
-Un / plusieurs / tout, donc, comme demandé — sans casser le comportement du
-lot 11.
+C'était le plus visible : les boutons étaient **inertes** — aucun retour au
+survol, aucun anneau au focus clavier. Une grande part de l'impression
+d'incohérence venait de là.
+
+Une feuille CSS globale (les styles en ligne ne peuvent pas porter de `:hover`
+/ `:focus`) anime **tous** les boutons, sans toucher un seul des 391 :
+- survol qui éclaircit légèrement ;
+- enfoncement bref au clic ;
+- anneau d'accent au focus **clavier seulement** (pas au clic souris) ;
+- le danger se remplit de rouge au survol.
+
+On ne touche ni à la couleur ni à la forme (portées par le style inline) :
+seulement au **retour**. C'est ce qui unifie l'ensemble sans tout réécrire.
+
+## Ce que ce lot ne fait PAS
+
+Je n'ai pas migré les ~200 boutons inline vers les nouveaux styles — ce serait
+200 risques de régression pour un lot. L'essentiel est que le vocabulaire
+existe et que le retour au geste soit universel. La migration écran par écran
+se fera au fil des prochains lots design, là où je touche déjà chaque écran.
 
 ## À vérifier à l'œil
 
-1. Compte : sous le nom, les capacités apparaissent en puces nommées, plus un
-   compteur.
-2. Planning, un jour à plusieurs types : « Tous » est allumé ; cliquer une puce
-   la masque ; double-cliquer une puce n'affiche qu'elle ; « Tous » rallume
-   tout.
+1. N'importe quel bouton, au survol : il s'éclaircit un peu ; au clic, il
+   s'enfonce brièvement.
+2. Naviguer au clavier (Tab) : un anneau bleu apparaît sur le bouton visé —
+   mais pas quand on clique à la souris.
+3. Un bouton rouge (déconnexion, suppression) : au survol il se remplit.

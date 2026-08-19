@@ -511,9 +511,28 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
   RGPD (consentement, base légale, durée) reste à prendre. Le signalement de
   base fonctionne sans.
 
+### 4.13 Le vocabulaire de BOUTONS vit dans le thème
+`theme.jsx` → `S.boutonPlein` / `boutonSecondaire` / `boutonDanger` /
+`boutonPuce` / `boutonLien`, plus la feuille globale `champs-dashprod` qui donne
+à TOUT bouton son retour au geste.
+
+Le thème n'offrait que « plein » et « lien » : chaque écran réinventait donc le
+secondaire (25×) et le danger (100×+), avec des rayons de 8 à 14 au hasard —
+d'où l'incohérence visible. Règle désormais : un besoin de bouton STANDARD se
+sert dans le thème, on n'improvise plus un style inline.
+
+- **plein** : action principale (aplat bleu). **secondaire** : second rang
+  (contour). **danger** : destructif (contour rouge qui se remplit au survol —
+  il prévient au repos, confirme à l'intention). **puce** : petit, en ligne,
+  rayon pleinement arrondi. **lien** : texte seul.
+- Les ÉTATS sont dans une feuille CSS (les styles inline ne portent pas de
+  `:hover`/`:focus`) : survol qui éclaircit, enfoncement au clic, anneau au
+  focus CLAVIER seulement (pas au clic souris). Universel, sans toucher les
+  391 boutons.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 944/944 ✓ — build `apps/web` ✓**
+**`npm test` : 946/946 ✓ — build `apps/web` ✓**
 **Migrations appliquées : jusqu'à `0137_permis_detenus_membre`.**
 
 ### Lots livrés
@@ -545,6 +564,7 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 | 14b | **Hotfix écran blanc Dossier** (TDZ dans CarteDate) + garde-fou statique | — |
 | 15 | **Design — bille** : palette bleu clair/mauve/rose, grosse bille retirée des cartes de date | — |
 | 16 | **Design — Compte + tri planning** : capacités citées (plus le compteur), bouton « Tous » + isoler au planning | — |
+| 17 | **Design — cohérence des boutons** : vocabulaire (secondaire/danger/puce) + états de survol/focus/clic universels | — |
 
 ### Reste à faire
 
