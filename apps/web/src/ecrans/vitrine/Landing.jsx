@@ -61,6 +61,17 @@ const CHIFFRES = [
   ["7 ans", "vos factures conservées, loi belge"],
 ];
 
+// Poussière d'étoiles du hero : positions FIXES (pas de Math.random au rendu,
+// qui donnerait un scintillement différent à chaque frame et casserait le SSR).
+// Un semis discret dans le haut de la scène, là où la nuit est encore dense.
+const ETOILES = [
+  { x: "12%", y: "18%", r: 2, d: 4.2, o: 0 },   { x: "28%", y: "9%",  r: 1.5, d: 5.1, o: .6 },
+  { x: "41%", y: "22%", r: 1.5, d: 3.8, o: 1.2 }, { x: "63%", y: "12%", r: 2, d: 4.6, o: .3 },
+  { x: "72%", y: "26%", r: 1.5, d: 5.4, o: .9 },  { x: "86%", y: "16%", r: 2, d: 4.0, o: 1.5 },
+  { x: "8%",  y: "38%", r: 1.5, d: 4.8, o: .4 },  { x: "54%", y: "6%",  r: 1.5, d: 5.2, o: 1.1 },
+  { x: "93%", y: "34%", r: 1.5, d: 3.9, o: .7 },  { x: "20%", y: "30%", r: 1.5, d: 4.4, o: 1.3 },
+];
+
 export default function Landing({ aller, orgId }) {
   return (
     <div className="vitrine" style={{ minHeight: "100vh", display: "flex",
@@ -73,35 +84,65 @@ export default function Landing({ aller, orgId }) {
 
 
       {/* ── HERO — la nuit du chargement ─────────────────────────────────── */}
-      <section id="accueil" style={{ background:
-        `radial-gradient(1100px 500px at 75% -10%, rgba(37,99,235,.28), transparent 60%),
-         radial-gradient(700px 400px at 10% 110%, rgba(217,119,6,.14), transparent 55%),
-         ${V.nuit}`, color: "#fff" }}>
-        <div style={{ maxWidth: 1080, margin: "0 auto",
-                      padding: "clamp(56px, 9vw, 110px) 20px clamp(48px, 7vw, 90px)",
+      <section id="accueil" style={{ position: "relative", overflow: "hidden",
+        background: V.nuit, color: "#fff" }}>
+        {/* L'AUBE À L'HORIZON — un lever de jour ambre en bas de scène, qui
+            respire lentement. C'est le petit matin du chargement, pas un halo
+            SaaS. Le bleu route ne teinte plus que le haut, discrètement. */}
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0,
+          background:
+            `radial-gradient(120% 60% at 50% 118%, rgba(217,119,6,.42), transparent 62%),
+             radial-gradient(90% 50% at 78% -12%, rgba(37,99,235,.20), transparent 60%)` }} />
+        {/* Poussière d'étoiles de la nuit finissante. */}
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0,
+          pointerEvents: "none" }}>
+          {ETOILES.map((e, i) => (
+            <span key={i} style={{ position: "absolute", left: e.x, top: e.y,
+              width: e.r, height: e.r, borderRadius: "50%", background: "#fff",
+              animation: `v-scintille ${e.d}s ease-in-out ${e.o}s infinite` }} />
+          ))}
+        </div>
+
+        <div style={{ position: "relative", zIndex: 1,
+                      maxWidth: 1080, margin: "0 auto",
+                      padding: "clamp(56px, 9vw, 116px) 20px clamp(48px, 7vw, 92px)",
                       display: "grid", gap: 44, alignItems: "center",
                       gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
-          <div className="v-lever">
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8,
+          <div>
+            <div className="v-lever" style={{ display: "inline-flex", alignItems: "center", gap: 8,
                           fontFamily: MONO, fontSize: 12, fontWeight: 600,
-                          color: V.ciel, background: "rgba(37,99,235,.18)",
-                          border: "1px solid rgba(147,197,253,.25)",
+                          color: V.sangleClair, background: "rgba(217,119,6,.16)",
+                          border: "1px solid rgba(253,233,200,.28)",
                           padding: "6px 12px", borderRadius: 999 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%",
+                background: V.sangle, boxShadow: `0 0 8px ${V.sangle}` }} />
               L'ERP des déménageurs · Belgique
             </div>
-            <h1 className="v-display" style={{ fontSize: "clamp(34px, 5.2vw, 58px)",
+
+            {/* LE TITRE = le lettrage du flanc d'un camion. Le mot-clé du métier
+                porte la ligne-force ambre qui se tire au chargement de la page —
+                comme une sangle qu'on tend. */}
+            <h1 className="v-display v-lever-2" style={{ fontSize: "clamp(36px, 5.4vw, 62px)",
                                                margin: "18px 0 0", color: "#fff" }}>
               Chaque déménagement,<br />
-              du premier appel<br />
-              à la facture payée.
+              du premier appel à la<br />
+              <span style={{ position: "relative", display: "inline-block" }}>
+                facture payée.
+                <span aria-hidden className="v-trait" style={{ position: "absolute",
+                  left: 0, right: 0, bottom: "-.08em", height: ".1em",
+                  background: `linear-gradient(90deg, ${V.sangle}, ${V.sangleClair})`,
+                  borderRadius: 4, boxShadow: `0 0 16px rgba(217,119,6,.6)` }} />
+              </span>
             </h1>
-            <p style={{ fontSize: "clamp(15px, 1.6vw, 17.5px)", lineHeight: 1.6,
-                        color: "rgba(255,255,255,.78)", maxWidth: "46ch",
-                        margin: "18px 0 0" }}>
+
+            <p className="v-lever-3" style={{ fontSize: "clamp(15px, 1.6vw, 17.5px)", lineHeight: 1.6,
+                        color: "rgba(255,255,255,.8)", maxWidth: "46ch",
+                        margin: "20px 0 0" }}>
               Devis, signature en ligne, planning, chantier, facturation Peppol.
               Un seul outil, pensé pour le déménagement — pas adapté à la va-vite.
             </p>
-            <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
+
+            <div className="v-lever-4" style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
               <button className="v-btn v-btn-plein" onClick={() => aller("societe")}>
                 Créer ma société →
               </button>
@@ -110,19 +151,23 @@ export default function Landing({ aller, orgId }) {
                 Commander mon déménagement
               </button>
             </div>
-            <div style={{ marginTop: 26, display: "flex", gap: 26, flexWrap: "wrap" }}>
-              {CHIFFRES.map(([k, l]) => (
-                <div key={k}>
-                  <div style={{ fontFamily: MONO, fontSize: 17, fontWeight: 700 }}>{k}</div>
+
+            <div className="v-lever-5" style={{ marginTop: 30, display: "flex", gap: 0,
+              flexWrap: "wrap", borderTop: "1px solid rgba(255,255,255,.12)", paddingTop: 20 }}>
+              {CHIFFRES.map(([k, l], i) => (
+                <div key={k} style={{ paddingRight: 26, marginRight: 26,
+                  borderRight: i < CHIFFRES.length - 1 ? "1px solid rgba(255,255,255,.12)" : "none" }}>
+                  <div style={{ fontFamily: MONO, fontSize: 19, fontWeight: 700,
+                    color: V.sangleClair }}>{k}</div>
                   <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.6)",
-                                maxWidth: "20ch", lineHeight: 1.45 }}>{l}</div>
+                                maxWidth: "20ch", lineHeight: 1.45, marginTop: 2 }}>{l}</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Les six pages d'un dossier, en pile qui tourne. */}
-          <div style={{ justifySelf: "center", width: "min(380px, 100%)" }}>
+          <div className="v-lever-3" style={{ justifySelf: "center", width: "min(380px, 100%)" }}>
             <PileRotative hauteur={310}
               libelle="Les six pages d'un dossier"
               etiquettes={PAGES_DOSSIER.map((p) => p.titre)}

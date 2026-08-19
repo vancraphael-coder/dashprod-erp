@@ -111,8 +111,33 @@ if (typeof document !== "undefined" && !document.getElementById("vitrine-fonts")
     .v-lever { animation: v-lever .55s ease both; }
     .v-lever-2 { animation: v-lever .55s .08s ease both; }
     .v-lever-3 { animation: v-lever .55s .16s ease both; }
+    .v-lever-4 { animation: v-lever .55s .24s ease both; }
+    .v-lever-5 { animation: v-lever .55s .32s ease both; }
+
+    /* LA SCÈNE DU HERO — le petit matin d'un déménagement.
+       Le jour se lève à l'horizon (ambre qui monte), lentement, en boucle :
+       ce n'est pas un halo décoratif, c'est l'aube du chargement à 5 h. */
+    @keyframes v-aube {
+      0%, 100% { opacity: .55; transform: translateY(6px) scaleY(1); }
+      50%      { opacity: .9;  transform: translateY(0)   scaleY(1.06); }
+    }
+    .v-aube { animation: v-aube 7s ease-in-out infinite; }
+
+    /* Le titre s'allume comme un néon de flanc de camion : le trait ambre se
+       tire de gauche à droite, une seule fois, sous le lettrage. */
+    @keyframes v-trait { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .v-trait {
+      transform-origin: left center;
+      animation: v-trait .7s .5s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    /* Poussière d'étoiles de la nuit finissante : un scintillement discret. */
+    @keyframes v-scintille { 0%,100% { opacity: .25; } 50% { opacity: .7; } }
+
     @media (prefers-reduced-motion: reduce) {
-      .v-lever, .v-lever-2, .v-lever-3 { animation: none; }
+      .v-lever, .v-lever-2, .v-lever-3, .v-lever-4, .v-lever-5 { animation: none; }
+      .v-aube, .v-trait { animation: none; }
+      .v-trait { transform: none; }
       .v-btn, .v-carte { transition: none; }
     }
   `;
