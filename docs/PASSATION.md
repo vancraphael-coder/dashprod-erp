@@ -543,7 +543,7 @@ sert dans le thème, on n'improvise plus un style inline.
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 943/943 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**`npm test` : 946/946 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0137_permis_detenus_membre`.**
 
 ### Lots livrés
@@ -577,6 +577,8 @@ sert dans le thème, on n'improvise plus un style inline.
 | 16 | **Design — Compte + tri planning** : capacités citées (plus le compteur), bouton « Tous » + isoler au planning | — |
 | 17 | **Design — cohérence des boutons** : vocabulaire (secondaire/danger/puce) + états de survol/focus/clic universels | — |
 | 18 | **Design — mode nuit** : fonds clairs en dur corrigés (16 écrans), test anti-régression | — |
+| 19 | **Design — sélecteur rotatif dans l'espace CLIENT** (les 3 espaces l'ont enfin) | — |
+| 20 | **Design — refonte de l'en-tête landing** : scène (aube ambre, titre-lettrage, cascade) | — |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire

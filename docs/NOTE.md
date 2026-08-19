@@ -1,54 +1,54 @@
-# Lot 19 — sélecteur de page façon vitrine
+# Lot 20 — refonte de l'en-tête de la landing
 
-`npm test` : **943/943 ✓** — build `apps/web` ✓ — 5 fichiers.
-**Aucune migration.** Se pose par-dessus le lot 18.
+`npm test` : **946/946 ✓** — build `apps/web` ✓ — 4 fichiers.
+**Aucune migration.** Se pose par-dessus le lot 19.
 
-## Réutiliser le geste, pas copier le code
+## Ce qui faisait « designer débutant »
 
-La vitrine a sa boussole (`VariateurNav`) : une molette qui tourne, aiguille
-ambre pointant la section active. Tu voulais le **même mouvement** pour naviguer
-dans le bureau, le terrain et l'espace client.
+L'en-tête d'avant était le **gabarit SaaS par défaut** : badge pilule, gros
+titre, paragraphe, deux boutons, une rangée de chiffres, une capture à droite —
+la structure qu'on voit sur mille pages. Et un fond en halo radial bleu+ambre,
+le cliché absolu. Rien ne disait *déménagement* au premier regard, alors que ta
+vitrine a déjà une identité forte : « la nuit du chargement à 5 h », l'ambre des
+sangles, le lettrage étiré du flanc de camion. Cet univers existait mais
+n'était pas **mis en scène**.
 
-Mais le variateur de la vitrine pilote un **défilement** entre sections d'une
-même page (IntersectionObserver qui suit le scroll). Dans l'app, on change
-d'**écran** — il n'y a rien à observer. J'ai donc réutilisé le **geste**, pas le
-code :
+## Ce que j'ai fait : une scène, pas un gabarit
 
-- même molette, même aiguille ambre, même rotation **par le chemin le plus
-  court** (le calcul de diff identique à la vitrine) ;
-- mais elle pilote un écran actif, poussé de l'extérieur : un clic sur un cran
-  commute l'écran, et l'aiguille s'aligne — que le changement vienne de la
-  molette ou de la barre d'onglets du bas.
+Je n'ai pas changé le message ni les boutons — j'ai changé la **mise en scène**,
+en exploitant ce qui était déjà là.
 
-C'est exactement l'esprit « réutiliser, pas copier » : le nouveau composant
-`SelecteurRotatif` est autonome, il ne dépend pas du code vitrine, il en reprend
-le mouvement.
+- **L'aube à l'horizon.** Le fond n'est plus un halo générique : c'est un lever
+  de jour ambre en bas de la scène, qui respire lentement (7 s, en boucle). Le
+  petit matin d'un déménagement. Le bleu route ne teinte plus discrètement que
+  le haut.
+- **Le titre = le lettrage d'un camion.** Le mot-clé « facture payée » porte une
+  ligne-force ambre qui **se tend** au chargement de la page, de gauche à
+  droite — comme une sangle. C'est le premier mouvement qui accroche l'œil.
+- **Une entrée en cascade.** Badge, titre, texte, boutons, chiffres montent
+  l'un après l'autre (échelonné). La page s'assemble sous les yeux au lieu
+  d'apparaître d'un bloc.
+- **Une poussière d'étoiles** de la nuit finissante, qui scintille faiblement
+  dans le haut. Positions **fixes** (aucun `Math.random` au rendu, qui casserait
+  le rendu serveur et ferait clignoter à chaque frame).
+- Les **chiffres** sont désormais séparés par des filets verticaux et repris en
+  ambre clair — un bandeau de preuve, plus une rangée molle.
 
-## Où il apparaît
+Tout respecte `prefers-reduced-motion` : qui a désactivé les animations voit une
+scène fixe, sans mouvement.
 
-Posé en bas à droite, discret au repos, net au survol — **masqué sous 900px**,
-où la barre d'onglets du pouce reste la commande. C'est un repère de confort sur
-grand écran, pas une béquille.
+## Le principe tenu
 
-- **Bureau** : mêmes entrées que la barre (Dossiers, Planning, Messages,
-  Ressources, Compte…). Les deux commandes partagent la même liste — pas deux
-  vérités de navigation.
-- **Terrain** : ses propres entrées (Chantiers, Agenda, Profil). « Nouveau »
-  reste hors molette : c'est une action, pas un écran — la molette navigue,
-  elle ne déclenche pas.
-
-## L'espace client
-
-Il n'a pas encore de coquille à onglets à équiper : côté client, il y a la
-porte d'accès par code et des documents individuels, pas (encore) une
-navigation multi-écrans avec un état d'écran actif. Le jour où cet espace
-existera, il montera le même `SelecteurRotatif` avec ses entrées — le composant
-est prêt. Je préfère le noter que d'inventer une navigation qui n'existe pas.
+Rien d'inventé hors de l'univers existant : j'ai puisé dans ta palette (nuit,
+ambre sangle, ciel), ta typo (display étiré, mono des étiquettes) et tes
+animations (`v-lever`). La refonte **révèle** le concept de la vitrine au lieu
+d'en plaquer un nouveau.
 
 ## À vérifier à l'œil
 
-1. Sur grand écran (> 900px), bureau : une molette en bas à droite. Cliquer un
-   cran change d'écran ; l'aiguille tourne vers lui par le chemin le plus court.
-2. Cliquer un onglet de la barre du bas : la molette s'aligne toute seule.
-3. Réduire la fenêtre sous 900px : la molette disparaît, la barre reste.
-4. Terrain : même molette, avec Chantiers / Agenda / Profil.
+1. Ouvrir la landing : le titre s'affiche, puis le trait ambre se tire sous
+   « facture payée » ; les éléments montent en cascade.
+2. Le fond : une aube ambre en bas qui respire, des étoiles qui scintillent en
+   haut — plus le halo bleu d'avant.
+3. Activer « réduire les animations » (OS) : la scène est fixe, tout est lisible
+   d'emblée.
