@@ -1,0 +1,18 @@
+-- 0138 — APPLIQUÉE EN LIVE via MCP le 19/08/2026 (stub de référence).
+-- NOTES D'ATELIER — la balise 'i' de correction, page par page.
+--
+-- Sur chaque écran, un 'i' ouvre une note acheminée vers un « dossier interne ».
+-- SEULE provenance : la PAGE (route.ecran) — aucune donnée métier ni client.
+-- Carnet de corrections segment par segment (remarque = à corriger,
+-- historique = mémoire de la page).
+--   → table notes_atelier (org_id, page, onglet check(remarque|historique),
+--     texte non vide, auteur_id, cree_le), RLS par org.
+--   → cmd_noter_atelier(page, onglet, texte) : dépose, onglet borné, texte non
+--     vide, auteur tracé, cloisonné org.
+--   → cmd_notes_page(page) : relit les notes d'une page, récentes d'abord.
+--
+-- Volontairement MINIMAL : pas de statut, pas d'assignation, pas de fil. C'est
+-- un carnet, pas un gestionnaire de tickets — on étendra si l'usage le réclame.
+--
+-- Éprouvée en `do $$ … rollback $$` : insertion OK, check onglet rejette une
+-- valeur hors liste, check texte rejette le vide, relecture par page OK.
