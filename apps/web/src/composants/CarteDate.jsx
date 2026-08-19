@@ -86,6 +86,29 @@ export default function CarteDate({
     return d.conflit ? d : null;
   }
 
+  // Signalement de PERMIS : un membre affecté doit pouvoir conduire les
+  // véhicules affectés à la MÊME mission. On ne le vérifie que si un véhicule
+  // à permis est présent — sinon la question ne se pose pas. Comme le reste,
+  // ça SIGNALE (§4.5) : le jeton n'est jamais désactivé.
+  //
+  // DÉCLARÉ AVANT `engages`, qui l'appelle : une const fléchée n'est pas
+  // hoistée. Placée après, elle provoquait « Cannot access 'permisManquant'
+  // before initialization » au rendu dès qu'un membre était affecté — un écran
+  // blanc. C'est exactement le piège du hook/const utilisé avant sa ligne.
+  const vehiculesAffectes = (a.vehicules || [])
+    .map((id) => (flotte || []).find((v) => v.id === id))
+    .filter((v) => v && v.permis);
+  const permisManquant = (membreId) => {
+    if (!date || vehiculesAffectes.length === 0) return null;
+    const membre = (membres || []).find((m) => m.id === membreId);
+    if (!membre) return null;
+    for (const v of vehiculesAffectes) {
+      const r = permisConduite(v, membre, date);
+      if (!r.ok) return r;   // le premier manque suffit à signaler
+    }
+    return null;
+  };
+
   // Ce qui est engagé ET en conflit : le bureau doit le voir sans déplier.
   const engages = [
     ...(a.membres || []).map((id) => {
@@ -100,24 +123,6 @@ export default function CarteDate({
     ...(a.vehicules || []).map((id) => [lireDispo("vehicule", id),
       (flotte || []).find((v) => v.id === id)?.nom]),
   ].filter(([d]) => d);
-
-  // Signalement de PERMIS : un membre affecté doit pouvoir conduire les
-  // véhicules affectés à la MÊME mission. On ne le vérifie que si un véhicule
-  // à permis est présent — sinon la question ne se pose pas. Comme le reste,
-  // ça SIGNALE (§4.5) : le jeton n'est jamais désactivé.
-  const vehiculesAffectes = (a.vehicules || [])
-    .map((id) => (flotte || []).find((v) => v.id === id))
-    .filter((v) => v && v.permis);
-  const permisManquant = (membreId) => {
-    if (!date || vehiculesAffectes.length === 0) return null;
-    const membre = (membres || []).find((m) => m.id === membreId);
-    if (!membre) return null;
-    for (const v of vehiculesAffectes) {
-      const r = permisConduite(v, membre, date);
-      if (!r.ok) return r;   // le premier manque suffit à signaler
-    }
-    return null;
-  };
 
   // Un lift ne se réserve qu'avec un lift : proposer un fourgon n'aurait
   // aucun sens.
