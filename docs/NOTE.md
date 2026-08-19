@@ -1,47 +1,31 @@
-# Hotfix — écran blanc sur 'Dossier'
+# Lot 15 — design de la bille
 
-`npm test` : **939/939 ✓** — build `apps/web` ✓ — 3 fichiers.
-**Aucune migration.** Se pose par-dessus `dashprod-lot-14`. **À déployer en
-priorité** — corrige un écran blanc en production.
+`npm test` : **941/941 ✓** — build `apps/web` ✓ — 4 fichiers.
+**Aucune migration.** Se pose par-dessus le hotfix écran blanc.
 
-## La cause
+## Deux demandes
 
-Le symptôme était « Dossier → écran blanc », mais la faute était dans un
-composant enfant, **CarteDate** — et introduite par le lot 14 (permis).
+**La palette : bleu clair → bleu foncé/mauve → rose.** Le ton `bleu` est celui
+de la bille de marque. Il n'est plus un bleu monochrome : la lumière est bleu
+clair, le cœur bleu foncé/mauve, le creux rose. La sphère traverse donc les
+trois couleurs de haut en bas — c'est cette transition qui fait l'identité de
+la mascotte, pas une teinte plate. J'ai aussi ajouté `mauve` et `rose` comme
+tons autonomes, pour colorer une bille isolée sans repasser par tout le
+dégradé.
 
-`permisManquant` est une `const` fléchée. Une const fléchée **n'est pas
-hoistée** : l'appeler avant sa ligne de déclaration lève « Cannot access
-'permisManquant' before initialization » **au rendu**. Or `engages` (calculé
-pendant le rendu) l'appelait dix lignes **au-dessus** de sa déclaration. Le
-build ne voit rien (le fichier compile), les tests unitaires non plus (l'erreur
-est à l'exécution) — seul le navigateur plante, en rendant blanc.
+**La grosse bille retirée des cartes de date.** En tête de carte, elle était en
+taille `bouton` (44px) — trop lourde sur une carte déjà dense. Remplacée par la
+`jeton` (22px), qui suffit comme repère. Le mouvement (survol qui grossit,
+parallaxe du signe) est global sur `.bille` : la petite en hérite exactement
+comme la grosse. Rien perdu côté vie, juste de l'encombrement en moins.
 
-Le bug ne se déclenchait que **lorsqu'un membre était affecté** à une date :
-c'est là que `engages` parcourt les membres et appelle `permisManquant`. D'où un
-Dossier qui marchait tant qu'aucune équipe n'était posée, puis blanchissait.
-
-## Le correctif
-
-Une seule chose : remonter la déclaration de `permisManquant` (et de
-`vehiculesAffectes`) **avant** `engages`. Rien d'autre ne change dans le
-comportement.
-
-## Le garde-fou
-
-J'ai reproduit le plantage hors navigateur (transpilation de toute la chaîne via
-l'esbuild de vite + `renderToStaticMarkup`, états forcés dans l'ordre des
-`useState`) pour être certain de la cause avant de corriger.
-
-Puis j'ai ajouté un test statique dans `hooks-conditionnels.test.js`, à côté du
-garde « pas de hook après un return » : il détecte, par indentation, tout appel
-d'une const fléchée du corps direct d'un composant situé **avant** sa
-déclaration. Vérifié dans les deux sens — il rougit sur la régression, il est
-vert sur le code corrigé. Cette classe d'écran blanc ne pourra plus passer une
-livraison.
+L'état de la carte reste porté par la barre latérale gauche, jamais par la
+bille — comme depuis le lot 10g.
 
 ## À vérifier à l'œil
 
-1. Ouvrir un dossier, poser une date, **affecter un membre** : la carte
-   s'affiche (avant, c'est là que l'écran blanchissait).
-2. Affecter un membre ET un camion à permis : le jeton du membre se teinte si
-   le permis manque, sans planter.
+1. N'importe quelle bille de marque (le « + » de création, une carte
+   d'abonnement) : dégradé qui va du bleu clair en haut au rose en bas, plus
+   un simple bleu.
+2. Une carte de date dans un dossier : la bille de tête est petite ; au survol
+   elle grossit légèrement et son signe bouge — le mouvement est là.

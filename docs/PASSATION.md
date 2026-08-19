@@ -513,7 +513,7 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 939/939 ✓ — build `apps/web` ✓**
+**`npm test` : 941/941 ✓ — build `apps/web` ✓**
 **Migrations appliquées : jusqu'à `0137_permis_detenus_membre`.**
 
 ### Lots livrés
@@ -543,6 +543,7 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 | 13 | **Messages** : chaîne jusqu'à la mission, mise en page du fil, **focus des zones d'écriture** (global) | — |
 | 14 | **Permis membres** (signalement), **dérogation d'architecture LEVÉE** | 0137 |
 | 14b | **Hotfix écran blanc Dossier** (TDZ dans CarteDate) + garde-fou statique | — |
+| 15 | **Design — bille** : palette bleu clair/mauve/rose, grosse bille retirée des cartes de date | — |
 
 ### Reste à faire
 
