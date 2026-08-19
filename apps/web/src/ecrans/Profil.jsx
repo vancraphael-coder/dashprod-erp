@@ -18,6 +18,7 @@ import { deconnecter } from "../lib/supabase.js";
 import { avisProduitMien, definirAvisProduit } from "../lib/adaptateur.js";
 import { DemanderConge, MesConges } from "../composants/Conges.jsx";
 import { C, S } from "../lib/theme.jsx";
+import { libelleCapacite } from "@domaine/noyau/permissions.js";
 
 const ETATS = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
 const COULEUR = { neuf: C.bleu, bon: C.vert, use: C.ambre, a_remplacer: C.rouge };
@@ -59,9 +60,21 @@ export default function Profil({ profil, versParametres, versDiagnostic, versDem
           {profil?.nom || "—"}
         </div>
         <div style={{ fontSize: 13, color: C.muet }}>{profil?.email || ""}</div>
-        {profil?.capacites && (
-          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
-            {profil.capacites.length} capacités actives
+        {profil?.capacites && profil.capacites.length > 0 && (
+          <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {/* Ce que la personne peut faire, NOMMÉ. Un compteur « 4 capacités
+                actives » n'apprenait rien ; les citer, si. Une capacité sans
+                libellé retomberait sur sa clé — on n'en affiche donc que celles
+                qui savent se dire. */}
+            {profil.capacites
+              .filter((c) => libelleCapacite(c) !== c)
+              .map((c) => (
+                <span key={c} style={{ fontSize: 11, fontWeight: 600,
+                  color: C.bleu, background: C.bleuClair, borderRadius: 999,
+                  padding: "3px 9px" }}>
+                  {libelleCapacite(c)}
+                </span>
+              ))}
           </div>
         )}
       </div>

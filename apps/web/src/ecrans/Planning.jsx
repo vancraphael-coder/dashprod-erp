@@ -365,21 +365,43 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
         );
       })()}
 
-      {/* Filtres par type : n'apparaissent que s'il y a plusieurs types à
-          trier ce jour-là. Un seul type ne se filtre pas — la barre serait un
-          bouton qui cache la seule chose à voir. */}
+      {/* Tri par type : un bouton « Tous » puis une puce par type. La demande
+          — sélectionner un / plusieurs / tout type — se lit ainsi : « Tous »
+          remet la vue complète d'un clic ; chaque puce bascule son type ;
+          garder une seule puce active isole un type. N'apparaît que s'il y a
+          plusieurs types à trier ce jour-là. */}
       {typesPresents.length > 1 && (
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap",
                       padding: "0 16px 10px" }}>
+          <button
+            onClick={() => setTypesMasques([])}
+            aria-pressed={typesMasques.length === 0}
+            title="Afficher tous les types"
+            style={{
+              fontSize: 11.5, fontWeight: 800, cursor: "pointer",
+              padding: "5px 12px", borderRadius: 999,
+              border: `1.5px solid ${typesMasques.length === 0 ? C.bleu : C.bord}`,
+              background: typesMasques.length === 0 ? C.bleuClair : "transparent",
+              color: typesMasques.length === 0 ? C.bleu : C.muet,
+            }}>
+            Tous
+          </button>
           {typesPresents.map((t) => {
             const masque = typesMasques.includes(t);
             const coul = couleurMission(t);
+            const seul = !masque && typesMasques.length === typesPresents.length - 1;
             return (
               <button key={t}
                 onClick={() => setTypesMasques((l) => basculerMasque(l, t))}
+                onDoubleClick={() => {
+                  // Double-clic : n'afficher QUE ce type. Le raccourci « isoler »,
+                  // sans avoir à éteindre les autres un par un.
+                  setTypesMasques(typesPresents.filter((x) => x !== t));
+                }}
                 aria-pressed={!masque}
                 title={masque ? `Afficher ${libelleTypeMission(t)}`
-                              : `Masquer ${libelleTypeMission(t)}`}
+                       : seul ? libelleTypeMission(t)
+                       : `Masquer ${libelleTypeMission(t)} (double-clic : isoler)`}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   fontSize: 11.5, fontWeight: 700, cursor: "pointer",
