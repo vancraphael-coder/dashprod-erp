@@ -1,59 +1,54 @@
-# Lot 17 — cohérence des boutons
+# Lot 19 — sélecteur de page façon vitrine
 
-`npm test` : **946/946 ✓** — build `apps/web` ✓ — 4 fichiers.
-**Aucune migration.** Se pose par-dessus le lot 16.
+`npm test` : **943/943 ✓** — build `apps/web` ✓ — 5 fichiers.
+**Aucune migration.** Se pose par-dessus le lot 18.
 
-## Le diagnostic
+## Réutiliser le geste, pas copier le code
 
-L'app a 391 boutons ; 184 seulement passaient par un style partagé. Les ~200
-autres improvisaient leur style en ligne, avec des rayons de 8 à 14 au hasard.
-Et surtout : le thème n'offrait que **deux** styles de bouton (`plein` et
-`lien`), donc chaque écran réinventait le bouton secondaire (25 fois) et le
-bouton danger (plus de 100 fois). Voilà la source de l'incohérence.
+La vitrine a sa boussole (`VariateurNav`) : une molette qui tourne, aiguille
+ambre pointant la section active. Tu voulais le **même mouvement** pour naviguer
+dans le bureau, le terrain et l'espace client.
 
-Deux causes, deux corrections.
+Mais le variateur de la vitrine pilote un **défilement** entre sections d'une
+même page (IntersectionObserver qui suit le scroll). Dans l'app, on change
+d'**écran** — il n'y a rien à observer. J'ai donc réutilisé le **geste**, pas le
+code :
 
-## 1. Un vrai vocabulaire de boutons
+- même molette, même aiguille ambre, même rotation **par le chemin le plus
+  court** (le calcul de diff identique à la vitrine) ;
+- mais elle pilote un écran actif, poussé de l'extérieur : un clic sur un cran
+  commute l'écran, et l'aiguille s'aligne — que le changement vienne de la
+  molette ou de la barre d'onglets du bas.
 
-Ajoutés au thème, à côté des deux existants :
-- **plein** — action principale (aplat bleu). *(existait déjà)*
-- **secondaire** — second rang (Annuler, Retour) : contour, pas remplissage,
-  pour ne pas rivaliser avec l'action principale.
-- **danger** — destructif (Supprimer) : contour rouge au repos, qui se remplit
-  au survol. Un gros bouton rouge plein crie ; on veut prévenir, pas alarmer.
-- **puce** — petit bouton en ligne (filtre, étiquette) : rayon pleinement
-  arrondi, jamais les rayons intermédiaires qui traînaient.
-- **lien** — texte seul. *(existait déjà)*
+C'est exactement l'esprit « réutiliser, pas copier » : le nouveau composant
+`SelecteurRotatif` est autonome, il ne dépend pas du code vitrine, il en reprend
+le mouvement.
 
-Un écran qui a un besoin standard s'y sert désormais, au lieu d'improviser.
+## Où il apparaît
 
-## 2. Tous les boutons répondent enfin au geste
+Posé en bas à droite, discret au repos, net au survol — **masqué sous 900px**,
+où la barre d'onglets du pouce reste la commande. C'est un repère de confort sur
+grand écran, pas une béquille.
 
-C'était le plus visible : les boutons étaient **inertes** — aucun retour au
-survol, aucun anneau au focus clavier. Une grande part de l'impression
-d'incohérence venait de là.
+- **Bureau** : mêmes entrées que la barre (Dossiers, Planning, Messages,
+  Ressources, Compte…). Les deux commandes partagent la même liste — pas deux
+  vérités de navigation.
+- **Terrain** : ses propres entrées (Chantiers, Agenda, Profil). « Nouveau »
+  reste hors molette : c'est une action, pas un écran — la molette navigue,
+  elle ne déclenche pas.
 
-Une feuille CSS globale (les styles en ligne ne peuvent pas porter de `:hover`
-/ `:focus`) anime **tous** les boutons, sans toucher un seul des 391 :
-- survol qui éclaircit légèrement ;
-- enfoncement bref au clic ;
-- anneau d'accent au focus **clavier seulement** (pas au clic souris) ;
-- le danger se remplit de rouge au survol.
+## L'espace client
 
-On ne touche ni à la couleur ni à la forme (portées par le style inline) :
-seulement au **retour**. C'est ce qui unifie l'ensemble sans tout réécrire.
-
-## Ce que ce lot ne fait PAS
-
-Je n'ai pas migré les ~200 boutons inline vers les nouveaux styles — ce serait
-200 risques de régression pour un lot. L'essentiel est que le vocabulaire
-existe et que le retour au geste soit universel. La migration écran par écran
-se fera au fil des prochains lots design, là où je touche déjà chaque écran.
+Il n'a pas encore de coquille à onglets à équiper : côté client, il y a la
+porte d'accès par code et des documents individuels, pas (encore) une
+navigation multi-écrans avec un état d'écran actif. Le jour où cet espace
+existera, il montera le même `SelecteurRotatif` avec ses entrées — le composant
+est prêt. Je préfère le noter que d'inventer une navigation qui n'existe pas.
 
 ## À vérifier à l'œil
 
-1. N'importe quel bouton, au survol : il s'éclaircit un peu ; au clic, il
-   s'enfonce brièvement.
-2. Naviguer au clavier (Tab) : un anneau bleu apparaît sur le bouton visé —
-   mais pas quand on clique à la souris.
-3. Un bouton rouge (déconnexion, suppression) : au survol il se remplit.
+1. Sur grand écran (> 900px), bureau : une molette en bas à droite. Cliquer un
+   cran change d'écran ; l'aiguille tourne vers lui par le chemin le plus court.
+2. Cliquer un onglet de la barre du bas : la molette s'aligne toute seule.
+3. Réduire la fenêtre sous 900px : la molette disparaît, la barre reste.
+4. Terrain : même molette, avec Chantiers / Agenda / Profil.

@@ -196,6 +196,17 @@ Même principe pour tout comportement d'état d'un élément stylé en ligne : s
 ça a besoin d'un `:hover`/`:focus`/`:nth`/media-query, ça va dans une feuille,
 pas dans mille attributs `style`.
 
+### 3.16 Un fond clair EN DUR ignore le mode nuit
+`background: "#fff"` (ou un bleu clair littéral) ne suit pas le thème : il reste
+blanc quand l'app passe en sombre — un pavé lumineux sur le fond nuit. Le jeton
+`C.blanc` / `C.bleuClair` vire au sombre. Toujours passer par le jeton pour un
+FOND. En revanche `color: "#fff"` (texte sur un aplat coloré) est légitime : il
+doit rester blanc dans les deux modes.
+
+Légitimement clairs, donc EXCLUS du garde-fou : la vitrine (identité propre) et
+les DOCUMENTS imprimables (un devis PDF est blanc partout). Test :
+`mode-nuit.test.js` refuse tout fond blanc en dur ailleurs.
+
 ## 4. Le modèle du produit — invariants à respecterpas défaire
 
 ### 4.1 Cinq NATURES, quatre MÉTIERS distincts
@@ -532,7 +543,7 @@ sert dans le thème, on n'improvise plus un style inline.
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 946/946 ✓ — build `apps/web` ✓**
+**`npm test` : 943/943 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0137_permis_detenus_membre`.**
 
 ### Lots livrés
@@ -565,6 +576,8 @@ sert dans le thème, on n'improvise plus un style inline.
 | 15 | **Design — bille** : palette bleu clair/mauve/rose, grosse bille retirée des cartes de date | — |
 | 16 | **Design — Compte + tri planning** : capacités citées (plus le compteur), bouton « Tous » + isoler au planning | — |
 | 17 | **Design — cohérence des boutons** : vocabulaire (secondaire/danger/puce) + états de survol/focus/clic universels | — |
+| 18 | **Design — mode nuit** : fonds clairs en dur corrigés (16 écrans), test anti-régression | — |
+| 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire
 
