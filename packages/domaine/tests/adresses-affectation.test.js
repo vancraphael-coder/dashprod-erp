@@ -985,3 +985,29 @@ test("le hero de la landing est une scène, pas le gabarit SaaS par défaut", ()
   assert.equal(/Math\.random\(\)/.test(hero), false,
     "aucun aléa au rendu du hero");
 });
+
+/* ── Balise note 'i' : carnet de corrections page par page ──────────────── */
+
+test("la balise 'i' s'ouvre et se referme, avec deux onglets", () => {
+  const src = lire("composants/BaliseNote.jsx");
+  // Le bouton bascule (ouvrir/fermer au même 'i').
+  assert.ok(src.includes("setOuvert((v) => !v)"),
+    "le même bouton ouvre et referme la note");
+  // Deux onglets rapides.
+  assert.ok(src.includes('"remarque"') && src.includes('"historique"'),
+    "les onglets Remarque et Historique");
+  // Le panneau est ancré SOUS le bouton (top), pas collé en bas de l'écran.
+  assert.ok(src.includes("top: 30"),
+    "le panneau s'ancre sous le 'i', pas en bas de page");
+});
+
+test("la note n'achemine QUE la page comme provenance", () => {
+  // Aucune donnée métier : la balise ne reçoit que `page` et un titre lisible.
+  const bal = lire("composants/BaliseNote.jsx");
+  assert.ok(/noterAtelier\(page,/.test(bal),
+    "l'envoi ne transmet que la page et le texte");
+  // Montée dans main.jsx avec la page courante comme seule provenance.
+  const main = lire("main.jsx");
+  assert.ok(main.includes("<BaliseNote page={route.ecran}"),
+    "la provenance est l'écran courant, rien d'autre");
+});
