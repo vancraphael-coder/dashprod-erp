@@ -1,54 +1,59 @@
-# Lot 20 — refonte de l'en-tête de la landing
+# Lot 21 — la balise note 'i'
 
-`npm test` : **946/946 ✓** — build `apps/web` ✓ — 4 fichiers.
-**Aucune migration.** Se pose par-dessus le lot 19.
+`npm test` : **948/948 ✓** — build `apps/web` ✓ — 6 fichiers.
+Migration **0138** déjà appliquée en live. Se pose par-dessus le lot 20.
 
-## Ce qui faisait « designer débutant »
+## Ce que c'est
 
-L'en-tête d'avant était le **gabarit SaaS par défaut** : badge pilule, gros
-titre, paragraphe, deux boutons, une rangée de chiffres, une capture à droite —
-la structure qu'on voit sur mille pages. Et un fond en halo radial bleu+ambre,
-le cliché absolu. Rien ne disait *déménagement* au premier regard, alors que ta
-vitrine a déjà une identité forte : « la nuit du chargement à 5 h », l'ambre des
-sangles, le lettrage étiré du flanc de camion. Cet univers existait mais
-n'était pas **mis en scène**.
+Un petit 'i' dans un rond, en haut à droite de **chaque page du bureau**. On
+clique : une note s'ouvre, ancrée **sous** le bouton (pas en bas de l'écran, où
+elle serait hors de vue — largeur lisible, calée à droite pour ne pas
+déborder). On reclique le 'i' : elle se referme. Cliquer à côté la referme
+aussi.
 
-## Ce que j'ai fait : une scène, pas un gabarit
+Deux onglets rapides :
+- **Remarque** — ce qui cloche ou manque sur cette page. On écrit, on envoie :
+  la note part vers le dossier interne.
+- **Historique** — les notes déjà déposées sur cette page, plus récentes
+  d'abord. La mémoire du segment.
 
-Je n'ai pas changé le message ni les boutons — j'ai changé la **mise en scène**,
-en exploitant ce qui était déjà là.
+## L'acheminement, et la provenance
 
-- **L'aube à l'horizon.** Le fond n'est plus un halo générique : c'est un lever
-  de jour ambre en bas de la scène, qui respire lentement (7 s, en boucle). Le
-  petit matin d'un déménagement. Le bleu route ne teinte plus discrètement que
-  le haut.
-- **Le titre = le lettrage d'un camion.** Le mot-clé « facture payée » porte une
-  ligne-force ambre qui **se tend** au chargement de la page, de gauche à
-  droite — comme une sangle. C'est le premier mouvement qui accroche l'œil.
-- **Une entrée en cascade.** Badge, titre, texte, boutons, chiffres montent
-  l'un après l'autre (échelonné). La page s'assemble sous les yeux au lieu
-  d'apparaître d'un bloc.
-- **Une poussière d'étoiles** de la nuit finissante, qui scintille faiblement
-  dans le haut. Positions **fixes** (aucun `Math.random` au rendu, qui casserait
-  le rendu serveur et ferait clignoter à chaque frame).
-- Les **chiffres** sont désormais séparés par des filets verticaux et repris en
-  ambre clair — un bandeau de preuve, plus une rangée molle.
+Les notes vont dans une table dédiée — le « dossier interne » — cloisonnée par
+organisation. La **seule** communication de provenance est la **page**
+(`route.ecran`), affichée en clair dans la balise (« Page : Planning ») pour que
+tu saches ce qui partira. Aucune donnée métier, aucun contexte client : c'est un
+carnet de corrections, pas un rapport.
 
-Tout respecte `prefers-reduced-motion` : qui a désactivé les animations voit une
-scène fixe, sans mouvement.
+## Volontairement minimal
 
-## Le principe tenu
+La table a une page, un onglet, un texte, un auteur, une date. **Pas** de
+statut, pas d'assignation, pas de fil de discussion. Le besoin est un carnet, et
+un carnet se tient à une page. On étendra si l'usage le réclame — pas avant.
+C'est exactement l'esprit de ce que tu écris : construire la chose qui sert,
+maintenant, pas le gestionnaire de tickets pour un million d'utilisateurs.
 
-Rien d'inventé hors de l'univers existant : j'ai puisé dans ta palette (nuit,
-ambre sangle, ciel), ta typo (display étiré, mono des étiquettes) et tes
-animations (`v-lever`). La refonte **révèle** le concept de la vitrine au lieu
-d'en plaquer un nouveau.
+## Pourquoi c'était le bon dernier geste de la session
+
+Tu l'as dit toi-même : cette balise te sert à **corriger l'app segment par
+segment**, et elle me sert de **balise de travail**. Elle transforme chaque
+page en surface de retour. Au lieu de deviner ce qui cloche, tu poses un 'i'
+là où ça cloche, et la remarque arrive avec sa page. C'est un outil pour rendre
+Dashprod plus réel un segment à la fois — la preuve avant l'extension.
+
+## Sécurité vérifiée
+
+La commande d'écriture a été éprouvée en rollback avant livraison : insertion
+OK, l'onglet hors liste est rejeté, un texte vide est rejeté, la relecture par
+page fonctionne. (Le piège Supabase habituel — une fonction qui passe la
+migration mais réfère une table inexistante — écarté par cet exercice.)
 
 ## À vérifier à l'œil
 
-1. Ouvrir la landing : le titre s'affiche, puis le trait ambre se tire sous
-   « facture payée » ; les éléments montent en cascade.
-2. Le fond : une aube ambre en bas qui respire, des étoiles qui scintillent en
-   haut — plus le halo bleu d'avant.
-3. Activer « réduire les animations » (OS) : la scène est fixe, tout est lisible
-   d'emblée.
+1. Sur n'importe quelle page (planning, un dossier, l'équipe) : le 'i' est en
+   haut à droite. Cliquer l'ouvre ; recliquer le referme.
+2. Onglet Remarque : « Page : … » affiche le bon nom ; écrire, Envoyer → « Noté
+   ✓ ».
+3. Onglet Historique : la note qu'on vient de déposer y apparaît, avec sa date.
+4. Ouvrir le 'i' sur une autre page : l'historique est différent (chaque page a
+   ses notes).

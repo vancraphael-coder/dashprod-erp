@@ -543,8 +543,8 @@ sert dans le thème, on n'improvise plus un style inline.
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 946/946 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
-**Migrations appliquées : jusqu'à `0137_permis_detenus_membre`.**
+**`npm test` : 948/948 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**Migrations appliquées : jusqu'à `0138_notes_atelier`.**
 
 ### Lots livrés
 | lot | contenu | migrations |
@@ -579,6 +579,7 @@ sert dans le thème, on n'improvise plus un style inline.
 | 18 | **Design — mode nuit** : fonds clairs en dur corrigés (16 écrans), test anti-régression | — |
 | 19 | **Design — sélecteur rotatif dans l'espace CLIENT** (les 3 espaces l'ont enfin) | — |
 | 20 | **Design — refonte de l'en-tête landing** : scène (aube ambre, titre-lettrage, cascade) | — |
+| 21 | **Balise note 'i'** : carnet de corrections page par page → dossier interne | 0138 |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire
