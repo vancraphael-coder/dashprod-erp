@@ -76,3 +76,58 @@ test("aucun hook React n'est appelé après un return conditionnel", () => {
     "hook(s) appelé(s) après un return conditionnel — écran blanc garanti :\n"
     + fautes.join("\n"));
 });
+
+/**
+ * Une `const`/`let` fléchée n'est PAS hoistée : l'appeler avant sa ligne de
+ * déclaration, dans le corps d'un composant, lève « Cannot access X before
+ * initialization » AU RENDU — un écran blanc que ni le build ni les tests
+ * unitaires ne voient (le fichier compile, l'erreur est à l'exécution).
+ *
+ * C'est arrivé sur CarteDate : `engages` (calculé au rendu) appelait
+ * `permisManquant`, une const fléchée déclarée dix lignes plus bas. D'où ce
+ * garde-fou : pour chaque const/let fléchée du corps d'un composant, on vérifie
+ * qu'aucun APPEL `nom(` n'apparaît avant sa déclaration.
+ *
+ * On reste volontairement conservateur : on ne regarde que les fonctions
+ * fléchées assignées à une const/let au niveau du composant (indentation 2),
+ * et on ignore les appels à l'intérieur d'autres fonctions (elles s'exécutent
+ * plus tard, pas pendant l'évaluation du corps). Faux négatif possible, faux
+ * positif non — c'est le bon sens pour un garde-fou.
+ */
+test("aucune const fléchée n'est appelée avant sa déclaration (TDZ = écran blanc)", () => {
+  const fautes = [];
+  const DECL = /^  (?:const|let)\s+(\w+)\s*=\s*(?:\([^)]*\)|\w+)\s*=>/;
+  for (const f of fichiers(SRC_APP, ".jsx")) {
+    const src = readFileSync(f, "utf8");
+    for (const bloc of composants(src)) {
+      // Ligne de déclaration de chaque const fléchée de premier niveau du corps.
+      const declaree = new Map();
+      for (const { n, t } of bloc.lignes) {
+        const m = DECL.exec(t);
+        if (m && !declaree.has(m[1])) declaree.set(m[1], n);
+      }
+      if (declaree.size === 0) continue;
+
+      // Approche par INDENTATION, robuste et sans parseur : une instruction du
+      // corps DIRECT du composant est à exactement 2 espaces. Tout ce qui est
+      // dans une sous-fonction (majAffectation, un map, un onClick) est plus
+      // indenté, donc différé — on ne le juge pas. On ne s'intéresse donc qu'aux
+      // lignes à 2 espaces qui appellent une const fléchée déclarée plus bas.
+      for (const { n, t } of bloc.lignes) {
+        if (/^\s*(\/\/|\*|\/\*)/.test(t)) continue;
+        if (!/^  \S/.test(t)) continue;          // pas au corps direct → différé
+        for (const [nom, ligneDecl] of declaree) {
+          if (n >= ligneDecl) continue;
+          const appel = new RegExp(`(?<![\\w.])${nom}\\s*\\(`);
+          if (appel.test(t) && !DECL.test(t)) {
+            fautes.push(`${f.replace(RACINE, "")}:${n} — ${bloc.nom}() appelle `
+              + `${nom}() avant sa déclaration ligne ${ligneDecl}`);
+          }
+        }
+      }
+    }
+  }
+  assert.deepEqual(fautes, [],
+    "const fléchée utilisée avant sa déclaration — TDZ, écran blanc au rendu :\n"
+    + fautes.join("\n"));
+});
