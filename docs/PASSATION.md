@@ -345,6 +345,24 @@ Tout mouvement s'arrête sous `prefers-reduced-motion` et au pointeur grossier.
 - **Aucune facture récurrente n'est émise automatiquement** — le bureau décide
 - Le **carnet est bâti sur `clients`**, jamais une table parallèle
 
+### 3.15 Une const fléchée appelée AVANT sa ligne = écran blanc
+Cousin du hook-après-return. Une `const nom = (...) => …` n'est PAS hoistée :
+l'appeler plus haut dans le corps d'un composant lève « Cannot access nom before
+initialization » AU RENDU — pas à la compilation. Build vert, tests unitaires
+verts, écran blanc en prod.
+
+Vécu sur `CarteDate` : `engages` (calculé au rendu) appelait `permisManquant`,
+déclaré dix lignes plus bas. Le symptôme rapporté était « Dossier → écran
+blanc », mais la faute était dans un composant enfant (CarteDate), déclenchée
+seulement quand un membre était affecté — d'où l'invisibilité au premier coup
+d'œil.
+
+Reproduit hors navigateur en transpilant la chaîne via `transformWithEsbuild`
+de vite + `renderToStaticMarkup`, avec les états forcés dans l'ordre des
+`useState`. Corrigé en remontant la déclaration. Garde-fou ajouté dans
+`hooks-conditionnels.test.js` : il détecte, par indentation, tout appel d'une
+const fléchée du corps direct d'un composant situé avant sa déclaration.
+
 ---
 
 ### 4.8 L'horizontal et les verticaux — appliqué par un test
@@ -495,7 +513,7 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 938/938 ✓ — build `apps/web` ✓**
+**`npm test` : 939/939 ✓ — build `apps/web` ✓**
 **Migrations appliquées : jusqu'à `0137_permis_detenus_membre`.**
 
 ### Lots livrés
@@ -524,6 +542,7 @@ du TEXTE sur une pastille de couleur pleine reste en dur, lui : légitime.)
 | 12 | **Demande de congé + apparence côté terrain** (portes manquantes ; écrans existants réutilisés) | — |
 | 13 | **Messages** : chaîne jusqu'à la mission, mise en page du fil, **focus des zones d'écriture** (global) | — |
 | 14 | **Permis membres** (signalement), **dérogation d'architecture LEVÉE** | 0137 |
+| 14b | **Hotfix écran blanc Dossier** (TDZ dans CarteDate) + garde-fou statique | — |
 
 ### Reste à faire
 

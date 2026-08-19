@@ -1,78 +1,47 @@
-# Lot 14 — permis membres + dérogation d'architecture levée
+# Hotfix — écran blanc sur 'Dossier'
 
-`npm test` : **938/938 ✓** — build `apps/web` ✓ — 11 fichiers.
-Migration **0137** déjà appliquée en live. Se pose par-dessus `dashprod-lot-13`.
+`npm test` : **939/939 ✓** — build `apps/web` ✓ — 3 fichiers.
+**Aucune migration.** Se pose par-dessus `dashprod-lot-14`. **À déployer en
+priorité** — corrige un écran blanc en production.
 
-## 1. Les permis — signaler, jamais bloquer
+## La cause
 
-Dashprod savait quel permis un VÉHICULE exige, rien de ce que les MEMBRES
-possèdent. On ne pouvait donc pas signaler qu'un chauffeur n'a pas le permis du
-camion affecté. Tu voulais que ça **signale** — c'est fait, jamais bloquant,
-comme les conflits de disponibilité.
+Le symptôme était « Dossier → écran blanc », mais la faute était dans un
+composant enfant, **CarteDate** — et introduite par le lot 14 (permis).
 
-**En base (0137)** : `utilisateurs.permis_detenus` (les catégories que le
-membre possède) et `code95_echeance`. Commande `cmd_definir_permis` réservée au
-bureau, cloisonnée, tracée, qui filtre les catégories inconnues. Éprouvée en
-rollback avant livraison.
+`permisManquant` est une `const` fléchée. Une const fléchée **n'est pas
+hoistée** : l'appeler avant sa ligne de déclaration lève « Cannot access
+'permisManquant' before initialization » **au rendu**. Or `engages` (calculé
+pendant le rendu) l'appelait dix lignes **au-dessus** de sa déclaration. Le
+build ne voit rien (le fichier compile), les tests unitaires non plus (l'erreur
+est à l'exécution) — seul le navigateur plante, en rendant blanc.
 
-**Pas l'aptitude médicale groupe 2** : c'est de la donnée de santé. Elle mérite
-sa propre décision RGPD (consentement, base légale, durée). Le signalement de
-base fonctionne sans — on ne l'embarque pas à la légère.
+Le bug ne se déclenchait que **lorsqu'un membre était affecté** à une date :
+c'est là que `engages` parcourt les membres et appelle `permisManquant`. D'où un
+Dossier qui marchait tant qu'aucune équipe n'était posée, puis blanchissait.
 
-**La règle (domaine, pure)** : `permisConduite(vehicule, membre, date)`.
-- **les permis s'emboîtent** : un CE conduit tout ; ne comparer que l'égalité
-  crierait à tort sur un fourgon confié à un titulaire du CE ;
-- **deux signaux distincts** : permis absent vs code 95 expiré — deux actions
-  différentes (passer un permis / renouveler une formation) ;
-- **une échéance absente n'est pas expirée** : on ne crie pas sur ce qu'on
-  ignore.
+## Le correctif
 
-**Où ça se voit** : sur la carte de date, le jeton d'un membre affecté se
-teinte s'il n'a pas le permis d'un véhicule affecté à la même mission — au
-moment du clic, jamais désactivé. Édition dans la fiche membre (Ressources →
-Membres), avec l'échéance code 95 qui s'alarme si elle approche.
+Une seule chose : remonter la déclaration de `permisManquant` (et de
+`vehiculesAffectes`) **avant** `engages`. Rien d'autre ne change dans le
+comportement.
 
-## 2. La dérogation d'architecture, levée
+## Le garde-fou
 
-C'était la dette laissée depuis le lot 10 : `adaptateur.js` (plomberie
-horizontale) importait `releve/volumetrie.js` (déménagement) en direct.
+J'ai reproduit le plantage hors navigateur (transpilation de toute la chaîne via
+l'esbuild de vite + `renderToStaticMarkup`, états forcés dans l'ordre des
+`useState`) pour être certain de la cause avant de corriger.
 
-**La sortie** : un **aiguillage de composition**, `releve/rubriques-offre.js`,
-qui choisit les rubriques d'un document selon la nature — exactement comme
-`chiffrerAffaire` choisit le moteur de prix. Le composeur d'offre reçoit un
-objet déjà prêt et le fusionne, sans importer aucun module de métier.
-
-Ça a demandé de distinguer **deux familles d'aiguillage** dans le test :
-- *chiffrage* (`scenario-nature.js`) importe lift + sous-traitance → reste
-  interne au domaine, la plomberie ne peut pas l'appeler ;
-- *composition* (`rubriques-offre.js`) n'importe qu'un métier → la plomberie
-  PEUT l'appeler.
-
-Le premier jet passait par l'aiguillage de chiffrage — **le test l'a refusé, à
-juste titre** : ça faisait rentrer lift et sous-traitance dans la plomberie. Le
-cliquet a été vérifié : il rougit toujours sur un import métier direct ET sur
-l'aiguillage de chiffrage, il n'autorise que la composition.
-
-**Plus aucune dérogation dans `architecture.js`.** La liste est vide, et le
-test refuse qu'on en rouvre une inutile.
-
-## Le CMR reste bloqué sur tes décisions
-
-Je ne l'ai pas touché — un document réglementaire à 24 cases ne se devine pas.
-Rappel du cadre déjà établi : la CMR **exclut le déménagement** (art. 1er §4),
-donc le module ne vaut que pour la **sous-traitance internationale** ; la
-Belgique n'a pas ratifié l'e-CMR, donc **papier obligatoire** (Dashprod génère
-et imprime, 3 exemplaires signés) ; la case 6.1.k sera en dur (seule omission
-sanctionnée). Trois questions avant que je code : périmètre exact + blocage sur
-déménagement, numérotation (série propre ou carnet Roovers), poids brut (saisi
-ou par article).
+Puis j'ai ajouté un test statique dans `hooks-conditionnels.test.js`, à côté du
+garde « pas de hook après un return » : il détecte, par indentation, tout appel
+d'une const fléchée du corps direct d'un composant situé **avant** sa
+déclaration. Vérifié dans les deux sens — il rougit sur la régression, il est
+vert sur le code corrigé. Cette classe d'écran blanc ne pourra plus passer une
+livraison.
 
 ## À vérifier à l'œil
 
-1. Ressources → Membres → un membre : cocher B, C ; poser une échéance code 95
-   passée → l'alerte « expiré » s'affiche.
-2. Dossier → carte de date : affecter un camion « permis C » et un membre qui
-   n'a que B → son jeton se teinte, avec « permis C requis ». Le jeton reste
-   cliquable.
-3. Générer une offre de déménagement : le volume et les articles à démonter
-   apparaissent toujours (rien cassé par le passage via l'aiguillage).
+1. Ouvrir un dossier, poser une date, **affecter un membre** : la carte
+   s'affiche (avant, c'est là que l'écran blanchissait).
+2. Affecter un membre ET un camion à permis : le jeton du membre se teinte si
+   le permis manque, sans planter.
