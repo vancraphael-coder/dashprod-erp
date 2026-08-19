@@ -371,6 +371,7 @@ export async function listerMembres() {
 }
 
 /** Bureau : enregistre les permis détenus et l'échéance code 95 d'un membre. */
+/** Bureau : enregistre les permis détenus et l'échéance code 95 d'un membre. */
 export async function definirPermis(utilisateurId, permis, code95) {
   if (modeDonnees() === "reel") {
     const { error } = await supabase.rpc("cmd_definir_permis", {
@@ -1187,6 +1188,42 @@ export async function supprimerFermeture(id) {
  * table n'a plus de politique d'écriture et sa lecture est bornée au
  * périmètre de chacun.
  */
+/**
+ * NOTES D'ATELIER — la balise 'i'. Dépose une note depuis une page, acheminée
+ * vers le dossier interne. La provenance est la PAGE, rien d'autre. En mode
+ * démo, on garde en local pour que l'aperçu fonctionne sans base.
+ */
+export async function noterAtelier(page, onglet, texte) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_noter_atelier", {
+      p_page: page || "inconnue", p_onglet: onglet || "remarque",
+      p_texte: texte,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  const d = lireDemo();
+  d.notesAtelier = d.notesAtelier || [];
+  d.notesAtelier.unshift({
+    id: "loc-" + Date.now(), page: page || "inconnue",
+    onglet: onglet || "remarque", texte: texte.trim(),
+    cree_le: new Date().toISOString(),
+  });
+  ecrireDemo(d);
+  return d.notesAtelier[0].id;
+}
+
+/** Relit les notes d'une page (onglet Historique du panneau). */
+export async function notesPage(page) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_notes_page", { p_page: page });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+  const d = lireDemo();
+  return (d.notesAtelier || []).filter((n) => n.page === page);
+}
+
 export async function listerConges(etats = ["approuve"]) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.rpc("cmd_conges", { p_etats: etats });
