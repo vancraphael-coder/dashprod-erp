@@ -49,6 +49,7 @@ import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Conversations from "./ecrans/Conversations.jsx";
 import SelecteurRotatif from "./composants/SelecteurRotatif.jsx";
+import BaliseNote from "./composants/BaliseNote.jsx";
 import Carnet from "./ecrans/Carnet.jsx";
 import Stockage from "./ecrans/Stockage.jsx";
 import Centres from "./ecrans/Centres.jsx";
@@ -315,6 +316,18 @@ const SECTIONS_DOSSIER = [
   ["mail", "mail", "Mail"],
   ["facture", "facture", "Facture"],
 ];
+
+// Libellé humain de chaque page, pour l'afficher dans la balise 'i' (« Page :
+// Planning ») plutôt que la clé technique. On part des sections de dossier et
+// on complète avec les racines et les écrans de paramètres.
+const LIBELLE_PAGE = {
+  ...Object.fromEntries(SECTIONS_DOSSIER.map(([cle, , lib]) => [cle, lib])),
+  liste: "Liste des affaires", planning: "Planning", stockage: "Stockage",
+  conversations: "Conversations", equipe: "Équipe", compte: "Compte",
+  parametres: "Paramètres", bareme: "Barème", cout: "Coûts",
+  archivage: "Archivage", textes: "Textes des dossiers", carnet: "Carnet",
+  diagnostic: "Diagnostic", nouvelle: "Nouvelle affaire",
+};
 /**
  * `nature` RETIRE les sections qui n'ont pas lieu d'être.
  *
@@ -673,6 +686,13 @@ function App() {
   return (
     <div>
       <BandeauDemo versDiagnostic={nav.diagnostic} />
+      {/* LA BALISE 'i' — présente sur chaque page du bureau, en haut à droite.
+          Elle transmet la page courante (route.ecran) comme seule provenance.
+          Placée en fixe pour rester atteignable sans dépendre de la mise en
+          page de l'écran dessous. */}
+      <div style={{ position: "fixed", top: 12, right: 14, zIndex: 45 }}>
+        <BaliseNote page={route.ecran} titre={LIBELLE_PAGE[route.ecran] || route.ecran} />
+      </div>
       {ecran}
       {RACINES.includes(route.ecran) && (
         <BarreNav actif={route.ecran} aller={(cle) => nav[cle]()} modules={acces?.modules || []}
