@@ -48,6 +48,7 @@ import RapportsDossier from "./ecrans/RapportsDossier.jsx";
 import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Conversations from "./ecrans/Conversations.jsx";
+import SelecteurRotatif from "./composants/SelecteurRotatif.jsx";
 import Carnet from "./ecrans/Carnet.jsx";
 import Stockage from "./ecrans/Stockage.jsx";
 import Centres from "./ecrans/Centres.jsx";
@@ -91,28 +92,37 @@ function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
     ...(peutGererEquipe ? [["equipe", "ressources", "Ressources"]] : []),
     ["compte", "compte", "Compte"],
   ];
+  // Le sélecteur rotatif reprend EXACTEMENT ces mêmes entrées : les deux
+  // commandes disent la même chose, l'une au pouce (barre), l'autre au repère
+  // tournant (molette, sur grand écran).
+  const rotatif = items.map(([cle, icone, lib]) => ({ cle, icone, label: lib }));
   return (
-    <div style={{
-      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
-      display: "flex", background: "#fff", borderTop: `1px solid ${C.bord}`,
-      maxWidth: 520, margin: "0 auto",
-      paddingBottom: "env(safe-area-inset-bottom)",
-      boxShadow: "0 -4px 16px -8px rgba(15,23,42,.10)",
-    }}>
-      {items.map(([cle, icone, lib]) => {
-        const estActif = actif === cle;
-        return (
-          <button key={cle} onClick={() => aller(cle)} style={{
-            flex: 1, padding: "9px 4px 7px", border: "none", background: "none",
-            cursor: "pointer",
-          }}>
-            <Icone nom={icone} taille={21} couleur={estActif ? C.vert : C.bleu} />
-            <div style={{ fontSize: 10, fontWeight: 700, marginTop: 2,
-                          color: estActif ? C.vert : C.muet }}>{lib}</div>
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <div className="selecteur-rotatif-cadre">
+        <SelecteurRotatif onglets={rotatif} actif={actif} aller={aller} />
+      </div>
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+        display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
+        maxWidth: 520, margin: "0 auto",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        boxShadow: "0 -4px 16px -8px rgba(15,23,42,.10)",
+      }}>
+        {items.map(([cle, icone, lib]) => {
+          const estActif = actif === cle;
+          return (
+            <button key={cle} onClick={() => aller(cle)} style={{
+              flex: 1, padding: "9px 4px 7px", border: "none", background: "none",
+              cursor: "pointer",
+            }}>
+              <Icone nom={icone} taille={21} couleur={estActif ? C.vert : C.bleu} />
+              <div style={{ fontSize: 10, fontWeight: 700, marginTop: 2,
+                            color: estActif ? C.vert : C.muet }}>{lib}</div>
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -255,9 +265,18 @@ function AppTerrain({ profil }) {
           ouvrirDossier={(id) => setRoute({ mode: "consult", ecran: "dossier", affaireId: id })} />
       )}
       {ecran === "profil" && <TerrainProfil profil={profil} />}
+      {/* Même molette que le bureau, avec les entrées terrain — le geste de la
+          vitrine, décliné dans chaque espace. « Nouveau » (une action, pas un
+          écran) reste hors molette : elle navigue, elle ne déclenche pas. */}
+      <div className="selecteur-rotatif-cadre">
+        <SelecteurRotatif
+          onglets={items.filter(([cle]) => cle !== "nouveau")
+                        .map(([cle, icone, lib]) => ({ cle, icone, label: lib }))}
+          actif={ecran} aller={setEcran} />
+      </div>
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
-        display: "flex", background: "#fff", borderTop: `1px solid ${C.bord}`,
+        display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
         maxWidth: 520, margin: "0 auto",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}>
