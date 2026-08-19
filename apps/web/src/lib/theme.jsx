@@ -84,6 +84,50 @@ if (typeof document !== "undefined" && !document.getElementById("champs-dashprod
     input:disabled, textarea:disabled, select:disabled {
       opacity: .55; cursor: not-allowed;
     }
+    /* LES BOUTONS, partout. Ils étaient inertes : aucun retour au survol, aucun
+       anneau au focus clavier — c'est une grande part de l'impression
+       d'incohérence. Ces règles s'appliquent à TOUT bouton, quel que soit son
+       style inline, sans avoir à toucher les 391 boutons de l'app.
+       On ne touche ni à la couleur ni à la forme (portées par le style inline) :
+       seulement le RETOUR au geste. */
+    button { transition: filter .14s ease, transform .1s ease, box-shadow .14s ease; }
+    button:not(:disabled):hover { filter: brightness(1.04); }
+    /* L'enfoncement : bref, net, universel — le bouton répond au clic. */
+    button:not(:disabled):active { transform: translateY(1px) scale(.985); }
+    /* Focus clavier UNIQUEMENT (pas au clic souris) : un anneau d'accent pour
+       qui navigue au clavier, invisible pour qui clique. */
+    button:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(${rgb}, .35);
+    }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    /* Le bouton DANGER se remplit au survol : contour au repos (il prévient),
+       aplat rouge quand on s'apprête à cliquer (il confirme l'intention). */
+    button[data-bouton="danger"]:not(:disabled):hover {
+      background: ${C.rouge} !important; color: #fff !important;
+    }
+    /* Le SÉLECTEUR ROTATIF, posé bas droite comme la boussole de la vitrine.
+       Discret au repos, net dès qu'on l'approche. Masqué sous 900px : au pouce,
+       la barre d'onglets du bas reste la commande — le sélecteur est un
+       repère de confort sur grand écran, pas une béquille. */
+    .selecteur-rotatif-cadre {
+      position: fixed; right: 18px; bottom: 74px; z-index: 40;
+      padding: 6px; border-radius: 50%;
+      background: radial-gradient(120% 120% at 50% 0%, rgba(16,28,54,.92), rgba(8,12,22,.94));
+      border: 1px solid rgba(255,255,255,.07);
+      box-shadow: 0 20px 50px -22px rgba(0,0,0,.85);
+      opacity: .5; transform: scale(.9);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+    .selecteur-rotatif-cadre:hover, .selecteur-rotatif-cadre:focus-within {
+      opacity: 1; transform: scale(1);
+    }
+    @media (max-width: 900px) { .selecteur-rotatif-cadre { display: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      .selecteur-rotatif-cadre, .selecteur-rotatif-cadre * {
+        transition-duration: .001ms !important;
+      }
+    }
   `;
   document.head.appendChild(st);
 }
@@ -196,6 +240,31 @@ export const S = {
                  background: `linear-gradient(135deg, ${C.bleu}, ${C.bleuFonce})`,
                  color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer",
                  fontFamily: FS, boxShadow: "0 4px 14px -4px rgba(37,99,235,.5)" },
+  // Le VOCABULAIRE DE BOUTONS, en un seul endroit. Le thème n'offrait que
+  // « plein » et « lien » : chaque écran réinventait donc le bouton secondaire
+  // (25 fois) et le bouton danger (plus de 100 fois), avec des rayons de 8 à 14
+  // au hasard. D'où l'incohérence visible. Ces styles nommés donnent la même
+  // forme partout ; un écran qui a un besoin standard n'a plus à l'improviser.
+  //
+  // Secondaire : une action de second rang (Annuler, Retour), contour plutôt
+  // que remplissage — elle ne doit pas rivaliser avec l'action principale.
+  boutonSecondaire: { width: "100%", padding: "12px", borderRadius: 11,
+                 border: `1.5px solid ${C.bord}`, background: C.blanc,
+                 color: C.encre, fontSize: 14, fontWeight: 700, cursor: "pointer",
+                 fontFamily: FS },
+  // Danger : une action destructrice (Supprimer, Annuler un dossier). Le rouge
+  // est un CONTOUR, pas un aplat : un gros bouton rouge plein crie, alors qu'on
+  // veut prévenir, pas alarmer. Il devient plein au survol (voir la feuille CSS).
+  boutonDanger: { width: "100%", padding: "12px", borderRadius: 11,
+                 border: `1.5px solid ${C.rouge}`, background: "transparent",
+                 color: C.rouge, fontSize: 14, fontWeight: 700, cursor: "pointer",
+                 fontFamily: FS },
+  // Puce : un petit bouton inline (un filtre, une étiquette cliquable). Rayon
+  // pleinement arrondi, jamais les rayons intermédiaires qui traînaient.
+  boutonPuce: { padding: "5px 11px", borderRadius: 999,
+                 border: `1.5px solid ${C.bord}`, background: C.blanc,
+                 color: C.muet, fontSize: 11.5, fontWeight: 700, cursor: "pointer",
+                 fontFamily: FS },
   boutonLien: { background: "none", border: "none", color: C.bleu, fontSize: 13,
                 fontWeight: 600, cursor: "pointer", padding: 6, fontFamily: FS },
   flottant: { position: "fixed", right: 18, bottom: 84, width: 56, height: 56,
