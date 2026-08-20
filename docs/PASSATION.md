@@ -541,9 +541,74 @@ sert dans le thème, on n'improvise plus un style inline.
   focus CLAVIER seulement (pas au clic souris). Universel, sans toucher les
   391 boutons.
 
+### 4.14 VISITE DE LA MÉCANIQUE — tier Basique (validé)
+Passage carte par carte, trois étages (domaine / base / écran). Rien de modifié :
+c'est un constat, pas un lot.
+
+**Écrans** — les 14 écrans du Basique ont été RENDUS pour de vrai (transpilation
++ `renderToStaticMarkup`), pas seulement compilés : Relevé, Devis, Offre,
+Signature, Planning, Terrain, TerrainProfil, Espace client, Liste, Conversations,
+Matériel, Mail, Facture, Équipe. **14/14 sans plantage** — aucun écran blanc
+latent du type de celui de CarteDate.
+
+**Cycle de vie du dossier — complet en base.** Noms réels (piège : ils ne sont
+pas ceux qu'on devine) : `cmd_transition_affaire`, `cmd_geler_instance`,
+`cmd_offre_signer` + `cmd_signer_instance`, `cmd_creer_mission`,
+`cmd_mission_affecter`, `cmd_pointage_definir`, `cmd_emettre_facture`,
+`cmd_creer_acces_client`.
+
+**Chiffrage — architecture saine.** `bareme.js` n'expose que des constantes
+gelées (défaut de secours) ; le moteur accepte `ref.bareme` et l'écran Devis
+transmet bien les `parametres_prix` de l'organisation, la grille de nature, les
+réglages lift et le taux de TVA. **Pas de double vérité de prix.** Quand le
+chiffrage n'aboutit pas, l'écran DIT ce qui manque au lieu d'afficher un vide.
+
+**Immuabilité — six triggers ACTIFS vérifiés en base** (`tgenabled='O'`, pas
+seulement déclarés dans un fichier) : `trg_instance_signee_immuable`,
+`instances_immuables`, `factures_immuables`, `trg_releve_abonnement_immuable`,
+`trg_cloison_org`, `trg_dossier_clos`. C'est la ceinture de conformité.
+
+**Écriture directe à noter** : le relevé (`enregistrerReleve`) et le contact
+(`sauverContact`) passent par `UPDATE` direct sur `affaires`, pas par commande
+gardée. Étanche — la RLS `affaires_tenant` borne en lecture ET en écriture
+(`org_id = jwt_org()` + `peut_voir_centre`). Mais asymétrie à connaître : ces
+écritures échappent au journal d'événements.
+
+### 4.14b Visite (suite) — relevé, planning, terrain : UN DÉFAUT TROUVÉ ET CORRIGÉ
+**Quantité 0 comptée comme 1** (`volumetrie.js`, `brief.js`). `it.quantite || 1`
+traitait un zéro VOULU comme une absence : un métreur qui met 0 pour retirer un
+meuble du calcul gonflait le volume — donc le PRIX — sans erreur visible. Même
+famille que le `Number(null) === 0` qui avait mis la TVA à zéro. Corrigé avec
+`ouDefaut()` (§3.x), qui respecte un zéro et ne remplace que l'absence. Au brief
+chantier, une ligne à 0 est désormais RETIRÉE (sinon l'équipe lisait « 0× Canapé »
+et cherchait un meuble absent). Verrouillé par 2 tests dans `releve.test.js`.
+
+**Faux positifs écartés** (vérifiés, à ne pas « corriger ») :
+`Math.max(1, f.nbCamions || 1)` dans `moteur.js` est VOLONTAIRE — un déménagement
+facture au moins un camion. Les `|| 0` sur valeurs absentes sont sains.
+
+**Planning** — `conflitsAffectation` exclut bien la mission courante du calcul de
+doublon (invariant §4.5 tenu).
+**Terrain** — pointage éprouvé sur ses cas limites : 22h→02h rend 4 h (passage à
+minuit géré par `corrigerJourSuivant`), une pause plus longue que le chantier est
+refusée avec motif. Forme `{ok, message}` respectée.
+
+### 4.15 Enforcement des modules par offre — état
+`exiger_module` lève `42501` si le plan n'ouvre pas le module : le refus est EN
+BASE, pas seulement dans le menu. 12 fonctions gardées.
+
+Gardés en base : `comptabilite`, `journal`, `multi_depots`, `rapport_chantier`,
+`stockage_3d`.
+**Sans garde en base** : `peppol`, `international`, `gestionnaire_depot`
+(+ `paie`, SUSPENDU sur décision de Raphaël — hors périmètre, ne pas refermer).
+
+**Bloquant lancement (P1)** : `prix_base_htva_mensuel` et `_annuel` sont `null`
+sur les trois offres. Aucune facture d'abonnement émettable. Le membre
+supplémentaire à 13 € est bien appliqué aux trois offres.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 948/948 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**`npm test` : 950/950 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0138_notes_atelier`.**
 
 ### Lots livrés
