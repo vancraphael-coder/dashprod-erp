@@ -44,6 +44,8 @@ function ligneAdresse(a) {
  * @param {number} [p.maxArticles=6]
  * @returns {string}
  */
+import { ouDefaut } from "../noyau/nombres.js";
+
 export function briefMission(p) {
   const l = [];
   // Nom de l'entreprise fourni par l'appelant : jamais une constante, sinon
@@ -70,11 +72,14 @@ export function briefMission(p) {
     decharges.forEach((a, i) => l.push(`  ${i + 1}. ${ligneAdresse(a)}`));
   }
 
-  const inv = p.inventaire || [];
+  // Une ligne à quantité 0 est un article RETIRÉ du chantier : elle ne doit pas
+  // figurer au brief (sinon l'équipe lit « 0× Canapé » et cherche un meuble qui
+  // n'est pas là). Une quantité absente vaut 1 — l'article existe, non compté.
+  const inv = (p.inventaire || []).filter((it) => ouDefaut(it.quantite, 1) > 0);
   if (inv.length) {
     const max = p.maxArticles ?? 6;
     const tetes = inv.slice(0, max).map((it) =>
-      `${it.quantite || 1}× ${it.nom}`
+      `${ouDefaut(it.quantite, 1)}× ${it.nom}`
       + (it.demont && it.remont ? " (démontage + remontage)"
          : it.demont ? " (démontage)"
          : it.remont ? " (remontage)" : "")
