@@ -121,3 +121,30 @@ test("les remarques du métreur remontent, nettoyées", () => {
 test("la quantité par défaut vaut 1", () => {
   assert.equal(articlesARemonter([{ nom: "X", remont: true }])[0].quantite, 1);
 });
+
+/* ── Quantité ZÉRO : un zéro voulu n'est pas une absence ────────────────── */
+
+test("un article à quantité 0 ne compte pas de volume", () => {
+  // Trouvé à la visite de la mécanique. `it.quantite || 1` traitait 0 comme
+  // une absence : un métreur qui met 0 pour retirer un meuble du calcul
+  // GONFLAIT silencieusement le volume, donc le prix. Même famille que le
+  // `Number(null) === 0` qui avait mis la TVA à zéro en production.
+  assert.equal(volumeTotal([{ nom: "Canapé 3 places", quantite: 0 }]), 0,
+    "quantité 0 = pas de volume");
+  // Une quantité absente, elle, vaut bien 1 (l'article est là, non compté).
+  assert.equal(volumeTotal([{ nom: "Canapé 3 places" }]),
+    volumeUnitaire("Canapé 3 places"),
+    "quantité absente = 1 article");
+  assert.equal(volumeTotal([{ nom: "Canapé 3 places", quantite: 2 }]),
+    volumeUnitaire("Canapé 3 places") * 2);
+});
+
+test("un article à quantité 0 ne figure pas dans les listes à démonter", () => {
+  // Même raison : une ligne à zéro n'est pas un meuble à démonter.
+  const liste = articlesADemonter([
+    { nom: "Armoire", quantite: 0, demonter: true },
+    { nom: "Lit", quantite: 1, demonter: true },
+  ]);
+  assert.equal(liste.some((x) => x.nom === "Armoire"), false,
+    "une ligne à zéro ne part pas au chantier");
+});
