@@ -7,6 +7,8 @@
 // =============================================================================
 
 /** Pièces types d'un logement (roovers-mobile.jsx, PIECES). */
+import { ouDefaut } from "../noyau/nombres.js";
+
 export const PIECES = Object.freeze([
   "Salon", "Chambre", "Cuisine", "Salle de bain", "Bureau", "Cave/Garage", "Autre",
 ]);
@@ -54,7 +56,10 @@ export function volumeUnitaire(nom) {
 export function volumeTotal(inventaire) {
   const total = (inventaire || []).reduce((s, it) => {
     const unit = (it.vol != null) ? it.vol : volumeUnitaire(it.nom);
-    return s + unit * (it.quantite || 1);
+    // `|| 1` traitait une quantité 0 comme une absence : un métreur qui met 0
+    // pour retirer un meuble du calcul gonflait le volume, donc le prix.
+    // `ouDefaut` respecte un zéro VOULU et ne remplace que l'absence.
+    return s + unit * ouDefaut(it.quantite, 1);
   }, 0);
   return Math.round(total * 100) / 100;
 }
@@ -100,7 +105,7 @@ export function grouperParPiece(inventaire) {
 export function articlesADemonter(inventaire) {
   return (inventaire || [])
     .filter((it) => it.demont)
-    .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 }));
+    .map((it) => ({ nom: it.nom, quantite: ouDefaut(it.quantite, 1) }));
 }
 
 /**
@@ -117,7 +122,7 @@ export function articlesADemonter(inventaire) {
 export function articlesARemonter(inventaire) {
   return (inventaire || [])
     .filter((it) => it.remont)
-    .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 }));
+    .map((it) => ({ nom: it.nom, quantite: ouDefaut(it.quantite, 1) }));
 }
 
 /**
