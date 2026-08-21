@@ -12,8 +12,11 @@
 > En cas de conflit, `PRODUCT_TRUTH.md` reste la source produit ; la présente
 > charte ne contredit jamais la règle d'horizontalité (`packages/domaine/architecture.js`).
 >
-> **Dernière mise à jour :** 21/08/2026 — après inspection du schéma Supabase
-> (projet `usldgiordguqchclvdms`, 62 tables) et du paquet `packages/domaine`.
+> **Dernière mise à jour :** 21/08/2026 — ajustement du périmètre Phase 1
+> (découpage 1a/1b/1c : un seul type d'événement `facture_emise`, écritures
+> figées, `exports.js` adaptateur consommateur). Après inspection du schéma
+> Supabase (projet `usldgiordguqchclvdms`, 62 tables) et du paquet
+> `packages/domaine`.
 >
 > **Méthode (anti-dérive) :** aucune ligne de cette charte n'est une spécification
 > tant qu'elle n'a pas le statut `LIVE` / `PARTIAL` / `MISSING` / `DECISION` /
@@ -451,24 +454,31 @@ Dashprod n'est PAS un logiciel comptable agréé. On construit une architecture 
 | Phase | Mission du Mentor | Livrable |
 |---|---|---|
 | 0 | Valider la représentation canonique de l'événement économique ; arbitrer A/B/C/D ; figer les frontières de couches | ADR-009 + présente charte `LOCKED` sur l'architecture |
-| 1 | Vérifier le contrat du ledger (shape, immutabilité, provenance) avant tout UI ; préparer les questions à trancher | Spec ledger + liste `DECISION` |
+| 1a | Vérifier le contrat du ledger (shape, immutabilité, provenance) sur UN seul type d'événement (`facture_emise`) avant tout UI | Spec ledger + liste `DECISION` |
+| 1b | Valider la figération de l'écriture (snapshot immuable, non recalculé) ; refuser qu'un changement de règle altère une écriture passée | ADR écriture figée |
+| 1c | Valider la frontière du bridge (`exports.js` consommateur du ledger, pas du PDF) ; refuser tout couplage au fournisseur | ADR bridge |
 | 2 | Valider la séparation TVA collectée/déductible et la figuration des taux ; challenger la périodicité | ADR TVA |
-| 3 | Valider la frontière du bridge (modèle canonique ↔ adaptateurs) ; refuser tout couplage au fournisseur | ADR bridge |
-| 4 | Définir le modèle de période/clôture et le rôle comptable externe | ADR clôture |
-| 5 | Définir le rapprochement et l'import bancaire | ADR rapprochement |
-| 6 | Cartographier les exigences d'agrément/conformité (`À VÉRIFIER`) ; ne jamais affirmer | Note conformité |
+| 3 | Définir le modèle de période/clôture et le rôle comptable externe | ADR clôture |
+| 4 | Définir le rapprochement et l'import bancaire | ADR rapprochement |
+| 5 | Cartographier les exigences d'agrément/conformité (`À VÉRIFIER`) ; ne jamais affirmer | Note conformité |
 
 ### 15.2 Roadmap CONSTRUCTEUR (Claude construit)
+
+> **Règle minimale viable (invariant de la Phase 1) :** *une facture client émise
+devient un événement économique immuable, qui devient un jeu d'écritures du
+journal des ventes équilibré et immuable.* C'est la plus petite preuve utile de
+l'architecture — elle valide le sens de la flèche sans construire une plateforme.
 
 | Phase | Ce que Claude construit | Critère de fin |
 |---|---|---|
 | 0 | Inspecter l'existant (fait) ; ne pas coder tant que l'ADR-009 n'est pas validé | Carte de l'existant + ADR |
-| 1 | `evenements_economiques` (trigger immuabilité) + qualification + `ecritures_comptables` (versionnées) ; **tests d'abord, pas d'UI** | `npm test` vert sur le contrat du ledger |
-| 2 | Moteur TVA collectée (réutilise `referentiels`) + pièces justificatives + audit trail | Tests métier sur chaque règle fiscale |
-| 3 | Brancher `exports.js` comme **adaptateur consommateur** du ledger (CSV/journalVentes/FEC) ; bridge remplaçable | Export reproductible depuis le ledger |
-| 4 | `periodes_comptables` (ouverte/contrôle/verrouillée/réouverture) + rapprochement bancaire | Clôture testable, réouverture contrôlée |
-| 5 | Rôle expert-comptable + permissions + collaboration entreprise↔comptable | Accès externes testés |
-| 6 | Préparation reconnaissance/certification (conformité à vérifier, jamais affirmée) | Note conformité |
+| **1a** | `evenements_economiques` (trigger immuabilité) — **un seul type source : `facture_emise`**. Payload figé : `org_id`, `type`, `date_economique`, `source_type`, `source_id`, `piece_type`, `piece_id`, `partenaire_type/id`, `devise`, `montants`, `ventilation_tva`, `regle_version`, `created_at`, `created_by`, `audit_event_id` (lien `evenements`). Pas d'achats, pas de périodes, pas d'UI, pas de réécriture Peppol. | Une facture émise crée **un** événement immuable ; un avoir crée un **autre** événement, jamais une mutation. `npm test` vert. |
+| **1b** | `ecritures_comptables` (immuables, figées) pour `facture_emise` uniquement. Shape miroir de `journalVentes` : `date`, `piece`, `compte`, `libelle`, `debit_centimes`, `credit_centimes`, + `event_id`, `journal`, `ligne_no`, `regle_version`. Pas de périodes complètes (`periode_id` nullable, réservé Phase 3). | Écritures équilibrées ; changer `COMPTES_DEFAUT` ou une règle plus tard **ne modifie pas** les écritures déjà persistées. |
+| **1c** | Adapter `exports.js` pour consommer **soit** le modèle canonique facture (comportement actuel conservé), **soit** les écritures persistées. Le bridge reste remplaçable. | Export du journal des ventes **depuis les écritures figées** (non recalculé) — valeur livrable à Roovers. |
+| 2 | Moteur TVA collectée (réutilise `referentiels`) + pièces justificatives + audit trail ; extension aux autres types d'événements (`paiement_recu`, `avoir`, `echeance`) | Tests métier sur chaque règle fiscale |
+| 3 | `periodes_comptables` (ouverte/contrôle/verrouillée/réouverture) + rapprochement bancaire | Clôture testable, réouverture contrôlée |
+| 4 | Rôle expert-comptable + permissions + collaboration entreprise↔comptable | Accès externes testés |
+| 5 | Préparation reconnaissance/certification (conformité à vérifier, jamais affirmée) | Note conformité |
 
 > **Commandement au Constructeur :** petites phases, **tests d'abord**, **pas
 > d'interface tant que le contrat du ledger n'est pas validé**. Chaque règle
@@ -483,16 +493,20 @@ Dashprod n'est PAS un logiciel comptable agréé. On construit une architecture 
 
 ## 16. Ce qui peut être codé immédiatement vs ce qui ne doit surtout pas l'être
 
-**À coder (Phase 1, après ADR-009) :**
-- Le contrat du ledger `evenements_economiques` + trigger d'immutabilité.
-- La qualification retournant une décision motivée.
-- Les tests du contrat du ledger (avant toute interface).
+**À coder (Phase 1a→1c, après ADR-009) :**
+- **1a :** le contrat du ledger `evenements_economiques` + trigger d'immutabilité, sur le seul type `facture_emise`.
+- **1b :** la persistance des écritures figées `ecritures_comptables` (snapshot, non recalculé).
+- **1c :** l'adaptation de `exports.js` pour consommer les écritures persistées (comportement actuel conservé par défaut).
+- Les tests du contrat du ledger **avant toute interface**.
 
 **À NE PAS coder maintenant :**
-- Une UI comptable tant que le contrat du ledger n'est pas validé par tests.
+- Une UI comptable tant que le contrat 1a/1b n'est pas validé par tests.
+- Le côté achats/fournisseurs, la TVA déductible (Phase 2+).
+- Les périodes/clôture complètes, le rapprochement bancaire, le rôle comptable externe (Phase 3+).
 - Le moteur fiscal mondial, un système bancaire, une infrastructure financière.
 - Un couplage dur à un logiciel comptable tiers (le bridge reste remplaçable).
 - Une deuxième source de vérité pour les montants (le ledger projette, ne duplique pas).
+- Toute affirmation d'agrément/conformité (`À VÉRIFIER` uniquement).
 
 ---
 
