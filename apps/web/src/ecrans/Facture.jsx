@@ -17,6 +17,7 @@ import FactureDoc from "./FactureDoc.jsx";
 import FacturePeppol from "./FacturePeppol.jsx";
 import { composerTotal, etatPaiement } from "@domaine/facturation/facture.js";
 import { libelleTva } from "@domaine/organisation/identite.js";
+import { categoriePourNature } from "@domaine/facturation/operations.js";
 import { C, S, euros, Confirmation } from "../lib/theme.jsx";
 
 const STATUTS_UI = {
@@ -157,6 +158,12 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
         </div>
       </div>
 
+      {/* LA LECTURE de la qualification. Le déménageur ne choisit pas une
+          catégorie fiscale : Dashprod la déduit de la nature du dossier et
+          l'EXPLIQUE. Un sélecteur muet ne renseigne personne ; celui-ci dit ce
+          qu'il a décidé, pourquoi, et ce que ça implique. */}
+      <LectureCategorie nature={affaire?.nature} />
+
       {/* Le document lui-même — imprimable seul (classe partagée avec le contrat) */}
       <FactureDoc facture={facture} organisation={org}
                   client={{
@@ -290,6 +297,37 @@ function Ligne({ l, v, gras }) {
     <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
       <span style={{ fontSize: 13, color: gras ? C.encre : C.muet, fontWeight: gras ? 800 : 500 }}>{l}</span>
       <span style={{ fontSize: gras ? 15 : 13.5, color: C.encre, fontWeight: gras ? 800 : 600 }}>{v}</span>
+    </div>
+  );
+}
+
+/**
+ * Ce que Dashprod a qualifié, en clair. Affiché parce que l'automatisation doit
+ * rester explicable : l'utilisateur doit pouvoir répondre à « pourquoi 21 % ? »
+ * sans appeler son comptable.
+ */
+function LectureCategorie({ nature }) {
+  const cat = categoriePourNature(nature);
+  if (!cat) return null;
+  const incertain = cat.tauxUsuel == null;
+  return (
+    <div style={{ ...S.carte, borderLeft: `3px solid ${incertain ? C.ambre : C.bleu}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+          {cat.libelle}
+        </span>
+        <span style={{ fontSize: 11.5, fontWeight: 700,
+                       color: incertain ? C.ambre : C.bleu }}>
+          {incertain ? "Taux à confirmer" : `${cat.tauxUsuel} %`}
+        </span>
+      </div>
+      <div style={{ fontSize: 12.5, color: C.muet, lineHeight: 1.5, marginTop: 6 }}>
+        {cat.lecture}
+      </div>
+      <div style={{ fontSize: 11.5, color: C.fantome, lineHeight: 1.45, marginTop: 5 }}>
+        {cat.exemple} — {cat.consequence}
+      </div>
     </div>
   );
 }
