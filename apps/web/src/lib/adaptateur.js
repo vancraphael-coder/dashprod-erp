@@ -2734,6 +2734,8 @@ import { facture as factureCanonique, ligne as ligneCanonique }
   from "@domaine/facturation/modele.js";
 import { clientDigiteal, identifiantsBelges }
   from "@domaine/facturation/digiteal.js";
+import { tauxUsuelPourNature, categoriePourNature }
+  from "@domaine/facturation/operations.js";
 
 /**
  * Construit la facture canonique d'une facture en base.
@@ -2741,10 +2743,12 @@ import { clientDigiteal, identifiantsBelges }
  * client. Peppol exige des identifiants et adresses complets des deux côtés.
  */
 async function factureCanoniqueDepuisBase(factureId, affaireId) {
-  const [f, org, cli] = await Promise.all([
+  const [f, org, cli, affaire] = await Promise.all([
     obtenirFacture(factureId),
     obtenirOrganisation(),
     obtenirClientFacturation(affaireId),
+    // La NATURE du dossier porte la catégorie d'opération, donc le taux usuel.
+    obtenirAffaire(affaireId).catch(() => null),
   ]);
   if (!f) throw new Error("Facture introuvable.");
 
@@ -2769,7 +2773,15 @@ async function factureCanoniqueDepuisBase(factureId, affaireId) {
     // repli sur 21 % : une facture Peppol a valeur légale, un taux inventé est
     // une déclaration fiscale inexacte. Non renseigné → la génération échoue
     // avec un motif, et rien n'est transmis.
-    tva_pct_defaut: pf.tva_pct ?? null,
+    // LE TAUX EST PRÉ-DÉFINI PAR DASHPROD, pas demandé au client.
+    // Un déménageur n'est pas fiscaliste : la NATURE du dossier détermine la
+    // catégorie d'opération, qui porte son taux usuel. L'ordre de priorité :
+    //   1. le taux configuré par l'organisation (elle a tranché) ;
+    //   2. le taux usuel de la catégorie déduite de la nature ;
+    //   3. rien — et `qualifierTva` refuse, avec son motif.
+    // Ce n'est pas le défaut implicite du lot 23 : ce taux-là est DÉRIVÉ d'une
+    // catégorie déclarée et lisible à l'écran, pas tombé de nulle part.
+    tva_pct_defaut: pf.tva_pct ?? tauxUsuelPourNature(affaire?.nature) ?? null,
     communication: f.communication,
     // Peppol EXIGE une référence acheteur (PEPPOL-EN16931-R003, fatal). On
     // prend celle saisie sur la facture ; à défaut la référence du dossier,
@@ -2951,7 +2963,7 @@ export async function facturesCanoniquesPeriode({ debut, fin }) {
   const { data, error } = await supabase.from("factures")
     .select("id, affaire_id, numero, type, date_emission, echeance, communication, "
           + "devise, facture_lignes(libelle, quantite, unite, prix_unitaire_centimes, "
-          + "montant_htva_centimes, tva_pct), affaires(client_id)")
+          + "montant_htva_centimes, tva_pct), affaires(client_id, nature)")
     .eq("emise", true)
     .gte("date_emission", debut)
     .lte("date_emission", fin)
@@ -2984,7 +2996,15 @@ export async function facturesCanoniquesPeriode({ debut, fin }) {
     // repli sur 21 % : une facture Peppol a valeur légale, un taux inventé est
     // une déclaration fiscale inexacte. Non renseigné → la génération échoue
     // avec un motif, et rien n'est transmis.
-    tva_pct_defaut: pf.tva_pct ?? null,
+    // LE TAUX EST PRÉ-DÉFINI PAR DASHPROD, pas demandé au client.
+    // Un déménageur n'est pas fiscaliste : la NATURE du dossier détermine la
+    // catégorie d'opération, qui porte son taux usuel. L'ordre de priorité :
+    //   1. le taux configuré par l'organisation (elle a tranché) ;
+    //   2. le taux usuel de la catégorie déduite de la nature ;
+    //   3. rien — et `qualifierTva` refuse, avec son motif.
+    // Ce n'est pas le défaut implicite du lot 23 : ce taux-là est DÉRIVÉ d'une
+    // catégorie déclarée et lisible à l'écran, pas tombé de nulle part.
+    tva_pct_defaut: pf.tva_pct ?? tauxUsuelPourNature(f.affaires?.nature) ?? null,
       communication: f.communication,
       type: f.type === "avoir" ? "avoir" : "facture",
       vendeur: { nom: org.nom_commercial || org.nom, tva: org.tva,
