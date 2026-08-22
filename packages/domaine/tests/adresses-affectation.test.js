@@ -1026,3 +1026,27 @@ test("l'écran Facture explique ce que Dashprod a qualifié", () => {
   assert.ok(src.includes("cat.consequence"),
     "et ce que ça implique");
 });
+
+/* ── L'écran Comptabilité dit franchement ce que Dashprod fait (lot 27) ─── */
+
+test("l'écran Comptabilité assume ce que Dashprod n'est PAS", () => {
+  // Un utilisateur qui croit que Dashprod « fait sa comptabilité »
+  // découvrirait le malentendu devant son contrôle. On le dit en tête
+  // d'écran, pas en petits caractères.
+  const src = lire("ecrans/Comptabilite.jsx");
+  assert.ok(src.includes("n'est pas un logiciel comptable agréé"),
+    "le statut est énoncé sans détour");
+  assert.ok(src.includes("ne se substitue pas à"),
+    "et le rôle du comptable est préservé");
+});
+
+test("la réversibilité est promise ET outillée", () => {
+  // Une donnée qu'on ne peut pas sortir est une donnée prise en otage.
+  const src = lire("ecrans/Comptabilite.jsx");
+  assert.ok(/vous partez\s*\n?\s*avec elles|Vos données vous appartiennent/.test(src),
+    "la promesse est écrite à l'écran");
+  // Et tenue : les quatre familles de ressources sont exportables.
+  for (const f of ["versCsv", "journalCsv", "journalAchatsCsv", "paiementsCsv", "tiersCsv"]) {
+    assert.ok(src.includes(f), `export manquant : ${f}`);
+  }
+});

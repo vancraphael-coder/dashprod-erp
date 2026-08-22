@@ -16,6 +16,8 @@ import {
 } from "../src/facturation/reception.js";
 import { facture } from "../src/facturation/modele.js";
 import { versXmlUBL } from "../src/facturation/ubl.js";
+import { journalAchats, tiersCsv, inventaireExport }
+  from "../src/facturation/exports.js";
 
 const FOURNISSEUR = {
   nom: "Fournisseur SPRL", tva: "BE0999888777", peppol_id: "0208:0999888777",
@@ -143,5 +145,61 @@ test("chaque état de réception a un libellé lisible", () => {
   for (const [cle, lib] of Object.entries(ETATS_RECEPTION)) {
     assert.ok(lib && lib.length > 2, `${cle} doit se dire en français`);
     assert.ok(PASSAGES_RECEPTION[cle], `${cle} doit déclarer ses passages`);
+  }
+});
+
+/* ── Export comptable : réversibilité ───────────────────────────────────── */
+
+test("le journal des achats n'inclut QUE les documents approuvés", () => {
+  // Une facture reçue mais non validée n'a rien à faire dans une comptabilité :
+  // recevoir n'est pas accepter, et cette règle doit tenir jusqu'à l'export.
+  const e = journalAchats([
+    { etat: "APPROUVE", type: "facture", numero: "F-1", date_emission: "2026-08-01",
+      fournisseur_nom: "Total", htva_centimes: 50000, tva_centimes: 10500,
+      tvac_centimes: 60500 },
+    { etat: "A_VERIFIER", numero: "F-2", htva_centimes: 99999 },
+    { etat: "RECU", numero: "F-3", htva_centimes: 88888 },
+    { etat: "REFUSE", numero: "F-4", htva_centimes: 77777 },
+  ]);
+  assert.equal(e.every((x) => x.piece === "F-1"), true,
+    "seul le document approuvé produit des écritures");
+});
+
+test("le journal des achats est équilibré — sinon aucun cabinet ne l'importe", () => {
+  const e = journalAchats([
+    { etat: "APPROUVE", numero: "F-1", date_emission: "2026-08-01",
+      htva_centimes: 50000, tva_centimes: 10500, tvac_centimes: 60500 },
+    { etat: "COMPTABILISE", numero: "F-2", date_emission: "2026-08-02",
+      htva_centimes: 20000, tva_centimes: 4200, tvac_centimes: 24200 },
+  ]);
+  const debit = e.reduce((s, x) => s + x.debit, 0);
+  const credit = e.reduce((s, x) => s + x.credit, 0);
+  assert.equal(debit, credit);
+});
+
+test("un avoir fournisseur inverse les écritures, il n'en crée pas de fausses", () => {
+  const e = journalAchats([{ etat: "APPROUVE", type: "avoir", numero: "A-1",
+    date_emission: "2026-08-03", htva_centimes: 10000, tva_centimes: 2100,
+    tvac_centimes: 12100 }]);
+  assert.equal(e.reduce((s, x) => s + x.debit, 0),
+               e.reduce((s, x) => s + x.credit, 0));
+  assert.ok(e.some((x) => x.debit < 0 || x.credit < 0),
+    "un avoir porte des montants négatifs, comme côté vente");
+});
+
+test("l'export des tiers échappe les point-virgules des noms", () => {
+  // Un nom de société contenant un « ; » casserait les colonnes chez le
+  // comptable — et personne ne s'en apercevrait avant l'import.
+  const csv = tiersCsv([{ nom: "Client; SA", tva: "BE0123456789" }]);
+  assert.match(csv, /"Client; SA"/);
+});
+
+test("l'inventaire dit ce que le paquet contient", () => {
+  // Le comptable reçoit une table des matières, pas un tas de fichiers.
+  const inv = inventaireExport({ nbFactures: 12, nbAchats: 3, periode: "T3 2026" });
+  assert.ok(inv.length >= 5);
+  for (const x of inv) {
+    assert.ok(x.fichier && x.contenu && x.usage,
+      "chaque fichier dit son nom, son contenu et son usage");
   }
 });
