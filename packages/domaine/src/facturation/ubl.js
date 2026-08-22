@@ -91,6 +91,26 @@ export function versXmlUBL(f) {
     throw new Error(`Facture non conforme pour Peppol : ${v.erreurs.join(" · ")}`);
   }
 
+  // PEPPOL-EN16931-R003, drapeau `fatal` : « A buyer reference or purchase
+  // order reference MUST be provided ». Sans BuyerReference NI OrderReference,
+  // le point d'accès REJETTE le document. On échoue donc ici, avec un motif
+  // utile, plutôt que de laisser partir une transmission vouée au rejet.
+  // On n'invente pas de valeur de repli : ce serait mettre une donnée fausse
+  // dans un document légal (voir §4.16 — rien ne se devine).
+  if (!String(f.reference_acheteur ?? "").trim()) {
+    throw new Error(
+      "Référence de l'acheteur manquante : Peppol l'exige (règle "
+      + "PEPPOL-EN16931-R003). Renseignez le bon de commande ou la référence "
+      + "interne du client sur la facture.");
+  }
+
+  // Un avoir DOIT dire quelle facture il corrige — mention légale, et donnée
+  // déjà présente dans le modèle (`facture_corrigee`) mais jamais émise
+  // jusqu'ici : l'avoir partait orphelin.
+  if (f.type === "avoir" && !String(f.facture_corrigee ?? "").trim()) {
+    throw new Error("Un avoir doit référencer la facture qu'il corrige.");
+  }
+
   const typeCode = f.type === "avoir" ? "381" : "380";
   const racine = f.type === "avoir" ? "CreditNote" : "Invoice";
   const nsRacine = f.type === "avoir"
@@ -141,7 +161,11 @@ export function versXmlUBL(f) {
   <cbc:DueDate>${esc(f.echeance)}</cbc:DueDate>
   <cbc:${f.type === "avoir" ? "CreditNoteTypeCode" : "InvoiceTypeCode"}>${typeCode}</cbc:${f.type === "avoir" ? "CreditNoteTypeCode" : "InvoiceTypeCode"}>
   <cbc:DocumentCurrencyCode>${esc(f.devise)}</cbc:DocumentCurrencyCode>
-${partieXml("AccountingSupplierParty", f.vendeur)}
+  <cbc:BuyerReference>${esc(f.reference_acheteur)}</cbc:BuyerReference>
+${(f.prestation_debut || f.prestation_fin) ? `  <cac:InvoicePeriod>
+${f.prestation_debut ? `    <cbc:StartDate>${esc(f.prestation_debut)}</cbc:StartDate>\n` : ""}${f.prestation_fin ? `    <cbc:EndDate>${esc(f.prestation_fin)}</cbc:EndDate>\n` : ""}  </cac:InvoicePeriod>\n` : ""}${f.facture_corrigee ? `  <cac:BillingReference>
+    <cac:InvoiceDocumentReference><cbc:ID>${esc(f.facture_corrigee)}</cbc:ID></cac:InvoiceDocumentReference>
+  </cac:BillingReference>\n` : ""}${partieXml("AccountingSupplierParty", f.vendeur)}
 ${partieXml("AccountingCustomerParty", f.acheteur)}
 ${(f.communication || f.vendeur.iban) ? `  <cac:PaymentMeans>
     <cbc:PaymentMeansCode>31</cbc:PaymentMeansCode>

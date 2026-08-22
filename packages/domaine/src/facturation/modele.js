@@ -102,6 +102,14 @@ export function facture({
   vendeur, acheteur, lignes = [], tva_pct_defaut = null,
   communication, type = "facture", facture_corrigee = null,
   contexte_tva = null,
+  // BT-10 — référence de l'acheteur (son bon de commande, sa réf. interne).
+  // Peppol l'EXIGE : la règle PEPPOL-EN16931-R003 est `fatal`, un document
+  // sans référence acheteur NI référence de commande est rejeté par le réseau.
+  reference_acheteur = null,
+  // La date ou la période de PRESTATION, distincte de la date d'émission.
+  // Mention légale belge dès qu'elle diffère de la date de facture, et donnée
+  // que le client attend pour rapprocher la facture de son chantier.
+  prestation_debut = null, prestation_fin = null,
 }) {
   const l = lignes.map((x) => (x.montant_htva_centimes != null && x.quantite != null)
     ? x : ligne(x));
@@ -133,6 +141,9 @@ export function facture({
     ventilation_tva: ventilation,
     communication: vide(communication) ? null : String(communication).trim(),
     facture_corrigee,
+    reference_acheteur: vide(reference_acheteur) ? null : String(reference_acheteur).trim(),
+    prestation_debut: vide(prestation_debut) ? null : prestation_debut,
+    prestation_fin: vide(prestation_fin) ? null : prestation_fin,
     total: {
       htva_centimes: signe * htva,
       tva_centimes: signe * tva,
