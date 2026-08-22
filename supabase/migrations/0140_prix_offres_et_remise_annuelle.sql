@@ -1,0 +1,24 @@
+-- 0140 — APPLIQUÉE ET VÉRIFIÉE le 22/08/2026 (stub de référence).
+-- LES PRIX DES OFFRES (P1, bloquant de facturation) + remise annuelle.
+--
+-- Six prix étaient `null` depuis le cadrage : aucune facture d'abonnement
+-- n'était émettable. Décision de Raphaël :
+--   Basique 180 · Regular 360 · Pro 720 (HTVA / mois)
+--   membre supp. 13 € (toutes offres) · centre supp. 50 € (pro seul)
+--   ANNUEL = −5 %, remise portant AUSSI sur les suppléments.
+--
+--   → add prix_membre_supp_htva_annuel, prix_centre_supp_htva_annuel,
+--     remise_annuelle_pct
+--   → REPUBLICATION des trois offres (jamais d'UPDATE : le barème est une
+--     donnée versionnée). Recopie en bloc via jsonb puis écrasement des seuls
+--     prix, pour qu'aucune colonne existante ou future ne soit perdue.
+--
+-- Pourquoi des colonnes annuelles plutôt qu'un calcul : une facture référence
+-- un PRIX FIGÉ. Si le taux de remise changeait, un montant calculé réécrirait
+-- le passé en silence. `remise_annuelle_pct` sert à EXPLIQUER, jamais à
+-- calculer.
+--
+-- Vérifié après application :
+--   mensuel 180 / 360 / 720 · annuel 2052 / 4104 / 8208
+--   membre annuel 148,20 · centre annuel 570 · remise 5 %
+--   modules et seuils intacts (10 / 16 / 19)
