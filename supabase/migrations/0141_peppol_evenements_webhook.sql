@@ -1,0 +1,14 @@
+-- 0141 — APPLIQUÉE ET ÉPROUVÉE le 22/08/2026 (stub de référence).
+-- JOURNAL DES ÉVÉNEMENTS DU POINT D'ACCÈS (webhook Peppol).
+--
+-- Un webhook arrive plusieurs fois : les réseaux réessaient. Sans clé
+-- d'idempotence → doublons (une facture fournisseur enregistrée deux fois).
+--   → table peppol_evenements, `cle_idempotence` UNIQUE.
+--     C'est la CONTRAINTE qui garantit, pas la vérification en lecture : elle
+--     tient même quand deux livraisons arrivent en même temps.
+--   → les événements INCONNUS sont journalisés (trace) sans action.
+--   → RLS : lecture par l'organisation, écriture réservée à la fonction
+--     serveur (clé de service). Rien de manipulable depuis le navigateur.
+--
+-- Éprouvée : rejeu refusé (unique_violation), genre invalide refusé
+-- (check_violation), journalisation d'un type inconnu OK.
