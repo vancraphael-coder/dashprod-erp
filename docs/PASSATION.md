@@ -706,10 +706,85 @@ prestation ») et signale deux manques ENCORE ouverts dans Dashprod :
   d'auteur / don) — c'est exactement l'entrée `natureOperation` qui manque à
   `qualifierTva` pour traiter l'intracommunautaire (§4.16).
 
+### 4.18 La nature définit le taux, l'utilisateur LIT (lot 25)
+`facturation/operations.js` — 6 catégories d'opération, alignées sur les
+logiciels belges agréés, chacune portant **libellé + lecture + exemple +
+conséquence**. Un sélecteur muet ne renseigne personne.
+
+**La chaîne** : `nature du dossier → catégorie d'opération → taux`.
+`CATEGORIE_PAR_NATURE` : déménagement / lift / sous-traitance → *vente de
+services* (21 %) ; boxe / zone → *location d'espace de stockage* (21 % — la mise
+à disposition d'emplacements d'entreposage est exclue de l'exonération
+immobilière).
+
+**Ce n'est PAS un retour au défaut implicite du lot 23.** Un taux tombé de nulle
+part est une supposition ; un taux DÉRIVÉ d'une catégorie déclarée et affichée
+à l'écran est une décision documentée, que l'utilisateur peut lire et corriger.
+La règle « rien ne s'invente » tient : il y a désormais une raison.
+
+**Catégories volontairement sans taux** (`tauxUsuel: null`, `aValider: true`) :
+loyer professionnel, droits d'auteur, don. Régimes particuliers → on ne
+pré-remplit rien, `qualifierTva` refusera avec son motif.
+
+**Priorité du taux** : (1) taux configuré par l'organisation ; (2) taux usuel de
+la catégorie déduite de la nature ; (3) rien → refus motivé.
+
+**Décision produit de Raphaël — repli « NA »** sur `BuyerReference` quand aucune
+référence n'existe. La documentation Peppol prévoit elle-même cette valeur.
+Distinction tenue : un TAUX inventé affirme une donnée fiscale fausse ; « NA »
+sur une référence de routage CONSTATE une absence.
+
+**Saisie TTC** (`prix_comprend_tva`) : un déménageur annonce « 1 210 € tout
+compris » à un particulier. Ramené au HTVA. **Sans taux connu, aucune
+conversion** — diviser par un taux supposé serait le même piège.
+**Remise** (`remise_pct`) au prix unitaire ; une remise > 100 % est ignorée
+plutôt que d'inverser la ligne.
+
+**Écran** : `LectureCategorie` dans `Facture.jsx` affiche ce que Dashprod a
+qualifié, en clair.
+
+### 4.19 Réception Peppol : recevoir n'est pas accepter (lot 26)
+`facturation/reception.js` — lecture d'un UBL entrant, dédoublonnage, machine
+d'états. Éprouvé en aller-retour : notre générateur produit, notre lecteur
+relit, montants exacts au centime.
+
+**La règle centrale** : aucune facture reçue n'est approuvée ni comptabilisée
+d'office. Même impeccable, elle s'arrête à `A_VERIFIER`. Le réseau garantit
+l'acheminement, pas la justesse — c'est l'entreprise qui décide si elle doit
+cette somme.
+- `APPROUVE` n'est atteignable QUE depuis `A_VERIFIER` ;
+- `COMPTABILISE` QUE depuis `APPROUVE` ;
+- double serrure : machine d'états dans le domaine + trigger en base.
+
+**Montants LUS, jamais recalculés** : recalculer les totaux d'une facture
+entrante reviendrait à réécrire la facture d'autrui.
+
+**Dédoublonnage par fournisseur + numéro**, pas par contenu : un même document
+retransmis (reprise, webhook rejoué) diffère parfois d'un octet sans être une
+autre facture.
+
+**Un document illisible n'est jamais jeté** — c'est une pièce légale : il part
+en vérification avec son motif, et le XML d'origine est conservé intact.
+
+### 4.20 BLOQUANT MÉTIER — les clients Dashprod ne peuvent PAS recevoir
+`digiteal.js` enregistre les participants avec `envoiSeul = true`
+(`limitedToOutboundTraffic`). Le code le documente lui-même : **un seul point
+d'accès peut recevoir pour un participant donné**, et basculer la réception
+exige de se désinscrire de son point d'accès actuel.
+
+Conséquence : le code de réception ne servira à rien tant que ce n'est pas
+tranché. **Décision produit et commerciale, pas technique** — beaucoup de PME
+belges reçoivent leurs factures Peppol via la plateforme de leur comptable
+(CodaBox et équivalents). Reprendre la réception, c'est toucher à cette
+relation.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 969/969 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**`npm test` : 989/989 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0138_notes_atelier`.**
+**⚠ `0139_factures_fournisseur` est ÉCRITE mais NON APPLIQUÉE ni éprouvée** —
+le connecteur Supabase s'est déconnecté. Bloc de vérification fourni en fin de
+fichier de migration. À exécuter avant de s'y fier.
 
 ### Lots livrés
 | lot | contenu | migrations |
@@ -748,6 +823,8 @@ prestation ») et signale deux manques ENCORE ouverts dans Dashprod :
 | 22 | Quantité 0 comptée comme 1 (devis gonflés) | — |
 | 23 | **P0 — fiabilité fiscale de l'émission Peppol** : moteur de qualification TVA, fin des défauts implicites | — |
 | 24 | **P0 — conformité du document Peppol** : BuyerReference (règle fatale), avoir référencé, période de prestation | — |
+| 25 | **Catégories d'opération lisibles** : la nature définit le taux, repli NA, saisie TTC, remise | — |
+| 26 | **Réception Peppol** — domaine complet ; migration 0139 écrite, NON appliquée | 0139 ⚠ |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire

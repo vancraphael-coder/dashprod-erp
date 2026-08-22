@@ -1,66 +1,71 @@
-# Lot 24 — P0 : conformité du document Peppol
+# Lot 26 — Réception Peppol : recevoir n'est pas accepter
 
-`npm test` : **969/969 ✓** — build `apps/web` ✓ — 7 fichiers.
-**Aucune migration.** Se pose par-dessus le lot 23.
+`npm test` : **989/989 ✓** — build `apps/web` ✓ — 4 fichiers.
+**Migration `0139` ÉCRITE mais NON APPLIQUÉE — voir l'avertissement ci-dessous.**
 
-Ta description de la facturation agréée a servi de référentiel : deux de ses
-champs — « Réf./bon de commande » et « Date/période de prestation » — ne sont
-pas là par hasard. En vérifiant pourquoi, j'ai trouvé un défaut bloquant.
+## Deux choses à te dire d'emblée
 
-## Le défaut qui rejetait TOUT
+**1. La migration n'a pas été éprouvée.** Le connecteur Supabase s'est
+déconnecté en cours de session. Contrairement aux migrations 0001 à 0138, je
+n'ai pas pu appliquer celle-ci ni l'exercer dans un bloc rollback. C'est une
+entorse à la règle absolue du projet — je te la signale plutôt que de la
+masquer. Le **bloc de vérification est fourni en commentaire à la fin du
+fichier de migration** : applique la migration, exécute ce bloc, il doit se
+terminer par « ROLLBACK volontaire — garde-fous OK ».
 
-**PEPPOL-EN16931-R003**, drapeau **`fatal`** : *« A buyer reference or purchase
-order reference MUST be provided »*. Le test du réseau est
-`cbc:BuyerReference` **ou** `cac:OrderReference/cbc:ID`.
+**2. Un bloquant métier que le code m'a révélé.** `digiteal.js` enregistre les
+participants avec `envoiSeul = true` — et son propre commentaire l'explique :
+**un seul point d'accès peut recevoir pour un participant donné**, et basculer
+la réception exige de se désinscrire du point d'accès actuel.
 
-Dashprod n'émettait **ni l'un ni l'autre**. Conséquence : **toute facture aurait
-été rejetée par le point d'accès**, quelle que soit sa qualité par ailleurs.
-Vérifié sur `docs.peppol.eu`, pas de mémoire — la règle est confirmée sur les
-versions 2023 comme 2025.
+Autrement dit : **aucun client Dashprod ne peut recevoir de facture Peppol
+aujourd'hui**, alors que c'est l'obligation légale. Et le code que je viens
+d'écrire ne servira à rien tant que ce n'est pas tranché.
 
-Corrigé : `reference_acheteur` (BT-10) traverse le modèle canonique et sort en
-`<cbc:BuyerReference>`. Absente, la génération **échoue** avec un motif qui
-nomme la règle.
+Ce n'est pas une décision technique. Beaucoup de PME belges reçoivent leurs
+factures Peppol via la plateforme de leur comptable. Reprendre la réception,
+c'est toucher à cette relation — à toi de voir si Dashprod veut ce rôle, et ce
+que ça implique commercialement.
 
-**Un point pour toi.** Certains éditeurs mettent automatiquement « NA » dans ce
-champ pour ne jamais être rejetés. Je ne l'ai **pas** fait : ce serait inscrire
-une donnée fausse dans un document légal, à rebours de tout le lot 23. Mais
-c'est une décision produit — si tu préfères ce repli, dis-le et je l'ajoute en
-une ligne. Côté adaptateur, j'utilise la référence saisie, sinon la référence du
-dossier (que le client connaît). Les deux absentes → refus.
+## Ce que le domaine sait faire
 
-## L'avoir partait orphelin
+**Lire un UBL entrant** — éprouvé en aller-retour : notre générateur produit un
+document, notre lecteur le relit, montants exacts au centime. C'est le meilleur
+test possible sans point d'accès réel : si notre lecteur ne relit pas notre
+propre UBL, il ne relira rien.
 
-`facture_corrigee` existait dans le modèle depuis le début… mais n'était
-**jamais émis en UBL**. Un avoir ne disait donc pas quelle facture il corrige —
-mention légale, et rapprochement impossible côté client.
+**La règle centrale, verrouillée par sept tests :**
 
-Corrigé : `<cac:BillingReference>`. Un avoir sans référence est refusé.
+> Une facture reçue n'est **jamais** approuvée ni comptabilisée d'office.
+> Même impeccable, elle s'arrête à « à vérifier ».
 
-## La date de prestation
+Le réseau garantit l'acheminement, pas la justesse. C'est l'entreprise qui
+décide si elle doit cette somme. Concrètement :
+- `APPROUVE` n'est atteignable **que** depuis `A_VERIFIER` ;
+- `COMPTABILISE` **que** depuis `APPROUVE` ;
+- double serrure : machine d'états dans le domaine **et** trigger en base — une
+  écriture comptable mérite deux verrous.
+- une approbation sans nom de décideur est refusée : sans ça, impossible de
+  prouver que quelqu'un a regardé.
 
-Absente du modèle. C'est une mention légale belge dès qu'elle diffère de la date
-d'émission — et c'est précisément pour ça que l'app agréée l'affiche.
+**Les montants sont lus, jamais recalculés.** Recalculer les totaux d'une
+facture entrante reviendrait à réécrire la facture de quelqu'un d'autre.
 
-Corrigé : `prestation_debut` / `prestation_fin` → `<cac:InvoicePeriod>`. Non
-émise si inconnue (la règle R008 refuse les éléments vides).
+**Le dédoublonnage se fait sur fournisseur + numéro**, pas sur le contenu : un
+même document retransmis (reprise après incident, webhook rejoué) diffère
+parfois d'un octet sans être une autre facture.
 
-## Deux manques que ton référentiel révèle, non traités ici
+**Un document illisible n'est jamais jeté** — c'est une pièce légale. Il part en
+vérification avec son motif, et le XML d'origine est conservé intact.
 
-**« Le prix comprend la TVA ».** Dashprod raisonne en HTVA uniquement. Or un
-déménageur annonce couramment un prix **TVAC** à un particulier. C'est un vrai
-manque produit, pas de conformité — à traiter, mais pas dans un lot P0.
+## Ce qui reste devant
 
-**La catégorie d'opération** (vente de biens / services / loyer / droits
-d'auteur / don). C'est exactement l'entrée qui manque à `qualifierTva` pour
-traiter l'intracommunautaire : au lot 23, j'ai refusé de qualifier ces cas parce
-que la règle dépend de la **nature** de la prestation. Ton app agréée capture
-cette nature. Le jour où ton comptable valide les règles, c'est ce champ qu'il
-faudra brancher.
+Le webhook Digiteal entrant n'existe pas encore côté client HTTP (`digiteal.js`
+ne connaît que `outbound-ubl-documents`). C'est le prochain morceau — mais il
+n'a de sens qu'une fois la question du point d'accès tranchée.
 
-## À vérifier à l'œil
+## À vérifier
 
-1. Une facture sans référence de bon de commande : la génération Peppol refuse
-   en citant la règle, au lieu de partir se faire rejeter.
-2. Un avoir : l'XML contient `BillingReference` vers la facture d'origine.
-3. Une facture avec dates de chantier : `InvoicePeriod` présent dans l'XML.
+1. Appliquer `0139` puis exécuter le bloc de vérification en fin de fichier.
+2. Les trois garde-fous doivent refuser : comptabilisation sans approbation,
+   approbation anonyme, doublon.
