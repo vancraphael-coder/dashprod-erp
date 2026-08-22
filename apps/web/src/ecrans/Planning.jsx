@@ -21,6 +21,7 @@ import { disponibiliteRessource, verdictMission, lecteurDisponibilite }
 import { qualifierJour } from "@domaine/planning/jours-feries.js";
 import { hhmm, resumeHoraires, verifierHoraires, HEURE_DEFAUT }
   from "@domaine/operations/horaires.js";
+import { NoteRapideJour, EquipesDuJour } from "../composants/PlanningJour.jsx";
 import { C, S, Confirmation, couleurPlanning, couleurMission } from "../lib/theme.jsx";
 import { lireFiltre, ecrireFiltre, basculerMasque } from "../lib/preferences-planning.js";
 
@@ -463,6 +464,17 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
             </button>
           )}
         </details>
+      )}
+
+      {/* Les deux commandes de la journée. Placées AVANT les missions : on
+          forme l'équipe et on note ce qui compte, puis on regarde le détail.
+          En lecture seule (espace client), elles n'ont pas lieu d'être. */}
+      {!lectureSeule && (
+        <>
+          <NoteRapideJour jour={jourSel} />
+          <EquipesDuJour jour={jourSel} membres={membres}
+                         missionsDuJour={duJourComplet} />
+        </>
       )}
 
       {duJour.length === 0 && (
