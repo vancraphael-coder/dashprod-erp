@@ -124,9 +124,29 @@ export function clientDigiteal({ identifiant, secret, environnement = "test",
      * d'accès peut recevoir pour un participant donné. Basculer la réception
      * exige de le désenregistrer de son point d'accès actuel.
      */
-    async enregistrerParticipant({ peppolId, nom, pays = "BE", envoiSeul = true,
+    // `envoiSeul` n'a PLUS de défaut : c'est une décision, pas un réglage.
+    // À `true`, l'organisation peut émettre mais ne recevra JAMAIS de facture —
+    // or c'est une obligation légale depuis le 01/01/2026. À `false`, Dashprod
+    // devient le point d'accès RÉCEPTEUR, ce qui exige de désinscrire
+    // l'organisation de son point d'accès actuel (souvent celui de son
+    // comptable). Un seul point d'accès peut recevoir pour un participant.
+    // L'appelant doit donc trancher explicitement.
+    async enregistrerParticipant({ peppolId, nom, pays = "BE", envoiSeul,
                                    contact = null, siteWeb = null }) {
       if (!configure) return nonConfigure("enregistrerParticipant");
+      // La réception est une DÉCISION, pas un réglage par défaut. À `true`,
+      // l'organisation émet mais ne recevra jamais — or recevoir est une
+      // obligation légale depuis le 01/01/2026. À `false`, Dashprod devient
+      // son point d'accès récepteur, ce qui suppose de la désinscrire du
+      // point d'accès actuel (souvent celui de son comptable). Un seul point
+      // d'accès peut recevoir pour un participant : on ne devine pas.
+      if (typeof envoiSeul !== "boolean") {
+        return { ok: false, motif:
+          "Décision requise : cette organisation doit-elle aussi RECEVOIR ses "
+          + "factures par Peppol ? Passez envoiSeul: false pour la réception, "
+          + "true pour l'émission seule. Basculer suppose de la désinscrire de "
+          + "son point d'accès actuel." };
+      }
       const corps = {
         peppolIdentifier: peppolId,
         name: nom,
