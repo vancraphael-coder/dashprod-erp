@@ -15,12 +15,13 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from "react";
-import { facturesCanoniquesPeriode, obtenirOrganisation } from "../lib/adaptateur.js";
+import { facturesCanoniquesPeriode, obtenirOrganisation , achatsPeriode, paiementsPeriode, listerTiers } from "../lib/adaptateur.js";
 import {
   bornesPeriode, libellePeriode, trimestreCourant, recapitulatif, lotPret,
 } from "@domaine/facturation/periodes.js";
 import {
   versCsv, journalCsv, versFec, journalVentes, equilibre, COMPTES_DEFAUT,
+  journalAchatsCsv, paiementsCsv, tiersCsv,
 } from "@domaine/facturation/exports.js";
 import { C, S, euros } from "../lib/theme.jsx";
 
@@ -32,6 +33,12 @@ export default function Comptabilite({ retour }) {
   const [factures, setFactures] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [org, setOrg] = useState(null);
+  // Les ressources complémentaires de l'export. Chacune se charge et échoue
+  // SEULE : un export partiel vaut mieux qu'un écran blanc, et le client doit
+  // pouvoir emporter ce qui est disponible.
+  const [achats, setAchats] = useState([]);
+  const [paiements, setPaiements] = useState([]);
+  const [tiers, setTiers] = useState([]);
 
   const bornes = useMemo(() => bornesPeriode(periode), [periode]);
 
@@ -44,6 +51,9 @@ export default function Comptabilite({ retour }) {
     facturesCanoniquesPeriode(bornes)
       .then((f) => vivant && setFactures(f))
       .catch((e) => vivant && setErreur(e.message));
+    achatsPeriode(bornes).then((a) => vivant && setAchats(a || [])).catch(() => {});
+    paiementsPeriode(bornes).then((p) => vivant && setPaiements(p || [])).catch(() => {});
+    listerTiers().then((t) => vivant && setTiers(t || [])).catch(() => {});
     return () => { vivant = false; };
   }, [bornes?.debut, bornes?.fin]);
 
@@ -79,6 +89,8 @@ export default function Comptabilite({ retour }) {
           Vos factures émises, et les fichiers pour votre comptable.
         </div>
       </div>
+
+      <CeQueDashprodFait />
 
       {/* Choix de la période. Le trimestre d'abord : c'est le rythme de la
           déclaration TVA belge. */}
@@ -212,10 +224,33 @@ export default function Comptabilite({ retour }) {
                   journalCode: "VE", journalLib: "Journal des ventes",
                 }), `FEC-${suffixe}.txt`, "text/plain;charset=utf-8")} />
 
+              <Export
+                titre="Journal des achats (CSV)"
+                detail={"Écritures des factures fournisseur que vous avez "
+                      + "APPROUVÉES : débit achats et TVA déductible, crédit "
+                      + "fournisseurs. Une facture reçue mais non validée n'y "
+                      + "figure pas."}
+                onClick={() => telecharger(journalAchatsCsv(achats),
+                  `journal-achats-${suffixe}.csv`)} />
+
+              <Export
+                titre="Paiements (CSV)"
+                detail={"Ce que vous avez encaissé, avec la facture concernée. "
+                      + "C'est la pièce du lettrage : sans elle, votre comptable "
+                      + "voit des créances qu'il ne peut pas solder."}
+                onClick={() => telecharger(paiementsCsv(paiements),
+                  `paiements-${suffixe}.csv`)} />
+
+              <Export
+                titre="Clients et fournisseurs (CSV)"
+                detail={"La liste des tiers avec leurs numéros de TVA. Le cabinet "
+                      + "crée ses comptes auxiliaires à partir de ce fichier."}
+                onClick={() => telecharger(tiersCsv(tiers), `tiers-${suffixe}.csv`)} />
+
               <div style={{ fontSize: 11, color: C.fantome, marginTop: 10,
                             lineHeight: 1.5 }}>
-                Ces fichiers reprennent les factures telles qu'elles ont été
-                émises. Ils ne remplacent pas votre comptable : ils lui
+                Ces fichiers reprennent vos données telles qu'elles ont été
+                enregistrées. Ils ne remplacent pas votre comptable : ils lui
                 évitent de tout ressaisir.
               </div>
             </div>
@@ -290,5 +325,71 @@ function Export({ titre, detail, onClick }) {
       <span style={{ display: "block", fontSize: 11.5, color: C.muet,
                      marginTop: 3, lineHeight: 1.45 }}>{detail}</span>
     </button>
+  );
+}
+
+/**
+ * CE QUE DASHPROD FAIT — et ce qu'il ne fait pas.
+ *
+ * Dit franchement, en tête d'écran, plutôt qu'en petits caractères. Un
+ * utilisateur qui croit que Dashprod « fait sa comptabilité » découvrirait le
+ * malentendu au pire moment : devant son contrôle. Mieux vaut qu'il le sache
+ * ici, et qu'il sache aussi qu'il peut tout emporter.
+ */
+function CeQueDashprodFait() {
+  return (
+    <div style={{ ...S.carte, borderLeft: `3px solid ${C.bleu}` }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+        Ce que Dashprod fait de votre comptabilité
+      </div>
+
+      <Point signe="✓" couleur={C.vert} titre="Il prépare">
+        Vos factures, vos encaissements, vos achats approuvés et vos tiers sont
+        tenus au fil de l'eau et transformés en écritures équilibrées, aux
+        comptes du plan comptable belge.
+      </Point>
+
+      <Point signe="✓" couleur={C.vert} titre="Il vous rend vos données">
+        À tout moment, vous exportez TOUT : factures, journaux, paiements,
+        clients et fournisseurs. Des fichiers CSV standards que votre comptable
+        importe dans son logiciel — le sien, pas le nôtre.
+      </Point>
+
+      <Point signe="—" couleur={C.muet} titre="Il ne tient pas votre comptabilité">
+        Dashprod n'est pas un logiciel comptable agréé et ne se substitue pas à
+        votre comptable. Il ne produit ni bilan, ni compte de résultats, ni
+        déclaration fiscale. C'est votre comptable qui tient les livres,
+        contrôle et dépose.
+      </Point>
+
+      <Point signe="—" couleur={C.muet} titre="Il ne décide pas à votre place">
+        Les taux de TVA proposés viennent de la nature de vos dossiers. Une
+        situation que Dashprod ne sait pas qualifier est refusée plutôt que
+        devinée — et signalée pour que vous en parliez à votre comptable.
+      </Point>
+
+      <div style={{ fontSize: 11.5, color: C.fantome, lineHeight: 1.5,
+                    marginTop: 10, paddingTop: 9,
+                    borderTop: `1px solid ${C.doux || C.bord}` }}>
+        Vos données vous appartiennent. Si vous quittez Dashprod, vous partez
+        avec elles — c'est le sens de ces exports, et ils resteront disponibles
+        quoi qu'il arrive.
+      </div>
+    </div>
+  );
+}
+
+function Point({ signe, couleur, titre, children }) {
+  return (
+    <div style={{ display: "flex", gap: 9, marginTop: 10 }}>
+      <span style={{ color: couleur, fontWeight: 800, fontSize: 13,
+                     lineHeight: 1.5, flexShrink: 0 }}>{signe}</span>
+      <div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>{titre}</div>
+        <div style={{ fontSize: 12, color: C.muet, lineHeight: 1.5, marginTop: 1 }}>
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
