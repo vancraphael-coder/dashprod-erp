@@ -26,6 +26,7 @@ import {
   volumeTotal, articlesADemonter, articlesARemonter, articlesAvecRemarque,
 } from "./volumetrie.js";
 import { nature as natureDe } from "../commercial/natures.js";
+import { valoriserEmballage } from "../stocks/emballage.js";
 
 /**
  * Les rubriques d'un déménagement, à partir de l'inventaire du relevé.
@@ -56,4 +57,41 @@ export function rubriquesOffre(cle, entrees = {}) {
     return rubriquesDemenagement(entrees.inventaire || []);
   }
   return {};
+}
+
+/**
+ * LES FOURNITURES facturables d'un dossier — vente de BIENS, distincte de la
+ * prestation.
+ *
+ * Passe par cet aiguillage pour la même raison que les rubriques : le
+ * composeur de facture est horizontal et n'a pas à connaître `stocks/emballage`
+ * (test d'architecture). Ici, on a le droit.
+ *
+ * Vendre un carton n'est pas prester une manutention : ce sont deux catégories
+ * d'opération (§4.18), qui n'ont pas le même traitement comptable — et le
+ * client a le droit de voir ce qu'il achète, dénommé et quantifié, plutôt
+ * qu'un total opaque.
+ *
+ * @param {string} cle nature de l'affaire
+ * @param {object} entrees { emballage, catalogueFournitures }
+ * @returns {object[]} lignes prêtes à poser sur la facture (vide si aucune)
+ */
+export function lignesFournitures(cle, entrees = {}) {
+  const n = natureDe(cle) || natureDe("demenagement");
+  // Seules les natures qui consomment de l'emballage en produisent.
+  if (n.chiffrage !== "volume") return [];
+
+  const v = valoriserEmballage(entrees.emballage || {},
+                               entrees.catalogueFournitures || []);
+  return (v.lignes || [])
+    .filter((l) => l.montant_centimes > 0)
+    .map((l) => ({
+      type: "fourniture",
+      categorie_operation: "vente_biens",
+      libelle: `${l.nom} (${l.quantite} ${l.unite})`,
+      quantite: l.quantite,
+      unite: l.unite,
+      prix_unitaire_centimes: l.cout_unitaire_centimes,
+      montant_htva_centimes: l.montant_centimes,
+    }));
 }
