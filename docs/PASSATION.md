@@ -593,6 +593,37 @@ doublon (invariant §4.5 tenu).
 minuit géré par `corrigerJourSuivant`), une pause plus longue que le chantier est
 refusée avec motif. Forme `{ok, message}` respectée.
 
+### 4.14c Visite (fin) — signature, portail, flotte, CRM
+**Signature client — la carte la mieux faite du Basique.** `cmd_offre_signer` :
+consentement éclairé (mention « Lu et approuvé » obligatoire), nom du signataire
+(≥3 car.), **code CONSOMMÉ** (`revoque_le = now()` → aucun rejeu), empreinte du
+document scellée dans DEUX registres (`acces_client.document_empreinte` +
+table `signatures`), événement journalisé. Le verdict de `transition_interne`
+est LU et non supposé (elle rend false sans lever — piège déjà rencontré).
+Dossier de preuve complet : `empreinte`+`sel` (code jamais en clair),
+`essais_rates`, `expire_le`, `revoque_le`, `signe_le`, `signe_par_ip`,
+`signataire_nom`, `mention_saisie`, `document_empreinte`.
+
+**Le code de signature est CHOISI par le bureau** (`p_code`, 12 car. minimum),
+pas généré aléatoirement — seul le sel est cryptographique. Création gardée par
+`exiger_module('signature_client')` + capacité `creer_affaire`, ancien accès
+révoqué, création journalisée.
+
+**POINT DE SÉCURITÉ OUVERT (non corrigé, décision Raphaël attendue)** :
+`essais_rates` n'est incrémenté QUE par `cmd_offre_apercu`. `cmd_offre_signer`
+passe par `resoudre_acces` mais **ne compte pas les échecs** : sur cette porte,
+on peut tenter des codes sans jamais déclencher le blocage à 8. Le risque est
+réel surtout parce que le code est choisi à la main (un code faible est
+devinable). Correctif envisagé : incrémenter `essais_rates` sur code invalide
+dans `cmd_offre_signer`, comme le fait déjà l'aperçu.
+
+**Portail client — hors sujet force brute** : les `cmd_client_*` s'authentifient
+par SESSION (`espace_client_email()`, refus `42501` sinon), pas par code. Vérifié
+avant de conclure.
+
+**Flotte** (6 tests) et **CRM** (carnet, clients, clôture, litige, vues-dossiers :
+tous couverts) : rien à signaler.
+
 ### 4.15 Enforcement des modules par offre — état
 `exiger_module` lève `42501` si le plan n'ouvre pas le module : le refus est EN
 BASE, pas seulement dans le menu. 12 fonctions gardées.
@@ -606,9 +637,43 @@ Gardés en base : `comptabilite`, `journal`, `multi_depots`, `rapport_chantier`,
 sur les trois offres. Aucune facture d'abonnement émettable. Le membre
 supplémentaire à 13 € est bien appliqué aux trois offres.
 
+### 4.16 La TVA se QUALIFIE, elle ne se devine jamais (lot 23)
+`facturation/tva.js` → `qualifierTva(contexte)` est la seule porte par laquelle
+une opération obtient sa catégorie et son taux. Rend `{ok, motif}`.
+
+**Règle absolue** : information TVA absente → ERREUR → aucune transmission.
+JAMAIS un repli sur 21 %. Une facture Peppol a valeur légale ; un taux inventé
+est une déclaration fiscale inexacte.
+
+Trois défauts fermés par ce lot :
+- **catégorie codée en dur à « S »** dans l'UBL → une prestation intra-UE
+  partait à 21 % au lieu de l'autoliquidation : document FAUX transmis par le
+  réseau officiel ;
+- **`?? 21` en quatre endroits** (domaine + adaptateur) ;
+- **ligne sans taux exclue de la ventilation mais comptée dans le HTVA** →
+  100 € HTVA pour 0 € de TVA, sans erreur. Sous-déclaration silencieuse.
+
+**`versXmlUBL` ne décide plus rien en TVA** : il LIT la ventilation qualifiée
+(`categorie` portée par chaque groupe). Toute ligne hors ventilation échoue.
+
+**Ce que Dashprod qualifie aujourd'hui** : BE → BE avec un taux fourni
+(catégorie S). **Tout le reste REFUSE avec un motif** nommant la règle à faire
+valider : intra-UE (dépend de la nature de la prestation — déménagement, lift
+et sous-traitance ne suivent pas forcément la même règle), hors UE, 0 %
+intérieur (exige sa base légale), vendeur non belge.
+→ **[À VALIDER PAR UN CONSEILLER TVA]** avant d'activer ces cas.
+
+**Conséquence produit assumée** : Dashprod refuse PLUS qu'avant. C'est
+volontaire — il émettait auparavant des documents potentiellement faux.
+
+Ordre respecté (P0-1 → P0-5) : défauts supprimés, moteur construit, `versXmlUBL`
+testé (`tva-ubl.test.js`, 16 tests). **La réception Peppol vient APRÈS** — ne
+pas construire une branche entrante sur un moteur dont la qualification n'était
+pas verrouillée.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 950/950 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**`npm test` : 966/966 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0138_notes_atelier`.**
 
 ### Lots livrés
@@ -645,6 +710,8 @@ supplémentaire à 13 € est bien appliqué aux trois offres.
 | 19 | **Design — sélecteur rotatif dans l'espace CLIENT** (les 3 espaces l'ont enfin) | — |
 | 20 | **Design — refonte de l'en-tête landing** : scène (aube ambre, titre-lettrage, cascade) | — |
 | 21 | **Balise note 'i'** : carnet de corrections page par page → dossier interne | 0138 |
+| 22 | Quantité 0 comptée comme 1 (devis gonflés) | — |
+| 23 | **P0 — fiabilité fiscale de l'émission Peppol** : moteur de qualification TVA, fin des défauts implicites | — |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire
