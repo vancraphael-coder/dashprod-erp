@@ -1,65 +1,89 @@
-# Lot 27 — comptabilité assumée, et réversibilité tenue
+# Lot 29 — le point d'accès : envoi ET réception
 
-`npm test` : **996/996 ✓** — build `apps/web` ✓ — 7 fichiers.
-**Migration `0139` appliquée ET éprouvée** (voir plus bas).
+`npm test` : **1014/1014 ✓** — build `apps/web` ✓ — 8 fichiers.
+**Migration `0141` appliquée et éprouvée.**
 
-## D'abord, la dette du lot 26 est réglée
+## Avant tout : ne colle PAS tes identifiants dans les paramètres
 
-Supabase étant revenu, j'ai appliqué `0139` et l'ai exercée en rollback comme
-l'exige la règle du projet. Les quatre garde-fous sont **prouvés** :
-comptabiliser sans approbation → refusé ; approuver sans décideur nommé →
-refusé ; le chemin nominal `A_VERIFIER → APPROUVE → COMPTABILISE` passe ; le
-doublon est rejeté.
+Ce soir, le geste naturel serait de mettre ton `clientId` / `clientSecret`
+Digiteal dans les paramètres de facturation de l'organisation. **Ne le fais
+pas.**
 
-## « Une retranscription claire et assumée »
+`parametres_facturation` est une colonne jsonb **lue par le navigateur** :
+`adaptateur.js` est du code front, bundlé par Vite. Ton secret partirait dans le
+navigateur de chaque utilisateur, lisible en deux clics dans les outils de
+développement.
 
-L'écran Comptabilité s'ouvre désormais sur ce que Dashprod fait — **et sur ce
-qu'il ne fait pas**. En tête, pas en petits caractères : un utilisateur qui
-croit que Dashprod « tient sa comptabilité » découvrirait le malentendu au pire
-moment, devant son contrôle.
+Bonne nouvelle : j'ai vérifié, **aucune colonne `digiteal_*` n'existe en base**
+aujourd'hui — rien n'est exposé. Le code lisait `pf.digiteal_secret` qui valait
+toujours `null`, et le client Digiteal refuse de transmettre sans clé. Il n'y a
+donc rien à réparer, seulement un piège à éviter.
 
-- **Il prépare** — factures, encaissements, achats approuvés, tiers, transformés
-  en écritures équilibrées au plan comptable belge.
-- **Il vous rend vos données** — tout, à tout moment, dans des formats que le
-  comptable importe dans *son* logiciel.
-- **Il ne tient pas votre comptabilité** — pas de logiciel agréé, pas de bilan,
-  pas de déclaration. Le comptable tient les livres, contrôle et dépose.
-- **Il ne décide pas à votre place** — un taux qu'il ne sait pas qualifier est
-  refusé plutôt que deviné, et signalé pour que vous en parliez.
+## Le vrai obstacle : Dashprod n'a pas de serveur
 
-## « Exporter toutes leurs ressources »
+C'est ce que les guides que tu m'as passés supposent (Next.js, Server Actions)
+et que Dashprod n'a pas : c'est un **SPA Vite**. Deux conséquences :
 
-Trois exports manquaient pour que « toutes » soit vrai. Ajoutés :
+1. un webhook exige une URL publique — impossible sans fonction serveur ;
+2. le secret doit vivre quelque part où le navigateur ne va pas.
 
-- **Journal des achats** — débit achats et TVA déductible, crédit fournisseurs.
-  Il n'inclut **que les documents approuvés** : la règle « recevoir n'est pas
-  accepter » tient jusqu'à l'export. Équilibre vérifié, avoirs inversés.
-- **Paiements** — la pièce du lettrage. Sans elle, le comptable voit des
-  créances qu'il ne peut pas solder.
-- **Clients et fournisseurs** — le cabinet crée ses comptes auxiliaires à partir
-  de ce fichier au lieu de ressaisir chaque nom.
+**La réponse** : des fonctions Vercel dans `/api`. Elles marchent avec n'importe
+quel framework, y compris Vite.
 
-Avec les deux existants (relevé, journal des ventes), les cinq familles de
-ressources sont couvertes.
+À configurer dans Vercel → Settings → Environment Variables :
 
-## Le choix de format, assumé lui aussi
+```
+DIGITEAL_WEBHOOK_SECRET      secret partagé, vérifié à chaque appel
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY    contourne la RLS — SERVEUR UNIQUEMENT
+```
 
-**CSV point-virgule + BOM UTF-8.** C'est le dénominateur commun que tous les
-logiciels comptables savent importer, et c'est délibérément ce que je n'ai
-**pas** fait : un connecteur propriétaire vers un éditeur précis. Un connecteur
-lie Dashprod à cet éditeur ; un CSV documenté ne lie personne — ni toi, ni ton
-client, ni son comptable.
+⚠ **Aucune variable `VITE_*`** pour ces valeurs : ce préfixe les publie dans le
+bundle navigateur. C'est exactement le piège à éviter.
 
-Un détail qui compte : les noms de société contenant un `;` sont échappés. Sans
-ça, les colonnes se décalent à l'import et personne ne s'en aperçoit avant que
-le comptable ouvre le fichier.
+## Un piège Vercel que j'ai trouvé en chemin
 
-Chaque ressource se charge indépendamment : si l'une échoue, l'export reste
-partiellement possible plutôt que bloqué en entier.
+Ton `vercel.json` réécrivait `"/(.*)" → /index.html`. Cette règle **avale les
+routes `/api`** : le webhook aurait reçu la page d'accueil, avec un code 200.
+Le point d'accès aurait conclu à un succès et **n'aurait jamais réessayé** —
+tes factures fournisseur seraient parties dans le vide, sans erreur nulle part.
 
-## À vérifier à l'œil
+Corrigé en `"/((?!api/).*)"`, vérifié par simulation sur quatre URLs.
 
-1. Paramètres → Comptabilité : le bandeau s'affiche en tête, les quatre points
-   sont lisibles.
-2. Choisir un trimestre avec des factures : cinq exports proposés.
-3. Ouvrir `tiers.csv` dans Excel : accents corrects, colonnes alignées.
+## Trois dangers de webhook, trois verrous
+
+Toute la décision est dans le domaine (`facturation/webhook.js`), testée sans
+réseau. La fonction serveur ne fait que brancher.
+
+- **N'importe qui peut appeler une URL publique.** Secret partagé, comparaison à
+  temps constant (une comparaison naïve fuit le secret par le temps de réponse).
+  Et le cas piégeux : **un serveur non configuré REFUSE** au lieu de tout
+  accepter. Mieux vaut un webhook qui ne marche pas qu'une porte ouverte.
+- **Le même événement arrive plusieurs fois.** Clé d'idempotence + contrainte
+  `UNIQUE` en base — c'est la contrainte qui garantit, elle tient même si deux
+  livraisons arrivent en même temps. On répond 200 pour stopper les réessais,
+  sans rien refaire.
+- **Un type inconnu.** Journalisé, aucune action. Une version future du point
+  d'accès enverra des types qu'on ignore : ils ne doivent jamais déclencher
+  quelque chose de deviné.
+
+## Envoi ou réception : une décision, plus un défaut
+
+`enregistrerParticipant` avait `envoiSeul = true` par défaut. Je l'ai retiré :
+sans booléen explicite, elle refuse — **et ne fait aucun appel réseau**.
+
+Parce qu'aucun défaut n'est honnête ici. Un seul point d'accès peut recevoir
+pour un participant : à `true`, tu condamnes l'organisation à ne jamais recevoir
+(l'obligation légale) ; à `false`, tu lui prends la réception que son comptable
+assure peut-être déjà. Ta décision — envoi **et** réception — est maintenant
+explicite dans le code.
+
+## Ce qu'il te reste à faire
+
+1. Créer le webhook côté Digiteal, pointant vers
+   `https://<ton-domaine>/api/peppol/webhook`.
+2. Poser les trois variables d'environnement dans Vercel.
+3. **Confirmer auprès de Digiteal le nom exact de l'événement entrant.** J'ai
+   accepté quatre variantes plausibles mais je ne l'ai pas inventé : un type non
+   listé tombe en « inconnu » et ne déclenche rien. Dis-le-moi et j'ajuste en
+   une ligne.

@@ -810,10 +810,89 @@ vérifié par test, avoirs inversés.
 Chaque ressource se charge indépendamment : si l'une échoue, l'export reste
 partiellement possible plutôt que bloqué en entier.
 
+### 4.23 Le barème d'abonnement (lot 28) — P1 LEVÉ
+Les six prix étaient `null` depuis le cadrage : **aucune facture d'abonnement
+n'était émettable**. C'était le vrai bloquant du lancement, avant toute
+question technique.
+
+**Publié (migration 0140, republication versionnée — jamais d'UPDATE)** :
+
+| | mois | an | économie |
+|---|---|---|---|
+| Basique | 180 | 2 052 | 108 |
+| Regular | 360 | 4 104 | 216 |
+| Pro | 720 | 8 208 | 432 |
+
+Membre supp. 13 €/mois · **148,20 €/an** (toutes offres).
+Centre supp. 50 €/mois · **570 €/an** (Pro seul).
+**La remise annuelle de 5 % porte AUSSI sur les suppléments** — règle explicite
+de Raphaël, vérifiée par test sur l'ensemble.
+
+**Prix STOCKÉS, jamais calculés.** Une facture référence un prix figé : si le
+taux de remise changeait, un montant calculé réécrirait le passé en silence.
+`remise_annuelle_pct` sert à EXPLIQUER (« vous économisez 108 € »), jamais à
+calculer.
+
+**`organisation/abonnement.js`** — le calcul vit désormais dans l'étage pur,
+conformément à la leçon de l'incident Roovers (le barème ne se vérifiait qu'en
+écrivant dans la base). `montantAbonnement(offre, mesure, periodicite)` rend
+`{ok, motif}`.
+- Une équipe SOUS le seuil ne donne pas de crédit.
+- Une offre sans prix publié REFUSE d'être facturée.
+- Un supplément dû sans prix publié est une ERREUR, pas une gratuité (Basique
+  ne vend pas de centre : en demander un est refusé, pas facturé 0 €).
+- Périodicité inconnue refusée, jamais ramenée au mensuel.
+- Montants en centimes entiers.
+
+**F1 (grille non monotone) est résolue** : au-delà des seuils, les trois offres
+sont des droites parallèles (`154+13n`, `295+13n`, `330+13n`). Aucune
+inversion — Basique reste toujours le moins cher à effectif égal. Les offres se
+différencient par les modules, pas par les sièges : c'est l'option « assumer »
+du cadrage.
+
+### 4.24 Le point d'accès Peppol exige un SERVEUR (lot 29)
+**Dashprod est un SPA Vite : il n'a aucun serveur.** Deux conséquences longtemps
+invisibles :
+1. un webhook EXIGE une URL publique — impossible sans fonction serveur ;
+2. le secret Digiteal, s'il était lu depuis `organisations.parametres_facturation`
+   (jsonb lu par le navigateur), **partirait dans le navigateur de chaque
+   utilisateur**.
+
+Vérifié : aucune colonne `digiteal_*` n'existe en base — rien n'est exposé
+AUJOURD'HUI, mais y coller les identifiants créerait la fuite. **Ne jamais
+mettre le secret dans `parametres_facturation`.**
+
+**Architecture retenue** : fonctions Vercel dans `/api`, secret en variables
+d'environnement Vercel, clé de service Supabase côté serveur uniquement.
+- `api/peppol/webhook.js` — reçoit les appels du point d'accès.
+- `DIGITEAL_WEBHOOK_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+- ⚠ Aucune variable `VITE_*` : ce préfixe expose au navigateur.
+
+**PIÈGE VERCEL corrigé** : la réécriture `"/(.*)" → /index.html` avalait
+`/api/*`. Le webhook aurait reçu la page d'accueil, le point d'accès aurait
+conclu à un succès et n'aurait **jamais réessayé**. Corrigé en
+`"/((?!api/).*)"`, vérifié par simulation.
+
+**Trois dangers de webhook, trois verrous** (`facturation/webhook.js`, pur) :
+- **appel non authentifié** → secret partagé, comparaison à temps constant ;
+  un serveur non configuré REFUSE au lieu de tout accepter ;
+- **rejeu** → clé d'idempotence + contrainte UNIQUE en base (c'est la
+  contrainte qui garantit) ; répond 200 pour stopper les réessais, sans agir ;
+- **type inconnu** → journalisé, aucune action. Une version future du point
+  d'accès enverra des types qu'on ignore.
+
+### 4.25 Envoi OU réception : une décision, jamais un défaut
+`enregistrerParticipant` n'a plus de défaut `envoiSeul = true`. Sans booléen
+explicite, elle REFUSE avec un motif — et ne fait aucun appel réseau.
+Raison : **un seul point d'accès peut recevoir pour un participant**. Un défaut
+à `true` condamnerait l'organisation à ne jamais recevoir (obligation légale) ;
+un défaut à `false` lui volerait la réception que son comptable assure
+peut-être déjà. **Décision de Raphaël : envoi ET réception.**
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 996/996 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
-**Migrations appliquées : jusqu'à `0139_factures_fournisseur`** (appliquée et
+**`npm test` : 1014/1014 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**Migrations appliquées : jusqu'à `0141_peppol_evenements_webhook`** (appliquée et
 éprouvée le 22/08 : comptabilisation sans approbation refusée, approbation
 anonyme refusée, chemin nominal validé, doublon rejeté).
 ### Lots livrés
@@ -856,6 +935,8 @@ anonyme refusée, chemin nominal validé, doublon rejeté).
 | 25 | **Catégories d'opération lisibles** : la nature définit le taux, repli NA, saisie TTC, remise | — |
 | 26 | **Réception Peppol** — domaine complet | 0139 ✓ |
 | 27 | **Comptabilité assumée + réversibilité** : ce que Dashprod fait/ne fait pas, export de toutes les ressources | — |
+| 28 | **P1 LEVÉ — prix des offres publiés** + remise annuelle 5 %, calcul d'abonnement dans le domaine | 0140 |
+| 29 | **Point d'accès : envoi ET réception** — fonction serveur, webhook, secret hors du navigateur | 0141 |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire
