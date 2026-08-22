@@ -2771,7 +2771,15 @@ async function factureCanoniqueDepuisBase(factureId, affaireId) {
     // avec un motif, et rien n'est transmis.
     tva_pct_defaut: pf.tva_pct ?? null,
     communication: f.communication,
+    // Peppol EXIGE une référence acheteur (PEPPOL-EN16931-R003, fatal). On
+    // prend celle saisie sur la facture ; à défaut la référence du dossier,
+    // que le client connaît et qui lui sert à rapprocher. Si les deux
+    // manquent, la génération échoue avec un motif — on n'invente pas.
+    reference_acheteur: f.reference_acheteur || f.reference_dossier || null,
+    prestation_debut: f.prestation_debut || null,
+    prestation_fin: f.prestation_fin || null,
     type: f.type === "avoir" ? "avoir" : "facture",
+    facture_corrigee: f.facture_corrigee || null,
     vendeur: {
       nom: org.nom_commercial || org.nom, tva: org.tva,
       peppol_id: pf.peppol_id || idsVendeur[0] || null,   // source unique : parametres_facturation
