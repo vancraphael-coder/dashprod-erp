@@ -778,14 +778,44 @@ belges reçoivent leurs factures Peppol via la plateforme de leur comptable
 (CodaBox et équivalents). Reprendre la réception, c'est toucher à cette
 relation.
 
+### 4.21 La comptabilité est ASSUMÉE à l'écran (lot 27)
+`Comptabilite.jsx` s'ouvre sur ce que Dashprod fait — et sur ce qu'il ne fait
+pas. Dit en tête, pas en petits caractères : un utilisateur qui croit que
+Dashprod « tient sa comptabilité » découvrirait le malentendu devant son
+contrôle.
+
+- **Il prépare** : factures, encaissements, achats approuvés, tiers → écritures
+  équilibrées au plan comptable belge.
+- **Il rend les données** : export complet, formats standards.
+- **Il ne tient PAS la comptabilité** : pas de logiciel agréé, pas de bilan, pas
+  de déclaration. Le comptable tient les livres, contrôle et dépose.
+- **Il ne décide pas à la place** : un taux non qualifiable est refusé, pas
+  deviné (§4.16).
+
+### 4.22 Réversibilité — la donnée n'est jamais prise en otage
+Cinq exports couvrent toutes les ressources : relevé des factures, journal des
+ventes, **journal des achats**, **paiements**, **tiers**. Plus le FEC (France,
+si l'organisation y opère).
+
+**Choix de format assumé** : CSV point-virgule + BOM UTF-8, le dénominateur
+commun que tous les logiciels comptables savent importer. **Aucun format
+propriétaire** — un connecteur spécifique lie Dashprod à un éditeur, un CSV
+documenté ne lie personne. C'est la frontière du futur bridge comptable
+(§ document d'architecture, chapitre 13).
+
+**Le journal des achats n'inclut QUE les documents approuvés** — la règle
+« recevoir n'est pas accepter » tient jusqu'à l'export. Équilibre débit/crédit
+vérifié par test, avoirs inversés.
+
+Chaque ressource se charge indépendamment : si l'une échoue, l'export reste
+partiellement possible plutôt que bloqué en entier.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 989/989 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
-**Migrations appliquées : jusqu'à `0138_notes_atelier`.**
-**⚠ `0139_factures_fournisseur` est ÉCRITE mais NON APPLIQUÉE ni éprouvée** —
-le connecteur Supabase s'est déconnecté. Bloc de vérification fourni en fin de
-fichier de migration. À exécuter avant de s'y fier.
-
+**`npm test` : 996/996 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**Migrations appliquées : jusqu'à `0139_factures_fournisseur`** (appliquée et
+éprouvée le 22/08 : comptabilisation sans approbation refusée, approbation
+anonyme refusée, chemin nominal validé, doublon rejeté).
 ### Lots livrés
 | lot | contenu | migrations |
 |---|---|---|
@@ -824,7 +854,8 @@ fichier de migration. À exécuter avant de s'y fier.
 | 23 | **P0 — fiabilité fiscale de l'émission Peppol** : moteur de qualification TVA, fin des défauts implicites | — |
 | 24 | **P0 — conformité du document Peppol** : BuyerReference (règle fatale), avoir référencé, période de prestation | — |
 | 25 | **Catégories d'opération lisibles** : la nature définit le taux, repli NA, saisie TTC, remise | — |
-| 26 | **Réception Peppol** — domaine complet ; migration 0139 écrite, NON appliquée | 0139 ⚠ |
+| 26 | **Réception Peppol** — domaine complet | 0139 ✓ |
+| 27 | **Comptabilité assumée + réversibilité** : ce que Dashprod fait/ne fait pas, export de toutes les ressources | — |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire

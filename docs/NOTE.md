@@ -1,71 +1,65 @@
-# Lot 26 — Réception Peppol : recevoir n'est pas accepter
+# Lot 27 — comptabilité assumée, et réversibilité tenue
 
-`npm test` : **989/989 ✓** — build `apps/web` ✓ — 4 fichiers.
-**Migration `0139` ÉCRITE mais NON APPLIQUÉE — voir l'avertissement ci-dessous.**
+`npm test` : **996/996 ✓** — build `apps/web` ✓ — 7 fichiers.
+**Migration `0139` appliquée ET éprouvée** (voir plus bas).
 
-## Deux choses à te dire d'emblée
+## D'abord, la dette du lot 26 est réglée
 
-**1. La migration n'a pas été éprouvée.** Le connecteur Supabase s'est
-déconnecté en cours de session. Contrairement aux migrations 0001 à 0138, je
-n'ai pas pu appliquer celle-ci ni l'exercer dans un bloc rollback. C'est une
-entorse à la règle absolue du projet — je te la signale plutôt que de la
-masquer. Le **bloc de vérification est fourni en commentaire à la fin du
-fichier de migration** : applique la migration, exécute ce bloc, il doit se
-terminer par « ROLLBACK volontaire — garde-fous OK ».
+Supabase étant revenu, j'ai appliqué `0139` et l'ai exercée en rollback comme
+l'exige la règle du projet. Les quatre garde-fous sont **prouvés** :
+comptabiliser sans approbation → refusé ; approuver sans décideur nommé →
+refusé ; le chemin nominal `A_VERIFIER → APPROUVE → COMPTABILISE` passe ; le
+doublon est rejeté.
 
-**2. Un bloquant métier que le code m'a révélé.** `digiteal.js` enregistre les
-participants avec `envoiSeul = true` — et son propre commentaire l'explique :
-**un seul point d'accès peut recevoir pour un participant donné**, et basculer
-la réception exige de se désinscrire du point d'accès actuel.
+## « Une retranscription claire et assumée »
 
-Autrement dit : **aucun client Dashprod ne peut recevoir de facture Peppol
-aujourd'hui**, alors que c'est l'obligation légale. Et le code que je viens
-d'écrire ne servira à rien tant que ce n'est pas tranché.
+L'écran Comptabilité s'ouvre désormais sur ce que Dashprod fait — **et sur ce
+qu'il ne fait pas**. En tête, pas en petits caractères : un utilisateur qui
+croit que Dashprod « tient sa comptabilité » découvrirait le malentendu au pire
+moment, devant son contrôle.
 
-Ce n'est pas une décision technique. Beaucoup de PME belges reçoivent leurs
-factures Peppol via la plateforme de leur comptable. Reprendre la réception,
-c'est toucher à cette relation — à toi de voir si Dashprod veut ce rôle, et ce
-que ça implique commercialement.
+- **Il prépare** — factures, encaissements, achats approuvés, tiers, transformés
+  en écritures équilibrées au plan comptable belge.
+- **Il vous rend vos données** — tout, à tout moment, dans des formats que le
+  comptable importe dans *son* logiciel.
+- **Il ne tient pas votre comptabilité** — pas de logiciel agréé, pas de bilan,
+  pas de déclaration. Le comptable tient les livres, contrôle et dépose.
+- **Il ne décide pas à votre place** — un taux qu'il ne sait pas qualifier est
+  refusé plutôt que deviné, et signalé pour que vous en parliez.
 
-## Ce que le domaine sait faire
+## « Exporter toutes leurs ressources »
 
-**Lire un UBL entrant** — éprouvé en aller-retour : notre générateur produit un
-document, notre lecteur le relit, montants exacts au centime. C'est le meilleur
-test possible sans point d'accès réel : si notre lecteur ne relit pas notre
-propre UBL, il ne relira rien.
+Trois exports manquaient pour que « toutes » soit vrai. Ajoutés :
 
-**La règle centrale, verrouillée par sept tests :**
+- **Journal des achats** — débit achats et TVA déductible, crédit fournisseurs.
+  Il n'inclut **que les documents approuvés** : la règle « recevoir n'est pas
+  accepter » tient jusqu'à l'export. Équilibre vérifié, avoirs inversés.
+- **Paiements** — la pièce du lettrage. Sans elle, le comptable voit des
+  créances qu'il ne peut pas solder.
+- **Clients et fournisseurs** — le cabinet crée ses comptes auxiliaires à partir
+  de ce fichier au lieu de ressaisir chaque nom.
 
-> Une facture reçue n'est **jamais** approuvée ni comptabilisée d'office.
-> Même impeccable, elle s'arrête à « à vérifier ».
+Avec les deux existants (relevé, journal des ventes), les cinq familles de
+ressources sont couvertes.
 
-Le réseau garantit l'acheminement, pas la justesse. C'est l'entreprise qui
-décide si elle doit cette somme. Concrètement :
-- `APPROUVE` n'est atteignable **que** depuis `A_VERIFIER` ;
-- `COMPTABILISE` **que** depuis `APPROUVE` ;
-- double serrure : machine d'états dans le domaine **et** trigger en base — une
-  écriture comptable mérite deux verrous.
-- une approbation sans nom de décideur est refusée : sans ça, impossible de
-  prouver que quelqu'un a regardé.
+## Le choix de format, assumé lui aussi
 
-**Les montants sont lus, jamais recalculés.** Recalculer les totaux d'une
-facture entrante reviendrait à réécrire la facture de quelqu'un d'autre.
+**CSV point-virgule + BOM UTF-8.** C'est le dénominateur commun que tous les
+logiciels comptables savent importer, et c'est délibérément ce que je n'ai
+**pas** fait : un connecteur propriétaire vers un éditeur précis. Un connecteur
+lie Dashprod à cet éditeur ; un CSV documenté ne lie personne — ni toi, ni ton
+client, ni son comptable.
 
-**Le dédoublonnage se fait sur fournisseur + numéro**, pas sur le contenu : un
-même document retransmis (reprise après incident, webhook rejoué) diffère
-parfois d'un octet sans être une autre facture.
+Un détail qui compte : les noms de société contenant un `;` sont échappés. Sans
+ça, les colonnes se décalent à l'import et personne ne s'en aperçoit avant que
+le comptable ouvre le fichier.
 
-**Un document illisible n'est jamais jeté** — c'est une pièce légale. Il part en
-vérification avec son motif, et le XML d'origine est conservé intact.
+Chaque ressource se charge indépendamment : si l'une échoue, l'export reste
+partiellement possible plutôt que bloqué en entier.
 
-## Ce qui reste devant
+## À vérifier à l'œil
 
-Le webhook Digiteal entrant n'existe pas encore côté client HTTP (`digiteal.js`
-ne connaît que `outbound-ubl-documents`). C'est le prochain morceau — mais il
-n'a de sens qu'une fois la question du point d'accès tranchée.
-
-## À vérifier
-
-1. Appliquer `0139` puis exécuter le bloc de vérification en fin de fichier.
-2. Les trois garde-fous doivent refuser : comptabilisation sans approbation,
-   approbation anonyme, doublon.
+1. Paramètres → Comptabilité : le bandeau s'affiche en tête, les quatre points
+   sont lisibles.
+2. Choisir un trimestre avec des factures : cinq exports proposés.
+3. Ouvrir `tiers.csv` dans Excel : accents corrects, colonnes alignées.
