@@ -22,7 +22,8 @@ const base = (extra = {}) => facture({
   numero: "2026-000001", date_emission: "2026-07-21", echeance: "2026-08-20",
   vendeur: VENDEUR, acheteur: ACHETEUR,
   lignes: [{ libelle: "Déménagement", quantite: 1, prix_unitaire_centimes: 100000, tva_pct: 21 }],
-  communication: "+++123/4567/89012+++", tva_pct_defaut: 21, ...extra,
+  communication: "+++123/4567/89012+++", tva_pct_defaut: 21,
+  reference_acheteur: "BC-TEST-1", ...extra,
 });
 
 // ── Modèle ─────────────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ test("la TVA est calculée sur la base agrégée, pas ligne à ligne", () => {
 });
 
 test("un avoir porte des montants négatifs", () => {
-  const a = base({ type: "avoir" });
+  const a = base({ type: "avoir", facture_corrigee: "2026-000000" });
   assert.ok(a.total.tvac_centimes < 0);
 });
 
@@ -119,7 +120,7 @@ test("UBL : l'identifiant Peppol porte son schemeID", () => {
 });
 
 test("UBL : un avoir devient un CreditNote, pas une Invoice", () => {
-  const x = versXmlUBL(base({ type: "avoir" }));
+  const x = versXmlUBL(base({ type: "avoir", facture_corrigee: "2026-000000" }));
   assert.ok(x.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<CreditNote'));
   assert.ok(x.includes("<cbc:CreditNoteTypeCode>381</cbc:CreditNoteTypeCode>"));
 });

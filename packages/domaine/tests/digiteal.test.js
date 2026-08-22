@@ -18,6 +18,8 @@ const F = facture({
   vendeur: VENDEUR, acheteur: ACHETEUR,
   lignes: [{ libelle: "Déménagement", quantite: 1, prix_unitaire_centimes: 100000, tva_pct: 21 }],
   communication: "+++123/4567/89012+++",
+  // Peppol exige une référence acheteur (PEPPOL-EN16931-R003, fatal).
+  reference_acheteur: "BC-TEST-1",
 });
 
 const faux = (reponse, statut = 200) => async () => ({

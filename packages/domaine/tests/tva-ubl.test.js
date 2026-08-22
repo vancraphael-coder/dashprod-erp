@@ -31,7 +31,8 @@ const facBE = (extra = {}) => facture({
   numero: "2026-000001", date_emission: "2026-08-22", echeance: "2026-09-21",
   vendeur: VENDEUR, acheteur: ACHETEUR,
   lignes: [{ libelle: "Déménagement", quantite: 1, prix_unitaire_centimes: 100000, tva_pct: 21 }],
-  communication: "+++123/4567/89012+++", tva_pct_defaut: 21, ...extra,
+  communication: "+++123/4567/89012+++", tva_pct_defaut: 21,
+  reference_acheteur: "BC-2026-0042", ...extra,
 });
 
 /* ── Le moteur de qualification ─────────────────────────────────────────── */
@@ -126,7 +127,7 @@ test("UBL : la catégorie vient de la ventilation, plus jamais codée en dur", (
 });
 
 test("UBL : un avoir devient un CreditNote (381), pas une Invoice", () => {
-  const xml = versXmlUBL(facBE({ type: "avoir" }));
+  const xml = versXmlUBL(facBE({ type: "avoir", facture_corrigee: "2026-000000" }));
   assert.match(xml, /<CreditNote/);
   assert.match(xml, /<cbc:CreditNoteTypeCode>381<\/cbc:CreditNoteTypeCode>/);
 });
@@ -177,4 +178,42 @@ test("preparerTransmission ne simule jamais un envoi", () => {
   const t = preparerTransmission(facBE(), "PEPPOL");
   assert.ok(t.etat === "PRETE" || t.etat === "PREPAREE",
     `s'arrête avant l'envoi, or état = ${t.etat}`);
+});
+
+
+/* ── Conformité du document Peppol (règles fatales) ─────────────────────── */
+
+test("PEPPOL-EN16931-R003 : sans référence acheteur, on REFUSE d'émettre", () => {
+  // Règle `fatal` du réseau : « A buyer reference or purchase order reference
+  // MUST be provided ». Sans elle, le point d'accès rejette le document.
+  // Dashprod ne l'émettait NI l'une NI l'autre : toute facture aurait été
+  // rejetée. On échoue ici, avec un motif utile, plutôt que d'expédier une
+  // transmission vouée au rejet — et sans inventer de valeur de repli.
+  assert.throws(() => versXmlUBL(facBE({ reference_acheteur: null })),
+    /PEPPOL-EN16931-R003|Référence de l'acheteur/);
+  assert.match(versXmlUBL(facBE()), /<cbc:BuyerReference>BC-2026-0042<\/cbc:BuyerReference>/);
+});
+
+test("un avoir doit dire QUELLE facture il corrige", () => {
+  // La donnée existait dans le modèle (`facture_corrigee`) mais n'était jamais
+  // émise : l'avoir partait orphelin. Mention légale, et rapprochement
+  // impossible côté client sans elle.
+  assert.throws(() => versXmlUBL(facBE({ type: "avoir", facture_corrigee: null })),
+    /avoir doit référencer/i);
+  const xml = versXmlUBL(facBE({ type: "avoir", facture_corrigee: "2026-000001" }));
+  assert.match(xml, /<cac:BillingReference>/);
+  assert.match(xml, /<cbc:ID>2026-000001<\/cbc:ID>/);
+});
+
+test("la période de PRESTATION est émise quand elle est connue", () => {
+  // Mention légale belge dès qu'elle diffère de la date d'émission, et donnée
+  // que le client attend pour rapprocher la facture de son chantier.
+  const xml = versXmlUBL(facBE({
+    prestation_debut: "2026-08-10", prestation_fin: "2026-08-12" }));
+  assert.match(xml, /<cac:InvoicePeriod>/);
+  assert.match(xml, /<cbc:StartDate>2026-08-10<\/cbc:StartDate>/);
+  assert.match(xml, /<cbc:EndDate>2026-08-12<\/cbc:EndDate>/);
+  // Absente, elle ne produit pas de bloc vide (PEPPOL-EN16931-R008 refuse les
+  // éléments vides).
+  assert.equal(/<cac:InvoicePeriod>/.test(versXmlUBL(facBE())), false);
 });
