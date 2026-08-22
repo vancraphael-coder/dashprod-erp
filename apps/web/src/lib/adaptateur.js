@@ -2765,7 +2765,11 @@ async function factureCanoniqueDepuisBase(factureId, affaireId) {
     date_emission: f.date_emission,
     echeance: f.echeance,
     devise: f.devise || org.devise_defaut || "EUR",
-    tva_pct_defaut: pf.tva_pct ?? 21,
+    // Le taux vient des paramètres de facturation de l'organisation. PAS de
+    // repli sur 21 % : une facture Peppol a valeur légale, un taux inventé est
+    // une déclaration fiscale inexacte. Non renseigné → la génération échoue
+    // avec un motif, et rien n'est transmis.
+    tva_pct_defaut: pf.tva_pct ?? null,
     communication: f.communication,
     type: f.type === "avoir" ? "avoir" : "facture",
     vendeur: {
@@ -2968,7 +2972,11 @@ export async function facturesCanoniquesPeriode({ debut, fin }) {
       date_emission: f.date_emission,
       echeance: f.echeance,
       devise: f.devise || org.devise_defaut || "EUR",
-      tva_pct_defaut: pf.tva_pct ?? 21,
+      // Le taux vient des paramètres de facturation de l'organisation. PAS de
+    // repli sur 21 % : une facture Peppol a valeur légale, un taux inventé est
+    // une déclaration fiscale inexacte. Non renseigné → la génération échoue
+    // avec un motif, et rien n'est transmis.
+    tva_pct_defaut: pf.tva_pct ?? null,
       communication: f.communication,
       type: f.type === "avoir" ? "avoir" : "facture",
       vendeur: { nom: org.nom_commercial || org.nom, tva: org.tva,
