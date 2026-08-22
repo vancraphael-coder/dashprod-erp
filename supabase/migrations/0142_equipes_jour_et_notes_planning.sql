@@ -1,0 +1,18 @@
+-- 0142 — APPLIQUÉE ET ÉPROUVÉE le 22/08/2026 (stub de référence).
+-- ÉQUIPES DE JOURNÉE, MODÈLES D'ÉQUIPE, NOTES RAPIDES DE PLANNING.
+--   → equipes_jour + equipe_membres + equipe_missions
+--   → modeles_equipe (personnes seulement, nom unique par org)
+--   → notes_planning (note opérationnelle d'une journée — à distinguer de
+--     notes_atelier (0138), qui sert à corriger le LOGICIEL)
+--
+-- Les RÈGLES vivent dans planning/equipes.js, pas en base : la base accepte
+-- deux équipes le même jour pour la même personne, c'est le domaine qui juge
+-- le chevauchement horaire. Une contrainte aveugle interdirait un cas
+-- légitime (déménagement le matin, lift l'après-midi).
+--
+-- RLS : les tables de liaison n'ont pas d'org_id, elles héritent du
+-- cloisonnement de l'équipe par jointure — sans quoi un identifiant deviné
+-- donnerait accès à l'équipe d'une autre organisation.
+--
+-- Éprouvée : deux équipes/jour acceptées, modèle sans nom refusé, doublon de
+-- nom refusé, note vide refusée, cascade de suppression propre.
