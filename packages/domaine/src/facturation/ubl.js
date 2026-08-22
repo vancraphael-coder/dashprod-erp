@@ -61,6 +61,30 @@ ${pid.id ? `      <cbc:EndpointID${pid.scheme ? ` schemeID="${esc(pid.scheme)}"`
  * Refuse si la facture n'est pas valide POUR CE CANAL : mieux vaut une erreur
  * ici qu'un rejet du réseau plusieurs heures après l'envoi.
  */
+/**
+ * La catégorie et le taux d'une ligne, LUS dans la ventilation qualifiée.
+ * `versXmlUBL` ne décide plus rien en matière de TVA : la qualification a eu
+ * lieu en amont (facturation/tva.js) et le document ne fait que la transcrire.
+ * Si la ligne ne correspond à aucun groupe qualifié, on échoue — jamais de
+ * repli sur « S / 21 % », qui produirait un document fiscalement faux.
+ */
+function categorieLigne(f, l) {
+  const groupes = f.ventilation_tva || [];
+  if (groupes.length === 0) {
+    throw new Error("Aucune ventilation TVA : facture non transmissible.");
+  }
+  if (l.tva_pct == null) {
+    if (groupes.length === 1) return groupes[0];
+    throw new Error("Ligne sans taux de TVA sur une facture à plusieurs taux : "
+      + "impossible de savoir lequel appliquer.");
+  }
+  const g = groupes.find((x) => Number(x.taux) === Number(l.tva_pct));
+  if (!g) {
+    throw new Error(`Taux ${l.tva_pct} % absent de la ventilation qualifiée.`);
+  }
+  return g;
+}
+
 export function versXmlUBL(f) {
   const v = valider(f, "PEPPOL");
   if (!v.valide) {
@@ -82,8 +106,8 @@ export function versXmlUBL(f) {
     <cac:Item>
       <cbc:Name>${esc(l.libelle)}</cbc:Name>
       <cac:ClassifiedTaxCategory>
-        <cbc:ID>S</cbc:ID>
-        <cbc:Percent>${Number(l.tva_pct ?? f.ventilation_tva[0]?.taux ?? 21).toFixed(2)}</cbc:Percent>
+        <cbc:ID>${esc(categorieLigne(f, l).categorie)}</cbc:ID>
+        <cbc:Percent>${categorieLigne(f, l).taux.toFixed(2)}</cbc:Percent>
         <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
       </cac:ClassifiedTaxCategory>
     </cac:Item>
@@ -96,7 +120,7 @@ export function versXmlUBL(f) {
       <cbc:TaxableAmount currencyID="${esc(f.devise)}">${dec(t.base_centimes)}</cbc:TaxableAmount>
       <cbc:TaxAmount currencyID="${esc(f.devise)}">${dec(t.tva_centimes)}</cbc:TaxAmount>
       <cac:TaxCategory>
-        <cbc:ID>S</cbc:ID>
+        <cbc:ID>${esc(t.categorie)}</cbc:ID>
         <cbc:Percent>${Number(t.taux).toFixed(2)}</cbc:Percent>
         <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
       </cac:TaxCategory>

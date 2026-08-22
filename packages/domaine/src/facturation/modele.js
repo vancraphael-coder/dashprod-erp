@@ -16,6 +16,7 @@
 // et ce qui permet à chaque adaptateur de l'être indépendamment.
 // =============================================================================
 
+import { qualifierTva, qualificationCoherente } from "./tva.js";
 import { nombre } from "../noyau/nombres.js";
 
 const c = (v) => Math.round(Number(v) || 0);
@@ -55,15 +56,32 @@ export function ligne({ libelle, quantite = 1, unite = "pièce",
  * Ventilation de TVA par taux — exigée par UBL (TaxSubtotal par catégorie).
  * Une facture peut mélanger 21 % (déménagement) et 6 % (certains travaux).
  */
-export function ventilationTva(lignes, tauxDefaut) {
+export function ventilationTva(lignes, tauxDefaut, contexteTva = {}) {
   const par = new Map();
   for (const l of lignes || []) {
     // `??` ne rattrape que null/undefined : c'est justement pourquoi tva_pct
     // doit valoir null (et non 0) quand aucun taux n'a été fourni.
     const taux = l.tva_pct ?? tauxDefaut;
-    if (!Number.isFinite(nombre(taux))) continue;
-    const cle = nombre(taux);
-    const acc = par.get(cle) || { taux: cle, base_centimes: 0, tva_centimes: 0 };
+
+    // AUCUNE ligne n'est ignorée. Avant, une ligne sans taux était sautée
+    // (`continue`) tout en restant comptée dans le HTVA : la facture
+    // sous-déclarait la TVA en silence — 100 € HTVA pour 0 € de TVA, sans la
+    // moindre erreur. Désormais elle doit être QUALIFIÉE, ou l'opération
+    // échoue.
+    const q = qualifierTva({ ...contexteTva, taux });
+    if (!q.ok) {
+      throw new Error(`TVA non qualifiable (${l.libelle || "ligne"}) : ${q.motif}`);
+    }
+    const coh = qualificationCoherente(q.qualification);
+    if (!coh.ok) throw new Error(`TVA incohérente : ${coh.motif}`);
+
+    const cle = `${q.qualification.categorie}|${q.qualification.taux}`;
+    const acc = par.get(cle) || {
+      taux: q.qualification.taux,
+      categorie: q.qualification.categorie,
+      mention: q.qualification.mention,
+      base_centimes: 0, tva_centimes: 0,
+    };
     acc.base_centimes += c(l.montant_htva_centimes);
     par.set(cle, acc);
   }
@@ -81,12 +99,21 @@ export function ventilationTva(lignes, tauxDefaut) {
  */
 export function facture({
   numero, date_emission, echeance, devise = "EUR",
-  vendeur, acheteur, lignes = [], tva_pct_defaut = 21,
+  vendeur, acheteur, lignes = [], tva_pct_defaut = null,
   communication, type = "facture", facture_corrigee = null,
+  contexte_tva = null,
 }) {
   const l = lignes.map((x) => (x.montant_htva_centimes != null && x.quantite != null)
     ? x : ligne(x));
-  const ventilation = ventilationTva(l, tva_pct_defaut);
+  // Le contexte fiscal vient des parties : c'est le couple de pays qui décide
+  // du régime, pas la ligne. Un appelant peut l'enrichir (statut de l'acheteur,
+  // motif d'exonération) via `contexte_tva`.
+  const ctxTva = {
+    paysVendeur: (vendeur && vendeur.pays) || "BE",
+    paysAcheteur: (acheteur && acheteur.pays) || "BE",
+    ...(contexte_tva || {}),
+  };
+  const ventilation = ventilationTva(l, tva_pct_defaut, ctxTva);
   const htva = l.reduce((t, x) => t + c(x.montant_htva_centimes), 0);
   const tva = ventilation.reduce((t, v) => t + v.tva_centimes, 0);
 
