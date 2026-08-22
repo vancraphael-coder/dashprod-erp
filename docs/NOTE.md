@@ -1,87 +1,66 @@
-# Lot 23 — P0 : fiabilité fiscale de l'émission Peppol
+# Lot 24 — P0 : conformité du document Peppol
 
-`npm test` : **966/966 ✓** — build `apps/web` ✓ — 8 fichiers.
-**Aucune migration.** Se pose par-dessus le lot 22.
+`npm test` : **969/969 ✓** — build `apps/web` ✓ — 7 fichiers.
+**Aucune migration.** Se pose par-dessus le lot 23.
 
-L'ordre proposé a été suivi : défauts supprimés → moteur construit →
-`versXmlUBL` testé. **La réception Peppol n'est pas touchée** — elle vient
-après, volontairement.
+Ta description de la facturation agréée a servi de référentiel : deux de ses
+champs — « Réf./bon de commande » et « Date/période de prestation » — ne sont
+pas là par hasard. En vérifiant pourquoi, j'ai trouvé un défaut bloquant.
 
-## Ce que j'ai trouvé en ouvrant le capot
+## Le défaut qui rejetait TOUT
 
-Le troisième défaut était pire que le diagnostic annoncé. Une ligne sans taux
-n'était pas seulement « mise à 21 % par défaut » : elle était **exclue de la
-ventilation tout en restant comptée dans le HTVA**. Démontré avant correction :
+**PEPPOL-EN16931-R003**, drapeau **`fatal`** : *« A buyer reference or purchase
+order reference MUST be provided »*. Le test du réseau est
+`cbc:BuyerReference` **ou** `cac:OrderReference/cbc:ID`.
 
-```
-HTVA : 10000 c
-TVA  :     0 c   ← aucune erreur levée
-ventilation : []
-```
+Dashprod n'émettait **ni l'un ni l'autre**. Conséquence : **toute facture aurait
+été rejetée par le point d'accès**, quelle que soit sa qualité par ailleurs.
+Vérifié sur `docs.peppol.eu`, pas de mémoire — la règle est confirmée sur les
+versions 2023 comme 2025.
 
-Une facture de 100 € qui déclare 0 € de TVA, en silence. C'est la même famille
-que le bug historique — mais côté document légal cette fois.
+Corrigé : `reference_acheteur` (BT-10) traverse le modèle canonique et sort en
+`<cbc:BuyerReference>`. Absente, la génération **échoue** avec un motif qui
+nomme la règle.
 
-## Le moteur
+**Un point pour toi.** Certains éditeurs mettent automatiquement « NA » dans ce
+champ pour ne jamais être rejetés. Je ne l'ai **pas** fait : ce serait inscrire
+une donnée fausse dans un document légal, à rebours de tout le lot 23. Mais
+c'est une décision produit — si tu préfères ce repli, dis-le et je l'ajoute en
+une ligne. Côté adaptateur, j'utilise la référence saisie, sinon la référence du
+dossier (que le client connaît). Les deux absentes → refus.
 
-`facturation/tva.js` — `qualifierTva(contexte)` est désormais la seule porte par
-laquelle une opération obtient sa catégorie et son taux. Il rend `{ok, motif}`,
-jamais une valeur de repli.
+## L'avoir partait orphelin
 
-**La règle du lot :**
+`facture_corrigee` existait dans le modèle depuis le début… mais n'était
+**jamais émis en UBL**. Un avoir ne disait donc pas quelle facture il corrige —
+mention légale, et rapprochement impossible côté client.
 
-```
-information TVA absente  →  ERREUR  →  aucune transmission
-JAMAIS                   →  21 %
-```
+Corrigé : `<cac:BillingReference>`. Un avoir sans référence est refusé.
 
-**Ce que Dashprod qualifie aujourd'hui** : Belgique → Belgique avec un taux
-fourni (catégorie S). C'est le pain quotidien de Roovers, et ça marche.
+## La date de prestation
 
-**Ce qu'il refuse, avec un motif exploitable** : intra-UE, hors UE, 0 % intérieur
-sans base légale, vendeur non belge. Chaque refus nomme la règle à faire valider.
+Absente du modèle. C'est une mention légale belge dès qu'elle diffère de la date
+d'émission — et c'est précisément pour ça que l'app agréée l'affiche.
 
-Je n'ai pas encodé le droit fiscal, et c'était le point important. Pour une
-prestation intra-UE, la qualification dépend de la **nature** de la prestation —
-déménagement, lift et sous-traitance ne suivent pas forcément la même règle de
-lieu. Décider à ta place aurait été exactement l'erreur que ce module existe
-pour empêcher. Ces cas attendent **un conseiller TVA**.
+Corrigé : `prestation_debut` / `prestation_fin` → `<cac:InvoicePeriod>`. Non
+émise si inconnue (la règle R008 refuse les éléments vides).
 
-## `versXmlUBL` ne décide plus rien
+## Deux manques que ton référentiel révèle, non traités ici
 
-Il **lit** la catégorie portée par la ventilation qualifiée. Plus aucun « S »
-codé en dur, plus aucun `?? 21` (quatre occurrences supprimées : domaine et
-adaptateur). Une ligne absente de la ventilation fait échouer la génération.
+**« Le prix comprend la TVA ».** Dashprod raisonne en HTVA uniquement. Or un
+déménageur annonce couramment un prix **TVAC** à un particulier. C'est un vrai
+manque produit, pas de conformité — à traiter, mais pas dans un lot P0.
 
-## Les tests
-
-`tva-ubl.test.js`, 16 tests. La pièce la plus engageante du dépôt n'en avait
-aucun. Dont le verrou du lot :
-
-> **taux absent → `versXmlUBL` échoue ET aucune transmission n'est préparée.**
-
-Deux tests existants encodaient l'ancien comportement avec un exemple
-fiscalement incohérent (une ligne « hors UE » à 0 % sur une facture
-belgo-belge). Je ne les ai pas supprimés : j'ai **préservé leur intention** —
-ne jamais confondre « absent » et « zéro » — en la reformulant. Les deux
-situations échouent désormais avec des motifs **différents**, et un test
-vérifie qu'ils ne se confondent jamais.
-
-## Conséquence produit — à accepter consciemment
-
-**Dashprod refuse plus qu'avant.** Une facture intra-UE ne part plus. C'est
-volontaire : avant, elle partait à 21 % et pouvait être fiscalement fausse. Un
-refus se corrige, un document faux transmis par le réseau officiel se découvre
-au contrôle.
-
-Si tu as un besoin intra-UE réel à court terme, c'est la question à poser à ton
-comptable en premier — j'ai laissé l'emplacement prêt dans le moteur.
+**La catégorie d'opération** (vente de biens / services / loyer / droits
+d'auteur / don). C'est exactement l'entrée qui manque à `qualifierTva` pour
+traiter l'intracommunautaire : au lot 23, j'ai refusé de qualifier ces cas parce
+que la règle dépend de la **nature** de la prestation. Ton app agréée capture
+cette nature. Le jour où ton comptable valide les règles, c'est ce champ qu'il
+faudra brancher.
 
 ## À vérifier à l'œil
 
-1. Facture belge classique : inchangée, 21 % dans l'UBL, transmission normale.
-2. Organisation sans taux configuré dans les paramètres de facturation :
-   la génération échoue avec « Taux de TVA non fourni » au lieu de produire
-   une facture à 21 %.
-3. Client avec un pays autre que BE : refus explicite mentionnant
-   « À VALIDER par un conseiller TVA ».
+1. Une facture sans référence de bon de commande : la génération Peppol refuse
+   en citant la règle, au lieu de partir se faire rejeter.
+2. Un avoir : l'XML contient `BillingReference` vers la facture d'origine.
+3. Une facture avec dates de chantier : `InvoicePeriod` présent dans l'XML.

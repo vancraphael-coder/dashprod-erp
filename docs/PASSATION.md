@@ -671,9 +671,44 @@ testé (`tva-ubl.test.js`, 16 tests). **La réception Peppol vient APRÈS** — 
 pas construire une branche entrante sur un moteur dont la qualification n'était
 pas verrouillée.
 
+### 4.17 Conformité du document Peppol (lot 24)
+Trois éléments obligatoires n'étaient PAS émis. Le premier était bloquant pour
+la totalité des envois.
+
+**PEPPOL-EN16931-R003 — drapeau `fatal`** : « A buyer reference or purchase
+order reference MUST be provided » (test : `cbc:BuyerReference` OU
+`cac:OrderReference/cbc:ID`). Dashprod n'émettait NI l'un NI l'autre →
+**toute facture aurait été rejetée par le point d'accès.** Vérifié sur
+docs.peppol.eu, pas de mémoire.
+→ `reference_acheteur` (BT-10) au modèle canonique et dans l'UBL. Absente, la
+génération ÉCHOUE avec un motif. **Aucune valeur de repli** : mettre « NA »
+automatiquement (ce que font certains éditeurs) serait inscrire une donnée
+fausse dans un document légal. **Décision produit ouverte** si Raphaël préfère
+ce repli.
+
+**Avoir orphelin** : `facture_corrigee` existait dans le modèle mais n'était
+jamais émis → un avoir partait sans dire quelle facture il corrige. Mention
+légale, et rapprochement impossible côté client.
+→ `cac:BillingReference/cac:InvoiceDocumentReference`. Un avoir sans référence
+est refusé.
+
+**Date/période de prestation** : absente du modèle. Mention légale belge dès
+qu'elle diffère de la date d'émission.
+→ `prestation_debut` / `prestation_fin` → `cac:InvoicePeriod`. Non émise si
+inconnue (PEPPOL-EN16931-R008 refuse les éléments vides).
+
+**Référentiel utile** : la description d'une facturation belge agréée fournie
+par Raphaël confirme ces champs (« Réf./bon de commande », « Date/période de
+prestation ») et signale deux manques ENCORE ouverts dans Dashprod :
+- **« Le prix comprend la TVA »** (saisie TTC) — un déménageur annonce souvent
+  un prix TVAC à un particulier. Non supporté.
+- **Catégorie d'opération** (vente de biens / services / loyer / droits
+  d'auteur / don) — c'est exactement l'entrée `natureOperation` qui manque à
+  `qualifierTva` pour traiter l'intracommunautaire (§4.16).
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 966/966 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**`npm test` : 969/969 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0138_notes_atelier`.**
 
 ### Lots livrés
@@ -712,6 +747,7 @@ pas verrouillée.
 | 21 | **Balise note 'i'** : carnet de corrections page par page → dossier interne | 0138 |
 | 22 | Quantité 0 comptée comme 1 (devis gonflés) | — |
 | 23 | **P0 — fiabilité fiscale de l'émission Peppol** : moteur de qualification TVA, fin des défauts implicites | — |
+| 24 | **P0 — conformité du document Peppol** : BuyerReference (règle fatale), avoir référencé, période de prestation | — |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire
