@@ -3871,3 +3871,102 @@ export async function listerTiers() {
   }
   return tiers;
 }
+
+/* ── Équipes de journée, modèles et notes rapides (0142) ──────────────────
+ * Les RÈGLES vivent dans `planning/equipes.js` (pur, éprouvé). Ici, on ne fait
+ * que lire et écrire : l'adaptateur ne rejuge jamais ce que le domaine a
+ * tranché, sinon les deux finissent par diverger.
+ */
+
+/** Les équipes d'une journée, avec leurs membres et missions. */
+export async function equipesDuJour(jour) {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.from("equipes_jour")
+    .select("id, jour, nom, equipe_membres(utilisateur_id), equipe_missions(mission_id)")
+    .eq("jour", jour).order("cree_le");
+  if (error) throw new Error(error.message);
+  return (data || []).map((e) => ({
+    id: e.id, jour: e.jour, nom: e.nom,
+    membres: (e.equipe_membres || []).map((m) => m.utilisateur_id),
+    missions: (e.equipe_missions || []).map((m) => m.mission_id),
+  }));
+}
+
+/**
+ * Enregistre une équipe. On REMPLACE membres et missions plutôt que de faire un
+ * différentiel : l'écran envoie l'état voulu, et un différentiel finirait par
+ * diverger de la base au premier aller-retour manqué (même raison qu'au lot 10).
+ */
+export async function sauverEquipeJour({ id, jour, nom, membres = [], missions = [] }) {
+  if (modeDonnees() !== "reel") return null;
+  let equipeId = id;
+  if (!equipeId) {
+    const { data, error } = await supabase.from("equipes_jour")
+      .insert({ jour, nom: nom || null }).select("id").single();
+    if (error) throw new Error(error.message);
+    equipeId = data.id;
+  } else {
+    const { error } = await supabase.from("equipes_jour")
+      .update({ nom: nom || null }).eq("id", equipeId);
+    if (error) throw new Error(error.message);
+    await supabase.from("equipe_membres").delete().eq("equipe_id", equipeId);
+    await supabase.from("equipe_missions").delete().eq("equipe_id", equipeId);
+  }
+  if (membres.length) {
+    const { error } = await supabase.from("equipe_membres")
+      .insert(membres.map((u) => ({ equipe_id: equipeId, utilisateur_id: u })));
+    if (error) throw new Error(error.message);
+  }
+  if (missions.length) {
+    const { error } = await supabase.from("equipe_missions")
+      .insert(missions.map((m) => ({ equipe_id: equipeId, mission_id: m })));
+    if (error) throw new Error(error.message);
+  }
+  return equipeId;
+}
+
+export async function supprimerEquipeJour(id) {
+  if (modeDonnees() !== "reel") return;
+  const { error } = await supabase.from("equipes_jour").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Les modèles d'équipe — des groupes de personnes, sans date ni mission. */
+export async function listerModelesEquipe() {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.from("modeles_equipe")
+    .select("id, nom, membres").order("nom");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function enregistrerModeleEquipe({ nom, membres }) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.from("modeles_equipe")
+    .upsert({ nom, membres }, { onConflict: "org_id,nom" }).select("id").single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+/** Notes rapides d'une journée. */
+export async function notesDuJour(jour) {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.from("notes_planning")
+    .select("id, texte, cree_le").eq("jour", jour).order("cree_le", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function ajouterNoteJour(jour, texte) {
+  if (modeDonnees() !== "reel") return null;
+  const { data, error } = await supabase.from("notes_planning")
+    .insert({ jour, texte: String(texte || "").trim() }).select("id").single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+export async function supprimerNoteJour(id) {
+  if (modeDonnees() !== "reel") return;
+  const { error } = await supabase.from("notes_planning").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
