@@ -1011,3 +1011,18 @@ test("la note n'achemine QUE la page comme provenance", () => {
   assert.ok(main.includes("<BaliseNote page={route.ecran}"),
     "la provenance est l'écran courant, rien d'autre");
 });
+
+/* ── La qualification TVA se LIT à l'écran (lot 25) ─────────────────────── */
+
+test("l'écran Facture explique ce que Dashprod a qualifié", () => {
+  // « Toute automatisation doit rester explicable » : l'utilisateur doit
+  // pouvoir répondre à « pourquoi 21 % ? » sans appeler son comptable. Le
+  // bandeau affiche la catégorie déduite, son explication et sa conséquence.
+  const src = lire("ecrans/Facture.jsx");
+  assert.ok(src.includes("categoriePourNature("),
+    "la catégorie est déduite de la nature du dossier");
+  assert.ok(src.includes("cat.lecture"),
+    "l'explication en langage courant est affichée, pas seulement le libellé");
+  assert.ok(src.includes("cat.consequence"),
+    "et ce que ça implique");
+});

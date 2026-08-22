@@ -14,7 +14,9 @@ import assert from "node:assert/strict";
 
 import { qualifierTva, qualificationCoherente, CATEGORIES_TVA }
   from "../src/facturation/tva.js";
-import { facture } from "../src/facturation/modele.js";
+import { facture, ligne } from "../src/facturation/modele.js";
+import { CATEGORIES_OPERATION, categoriePourNature, tauxUsuelPourNature }
+  from "../src/facturation/operations.js";
 import { versXmlUBL, preparerTransmission } from "../src/facturation/ubl.js";
 
 const VENDEUR = {
@@ -183,15 +185,18 @@ test("preparerTransmission ne simule jamais un envoi", () => {
 
 /* ── Conformité du document Peppol (règles fatales) ─────────────────────── */
 
-test("PEPPOL-EN16931-R003 : sans référence acheteur, on REFUSE d'émettre", () => {
-  // Règle `fatal` du réseau : « A buyer reference or purchase order reference
-  // MUST be provided ». Sans elle, le point d'accès rejette le document.
-  // Dashprod ne l'émettait NI l'une NI l'autre : toute facture aurait été
-  // rejetée. On échoue ici, avec un motif utile, plutôt que d'expédier une
-  // transmission vouée au rejet — et sans inventer de valeur de repli.
-  assert.throws(() => versXmlUBL(facBE({ reference_acheteur: null })),
-    /PEPPOL-EN16931-R003|Référence de l'acheteur/);
-  assert.match(versXmlUBL(facBE()), /<cbc:BuyerReference>BC-2026-0042<\/cbc:BuyerReference>/);
+test("PEPPOL-EN16931-R003 : une référence acheteur est TOUJOURS émise", () => {
+  // Règle `fatal` du réseau : sans BuyerReference ni OrderReference, le point
+  // d'accès rejette. Dashprod n'émettait ni l'une ni l'autre — toute facture
+  // aurait été rejetée. Désormais la référence saisie sort telle quelle, et à
+  // défaut « NA » (décision produit), pour qu'aucune facture correcte ne soit
+  // bloquée par une donnée de routage absente.
+  assert.match(versXmlUBL(facBE()),
+    /<cbc:BuyerReference>BC-2026-0042<\/cbc:BuyerReference>/);
+  assert.match(versXmlUBL(facBE({ reference_acheteur: null })),
+    /<cbc:BuyerReference>NA<\/cbc:BuyerReference>/);
+  // Jamais d'élément vide : PEPPOL-EN16931-R008 les refuse.
+  assert.equal(/<cbc:BuyerReference><\/cbc:BuyerReference>/.test(versXmlUBL(facBE({ reference_acheteur: "" }))), false);
 });
 
 test("un avoir doit dire QUELLE facture il corrige", () => {
@@ -216,4 +221,81 @@ test("la période de PRESTATION est émise quand elle est connue", () => {
   // Absente, elle ne produit pas de bloc vide (PEPPOL-EN16931-R008 refuse les
   // éléments vides).
   assert.equal(/<cac:InvoicePeriod>/.test(versXmlUBL(facBE())), false);
+});
+
+/* ── Catégories d'opération : Dashprod définit, l'utilisateur LIT ────────── */
+
+test("la nature du dossier détermine la catégorie, pas l'utilisateur", () => {
+  // La promesse produite : un déménageur ne choisit pas une catégorie fiscale,
+  // il crée un dossier de déménagement. Dashprod en tire la conséquence.
+  assert.equal(categoriePourNature("demenagement").cle, "vente_services");
+  assert.equal(categoriePourNature("lift").cle, "vente_services");
+  assert.equal(categoriePourNature("sous_traitance").cle, "vente_services");
+  assert.equal(categoriePourNature("boxe").cle, "location_espace");
+  assert.equal(tauxUsuelPourNature("demenagement"), 21,
+    "le déménagement est soumis à 21 % — Dashprod le sait d'avance");
+});
+
+test("chaque catégorie SE LIT : libellé, explication, exemple, conséquence", () => {
+  // Un sélecteur qui affiche seulement « Vente de services » ne renseigne
+  // personne. C'est la demande explicite : le sélecteur doit avoir une lecture.
+  for (const [cle, c] of Object.entries(CATEGORIES_OPERATION)) {
+    assert.ok(c.libelle, `${cle} : libellé manquant`);
+    assert.ok(c.lecture && c.lecture.length > 40,
+      `${cle} : l'explication doit être en langage courant, pas un mot`);
+    assert.ok(c.exemple, `${cle} : un exemple du métier`);
+    assert.ok(c.consequence, `${cle} : ce que ça implique`);
+  }
+});
+
+test("une catégorie incertaine ne pré-remplit AUCUN taux", () => {
+  // Loyer, droits d'auteur et don relèvent de régimes particuliers. Proposer
+  // 21 % « pour faire avancer » serait exactement l'erreur du lot 23.
+  for (const cle of ["loyer_professionnel", "droits_auteur", "don"]) {
+    assert.equal(CATEGORIES_OPERATION[cle].tauxUsuel, null,
+      `${cle} ne doit rien pré-remplir`);
+    assert.equal(CATEGORIES_OPERATION[cle].aValider, true);
+  }
+});
+
+test("une nature inconnue ne devine pas", () => {
+  assert.equal(categoriePourNature("nature_inventee"), null);
+  assert.equal(tauxUsuelPourNature("nature_inventee"), null,
+    "null, pas 21 — qualifierTva refusera ensuite avec son motif");
+});
+
+/* ── Saisie TTC et remise — comme les logiciels du domaine ───────────────── */
+
+test("« le prix comprend la TVA » ramène correctement au HTVA", () => {
+  // Un déménageur annonce « 1 210 € tout compris » à un particulier.
+  const l = ligne({ libelle: "Forfait", quantite: 1,
+    prix_unitaire_centimes: 121000, tva_pct: 21, prix_comprend_tva: true });
+  assert.equal(l.montant_htva_centimes, 100000);
+});
+
+test("un prix TTC sans taux connu n'est PAS converti au hasard", () => {
+  // Retirer « la TVA » d'un prix sans savoir laquelle serait une division par
+  // un taux supposé. On laisse le montant, et la qualification refusera.
+  const l = ligne({ libelle: "X", quantite: 1,
+    prix_unitaire_centimes: 121000, tva_pct: null, prix_comprend_tva: true });
+  assert.equal(l.montant_htva_centimes, 121000);
+});
+
+test("la remise s'applique au prix, sans jamais inverser la ligne", () => {
+  assert.equal(ligne({ libelle: "A", quantite: 1,
+    prix_unitaire_centimes: 100000, remise_pct: 10 }).montant_htva_centimes, 90000);
+  // Une remise aberrante est ignorée plutôt que de rendre la ligne négative.
+  assert.equal(ligne({ libelle: "A", quantite: 1,
+    prix_unitaire_centimes: 100000, remise_pct: 150 }).montant_htva_centimes, 100000);
+});
+
+/* ── Le repli NA (décision produit) ──────────────────────────────────────── */
+
+test("sans référence acheteur, « NA » est émis — la facture n'est plus bloquée", () => {
+  // Décision de Raphaël. La documentation Peppol prévoit elle-même cette
+  // valeur pour ce cas. Elle constate une absence ; elle n'affirme rien de
+  // faux — la différence avec un TAUX inventé, qui lui affirmerait une donnée
+  // fiscale.
+  const xml = versXmlUBL(facBE({ reference_acheteur: null }));
+  assert.match(xml, /<cbc:BuyerReference>NA<\/cbc:BuyerReference>/);
 });
