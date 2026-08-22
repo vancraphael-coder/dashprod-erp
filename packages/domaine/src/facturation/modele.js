@@ -34,9 +34,28 @@ export const ETATS_TRANSMISSION = Object.freeze([
  * données, pas une valeur à respecter.
  */
 export function ligne({ libelle, quantite = 1, unite = "pièce",
-                        prix_unitaire_centimes, tva_pct, type = "prestation" }) {
+                        prix_unitaire_centimes, tva_pct, type = "prestation",
+                        prix_comprend_tva = false, remise_pct = 0 }) {
   const q = Number(quantite);
-  const pu = c(prix_unitaire_centimes);
+  let pu = c(prix_unitaire_centimes);
+
+  // « Le prix comprend la TVA » — un déménageur annonce couramment un prix
+  // TVAC à un particulier (« 1 210 € tout compris »). On ramène au HTVA, seule
+  // base sur laquelle la TVA se calcule ensuite. Sans taux connu, on ne peut
+  // pas retirer la TVA : on laisse le prix tel quel et `qualifierTva` refusera
+  // plus loin — jamais de division par un taux supposé.
+  const t = nombre(tva_pct);
+  if (prix_comprend_tva && Number.isFinite(t) && t > 0) {
+    pu = Math.round(pu / (1 + t / 100));
+  }
+
+  // Remise en pourcentage, appliquée au prix unitaire. Une remise de 100 %
+  // donne 0, pas un montant négatif ; au-delà de 100 elle est ignorée plutôt
+  // que d'inverser le sens de la ligne.
+  const r = nombre(remise_pct);
+  if (Number.isFinite(r) && r > 0 && r <= 100) {
+    pu = Math.round(pu * (1 - r / 100));
+  }
   const quantiteValide = Number.isFinite(q) && q > 0 ? q : 0;
   return {
     type,
@@ -44,6 +63,7 @@ export function ligne({ libelle, quantite = 1, unite = "pièce",
     quantite: quantiteValide,
     unite: String(unite || "pièce"),
     prix_unitaire_centimes: pu,
+    remise_pct: Number.isFinite(nombre(remise_pct)) ? nombre(remise_pct) : 0,
     // `nombre()` distingue « 0 % » (valeur voulue) de « pas de taux fourni ».
     // Avec Number(), null devenait 0 — donc une ligne sans taux se facturait
     // à 0 % de TVA, et l'export comptable déclarait zéro TVA due.

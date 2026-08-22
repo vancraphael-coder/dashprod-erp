@@ -97,12 +97,15 @@ export function versXmlUBL(f) {
   // utile, plutôt que de laisser partir une transmission vouée au rejet.
   // On n'invente pas de valeur de repli : ce serait mettre une donnée fausse
   // dans un document légal (voir §4.16 — rien ne se devine).
-  if (!String(f.reference_acheteur ?? "").trim()) {
-    throw new Error(
-      "Référence de l'acheteur manquante : Peppol l'exige (règle "
-      + "PEPPOL-EN16931-R003). Renseignez le bon de commande ou la référence "
-      + "interne du client sur la facture.");
-  }
+  // Décision produit (Raphaël) : à défaut de référence, on émet « NA ».
+  // C'est la valeur que la documentation Peppol elle-même prévoit pour ce cas
+  // (« use value "NA" as this element is mandatory ») et que les éditeurs
+  // pratiquent. Elle ne dit rien de faux — elle dit « non applicable » — là où
+  // un rejet du réseau bloquerait une facture par ailleurs correcte.
+  // La distinction avec le lot 23 tient : un TAUX inventé affirme une donnée
+  // fiscale fausse ; un « NA » sur une référence de routage constate une
+  // absence.
+  const refAcheteur = String(f.reference_acheteur ?? "").trim() || "NA";
 
   // Un avoir DOIT dire quelle facture il corrige — mention légale, et donnée
   // déjà présente dans le modèle (`facture_corrigee`) mais jamais émise
@@ -161,7 +164,7 @@ export function versXmlUBL(f) {
   <cbc:DueDate>${esc(f.echeance)}</cbc:DueDate>
   <cbc:${f.type === "avoir" ? "CreditNoteTypeCode" : "InvoiceTypeCode"}>${typeCode}</cbc:${f.type === "avoir" ? "CreditNoteTypeCode" : "InvoiceTypeCode"}>
   <cbc:DocumentCurrencyCode>${esc(f.devise)}</cbc:DocumentCurrencyCode>
-  <cbc:BuyerReference>${esc(f.reference_acheteur)}</cbc:BuyerReference>
+  <cbc:BuyerReference>${esc(refAcheteur)}</cbc:BuyerReference>
 ${(f.prestation_debut || f.prestation_fin) ? `  <cac:InvoicePeriod>
 ${f.prestation_debut ? `    <cbc:StartDate>${esc(f.prestation_debut)}</cbc:StartDate>\n` : ""}${f.prestation_fin ? `    <cbc:EndDate>${esc(f.prestation_fin)}</cbc:EndDate>\n` : ""}  </cac:InvoicePeriod>\n` : ""}${f.facture_corrigee ? `  <cac:BillingReference>
     <cac:InvoiceDocumentReference><cbc:ID>${esc(f.facture_corrigee)}</cbc:ID></cac:InvoiceDocumentReference>
