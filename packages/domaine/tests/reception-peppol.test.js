@@ -18,6 +18,14 @@ import { facture } from "../src/facturation/modele.js";
 import { versXmlUBL } from "../src/facturation/ubl.js";
 import { journalAchats, tiersCsv, inventaireExport }
   from "../src/facturation/exports.js";
+import { verifierAppel, cleIdempotence, routerWebhook, traiterAppel, GENRES }
+  from "../src/facturation/webhook.js";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+const lireDomaineFichier = (rel) => readFileSync(join(SRC, rel), "utf8");
 
 const FOURNISSEUR = {
   nom: "Fournisseur SPRL", tva: "BE0999888777", peppol_id: "0208:0999888777",
@@ -202,4 +210,74 @@ test("l'inventaire dit ce que le paquet contient", () => {
     assert.ok(x.fichier && x.contenu && x.usage,
       "chaque fichier dit son nom, son contenu et son usage");
   }
+});
+
+/* ── Le webhook du point d'accès : trois dangers, trois verrous ─────────── */
+
+test("un appel non authentifié ne produit AUCUN effet", () => {
+  // Une URL publique est appelable par n'importe qui. Sans ce verrou, un tiers
+  // injecterait de fausses factures fournisseur.
+  const S = "secret-partage";
+  assert.equal(verifierAppel({ "x-digiteal-signature": S }, S).ok, true);
+  assert.equal(verifierAppel({ "x-digiteal-signature": "faux" }, S).ok, false);
+  assert.equal(verifierAppel({}, S).ok, false);
+});
+
+test("un serveur non configuré REFUSE au lieu de tout accepter", () => {
+  // Le piège classique : « pas de secret configuré → on laisse passer ».
+  // Mieux vaut un webhook qui ne marche pas qu'une porte ouverte.
+  assert.equal(verifierAppel({ "x-digiteal-signature": "n'importe quoi" }, null).ok,
+    false);
+  assert.equal(verifierAppel({ "x-digiteal-signature": "x" }, "").ok, false);
+});
+
+test("le même événement livré deux fois n'est traité qu'une fois", () => {
+  // Les réseaux réessaient. Sans idempotence : deux factures fournisseur pour
+  // un seul document.
+  const S = "s";
+  const charge = { changeType: "PEPPOL_DOCUMENT_RECEIVED", id: "d1" };
+  const entetes = { "x-digiteal-signature": S };
+  const cle = cleIdempotence(charge);
+
+  assert.equal(traiterAppel(entetes, charge, S, []).rejoue, false);
+  const rejeu = traiterAppel(entetes, charge, S, [cle]);
+  assert.equal(rejeu.rejoue, true);
+  // 200 et non une erreur : répondre en erreur relancerait la boucle de
+  // réessai du point d'accès.
+  assert.equal(rejeu.statut, 200);
+});
+
+test("un événement INCONNU est journalisé mais ne déclenche rien", () => {
+  // Une version future du point d'accès enverra des types qu'on ne connaît
+  // pas. Ils ne doivent jamais provoquer une action devinée.
+  const r = routerWebhook({ changeType: "TYPE_QUI_N_EXISTE_PAS_ENCORE", id: "x" });
+  assert.equal(r.genre, GENRES.INCONNU);
+  assert.match(r.motif, /aucune action/i);
+  assert.equal(r.cle, "TYPE_QUI_N_EXISTE_PAS_ENCORE|x",
+    "il garde une clé : on veut la trace, même sans action");
+});
+
+test("l'entrant et le sortant ne se confondent pas", () => {
+  assert.equal(routerWebhook({ changeType: "PEPPOL_SEND_PROCESSING_OUTCOME",
+    operationId: "o1" }).genre, GENRES.SORTANT);
+  assert.equal(routerWebhook({ changeType: "PEPPOL_DOCUMENT_RECEIVED",
+    id: "d1", document: "<Invoice/>" }).genre, GENRES.ENTRANT);
+});
+
+test("un document entrant sans contenu joint le DIT au lieu de traiter du vide", () => {
+  const r = routerWebhook({ changeType: "PEPPOL_DOCUMENT_RECEIVED", id: "d2" });
+  assert.equal(r.genre, GENRES.ENTRANT);
+  assert.equal(r.xml, null);
+  assert.match(r.motif, /récupérer par l'API/i);
+});
+
+test("l'enregistrement d'un participant EXIGE la décision de recevoir", () => {
+  // Un seul point d'accès peut recevoir pour un participant. Un défaut
+  // silencieux à « envoi seul » condamnerait l'organisation à ne jamais
+  // recevoir — l'obligation légale exacte.
+  const src = lireDomaineFichier("facturation/digiteal.js");
+  assert.ok(src.includes('typeof envoiSeul !== "boolean"'),
+    "la décision doit être explicite, jamais devinée");
+  assert.equal(/envoiSeul = true/.test(src), false,
+    "plus de défaut « envoi seul »");
 });

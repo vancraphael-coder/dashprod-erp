@@ -142,7 +142,7 @@ test("un client présent supportant Invoice est joignable", async () => {
 test("déjà enregistré chez Digiteal = succès, pas erreur", async () => {
   const c = clientDigiteal({ identifiant: "u", secret: "p",
     fetchImpl: faux({ errorCode: "ALREADY_REGISTERED_TO_DIGITEAL" }, 400) });
-  const r = await c.enregistrerParticipant({ peppolId: "0208:1", nom: "X" });
+  const r = await c.enregistrerParticipant({ peppolId: "0208:1", nom: "X", envoiSeul: false });
   assert.equal(r.ok, true);
   assert.equal(r.deja, true);
 });
@@ -150,16 +150,41 @@ test("déjà enregistré chez Digiteal = succès, pas erreur", async () => {
 test("enregistré ailleurs : message actionnable, pas un code brut", async () => {
   const c = clientDigiteal({ identifiant: "u", secret: "p",
     fetchImpl: faux({ errorCode: "REGISTER_ALREADY_REGISTERED_TO_OTHER_AP" }, 400) });
-  const r = await c.enregistrerParticipant({ peppolId: "0208:1", nom: "X" });
+  const r = await c.enregistrerParticipant({ peppolId: "0208:1", nom: "X", envoiSeul: false });
   assert.equal(r.ok, false);
   assert.match(r.message, /autre point d'accès/);
 });
 
-test("envoi seul par défaut : on ne prend pas la réception d'un client", async () => {
+test("envoi ou réception : la décision est EXIGÉE, jamais devinée", async () => {
+  // Un seul point d'accès peut RECEVOIR pour un participant donné. Un défaut
+  // silencieux à « envoi seul » condamnerait l'organisation à ne jamais
+  // recevoir — l'obligation légale exacte depuis le 01/01/2026. Et un défaut
+  // inverse lui volerait la réception que son comptable assure peut-être déjà.
+  // Aucun défaut n'est acceptable : on demande.
+  let appele = false;
+  const c = clientDigiteal({ identifiant: "u", secret: "p",
+    fetchImpl: async () => { appele = true; return faux({})(); } });
+
+  const sansDecision = await c.enregistrerParticipant({ peppolId: "0208:1", nom: "X" });
+  assert.equal(sansDecision.ok, false);
+  assert.match(sansDecision.motif, /Décision requise/);
+  assert.equal(appele, false, "aucun appel réseau tant que ce n'est pas tranché");
+});
+
+test("réception demandée : le participant est enregistré pour recevoir", async () => {
   let corps = null;
   const c = clientDigiteal({ identifiant: "u", secret: "p",
     fetchImpl: async (url, opts) => { corps = JSON.parse(opts.body); return faux({})(); } });
-  await c.enregistrerParticipant({ peppolId: "0208:1", nom: "X" });
+  await c.enregistrerParticipant({ peppolId: "0208:1", nom: "X", envoiSeul: false });
+  assert.equal(corps.limitedToOutboundTraffic, false,
+    "Dashprod devient le point d'accès récepteur");
+});
+
+test("émission seule : la réception reste à un autre point d'accès", async () => {
+  let corps = null;
+  const c = clientDigiteal({ identifiant: "u", secret: "p",
+    fetchImpl: async (url, opts) => { corps = JSON.parse(opts.body); return faux({})(); } });
+  await c.enregistrerParticipant({ peppolId: "0208:1", nom: "X", envoiSeul: true });
   assert.equal(corps.limitedToOutboundTraffic, true);
 });
 
