@@ -13,6 +13,8 @@
 // adaptateur, testable seul, remplaçable sans toucher au reste.
 // =============================================================================
 
+import { nombre } from "../noyau/nombres.js";
+
 const dec = (centimes) => (Math.round(centimes) / 100).toFixed(2);
 
 /** Échappe un champ CSV : point-virgule, guillemet ou retour ligne. */
@@ -210,4 +212,123 @@ export function versFec(factures, options = {}) {
   const lignes = ecrituresFec(factures, options)
     .map((e) => FEC_COLONNES.map((c) => champ(e[c])).join("\t"));
   return [FEC_COLONNES.join("\t"), ...lignes].join("\r\n");
+}
+
+// =============================================================================
+// L'EXPORT COMPLET — tout ce qu'un comptable demande, sans ressaisie.
+//
+// Principe de réversibilité : un client de Dashprod doit pouvoir, à tout
+// moment, emporter TOUTES ses données comptables chez son comptable ou chez un
+// concurrent. Une donnée qu'on ne peut pas sortir est une donnée prise en
+// otage.
+//
+// Format : CSV point-virgule, encodage UTF-8 avec BOM. C'est le dénominateur
+// commun que tous les logiciels comptables savent lire à l'import. On ne
+// produit PAS de format propriétaire : un connecteur spécifique lie Dashprod à
+// un éditeur, un CSV documenté ne lie personne.
+// =============================================================================
+
+/**
+ * Assemble un CSV avec BOM Excel, en réutilisant `champ` et `dec` déjà définis
+ * plus haut : deux échappements différents dans un même fichier finiraient par
+ * diverger, et c'est le genre d'écart qu'on ne voit qu'à l'import chez le
+ * comptable.
+ */
+function csv(entetes, lignes) {
+  return "\uFEFF" + [entetes.join(";"), ...lignes.map((l) => l.map(champ).join(";"))]
+    .join("\r\n") + "\r\n";
+}
+
+/**
+ * Le LIVRE DES TIERS : clients et fournisseurs, avec leur numéro de TVA.
+ * Un cabinet crée ses comptes auxiliaires à partir de cette liste ; sans elle,
+ * il ressaisit chaque nom à la main.
+ */
+export function tiersCsv(tiers = []) {
+  return csv(
+    ["Type", "Nom", "N° TVA", "Rue", "Code postal", "Ville", "Pays", "Identifiant Peppol"],
+    tiers.map((t) => [
+      t.type === "fournisseur" ? "Fournisseur" : "Client",
+      t.nom, t.tva, t.rue, t.cp, t.ville, t.pays || "BE", t.peppol_id,
+    ]));
+}
+
+/**
+ * Le LIVRE DES PAIEMENTS : ce qui a été encaissé, quand et comment.
+ * C'est la pièce du lettrage — sans elle, le comptable voit des créances qu'il
+ * ne peut pas solder.
+ */
+export function paiementsCsv(paiements = []) {
+  return csv(
+    ["Date", "Facture", "Montant", "Moyen", "Note"],
+    paiements.map((p) => [
+      p.date_paiement, p.facture_numero || p.facture_id,
+      dec(p.montant_centimes), p.moyen || "", p.note || "",
+    ]));
+}
+
+/**
+ * Le JOURNAL DES ACHATS, depuis les factures fournisseur reçues.
+ *
+ * Miroir du journal des ventes : débit achats + débit TVA déductible, crédit
+ * fournisseurs. N'inclut QUE les documents approuvés par une personne — une
+ * facture reçue mais non validée n'a rien à faire dans une comptabilité
+ * (§4.19 : recevoir n'est pas accepter).
+ */
+export const COMPTES_ACHAT_DEFAUT = Object.freeze({
+  achats: "600000",        // approvisionnements et marchandises
+  tva_deductible: "411000", // TVA à récupérer
+  fournisseurs: "440000",   // dettes commerciales
+});
+
+export function journalAchats(documents = [], comptes = COMPTES_ACHAT_DEFAUT) {
+  const cpt = { ...COMPTES_ACHAT_DEFAUT, ...(comptes || {}) };
+  const ecritures = [];
+  for (const d of documents) {
+    // Le filtre qui compte : seul un document APPROUVÉ entre en comptabilité.
+    if (d.etat !== "APPROUVE" && d.etat !== "COMPTABILISE") continue;
+    const signe = d.type === "avoir" ? -1 : 1;
+    const htva = signe * nombre(d.htva_centimes);
+    const tva = signe * nombre(d.tva_centimes);
+    const tvac = signe * nombre(d.tvac_centimes ?? d.du_centimes);
+    const lib = `${d.fournisseur_nom || "Fournisseur"} ${d.numero}`;
+
+    if (htva) ecritures.push({ date: d.date_emission, piece: d.numero,
+      compte: cpt.achats, libelle: lib, debit: htva, credit: 0 });
+    if (tva) ecritures.push({ date: d.date_emission, piece: d.numero,
+      compte: cpt.tva_deductible, libelle: `TVA déductible ${d.numero}`,
+      debit: tva, credit: 0 });
+    if (tvac) ecritures.push({ date: d.date_emission, piece: d.numero,
+      compte: cpt.fournisseurs, libelle: lib, debit: 0, credit: tvac });
+  }
+  return ecritures;
+}
+
+export function journalAchatsCsv(documents, comptes) {
+  const e = journalAchats(documents, comptes);
+  return csv(["Date", "Pièce", "Compte", "Libellé", "Débit", "Crédit"],
+    e.map((x) => [x.date, x.piece, x.compte, x.libelle,
+                  x.debit ? dec(x.debit) : "", x.credit ? dec(x.credit) : ""]));
+}
+
+/**
+ * L'INVENTAIRE de l'export complet : ce que le paquet contient, en clair.
+ *
+ * Sert deux choses : dire au client ce qu'il emporte, et donner au comptable
+ * une table des matières plutôt qu'un tas de fichiers sans contexte.
+ */
+export function inventaireExport({ nbFactures = 0, nbAchats = 0,
+                                   nbPaiements = 0, nbTiers = 0, periode = "" } = {}) {
+  return [
+    { fichier: "factures.csv", contenu: `Relevé des factures émises (${nbFactures})`,
+      usage: "Vérification et contrôle." },
+    { fichier: "journal-ventes.csv", contenu: "Écritures de vente, double entrée",
+      usage: "Import dans le logiciel comptable." },
+    { fichier: "journal-achats.csv", contenu: `Écritures d'achat approuvées (${nbAchats})`,
+      usage: "Import dans le logiciel comptable." },
+    { fichier: "paiements.csv", contenu: `Encaissements (${nbPaiements})`,
+      usage: "Lettrage des créances." },
+    { fichier: "tiers.csv", contenu: `Clients et fournisseurs (${nbTiers})`,
+      usage: "Création des comptes auxiliaires." },
+  ].map((x) => ({ ...x, periode }));
 }
