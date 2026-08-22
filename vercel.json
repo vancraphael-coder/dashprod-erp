@@ -2,5 +2,14 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm install && npm run build --workspace @dashprod/web",
   "outputDirectory": "apps/web/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "//": "EXCLURE /api de la réécriture SPA. Sans la négation, `/(.*)` avale",
+      "//2": "les routes serveur et le webhook Peppol recevrait la page",
+      "//3": "d'accueil au lieu d'être exécuté — le point d'accès conclurait à",
+      "//4": "un succès et ne réessaierait jamais.",
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }
