@@ -1,13 +1,11 @@
 -- =============================================================================
 -- 0139 — FACTURES FOURNISSEUR REÇUES (Peppol entrant).
 --
--- ⚠ CETTE MIGRATION N'A PAS ÉTÉ APPLIQUÉE NI ÉPROUVÉE.
---    Le connecteur Supabase s'est déconnecté en cours de session : contrairement
---    aux migrations 0001 à 0138, celle-ci n'a pas pu être exercée dans un bloc
---    `do $$ … raise exception 'ROLLBACK' $$`. C'est une entorse à la règle
---    absolue du projet, signalée plutôt que masquée.
---    → À appliquer et à éprouver avant de s'y fier. Bloc de vérification fourni
---      en fin de fichier.
+-- APPLIQUÉE ET ÉPROUVÉE le 22/08/2026, dans un bloc rollback :
+--   · comptabiliser sans approbation  → refusé (42501)
+--   · approuver sans décideur nommé   → refusé (42501)
+--   · A_VERIFIER → APPROUVE → COMPTABILISE avec décideur → passe
+--   · doublon (org + empreinte)       → refusé (unique_violation)
 --
 -- POURQUOI
 -- --------
