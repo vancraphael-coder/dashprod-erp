@@ -889,9 +889,50 @@ Raison : **un seul point d'accès peut recevoir pour un participant**. Un défau
 un défaut à `false` lui volerait la réception que son comptable assure
 peut-être déjà. **Décision de Raphaël : envoi ET réception.**
 
+### 4.26 Les fournitures sont une VENTE DE BIENS (lot 30)
+Bug d'argent : `lignesFacturePour` ne produisait QU'UNE ligne — « Déménagement,
+<client> » — avec le TVAC recomposé. Les fournitures étaient chiffrées
+(`valoriserEmballage` existe et son commentaire dit « c'est ce qui doit être
+retranscrit sur l'offre / la facture ») mais **n'atteignaient jamais la
+facture**. Cartons fournis, jamais facturés.
+
+Deux problèmes en un :
+- commercialement : des fournitures non facturées ;
+- légalement : vendre un bien n'est pas prester un service. Deux catégories
+  d'opération distinctes (§4.18), traitement comptable différent, et le client
+  a le droit de voir ce qu'il achète — dénommé et quantifié, pas dans un total
+  opaque.
+
+→ Lignes propres, `categorie_operation: "vente_biens"` (prestation =
+`vente_services`). **Via l'aiguillage de composition** (`rubriques-offre.js` →
+`lignesFournitures`) : l'adaptateur est horizontal et n'a pas le droit
+d'importer `stocks/emballage`. Le test d'architecture m'a attrapé sur le
+premier jet — il fonctionne.
+
+### 4.27 Les équipes de journée (lot 30)
+`planning/equipes.js`, pur et testable. Trois règles, **une seule bloquante** :
+
+1. **Une personne au minimum** → BLOQUE (seul vrai blocage).
+2. **L'effectif hors barème** → AVERTIT seulement. Discipline §4.5 : on
+   signale, on n'interdit pas. Le bureau connaît son terrain mieux que la règle.
+3. **Une personne dans deux équipes le même jour** → autorisé SI les missions
+   ne se chevauchent pas. Chevauchement = blocage : on ne peut pas être à deux
+   endroits en même temps.
+
+**Le chevauchement est le cœur.** Deux missions qui se touchent bout à bout ne
+se chevauchent pas. Une mission **SANS horaire occupe la journée entière** —
+prudence assumée : sans heures, impossible de prouver qu'elle laisse la place,
+donc on ne le suppose pas, et le motif dit quoi faire (« posez des heures »).
+Chantier de nuit (22h→02h) géré : sans garde, la plage serait inversée et tout
+chevauchement passerait inaperçu.
+
+**Un MODÈLE d'équipe ne retient QUE les personnes** — ni date, ni missions. Les
+mêmes trois personnes travaillent souvent ensemble, jamais sur le même chantier
+deux jours de suite ; garder la date ferait rejouer un passé.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 1014/1014 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**`npm test` : 1029/1029 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0141_peppol_evenements_webhook`** (appliquée et
 éprouvée le 22/08 : comptabilisation sans approbation refusée, approbation
 anonyme refusée, chemin nominal validé, doublon rejeté).
@@ -937,6 +978,7 @@ anonyme refusée, chemin nominal validé, doublon rejeté).
 | 27 | **Comptabilité assumée + réversibilité** : ce que Dashprod fait/ne fait pas, export de toutes les ressources | — |
 | 28 | **P1 LEVÉ — prix des offres publiés** + remise annuelle 5 %, calcul d'abonnement dans le domaine | 0140 |
 | 29 | **Point d'accès : envoi ET réception** — fonction serveur, webhook, secret hors du navigateur | 0141 |
+| 30 | **Fournitures facturées** (vente de biens distincte) + **domaine des équipes de journée** | — |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire

@@ -1,89 +1,81 @@
-# Lot 29 — le point d'accès : envoi ET réception
+# Lot 30 — fournitures facturées + domaine des équipes
 
-`npm test` : **1014/1014 ✓** — build `apps/web` ✓ — 8 fichiers.
-**Migration `0141` appliquée et éprouvée.**
+`npm test` : **1029/1029 ✓** — build `apps/web` ✓ — 5 fichiers.
+**Aucune migration.**
 
-## Avant tout : ne colle PAS tes identifiants dans les paramètres
+Ta demande contenait cinq chantiers. J'ai traité les deux qui touchent l'argent
+et ta priorité déclarée. Les trois autres sont listés en fin de note — je ne
+les ai pas bâclés en fin de lot.
 
-Ce soir, le geste naturel serait de mettre ton `clientId` / `clientSecret`
-Digiteal dans les paramètres de facturation de l'organisation. **Ne le fais
-pas.**
+## Les fournitures : un bug qui coûtait de l'argent
 
-`parametres_facturation` est une colonne jsonb **lue par le navigateur** :
-`adaptateur.js` est du code front, bundlé par Vite. Ton secret partirait dans le
-navigateur de chaque utilisateur, lisible en deux clics dans les outils de
-développement.
+`lignesFacturePour` ne produisait **qu'une seule ligne** — « Déménagement —
+<client> » — avec le TVAC recomposé. Les fournitures étaient chiffrées mais
+**n'atteignaient jamais la facture**. Cartons fournis, jamais facturés.
 
-Bonne nouvelle : j'ai vérifié, **aucune colonne `digiteal_*` n'existe en base**
-aujourd'hui — rien n'est exposé. Le code lisait `pf.digiteal_secret` qui valait
-toujours `null`, et le client Digiteal refuse de transmettre sans clé. Il n'y a
-donc rien à réparer, seulement un piège à éviter.
+Le plus frappant : `valoriserEmballage` existe depuis longtemps et son propre
+commentaire dit *« c'est ce qui doit être retranscrit sur l'offre / la
+facture »*. La fonction était là, correcte, jamais appelée. Encore un cas où
+l'infrastructure existait et le défaut était ailleurs qu'annoncé.
 
-## Le vrai obstacle : Dashprod n'a pas de serveur
+**Ta remarque légale était la bonne.** Vendre un carton n'est pas prester une
+manutention : ce sont deux catégories d'opération distinctes (celles du lot 25),
+qui n'ont pas le même traitement comptable — et le client a le droit de voir ce
+qu'il achète, dénommé et quantifié, plutôt qu'un total opaque. Les fournitures
+sortent donc en lignes propres, marquées `vente_biens`, la prestation restant
+`vente_services`.
 
-C'est ce que les guides que tu m'as passés supposent (Next.js, Server Actions)
-et que Dashprod n'a pas : c'est un **SPA Vite**. Deux conséquences :
+**Le test d'architecture m'a attrapé** sur le premier jet : j'importais
+`stocks/emballage` depuis l'adaptateur, qui est horizontal et n'a pas ce droit.
+Corrigé en passant par l'aiguillage de composition — le même patron que les
+rubriques d'offre.
 
-1. un webhook exige une URL publique — impossible sans fonction serveur ;
-2. le secret doit vivre quelque part où le navigateur ne va pas.
+## Les équipes de journée
 
-**La réponse** : des fonctions Vercel dans `/api`. Elles marchent avec n'importe
-quel framework, y compris Vite.
+`planning/equipes.js`, pur et testable. Tes trois règles, dont **une seule
+bloque** :
 
-À configurer dans Vercel → Settings → Environment Variables :
+- **Une personne au minimum** → bloque. C'est le seul vrai blocage.
+- **L'effectif hors barème** → avertit seulement, comme tu l'as demandé. Le
+  bureau connaît son terrain mieux que la règle : un chantier peut légitimement
+  demander six personnes là où le barème en suggère quatre.
+- **Une personne dans deux équipes le même jour** → autorisé si les missions ne
+  se chevauchent pas. Le cas réel : déménagement le matin, lift l'après-midi.
 
-```
-DIGITEAL_WEBHOOK_SECRET      secret partagé, vérifié à chaque appel
-SUPABASE_URL
-SUPABASE_SERVICE_ROLE_KEY    contourne la RLS — SERVEUR UNIQUEMENT
-```
+**Le chevauchement est le cœur, et j'ai soigné trois cas limites :**
 
-⚠ **Aucune variable `VITE_*`** pour ces valeurs : ce préfixe les publie dans le
-bundle navigateur. C'est exactement le piège à éviter.
+Deux missions qui se touchent bout à bout (12h00 / 12h00) **ne** se chevauchent
+pas — sinon on interdirait des journées parfaitement valides.
 
-## Un piège Vercel que j'ai trouvé en chemin
+Une mission **sans horaire occupe la journée entière**. Prudence assumée : sans
+heures, impossible de prouver qu'elle laisse de la place, donc on ne le suppose
+pas. Et le message dit quoi faire — « posez des heures pour la placer deux
+fois » — au lieu de refuser sèchement.
 
-Ton `vercel.json` réécrivait `"/(.*)" → /index.html`. Cette règle **avale les
-routes `/api`** : le webhook aurait reçu la page d'accueil, avec un code 200.
-Le point d'accès aurait conclu à un succès et **n'aurait jamais réessayé** —
-tes factures fournisseur seraient parties dans le vide, sans erreur nulle part.
+Un **chantier de nuit** (22h → 02h) est géré : sans garde, la fin « avant » le
+début inverserait la plage et tout chevauchement passerait inaperçu.
 
-Corrigé en `"/((?!api/).*)"`, vérifié par simulation sur quatre URLs.
+**Le modèle d'équipe ne retient que les personnes** — ni date, ni missions. Les
+mêmes trois personnes travaillent souvent ensemble, mais jamais sur le même
+chantier deux jours de suite ; garder la date ferait rejouer un passé.
 
-## Trois dangers de webhook, trois verrous
+## Ce que je n'ai pas fait, et pourquoi
 
-Toute la décision est dans le domaine (`facturation/webhook.js`), testée sans
-réseau. La fonction serveur ne fait que brancher.
+Trois chantiers de ta demande restent entiers. Chacun mérite son lot :
 
-- **N'importe qui peut appeler une URL publique.** Secret partagé, comparaison à
-  temps constant (une comparaison naïve fuit le secret par le temps de réponse).
-  Et le cas piégeux : **un serveur non configuré REFUSE** au lieu de tout
-  accepter. Mieux vaut un webhook qui ne marche pas qu'une porte ouverte.
-- **Le même événement arrive plusieurs fois.** Clé d'idempotence + contrainte
-  `UNIQUE` en base — c'est la contrainte qui garantit, elle tient même si deux
-  livraisons arrivent en même temps. On répond 200 pour stopper les réessais,
-  sans rien refaire.
-- **Un type inconnu.** Journalisé, aucune action. Une version future du point
-  d'accès enverra des types qu'on ignore : ils ne doivent jamais déclencher
-  quelque chose de deviné.
+1. **La note rapide au planning** — petite, mais elle doit se poser au bon
+   endroit dans l'écran ; je la ferai avec le branchement des équipes.
+2. **Le branchement des équipes à l'écran Planning** — le domaine est prêt et
+   prouvé, l'interface reste à construire.
+3. **Compte + Paramètres : organisation et CSS** — un vrai chantier d'UI, pas
+   un ajout de fin de lot.
+4. **Le dossier maître de documentation** — c'est le plus structurant pour toi
+   (portabilité entre sessions et entre LLM sans dérive). Il mérite d'être
+   pensé, pas expédié.
 
-## Envoi ou réception : une décision, plus un défaut
+## À vérifier à l'œil
 
-`enregistrerParticipant` avait `envoiSeul = true` par défaut. Je l'ai retiré :
-sans booléen explicite, elle refuse — **et ne fait aucun appel réseau**.
-
-Parce qu'aucun défaut n'est honnête ici. Un seul point d'accès peut recevoir
-pour un participant : à `true`, tu condamnes l'organisation à ne jamais recevoir
-(l'obligation légale) ; à `false`, tu lui prends la réception que son comptable
-assure peut-être déjà. Ta décision — envoi **et** réception — est maintenant
-explicite dans le code.
-
-## Ce qu'il te reste à faire
-
-1. Créer le webhook côté Digiteal, pointant vers
-   `https://<ton-domaine>/api/peppol/webhook`.
-2. Poser les trois variables d'environnement dans Vercel.
-3. **Confirmer auprès de Digiteal le nom exact de l'événement entrant.** J'ai
-   accepté quatre variantes plausibles mais je ne l'ai pas inventé : un type non
-   listé tombe en « inconnu » et ne déclenche rien. Dis-le-moi et j'ajuste en
-   une ligne.
+1. Un dossier avec de l'emballage consommé : la facture montre maintenant les
+   fournitures en lignes séparées, avec quantité et prix unitaire.
+2. Le total de la facture augmente d'autant — c'est le montant qui n'était pas
+   facturé.
