@@ -3795,3 +3795,58 @@ export async function definirContratStockage(c) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+/* ── Ressources de l'export comptable ─────────────────────────────────────
+ * Réversibilité : le client doit pouvoir emporter TOUTES ses données. Chaque
+ * lecture est indépendante — si l'une échoue, l'export reste partiellement
+ * possible plutôt que bloqué en entier.
+ */
+
+/** Factures fournisseur d'une période (toutes, l'export filtrera). */
+export async function achatsPeriode({ debut, fin } = {}) {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.from("factures_fournisseur")
+    .select("numero, type, date_emission, fournisseur_nom, fournisseur_tva, "
+          + "htva_centimes, tva_centimes, tvac_centimes, du_centimes, etat")
+    .gte("date_emission", debut).lte("date_emission", fin)
+    .order("date_emission");
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Encaissements d'une période, avec le numéro de la facture concernée. */
+export async function paiementsPeriode({ debut, fin } = {}) {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.from("paiements")
+    .select("date_paiement, montant_centimes, moyen, note, factures(numero)")
+    .gte("date_paiement", debut).lte("date_paiement", fin)
+    .order("date_paiement");
+  if (error) throw new Error(error.message);
+  return (data || []).map((p) => ({ ...p, facture_numero: p.factures?.numero || "" }));
+}
+
+/** Clients et fournisseurs, pour les comptes auxiliaires du cabinet. */
+export async function listerTiers() {
+  if (modeDonnees() !== "reel") return [];
+  const [cli, four] = await Promise.all([
+    supabase.from("clients").select("nom, tva_num, ville, cp, pays"),
+    supabase.from("factures_fournisseur")
+      .select("fournisseur_nom, fournisseur_tva, fournisseur_peppol, fournisseur_pays"),
+  ]);
+  const tiers = (cli.data || []).map((c) => ({
+    type: "client", nom: c.nom, tva: c.tva_num,
+    cp: c.cp, ville: c.ville, pays: c.pays || "BE",
+  }));
+  // Un fournisseur peut apparaître sur plusieurs factures : on dédoublonne par
+  // TVA, sinon le cabinet crée dix fois le même compte auxiliaire.
+  const vus = new Set();
+  for (const f of four.data || []) {
+    const cle = (f.fournisseur_tva || f.fournisseur_nom || "").toUpperCase();
+    if (!cle || vus.has(cle)) continue;
+    vus.add(cle);
+    tiers.push({ type: "fournisseur", nom: f.fournisseur_nom,
+      tva: f.fournisseur_tva, peppol_id: f.fournisseur_peppol,
+      pays: f.fournisseur_pays || "BE" });
+  }
+  return tiers;
+}
