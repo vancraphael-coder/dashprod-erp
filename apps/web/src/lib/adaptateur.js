@@ -11,7 +11,7 @@ import { supabase, configPresente } from "./supabase.js";
 import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
 import { CGV_VERSION_COURANTE, cgv , validiteJours } from "@domaine/documents/cgv.js";
-import { rubriquesOffre } from "@domaine/releve/rubriques-offre.js";
+import { rubriquesOffre, lignesFournitures } from "@domaine/releve/rubriques-offre.js";
 import { briefMission } from "@domaine/communication/brief.js";
 
 const CLE = "dashprod-demo-v1";
@@ -734,9 +734,30 @@ export async function lignesFacturePour(affaireId) {
     const pct = tauxTva(await obtenirOrganisation().catch(() => ({})));
     const htva = a.tvac_centimes
       ? Math.round(a.tvac_centimes / (1 + pct / 100)) : 0;
-    lignes.push({ type: "prestation", libelle: `Déménagement — ${a.client?.nom || ""}`.trim(),
+    lignes.push({ type: "prestation", categorie_operation: "vente_services",
+                  libelle: `Déménagement — ${a.client?.nom || ""}`.trim(),
                   montant_htva_centimes: htva });
   }
+
+  // LES FOURNITURES SONT UNE VENTE DISTINCTE.
+  // Elles étaient chiffrées (`valoriserEmballage` existe et le dit dans son
+  // propre commentaire) mais n'atteignaient JAMAIS la facture : le client
+  // recevait une ligne unique « Déménagement », cartons compris dans un total
+  // opaque. Deux problèmes en un :
+  //   · commercialement, des fournitures fournies et non facturées ;
+  //   · légalement, vendre un bien n'est pas prester un service. Ce sont deux
+  //     catégories d'opération distinctes (§4.18), qui n'ont pas le même
+  //     traitement comptable — et le client a le droit de voir ce qu'il achète.
+  // On les pose donc en lignes propres, dénommées et quantifiées.
+  try {
+    const catalogues = await obtenirCatalogues().catch(() => ({}));
+    lignes.push(...lignesFournitures(a.nature, {
+      emballage: a.emballage || {},
+      catalogueFournitures: catalogues.fournitures || [],
+    }));
+  } catch { /* une facture doit pouvoir sortir même si le catalogue est
+                indisponible : on ne bloque pas la prestation pour un carton. */ }
+
   return lignes;
 }
 
