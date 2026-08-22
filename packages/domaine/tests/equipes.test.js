@@ -14,6 +14,13 @@ import assert from "node:assert/strict";
 import { plage, seChevauchent, peutRejoindre, effectifSuggere,
          verdictEquipe, modeleDepuisEquipe }
   from "../src/planning/equipes.js";
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const APP = join(dirname(fileURLToPath(import.meta.url)),
+                 "..", "..", "..", "apps", "web", "src");
+const lireEcran = (rel) => readFileSync(join(APP, rel), "utf8");
 
 const MATIN = { id: "m1", libelle: "Déménagement Dupont",
                 heure_debut: "08:00", heure_fin: "12:00" };
@@ -141,4 +148,38 @@ test("l'effectif suggéré respecte une exigence explicite de mission", () => {
   // seul homme n'existe pas.
   assert.equal(effectifSuggere([{}]), 2);
   assert.equal(effectifSuggere([]), 1);
+});
+
+/* ── Le branchement à l'écran ───────────────────────────────────────────── */
+
+test("l'écran AFFICHE le verdict du domaine, il ne le rejuge pas", () => {
+  // Deux moteurs de règles finiraient par diverger. L'écran appelle
+  // `verdictEquipe` et se contente de montrer ce qu'il rend.
+  const src = lireEcran("composants/PlanningJour.jsx");
+  assert.ok(src.includes("verdictEquipe("), "le verdict vient du domaine");
+  assert.ok(src.includes("verdict?.bloquant") && src.includes("verdict?.avertissements"),
+    "les deux niveaux sont affichés séparément");
+  // Le bouton n'est bloqué QUE par `bloquant` — un avertissement n'empêche rien.
+  assert.ok(/disabled=\{!verdict\?\.ok\}/.test(src),
+    "seul un bloquant empêche d'enregistrer");
+});
+
+test("les engagements des AUTRES équipes nourrissent le verdict", () => {
+  // Sans cette entrée, le domaine croirait tout le monde libre et le
+  // chevauchement ne serait jamais détecté à l'écran.
+  const src = lireEcran("composants/PlanningJour.jsx");
+  assert.ok(src.includes("engagementsParMembre"),
+    "l'écran calcule ce que chacun tient déjà ce jour-là");
+  assert.ok(src.includes("e.id === brouillon.id"),
+    "une équipe ne se compare pas à elle-même");
+});
+
+test("la note rapide est distincte de la balise d'atelier", () => {
+  // La note de planning est opérationnelle (« Jean part à 15h ») ; la balise
+  // « i » sert à corriger le logiciel. Deux tables, deux usages.
+  const src = lireEcran("composants/PlanningJour.jsx");
+  assert.ok(src.includes("notesDuJour(") && src.includes("ajouterNoteJour("),
+    "elle passe par les notes de planning");
+  assert.equal(/noterAtelier\(/.test(src), false,
+    "et jamais par la balise d'atelier");
 });
