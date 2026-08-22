@@ -16,7 +16,7 @@ const ACHETEUR = { nom: "Client SA", tva: "BE0999888777",
 const F = facture({
   numero: "2026-000001", date_emission: "2026-07-21", echeance: "2026-08-20",
   vendeur: VENDEUR, acheteur: ACHETEUR,
-  lignes: [{ libelle: "Déménagement", quantite: 1, prix_unitaire_centimes: 100000 }],
+  lignes: [{ libelle: "Déménagement", quantite: 1, prix_unitaire_centimes: 100000, tva_pct: 21 }],
   communication: "+++123/4567/89012+++",
 });
 

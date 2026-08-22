@@ -3,6 +3,7 @@
 // l'intérêt de l'architecture. Aucun n'appelle le réseau.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { qualifierTva } from "../src/facturation/tva.js";
 import { facture, ligne, ventilationTva, valider, echeanceDepuis }
   from "../src/facturation/modele.js";
 import { versXmlUBL, preparerTransmission, passagePermis, estTermine, PASSAGES }
@@ -20,19 +21,19 @@ const ACHETEUR = { nom: "Client SA", tva: "BE0999888777",
 const base = (extra = {}) => facture({
   numero: "2026-000001", date_emission: "2026-07-21", echeance: "2026-08-20",
   vendeur: VENDEUR, acheteur: ACHETEUR,
-  lignes: [{ libelle: "Déménagement", quantite: 1, prix_unitaire_centimes: 100000 }],
-  communication: "+++123/4567/89012+++", ...extra,
+  lignes: [{ libelle: "Déménagement", quantite: 1, prix_unitaire_centimes: 100000, tva_pct: 21 }],
+  communication: "+++123/4567/89012+++", tva_pct_defaut: 21, ...extra,
 });
 
 // ── Modèle ─────────────────────────────────────────────────────────────────
 test("le total de ligne est dérivé, jamais accepté de l'extérieur", () => {
-  const l = ligne({ libelle: "Cartons", quantite: 10, prix_unitaire_centimes: 150 });
+  const l = ligne({ libelle: "Cartons", quantite: 10, prix_unitaire_centimes: 150, tva_pct: 21 });
   assert.equal(l.montant_htva_centimes, 1500);
 });
 
 test("une quantité nulle ou aberrante donne un montant nul, pas NaN", () => {
-  assert.equal(ligne({ libelle: "X", quantite: 0, prix_unitaire_centimes: 500 }).montant_htva_centimes, 0);
-  assert.equal(ligne({ libelle: "X", quantite: "abc", prix_unitaire_centimes: 500 }).montant_htva_centimes, 0);
+  assert.equal(ligne({ libelle: "X", quantite: 0, prix_unitaire_centimes: 500, tva_pct: 21 }).montant_htva_centimes, 0);
+  assert.equal(ligne({ libelle: "X", quantite: "abc", prix_unitaire_centimes: 500, tva_pct: 21 }).montant_htva_centimes, 0);
 });
 
 test("les totaux de facture découlent des lignes", () => {
@@ -303,20 +304,29 @@ test("une ligne sans taux prend le taux par défaut, pas 0 %", () => {
   assert.equal(f.total.tvac_centimes, 94380);
 });
 
-test("un taux 0 % VOULU est respecté — export hors UE", () => {
-  const f = base({ lignes: [
-    { libelle: "Livraison hors UE", quantite: 1, prix_unitaire_centimes: 78000, tva_pct: 0 },
-  ] });
-  assert.equal(f.total.tva_centimes, 0);
-  assert.equal(f.total.tvac_centimes, 78000);
-  assert.equal(f.ventilation_tva[0].taux, 0);
+test("un taux 0 % intérieur EXIGE son motif légal — il ne s'invente pas", () => {
+  // L'ancien test posait une ligne « hors UE » à 0 % sur une facture
+  // belgo-belge : fiscalement incohérent. Un 0 % intérieur n'est pas un taux,
+  // c'est une exonération, et une exonération a une base légale qui doit
+  // figurer sur la facture. Le moteur refuse donc, en le disant.
+  assert.throws(() => base({ lignes: [
+    { libelle: "Livraison", quantite: 1, prix_unitaire_centimes: 78000, tva_pct: 0 },
+  ] }), /exonération|autoliquidation/i);
 });
 
-test("un taux absent et un taux nul ne se confondent pas dans la ventilation", () => {
-  const f = base({ lignes: [
-    { libelle: "Prestation", quantite: 1, prix_unitaire_centimes: 10000, tva_pct: null },
-    { libelle: "Hors UE",    quantite: 1, prix_unitaire_centimes: 10000, tva_pct: 0 },
-  ] });
-  const taux = f.ventilation_tva.map((t) => t.taux).sort((a, b) => a - b);
-  assert.deepEqual(taux, [0, 21], "deux taux distincts, pas un seul à 0");
+test("un taux ABSENT et un taux NUL échouent pour des raisons DIFFÉRENTES", () => {
+  // L'intention d'origine — ne jamais confondre « pas de taux » et « 0 % » —
+  // reste essentielle : c'est la famille du bug qui avait mis la TVA à zéro en
+  // production. Elle s'exprime désormais par deux REFUS distincts au lieu de
+  // deux valeurs distinctes, puisque aucun des deux cas ne peut produire un
+  // document transmissible.
+  const absent = qualifierTva({ paysVendeur: "BE", paysAcheteur: "BE", taux: null });
+  const nul    = qualifierTva({ paysVendeur: "BE", paysAcheteur: "BE", taux: 0 });
+
+  assert.equal(absent.ok, false);
+  assert.equal(nul.ok, false);
+  assert.match(absent.motif, /non fourni/i, "absent = on ignore le taux");
+  assert.match(nul.motif, /exonération|autoliquidation/i, "nul = un choix qui exige un motif");
+  assert.notEqual(absent.motif, nul.motif,
+    "les deux situations ne doivent JAMAIS recevoir le même diagnostic");
 });
