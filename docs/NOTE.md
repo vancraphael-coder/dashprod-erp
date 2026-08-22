@@ -1,81 +1,62 @@
-# Lot 30 — fournitures facturées + domaine des équipes
+# Lot 31 — Planning : note rapide et formation d'équipes
 
-`npm test` : **1029/1029 ✓** — build `apps/web` ✓ — 5 fichiers.
-**Aucune migration.**
+`npm test` : **1032/1032 ✓** — build `apps/web` ✓ — 6 fichiers.
+**Migration `0142` appliquée et éprouvée.**
 
-Ta demande contenait cinq chantiers. J'ai traité les deux qui touchent l'argent
-et ta priorité déclarée. Les trois autres sont listés en fin de note — je ne
-les ai pas bâclés en fin de lot.
+Point 1 sur 3 de ta liste. Les deux autres suivent.
 
-## Les fournitures : un bug qui coûtait de l'argent
+## La note rapide
 
-`lignesFacturePour` ne produisait **qu'une seule ligne** — « Déménagement —
-<client> » — avec le TVAC recomposé. Les fournitures étaient chiffrées mais
-**n'atteignaient jamais la facture**. Cartons fournis, jamais facturés.
+Attachée à une journée, opérationnelle : « Jean part à 15h », « camion 2 au
+garage ». Saisie en une ligne, Entrée valide, retrait d'un clic.
 
-Le plus frappant : `valoriserEmballage` existe depuis longtemps et son propre
-commentaire dit *« c'est ce qui doit être retranscrit sur l'offre / la
-facture »*. La fonction était là, correcte, jamais appelée. Encore un cas où
-l'infrastructure existait et le défaut était ailleurs qu'annoncé.
+**Volontairement distincte de la balise « i »** du lot 21 : celle-ci sert à
+corriger le *logiciel*, celle-là note la *journée*. Deux tables, deux usages —
+les mélanger aurait transformé ton carnet de corrections en pense-bête
+d'exploitation.
 
-**Ta remarque légale était la bonne.** Vendre un carton n'est pas prester une
-manutention : ce sont deux catégories d'opération distinctes (celles du lot 25),
-qui n'ont pas le même traitement comptable — et le client a le droit de voir ce
-qu'il achète, dénommé et quantifié, plutôt qu'un total opaque. Les fournitures
-sortent donc en lignes propres, marquées `vente_biens`, la prestation restant
-`vente_services`.
+## La formation d'équipe
 
-**Le test d'architecture m'a attrapé** sur le premier jet : j'importais
-`stocks/emballage` depuis l'adaptateur, qui est horizontal et n'a pas ce droit.
-Corrigé en passant par l'aiguillage de composition — le même patron que les
-rubriques d'offre.
+L'écran **n'invente aucune règle** : il appelle `verdictEquipe` et affiche ce
+qu'il rend. Deux moteurs de règles finiraient par diverger.
 
-## Les équipes de journée
+Et il affiche les deux niveaux **séparément**, ce qui est tout l'intérêt :
 
-`planning/equipes.js`, pur et testable. Tes trois règles, dont **une seule
-bloque** :
+- ⛔ **bloquant** — empêche d'enregistrer (équipe vide, personne déjà engagée
+  sur une mission qui chevauche) ;
+- ⚠ **avertissement** — s'affiche, n'empêche rien (effectif hors barème,
+  équipe sans mission).
 
-- **Une personne au minimum** → bloque. C'est le seul vrai blocage.
-- **L'effectif hors barème** → avertit seulement, comme tu l'as demandé. Le
-  bureau connaît son terrain mieux que la règle : un chantier peut légitimement
-  demander six personnes là où le barème en suggère quatre.
-- **Une personne dans deux équipes le même jour** → autorisé si les missions ne
-  se chevauchent pas. Le cas réel : déménagement le matin, lift l'après-midi.
+Le bouton n'est désactivé que par un bloquant. C'est ta règle : le maximum
+avertit, il n'interdit pas.
 
-**Le chevauchement est le cœur, et j'ai soigné trois cas limites :**
+**Le point technique qui fait marcher le chevauchement** : l'écran calcule ce
+que chaque personne tient *déjà* dans les **autres** équipes du jour, et le
+passe au domaine. Sans cette entrée, le domaine croirait tout le monde libre et
+le chevauchement ne serait jamais détecté. Une équipe qu'on modifie ne se
+compare évidemment pas à elle-même.
 
-Deux missions qui se touchent bout à bout (12h00 / 12h00) **ne** se chevauchent
-pas — sinon on interdirait des journées parfaitement valides.
+**Les équipes types** : « Garder comme équipe type » enregistre le groupe de
+personnes sous un nom. Un clic sur le nom le reforme un autre jour — sans les
+missions ni la date, comme prévu.
 
-Une mission **sans horaire occupe la journée entière**. Prudence assumée : sans
-heures, impossible de prouver qu'elle laisse de la place, donc on ne le suppose
-pas. Et le message dit quoi faire — « posez des heures pour la placer deux
-fois » — au lieu de refuser sèchement.
+## Côté base
 
-Un **chantier de nuit** (22h → 02h) est géré : sans garde, la fin « avant » le
-début inverserait la plage et tout chevauchement passerait inaperçu.
+`equipes_jour` accepte volontairement **deux équipes le même jour pour la même
+personne**. C'est le domaine qui juge le chevauchement : une contrainte aveugle
+en base interdirait un cas parfaitement légitime — déménagement le matin, lift
+l'après-midi.
 
-**Le modèle d'équipe ne retient que les personnes** — ni date, ni missions. Les
-mêmes trois personnes travaillent souvent ensemble, mais jamais sur le même
-chantier deux jours de suite ; garder la date ferait rejouer un passé.
-
-## Ce que je n'ai pas fait, et pourquoi
-
-Trois chantiers de ta demande restent entiers. Chacun mérite son lot :
-
-1. **La note rapide au planning** — petite, mais elle doit se poser au bon
-   endroit dans l'écran ; je la ferai avec le branchement des équipes.
-2. **Le branchement des équipes à l'écran Planning** — le domaine est prêt et
-   prouvé, l'interface reste à construire.
-3. **Compte + Paramètres : organisation et CSS** — un vrai chantier d'UI, pas
-   un ajout de fin de lot.
-4. **Le dossier maître de documentation** — c'est le plus structurant pour toi
-   (portabilité entre sessions et entre LLM sans dérive). Il mérite d'être
-   pensé, pas expédié.
+Les tables de liaison n'ont pas d'`org_id` : leur cloisonnement passe par une
+jointure sur l'équipe. Sans ça, un identifiant deviné donnerait accès à
+l'équipe d'une autre organisation.
 
 ## À vérifier à l'œil
 
-1. Un dossier avec de l'emballage consommé : la facture montre maintenant les
-   fournitures en lignes séparées, avec quantité et prix unitaire.
-2. Le total de la facture augmente d'autant — c'est le montant qui n'était pas
-   facturé.
+1. Planning, un jour avec des missions : « Note du jour » et « Équipes du jour »
+   apparaissent au-dessus des missions.
+2. Former une équipe d'une personne sur une mission du matin → enregistrable.
+3. Former une seconde équipe avec la même personne sur une mission de
+   l'après-midi → **autorisé**. Sur une mission qui chevauche → **bloqué**, avec
+   les heures dans le message.
+4. Une personne pour trois missions → enregistrable, avec un avertissement.

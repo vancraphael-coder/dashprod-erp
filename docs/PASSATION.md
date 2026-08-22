@@ -932,8 +932,8 @@ deux jours de suite ; garder la date ferait rejouer un passé.
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 1029/1029 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
-**Migrations appliquées : jusqu'à `0141_peppol_evenements_webhook`** (appliquée et
+**`npm test` : 1032/1032 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**Migrations appliquées : jusqu'à `0142_equipes_jour_et_notes_planning`** (appliquée et
 éprouvée le 22/08 : comptabilisation sans approbation refusée, approbation
 anonyme refusée, chemin nominal validé, doublon rejeté).
 ### Lots livrés
@@ -979,6 +979,7 @@ anonyme refusée, chemin nominal validé, doublon rejeté).
 | 28 | **P1 LEVÉ — prix des offres publiés** + remise annuelle 5 %, calcul d'abonnement dans le domaine | 0140 |
 | 29 | **Point d'accès : envoi ET réception** — fonction serveur, webhook, secret hors du navigateur | 0141 |
 | 30 | **Fournitures facturées** (vente de biens distincte) + **domaine des équipes de journée** | — |
+| 31 | **Planning : note rapide + formation d'équipes** à l'écran | 0142 |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire
