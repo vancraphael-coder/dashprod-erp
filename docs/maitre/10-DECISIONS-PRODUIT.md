@@ -94,3 +94,38 @@ c'est un axe unique et assumé.
 - **Moteur de conformité métier** (licences, agréments, permis) : bonne idée
   produit, mais aucun client payant ne l'attend aujourd'hui.
 - **Module boutique** (`stock_articles`) : tables vides, différer ne coûte rien.
+
+## Cartes métier, planning et facturation par période (23/08/2026)
+
+- **Une CARTE MÉTIER est l'unité de travail** : un travail identifiable, posé à
+  une date, pourvu en gens et en véhicules. Le catalogue est unique
+  (`metiers/cartes.js`) et HORIZONTAL — il décrit la forme d'une carte, jamais
+  le prix ni le contenu d'un métier. C'est ce qui permettra d'ajouter un métier
+  futur sans toucher au déménagement.
+
+- **Le « X » de « 2 membres / X » est l'effectif VENDU**, pas une constante du
+  code. Le prix vient de `BAREME_HORAIRE[nbDemenageurs]` (2 à 6, choisi au
+  devis) : comparer l'équipe à un plancher figé faisait passer au vert un
+  chantier vendu à quatre. Le plancher du métier ne sert que de repli quand le
+  devis est absent — et un devis SOUS le plancher ne fait pas descendre la
+  carte, c'est un devis à revoir.
+
+- **Une mission pressentie SIGNALE, elle n'interdit pas.** (Décision de
+  Raphaël.) Une date connue mais non confirmée doit se voir au planning, en
+  translucidité, et entrer dans la détection de conflits comme AVERTISSEMENT.
+  Bloquer une ressource sur un devis qui ne se signera peut-être jamais
+  reviendrait à se bloquer soi-même.
+
+- **Une mission MULTI-JOURS reste UN SEUL document.** (Décision de Raphaël.)
+  Une prestation étalée sur plusieurs jours ou mois produit une offre et une
+  facture uniques, détaillant **par jour** les heures et le nombre de membres —
+  d'abord *prévus*, puis *exacts*. Tout en un à chaque fois : c'est ce qui
+  permet la vue d'ensemble instantanée et évite l'erreur de recollement entre
+  plusieurs pièces. Côté Peppol, cela correspond exactement à `InvoicePeriod`
+  (`prestation_debut` / `prestation_fin`).
+
+  ⚠ **Fondation manquante, constatée en base le 23/08/2026** : `ubl.js` émet
+  déjà `<cac:InvoicePeriod>`, mais les colonnes `prestation_debut` et
+  `prestation_fin` **n'existent pas dans `factures`**. La période part donc
+  toujours vide. Et `missions.date` est une date simple, sans plage. Voir le
+  lot 38.
