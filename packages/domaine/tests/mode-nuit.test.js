@@ -80,3 +80,58 @@ test("aucun FOND bleu clair en dur (il ignore le mode nuit lui aussi)", () => {
   assert.deepEqual(fautes, [],
     "fond bleu clair en dur (utiliser C.bleuClair) :\n" + fautes.join("\n"));
 });
+
+/* ── Les TEINTES d'alerte : fonds, filets et encres (lot 34) ─────────────── */
+
+test("aucune TEINTE d'alerte en dur : ni fond, ni filet, ni encre", () => {
+  // CE QUE CE TEST AJOUTE AUX DEUX PRÉCÉDENTS.
+  //
+  // Ils ne surveillaient que le blanc et cinq bleus. Six familles de teintes
+  // passaient donc au travers : l'ambre d'un avertissement (#FFFBEB), le rouge
+  // d'un refus (#FEF2F2), le vert d'une confirmation (#ECFDF5), le bleu d'une
+  // information (#EFF6FF), le violet, le gris. 54 occurrences sur 25 écrans.
+  // En mode nuit, chaque bandeau d'alerte devenait la chose la plus lumineuse
+  // de l'écran.
+  //
+  // ET SURTOUT : ce test ne se limite PAS au fond. Corriger les seuls fonds
+  // fut une régression en soi — le fond virait au sombre, l'encre restait
+  // foncée, et le texte devenait illisible. Un bandeau est un TRIPLET (fond,
+  // filet, encre) ; en surveiller un seul terme garantit de casser les autres.
+  //
+  // CE QUI CASSE SANS LUI : un écran ajouté demain repose un `#FFFBEB` en dur,
+  // personne ne le voit en mode clair, et le mode nuit se redégrade écran par
+  // écran — exactement l'histoire des 54 occurrences.
+  const INTERDITS = {
+    "#FFFBEB": "C.teinteAmbre", "#FEF2F2": "C.teinteRouge",
+    "#ECFDF5": "C.teinteVerte", "#EFF6FF": "C.teinteBleue",
+    "#F5F3FF": "C.teinteViolette", "#F8FAFC": "C.teinteNeutre",
+    "#EEF2FF": "C.teinteIndigo", "#FDF2F8": "C.teinteRose",
+    "#FDE68A": "C.filetAmbre", "#FECACA": "C.filetRouge",
+    "#A7F3D0": "C.filetVert", "#BFDBFE": "C.filetBleu",
+    "#DDD6FE": "C.filetViolet", "#E2E8F0": "C.filetNeutre",
+    "#92400E": "C.encreAmbre", "#78350F": "C.encreAmbre", "#B45309": "C.encreAmbre",
+    "#991B1B": "C.encreRouge", "#065F46": "C.encreVert", "#15803D": "C.encreVert",
+    "#1E40AF": "C.encreBleu", "#1E3A8A": "C.encreBleu",
+    "#5B21B6": "C.encreViolet", "#3730A3": "C.encreIndigo", "#9D174D": "C.encreRose",
+  };
+  const fautes = [];
+  for (const f of fichiersJsx(ECRANS)) {
+    const src = readFileSync(f, "utf8");
+    src.split("\n").forEach((ligne, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(ligne)) return;      // commentaire
+      for (const [hexa, jeton] of Object.entries(INTERDITS)) {
+        // La teinte doit être ENTRE GUILLEMETS pour compter. Ce n'est pas un
+        // détail de syntaxe : les écrans qui ouvrent une fenêtre d'impression
+        // y écrivent une feuille CSS en clair (`background:#EFF6FF;`, sans
+        // guillemets). Un document imprimé est blanc dans les deux modes —
+        // c'est l'exception déjà admise pour FactureDoc et ReleveDoc. Viser le
+        // hexa quoted ne retient que le style JSX, qui est le vrai sujet.
+        if (new RegExp('"' + hexa + '"', "i").test(ligne)) {
+          fautes.push(`${f.replace(RACINE, "")}:${i + 1} → ${jeton}`);
+        }
+      }
+    });
+  }
+  assert.deepEqual(fautes, [],
+    "teinte d'alerte en dur (elle ignore le mode nuit) :\n" + fautes.join("\n"));
+});

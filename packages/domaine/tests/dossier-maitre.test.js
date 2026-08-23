@@ -24,7 +24,8 @@ test("le dossier maître est complet et se lit dans un ordre", () => {
   // La numérotation N'EST PAS décorative : elle donne l'ordre de lecture à
   // quelqu'un qui arrive sans contexte.
   const attendus = ["00-DEMARRER-ICI.md", "10-DECISIONS-PRODUIT.md",
-    "20-OUVERT.md", "30-REGLES-IA-EXTERNE.md", "40-METHODE.md", "50-ARCHIVE.md"];
+    "20-OUVERT.md", "25-PARAMETRES-ROADMAP.md", "30-REGLES-IA-EXTERNE.md",
+    "40-METHODE.md", "50-ARCHIVE.md"];
   const presents = readdirSync(MAITRE).filter((f) => f.endsWith(".md")).sort();
   assert.deepEqual(presents, attendus.sort());
 });
@@ -103,40 +104,81 @@ const APP = join(dirname(fileURLToPath(import.meta.url)),
                  "..", "..", "..", "apps", "web", "src");
 const lireEcran = (rel) => readFileSync(join(APP, rel), "utf8");
 
-test("Paramètres : plus aucun groupe solitaire", () => {
-  // Avant : dix rubriques pour vingt entrées, dont CINQ n'en contenaient
-  // qu'une. Un titre de section pour un item unique n'organise rien — il
-  // double la hauteur sans rien apprendre.
-  const src = lireEcran("ecrans/Parametres.jsx");
-  const groupes = src.split("<Groupe titre=").slice(1);
-  assert.ok(groupes.length >= 5 && groupes.length <= 7,
-    `${groupes.length} groupes : viser 5 à 7 familles lisibles`);
-  for (const g of groupes) {
-    const bloc = g.slice(0, g.indexOf("</Groupe>"));
-    const entrees = (bloc.match(/<Entree /g) || []).length
-                  + (bloc.includes("LISTES_CATALOGUE.map") ? 2 : 0);
-    assert.ok(entrees >= 2,
-      `un groupe ne contient qu'une entrée : ${bloc.slice(0, 40)}`);
+test("Compte et Paramètres partagent UNE forme de ligne, pas quatre", () => {
+  // Le Compte portait quatre formes pour une seule idée — « une ligne qui
+  // ouvre un écran » : un bloc cousu, deux cartes copiées caractère pour
+  // caractère, et une quatrième pour l'avis. Un commentaire du fichier
+  // avertissait déjà qu'« une copie finit toujours par diverger » ; elle avait
+  // divergé (bordure et ombre propres d'un côté, pas de l'autre).
+  //
+  // CE QUI CASSE SANS CE TEST : la prochaine porte ajoutée au Compte est
+  // recopiée à la main, et les deux écrans redivergent.
+  const profil = lireEcran("ecrans/Profil.jsx");
+  const params = lireEcran("ecrans/Parametres.jsx");
+  for (const [nom, src] of [["Profil", profil], ["Parametres", params]]) {
+    assert.match(src, /from "\.\.\/composants\/ListeReglages\.jsx"/,
+      `${nom} consomme le composant partagé`);
+    assert.equal(/function (Groupe|Entree)\(/.test(src), false,
+      `${nom} ne redéfinit pas sa propre forme`);
+  }
+  // Les trois formes mortes du Compte ont bien disparu.
+  for (const mort of ["carteAction", "function Porte(", "function BlocPortes("]) {
+    assert.equal(profil.includes(mort), false,
+      `forme morte encore présente : ${mort}`);
   }
 });
 
-test("Paramètres : le groupe est un CONTENEUR, pas un titre flottant", () => {
-  // On doit VOIR le groupe, pas seulement le lire. Les entrées y sont cousues
-  // par des filets ; la première n'en porte pas, sinon elle doublerait la
-  // bordure du conteneur.
-  const src = lireEcran("ecrans/Parametres.jsx");
-  assert.ok(src.includes("function Groupe("), "le groupe est un composant");
-  assert.ok(src.includes("borderTop: premier ?"),
-    "les entrées sont séparées par un filet, la première exceptée");
-  assert.equal(src.includes("<Rubrique>"), false,
-    "l'ancien titre flottant a disparu");
+test("les lignes de réglage portent leurs états dans la FEUILLE, pas en ligne", () => {
+  // Un style inline ne connaît ni :hover, ni :active, ni :focus-visible. Les
+  // lignes de réglage étaient donc inertes — et la règle globale de survol
+  // (filtre de luminosité) ne produit RIEN sur un fond transparent, qui est
+  // justement le leur. Les deux écrans les plus denses de l'app n'avaient
+  // aucun retour au geste.
+  const composant = lireEcran("composants/ListeReglages.jsx");
+  assert.ok(composant.includes('className="reglage-entree"'),
+    "l'entrée porte la classe qui la rend vivante");
+  const theme = lireEcran("lib/theme.jsx");
+  for (const etat of [".reglage-entree:not(:disabled):hover",
+                      ".reglage-entree:not(:disabled):active",
+                      ".reglage-entree:focus-visible"]) {
+    assert.ok(theme.includes(etat), `état manquant dans la feuille : ${etat}`);
+  }
+  // Le survol doit suivre l'ACCENT réglable, pas un bleu écrit en dur.
+  assert.ok(theme.includes("--dp-survol") && theme.includes("--dp-accent"),
+    "les surfaces d'interaction suivent la couleur d'accent choisie");
 });
 
-test("Compte : les portes vers ailleurs ne sont plus copiées à la main", () => {
-  // Deux boutons identiques vivaient côte à côte, caractère pour caractère.
-  // Une copie diverge toujours : l'un se corrige, l'autre est oublié.
-  const src = lireEcran("ecrans/Profil.jsx");
-  assert.ok(src.includes("function Porte("), "un composant partagé");
-  assert.ok((src.match(/<Porte /g) || []).length >= 2,
-    "les deux portes passent par lui");
+
+/* ── La roadmap des paramètres (lot 34) ─────────────────────────────────── */
+
+test("la roadmap des paramètres nomme, pour chaque chantier, QUI décide", () => {
+  // Une roadmap qui liste des manques sans dire à qui appartient la décision
+  // se transforme en liste de tâches — et un assistant finit par trancher à la
+  // place de Raphaël, ou pire, à la place d'un expert-comptable.
+  //
+  // CE QUI CASSE SANS CE TEST : le document dérive vers un backlog technique,
+  // et la distinction « décision produit / décision réglementaire » se perd.
+  const r = lire("25-PARAMETRES-ROADMAP.md");
+  for (const qui of ["Raphaël", "Expert-comptable", "Conseiller TVA"]) {
+    assert.ok(new RegExp(qui, "i").test(r), `${qui} doit être nommé`);
+  }
+  // Chaque chantier dit ce qu'on OBSERVE, pas seulement ce que le code semble
+  // faire. C'est ce qui distingue un constat d'une supposition.
+  assert.match(r, /16 factures émises/,
+    "le constat en base doit figurer, chiffré");
+  assert.match(r, /select .*factures/is,
+    "les requêtes de contrôle doivent être rejouables");
+});
+
+test("la roadmap dit que les mentions « pas encore appliqué » doivent mourir", () => {
+  // Une mention qui survit à sa cause redevient un mensonge : elle annoncerait
+  // qu'un réglage est inerte alors qu'il agit.
+  const r = lire("25-PARAMETRES-ROADMAP.md");
+  assert.match(r, /doivent disparaître|survit à sa cause/i);
+  // Et l'écran porte bien ces mentions.
+  const id = lireEcran("ecrans/Identite.jsx");
+  assert.ok(id.includes("function PasEncoreApplique("),
+    "le composant de signalement existe");
+  assert.ok((id.match(/<PasEncoreApplique /g) || []).length >= 3,
+    "les trois réglages inertes sont signalés");
 });
