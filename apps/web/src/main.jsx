@@ -663,7 +663,8 @@ function App() {
   } else if (route.ecran === "parametres") {
     ecran = <Parametres retour={() => nav.compte()}
       versBareme={nav.bareme} versCout={nav.cout}
-      versTextes={nav.textes} versArchivage={nav.archivage} />;
+      versTextes={nav.textes} versArchivage={nav.archivage}
+      modules={acces?.modules || []} />;
   } else if (route.ecran === "bareme") {
     ecran = <Bareme retour={() => nav.parametres()} />;
   } else if (route.ecran === "cout") {
