@@ -47,8 +47,13 @@ c'est un axe unique et assumé.
   l'**explique** à l'écran.
 - Déménagement, lift, sous-traitance → *vente de services*, 21 %.
 - Boxe, zone → *location d'espace de stockage*, 21 %.
-- **Les fournitures sont une vente de BIENS**, distincte de la manutention.
-  Lignes propres, dénommées et quantifiées.
+- **Les fournitures ne s'ajoutent NI au devis NI à la facture.** C'est une
+  vente de BIENS, distincte de la manutention : elle a son propre document.
+  (Décision redite deux fois par Raphaël ; appliquée le 23/08/2026, verrouillée
+  par un test dans `emballage.test.js`.) Ce qui reste à construire — séquence
+  légale, prix client, taux — est au chantier V de `25-PARAMETRES-ROADMAP.md`.
+  ⚠ Une formulation antérieure de ce document disait « lignes propres sur la
+  facture ». Elle est **caduque**.
 - Le **matériel de terrain** (sangles, couvertures, monte-meuble) n'est **jamais
   facturé** : ce sont les outils de l'entreprise.
 - Un taux non qualifiable est **refusé**, jamais deviné. Intra-UE, hors UE et

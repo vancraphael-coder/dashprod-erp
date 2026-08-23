@@ -61,7 +61,10 @@ Ces points sont tranchés. Les rediscuter fait perdre du temps et dérive :
 1. Ce fichier.
 2. `10-DECISIONS-PRODUIT.md` — ce qui est arrêté.
 3. `20-OUVERT.md` — ce qui attend une décision.
-4. `PASSATION.md` (racine) — l'état technique détaillé et les pièges.
-5. `30-REGLES-IA-EXTERNE.md` — si vous confiez un travail à un autre outil.
+4. `25-PARAMETRES-ROADMAP.md` — les réglages qui se saisissent SANS EFFET, et
+   ce dont chacun dépend pour être branché. À lire avant de toucher à la
+   facturation : trois champs y sont inertes en production.
+5. `PASSATION.md` (racine) — l'état technique détaillé et les pièges.
+6. `30-REGLES-IA-EXTERNE.md` — si vous confiez un travail à un autre outil.
 
 Le reste de `docs/` est de la matière de réflexion : utile, jamais normatif.

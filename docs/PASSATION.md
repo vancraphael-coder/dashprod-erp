@@ -3,7 +3,7 @@
 > **À lire en entier avant de coder.** Ce document permet à une nouvelle
 > conversation de reprendre le travail sans rien casser ni rien réinventer.
 >
-> **Dernière mise à jour :** 17/08/2026 — après le lot 10d.
+> **Dernière mise à jour :** 23/08/2026 — après le lot 34.
 > **À mettre à jour tous les 7 messages**, ou en fin de conversation.
 > Procédure de mise à jour : §9.
 
@@ -1031,6 +1031,82 @@ en élargissant : `Profil.jsx` (onglets) et `Mail.jsx`.
 (`#E7EFFC`, `#EEF2F8`, `#EFF4FC`, `#E8F0FE`, `#DBEAFE`). Un garde-fou qui ne
 cherche qu'une forme du bug laisse passer les autres.
 
+## 5bis. Lot 34 — 23/08/2026 (le plus récent)
+
+**Dépôt PUBLIC désormais** (`github.com/vancraphael-coder/dashprod-erp`). Il se
+clone depuis la sandbox. Conséquence : plus AUCUNE livraison à l'aveugle —
+l'arborescence se lit, `npm test` et le build tournent pour de vrai. C'est ce
+qui avait produit l'incohérence des lots 01/02 (`.mjs`, dossiers inventés).
+
+**Compteurs :** 1063 tests verts (1049 avant), build vert, migrations toujours
+à **0143** (aucune migration ce lot — rien ne le demandait).
+
+### Ce qui a été livré
+
+1. **Fournitures hors devis et facture.** `lignesFacturePour` ne pousse plus
+   `lignesFournitures`. Décision de Raphaël, redite deux fois. Verrouillé par
+   un test **éprouvé par sabotage** (rebranchement volontaire → rouge).
+2. **Rangement des réglages sorti de l'écran** vers
+   `packages/domaine/src/organisation/reglages.js` — fonction pure.
+3. **Compte et Paramètres** sur une grammaire partagée
+   (`composants/ListeReglages.jsx`).
+4. **Jetons de teinte** (8 familles) dans `apparence.js` ; 64 fonds + 122
+   encres/filets passés aux jetons ; garde `mode-nuit.test.js` durci.
+5. **`docs/maitre/25-PARAMETRES-ROADMAP.md`** — 8 chantiers de réglages inertes.
+6. **Correctif du test rouge d'origine** : `EspaceClient` avait perdu sa molette.
+
+### Le défaut trouvé en base — à ne pas réapprendre
+
+Interrogée en production, pas déduite du code :
+
+```sql
+select count(*) filter (where emise) emises,
+       count(*) filter (where emise and echeance is null) sans_echeance,
+       count(*) filter (where emise and communication is null) sans_ogm
+  from factures;   -- → 16 / 16 / 16
+```
+
+**Six réglages se saisissent sans aucun effet** : `echeance_jours` (Roovers a
+mis 10), `prefixe_numero` (« GG »), `mention_legale`, `communication` (OGM),
+`communication_structuree`, `forfait_base`. Et les cinq prix client de cartons
+du Barème (`carton_standard`…) ne sont lus par personne.
+
+**Le pire cas est l'OGM** : `FactureDoc.jsx` le RECALCULE à l'affichage à
+partir du numéro. Le PDF montre donc une communication structurée que la base
+n'a pas — et Peppol part avec `communication: null`. Deux vérités sur un
+document de paiement.
+
+Ces champs restent saisissables et portent une mention « Pas encore appliqué »
+(`PasEncoreApplique` dans `Identite.jsx`). **Ces mentions doivent mourir** à
+mesure que les chantiers se ferment : une mention qui survit à sa cause
+redevient un mensonge.
+
+### Deux leçons de méthode
+
+**Un test qui lit le fichier source ne prouve rien.** Trois tests comptaient
+des motifs dans le texte de `Parametres.jsx`. Ils prouvaient une mise en page,
+pas un comportement. Déplacée dans le domaine, la logique est devenue
+exerçable — et le nouveau test a **immédiatement** attrapé un défaut invisible
+autrement : en offre **Basique**, la famille « Consulter » se réduisait à
+Archivage seul. On ne le voit jamais en développant, parce qu'on développe
+toujours tous modules ouverts. Toujours exercer les cas d'abonnement PAUVRE.
+
+**Corriger la moitié d'un triplet est une régression.** Passer les FONDS aux
+jetons sans les ENCRES a rendu des textes foncés illisibles sur fond sombre.
+Un bandeau est un triplet (fond, filet, encre) ; en surveiller un seul terme
+garantit de casser les autres. Le garde couvre désormais les trois.
+
+### Décisions qui attendent Raphaël
+
+- Les 16 factures émises reçoivent-elles échéance et OGM **rétroactivement** ?
+  (avis : non — c'est écrire dans une pièce close ; appliquer aux suivantes.)
+- Le **prix client des fournitures** vit-il dans le barème ou dans le catalogue ?
+  (avis : le catalogue, à côté du coût — la marge se lit d'un coup d'œil.)
+- Sur quel **document** sort la vente de fournitures, et sous quelle séquence
+  légale (C-03) ? → expert-comptable + conseiller TVA. Chantier V de la roadmap.
+
+---
+
 ## 5. État au 17/08/2026
 
 **`npm test` : 1049/1049 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
@@ -1246,6 +1322,13 @@ Composants ajoutés : `composants/Repere.jsx`, `MenuCreation.jsx`,
 `BlocsNature.jsx`, `Conges.jsx`, `RaccourciBoite.jsx`, `Affectation.jsx`.
 
 Écrans ajoutés : `Services.jsx`, `Contrats.jsx`, `Carnet.jsx`.
+
+**Lot 34 :** module domaine `organisation/reglages.js` (rangement pur des
+familles de réglages) ; composant `composants/ListeReglages.jsx` (Groupe,
+Entree, OngletsSegmentes, Bandeau — grammaire partagée par Compte et
+Paramètres) ; tests `reglages.test.js`. Jetons de teinte `teinte*` / `filet*` /
+`encre*` dans `lib/apparence.js` : **ne jamais réécrire un fond d'alerte en
+dur**, le garde `mode-nuit.test.js` le refuse.
 
 ---
 
