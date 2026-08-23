@@ -281,11 +281,11 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           planning et y reporte camions + équipe pressentis. */}
       {instance?.statut === "signee" && ["devis", "envoye"].includes(affaire.etat) && (
         <div style={{ margin: "0 16px 10px", padding: "11px 12px", borderRadius: 12,
-          background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#065F46" }}>
+          background: C.teinteVerte, border: `1px solid ${C.filetVert}` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.encreVert }}>
             Offre signée — confirmation en attente
           </div>
-          <div style={{ fontSize: 11.5, color: "#047857", marginTop: 2, marginBottom: 8 }}>
+          <div style={{ fontSize: 11.5, color: C.encreVert, marginTop: 2, marginBottom: 8 }}>
             Confirmez pour créer la mission au planning (camions et équipe
             pressentis y seront reportés).
           </div>
@@ -304,8 +304,8 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
       {/* Dossier venu du terrain : à valider par le bureau (brouillon → devis). */}
       {affaire.etat === "brouillon" && (
         <div style={{ margin: "0 16px 10px", padding: "11px 12px", borderRadius: 12,
-          background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#5B21B6" }}>
+          background: C.teinteViolette, border: `1px solid ${C.filetViolet}` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: C.encreViolet }}>
             Dossier créé sur le terrain — à valider
           </div>
           <div style={{ fontSize: 11.5, color: "#6D28D9", marginTop: 2, marginBottom: 8 }}>
@@ -758,7 +758,7 @@ function ZoneMarquerEffectue({ affaireId, onFait }) {
             <div key={p.cle} style={{ display: "flex", gap: 8, alignItems: "baseline",
                                       padding: "5px 0" }}>
               <span style={{ fontSize: 13, flexShrink: 0,
-                             color: ok ? "#15803D" : C.ambre }}>
+                             color: ok ? C.encreVert : C.ambre }}>
                 {ok ? "✓" : "○"}
               </span>
               <span style={{ flex: 1 }}>
@@ -869,14 +869,14 @@ function ZoneReconciliation({ affaire, affaireId, onFait }) {
 
       {enAttente.map((m) => (
         <div key={m.id} style={{ marginTop: 10, padding: 11, borderRadius: 10,
-          border: "1px solid #FDE68A", background: "#FFFBEB" }}>
+          border: `1px solid ${C.filetAmbre}`, background: C.teinteAmbre }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <span style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>
               {m.type ? m.type.charAt(0).toUpperCase() + m.type.slice(1) : "Chantier"}
               {m.date ? ` · ${new Date(m.date + "T00:00:00").toLocaleDateString("fr-BE",
                 { day: "numeric", month: "short" })}` : ""}
             </span>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#B45309" }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: C.encreAmbre }}>
               remonté du terrain
             </span>
           </div>
@@ -912,7 +912,7 @@ function ZoneReconciliation({ affaire, affaireId, onFait }) {
       ))}
 
       {recon.confirmees > 0 && enAttente.length === 0 && (
-        <div style={{ marginTop: 10, fontSize: 12, color: "#15803D", fontWeight: 600 }}>
+        <div style={{ marginTop: 10, fontSize: 12, color: C.encreVert, fontWeight: 600 }}>
           ✓ {recon.confirmees} chantier{recon.confirmees > 1 ? "s" : ""} confirmé{recon.confirmees > 1 ? "s" : ""}.
         </div>
       )}
@@ -947,7 +947,7 @@ function ZoneCloture({ affaire, affaireId, onFait }) {
     const bilan = affaire.cloture_bilan;
     const derog = mentionDerogation(bilan);
     return (
-      <div style={{ ...S.carte, background: "#F1F5F9", border: `1px solid ${C.bord}` }}>
+      <div style={{ ...S.carte, background: C.teinteNeutre, border: `1px solid ${C.bord}` }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
           🔒 Dossier clôturé
         </div>
@@ -957,8 +957,8 @@ function ZoneCloture({ affaire, affaireId, onFait }) {
         </div>
         {derog && (
           <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 9,
-                        background: "#FFF7ED", border: "1px solid #FDE68A",
-                        fontSize: 11.5, color: "#92400E", lineHeight: 1.45 }}>
+                        background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                        fontSize: 11.5, color: C.encreAmbre, lineHeight: 1.45 }}>
             {derog}
           </div>
         )}
@@ -1016,9 +1016,9 @@ function ZoneCloture({ affaire, affaireId, onFait }) {
       <div style={{ marginTop: 10 }}>
         {s.points.map((p) => {
           const manque = p.statut === "manquant";
-          const couleur = p.statut === "ok" ? "#15803D"
+          const couleur = p.statut === "ok" ? C.encreVert
                         : manque && p.bloquant ? C.rouge
-                        : manque ? "#92400E" : C.fantome;
+                        : manque ? C.encreAmbre : C.fantome;
           return (
             <div key={p.cle} style={{ display: "flex", gap: 8, alignItems: "baseline",
                                       padding: "4px 0", fontSize: 12.5 }}>
@@ -1034,7 +1034,7 @@ function ZoneCloture({ affaire, affaireId, onFait }) {
                 )}
               </span>
               {manque && !p.bloquant && (
-                <span style={{ fontSize: 10.5, color: "#92400E" }}>réserve</span>
+                <span style={{ fontSize: 10.5, color: C.encreAmbre }}>réserve</span>
               )}
             </div>
           );
@@ -1101,11 +1101,11 @@ function ZoneDesistement({ affaire, affaireId, onFait }) {
   // terrain se remobilise.
   if (affaire.etat === "annule") {
     return (
-      <div style={{ ...S.carte, background: "#FFF7ED", border: "1px solid #FDE68A" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#92400E" }}>
+      <div style={{ ...S.carte, background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}` }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.encreAmbre }}>
           Dossier annulé
         </div>
-        <div style={{ fontSize: 12, color: "#92400E", marginTop: 4, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12, color: C.encreAmbre, marginTop: 4, lineHeight: 1.5 }}>
           Il n'apparaît plus au planning, ni au bureau ni au terrain.
         </div>
         <button
@@ -1146,8 +1146,8 @@ function ZoneDesistement({ affaire, affaireId, onFait }) {
     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.bord}` }}>
       {affaire.etat === "reporte" && (
         <div style={{ marginBottom: 10, padding: "9px 11px", borderRadius: 10,
-          background: "#FFFBEB", border: "1px solid #FDE68A",
-          fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+          background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+          fontSize: 11.5, color: C.encreAmbre, lineHeight: 1.5 }}>
           Dossier reporté, en attente d'une date. Saisissez la nouvelle date du
           déménagement plus haut : le chantier sera replanifié automatiquement.
         </div>
@@ -1168,10 +1168,10 @@ function ZoneDesistement({ affaire, affaireId, onFait }) {
 
       {mode && (
         <div style={{ padding: 12, borderRadius: 11,
-          background: mode === "annuler" ? "#FEF2F2" : "#FFFBEB",
-          border: `1px solid ${mode === "annuler" ? "#FECACA" : "#FDE68A"}` }}>
+          background: mode === "annuler" ? C.teinteRouge : C.teinteAmbre,
+          border: `1px solid ${mode === "annuler" ? C.filetRouge : C.filetAmbre}` }}>
           <div style={{ fontSize: 13, fontWeight: 800,
-            color: mode === "annuler" ? "#991B1B" : "#92400E", marginBottom: 8 }}>
+            color: mode === "annuler" ? C.encreRouge : C.encreAmbre, marginBottom: 8 }}>
             {mode === "annuler" ? "Annuler le dossier" : "Reporter le chantier"}
           </div>
 

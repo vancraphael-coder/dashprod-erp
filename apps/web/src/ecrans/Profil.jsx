@@ -18,6 +18,7 @@ import { deconnecter } from "../lib/supabase.js";
 import { avisProduitMien, definirAvisProduit } from "../lib/adaptateur.js";
 import { DemanderConge, MesConges } from "../composants/Conges.jsx";
 import { C, S } from "../lib/theme.jsx";
+import { Groupe, Entree, OngletsSegmentes } from "../composants/ListeReglages.jsx";
 import { libelleCapacite } from "@domaine/noyau/permissions.js";
 
 const ETATS = { neuf: "Neuf", bon: "Bon", use: "Usé", a_remplacer: "À remplacer" };
@@ -48,6 +49,28 @@ const jour = (iso) => {
 export default function Profil({ profil, versParametres, versDiagnostic, versDemandes,
                                  versCentres, versRapport, peutConfigurer }) {
   const [onglet, setOnglet] = useState("inventaire");
+  const [avisOuvert, setAvisOuvert] = useState(false);
+  const [note, setNote] = useState(0);
+
+  // Les portes déclarées plutôt que dessinées : on peut alors les compter, et
+  // ne pas afficher un titre de famille au-dessus du vide. Un membre sans
+  // droit de configuration ni accès réseau n'a aucune porte — la famille
+  // entière disparaît au lieu de laisser un cadre creux.
+  const portesPilotage = [
+    peutConfigurer && versParametres && { cle: "parametres", icone: "⚙️",
+      titre: "Paramètres",
+      resume: "Identité, barème, catalogues, textes, abonnement.",
+      onClick: versParametres },
+    versCentres && { cle: "centres", icone: "🏭", titre: "Centres logistiques",
+      resume: "Vos centres, et qui y travaille.", onClick: versCentres },
+    versRapport && { cle: "rapport", icone: "📊",
+      titre: "Compte rendu hebdomadaire",
+      resume: "Où en est chaque centre, en un clic.", onClick: versRapport },
+    versDemandes && { cle: "demandes", icone: "📦",
+      titre: "Demandes du réseau",
+      resume: "Les particuliers qui cherchent un déménageur.",
+      onClick: versDemandes },
+  ].filter(Boolean);
 
   return (
     <div style={{ ...S.page, paddingBottom: 90 }}>
@@ -79,92 +102,64 @@ export default function Profil({ profil, versParametres, versDiagnostic, versDem
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 8, margin: "0 16px 12px" }}>
-        {[["inventaire", "Outils & vêtements"], ["conges", "Mes congés"]].map(([cle, lib]) => (
-          <button key={cle} onClick={() => setOnglet(cle)} style={{
-            flex: 1, padding: "9px 6px", borderRadius: 10, cursor: "pointer",
-            fontSize: 12.5, fontWeight: 700,
-            border: `1.5px solid ${onglet === cle ? C.bleu : C.bord}`,
-            background: onglet === cle ? C.bleuClair : C.blanc,
-            color: onglet === cle ? C.bleu : C.muet }}>{lib}</button>
-        ))}
-      </div>
+      <OngletsSegmentes actif={onglet} choisir={setOnglet}
+        onglets={[["inventaire", "Outils & vêtements"], ["conges", "Mes congés"]]} />
 
       {onglet === "inventaire" ? <Inventaire profil={profil} /> : <Conges />}
 
-      {/* Les portes vers ailleurs, réunies en un bloc plutôt qu'en cartes
-          isolées. Deux boutons identiques vivaient côte à côte, copiés
-          caractère pour caractère : une copie finit toujours par diverger. */}
-      {((peutConfigurer && versParametres) || versDemandes) && (
-        <BlocPortes>
-          {peutConfigurer && versParametres && (
-            <Porte premier icone="⚙️" titre="Paramètres"
-                   resume="Barème, coûts, catalogues, textes, archivage."
-                   onClick={versParametres} />
-          )}
-          {versDemandes && (
-            <Porte premier={!(peutConfigurer && versParametres)}
-                   icone="📦" titre="Demandes du réseau"
-                   resume="Les particuliers qui cherchent un déménageur."
-                   onClick={versDemandes} />
-          )}
-        </BlocPortes>
+      {/* CE QUI SORT DU COMPTE PERSONNEL.
+          Avant : quatre formes pour une seule idée — « une ligne qui ouvre un
+          écran ». Un bloc cousu pour Paramètres et les demandes, deux cartes
+          isolées copiées caractère pour caractère pour les centres et le
+          compte rendu, et une quatrième variante pour l'avis. Le même écran
+          affichait donc deux styles de ligne selon l'endroit où l'œil tombait,
+          alors qu'un commentaire du fichier avertissait déjà qu'« une copie
+          finit toujours par diverger ». Elle avait déjà divergé.
+
+          Une seule forme désormais, celle de Paramètres, et deux familles :
+          ce qui PILOTE l'entreprise, ce qui touche à DASHPROD. */}
+      {portesPilotage.length > 0 && (
+        <Groupe titre="Piloter l'entreprise"
+                aide="Les réglages et les vues qui dépassent votre poste.">
+          {portesPilotage.map((p, i) => (
+            <Entree key={p.cle} premier={i === 0} icone={p.icone} titre={p.titre}
+                    resume={p.resume} onClick={p.onClick} />
+          ))}
+        </Groupe>
       )}
 
-      {/* Centres logistiques et compte rendu : visibles seulement si l'offre
-          ouvre ce module. Le menu ne montre pas de porte fermée. */}
-      {versCentres && (
-        <div style={{ margin: "12px 16px 0" }}>
-          <button onClick={versCentres} style={carteAction}>
-            <span style={{ fontSize: 19 }}>🏭</span>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
-                Centres logistiques
-              </span>
-              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
-                Vos centres, et qui y travaille.
-              </span>
-            </span>
-            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
-          </button>
-        </div>
-      )}
-      {versRapport && (
-        <div style={{ margin: "12px 16px 0" }}>
-          <button onClick={versRapport} style={carteAction}>
-            <span style={{ fontSize: 19 }}>📊</span>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
-                Compte rendu hebdomadaire
-              </span>
-              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
-                Où en est chaque centre, en un clic.
-              </span>
-            </span>
-            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
-          </button>
-        </div>
-      )}
+      <Groupe titre="Aide et retours"
+              aide="Vérifier que tout est branché, et nous dire ce qui manque.">
+        {peutConfigurer && modeDonnees() === "reel" && (
+          <Entree premier icone="⭐" titre="Votre avis sur Dashprod"
+                  resume={note ? `Vous avez mis ${note}/5.`
+                               : "Aidez d'autres déménageurs à se décider."}
+                  onClick={() => setAvisOuvert(true)} />
+        )}
+        <Entree premier={!(peutConfigurer && modeDonnees() === "reel")}
+                icone="🩺" titre="Diagnostic de branchement"
+                resume="Base de données, session, modules ouverts."
+                onClick={versDiagnostic} />
+      </Groupe>
 
-      {/* Donner son avis sur Dashprod — publiable sur la vitrine si l'entreprise
-          l'accepte. C'est ce qui alimente la section « avis » de la landing. */}
-      {peutConfigurer && modeDonnees() === "reel" && <AvisSurDashprod />}
+      {avisOuvert && <AvisSurDashprod onNote={setNote} onFerme={() => setAvisOuvert(false)} />}
 
-      <div style={{ margin: "0 16px" }}>
-        <button onClick={versDiagnostic} style={{ background: "none", border: "none",
-          color: C.bleu, fontSize: 13, fontWeight: 600, cursor: "pointer",
-          padding: "18px 2px 4px" }}>
-          Diagnostic de branchement
-        </button>
-        {modeDonnees() === "reel" && (
-          <button onClick={async () => { await deconnecter(); window.location.reload(); }}
-            style={{ display: "block", width: "100%", marginTop: 8, padding: 13,
-              border: "1.5px solid #FECACA", borderRadius: 11, background: "#FEF2F2",
-              color: "#991B1B", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+      {modeDonnees() === "reel" && (
+        <div style={{ margin: "18px 16px 0" }}>
+          {/* `data-bouton="danger"` n'est pas décoratif : la feuille de style
+              remplit le bouton en rouge au survol. Contour au repos (il
+              prévient), aplat quand on s'apprête à cliquer (il confirme). */}
+          <button data-bouton="danger"
+            onClick={async () => { await deconnecter(); window.location.reload(); }}
+            style={{ display: "block", width: "100%", padding: 13,
+              border: `1.5px solid ${C.filetRouge}`, borderRadius: 11,
+              background: C.teinteRouge, color: C.encreRouge,
+              fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
             Se déconnecter
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
       <div style={{ height: 30 }} />
     </div>
   );
@@ -210,7 +205,7 @@ function Inventaire({ profil }) {
     <div key={art.id} style={{
       display: "flex", width: "100%", alignItems: "center", gap: 8,
       padding: "10px 12px", marginBottom: 6, borderRadius: 10, background: C.blanc,
-      border: `1.5px solid ${art.etat === "a_remplacer" ? "#FECACA" : C.bord}` }}>
+      border: `1.5px solid ${art.etat === "a_remplacer" ? C.filetRouge : C.bord}` }}>
       <span onClick={() => cycler(art)}
             style={{ flex: 1, fontSize: 13.5, color: C.encre, fontWeight: 600,
                      cursor: "pointer" }}>{art.article}</span>
@@ -297,12 +292,11 @@ function Conges() {
  * L'avis de l'entreprise SUR Dashprod. Note + un mot, et le choix de le rendre
  * public sur la vitrine. Rien n'est publié sans cette case cochée.
  */
-function AvisSurDashprod() {
+function AvisSurDashprod({ onNote, onFerme }) {
   const [note, setNote] = useState(0);
   const [mot, setMot] = useState("");
   const [auteur, setAuteur] = useState("");
   const [publiable, setPubliable] = useState(true);
-  const [ouvert, setOuvert] = useState(false);
   const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
 
@@ -311,6 +305,7 @@ function AvisSurDashprod() {
       if (!a?.existe) return;
       setNote(a.note || 0); setMot(a.commentaire || "");
       setAuteur(a.auteur || ""); setPubliable(a.publiable !== false);
+      onNote?.(a.note || 0);
     }).catch(() => {});
   }, []);
 
@@ -319,37 +314,19 @@ function AvisSurDashprod() {
     if (!note) { setErr("Choisissez une note."); return; }
     try {
       await definirAvisProduit({ note, commentaire: mot, auteur, publiable });
+      onNote?.(note);
       setMsg("Merci — votre avis est enregistré.");
     } catch (e) { setErr(e.message); }
   }
 
-  if (!ouvert) {
-    return (
-      <div style={{ margin: "12px 16px 0" }}>
-        <button onClick={() => setOuvert(true)} style={{
-          display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
-          border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
-          boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer",
-          textAlign: "left" }}>
-          <span style={{ fontSize: 19 }}>⭐</span>
-          <span style={{ flex: 1 }}>
-            <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
-              Votre avis sur Dashprod
-            </span>
-            <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
-              {note ? `Vous avez mis ${note}/5` : "Aidez d'autres déménageurs à se décider."}
-            </span>
-          </span>
-          <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div style={{ ...S.carte, margin: "12px 16px 0" }}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
-        Votre avis sur Dashprod
+      <div style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "baseline", marginBottom: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+          Votre avis sur Dashprod
+        </div>
+        <button style={S.boutonLien} onClick={onFerme}>Fermer</button>
       </div>
       <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
         {[1, 2, 3, 4, 5].map((n) => (
@@ -357,7 +334,7 @@ function AvisSurDashprod() {
             aria-label={`${n} sur 5`}
             style={{ border: "none", background: "none", cursor: "pointer",
                      fontSize: 26, lineHeight: 1, padding: 0,
-                     color: n <= note ? "#F59E0B" : "#D1D5DB" }}>★</button>
+                     color: n <= note ? C.ambre : C.fantome }}>★</button>
         ))}
       </div>
       <textarea value={mot} onChange={(e) => setMot(e.target.value)} rows={3}
@@ -375,55 +352,9 @@ function AvisSurDashprod() {
       </label>
       {err && <div style={{ fontSize: 12.5, color: C.rouge, marginTop: 8 }}>{err}</div>}
       {msg && <div style={{ fontSize: 12.5, color: C.vert, marginTop: 8 }}>{msg}</div>}
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <div style={{ marginTop: 12 }}>
         <button style={S.boutonPlein} onClick={envoyer}>Enregistrer</button>
-        <button style={S.boutonLien} onClick={() => setOuvert(false)}>Fermer</button>
       </div>
-    </div>
-  );
-}
-
-/** Une entrée d'action en carte, réutilisée par les accès du Compte. */
-const carteAction = {
-  display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
-  border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
-  boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer", textAlign: "left",
-};
-
-/**
- * Une porte vers un autre écran depuis le Compte.
- *
- * Ces boutons étaient copiés à l'identique — même structure, même style, deux
- * fois. Une copie diverge toujours : l'un se corrige, l'autre est oublié. Un
- * composant, une forme.
- */
-function Porte({ icone, titre, resume, onClick, premier }) {
-  return (
-    <button onClick={onClick} style={{
-      display: "flex", alignItems: "center", gap: 12, width: "100%",
-      padding: "13px 14px", border: "none",
-      borderTop: premier ? "none" : `1px solid ${C.doux || C.bord}`,
-      background: "transparent", cursor: "pointer", textAlign: "left" }}>
-      <span style={{ fontSize: 19 }}>{icone}</span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
-          {titre}
-        </span>
-        <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2,
-                       lineHeight: 1.4 }}>{resume}</span>
-      </span>
-      <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
-    </button>
-  );
-}
-
-/** Un bloc de portes, cousu comme les groupes de Paramètres. */
-function BlocPortes({ children }) {
-  return (
-    <div style={{ margin: "18px 16px 0", border: `1px solid ${C.bord}`,
-                  borderRadius: 14, overflow: "hidden", background: C.blanc,
-                  boxShadow: "0 1px 3px rgba(15,23,42,.05)" }}>
-      {children}
     </div>
   );
 }

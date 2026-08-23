@@ -91,6 +91,9 @@ export default function Identite({ retour, page = "identite" }) {
           <input style={S.input} type="number" min="0" step="1"
                  value={fact.echeance_jours}
                  onChange={(e) => majFact("echeance_jours", Number(e.target.value))} />
+          <PasEncoreApplique quoi="La date d'échéance n'est pas encore posée sur
+            les factures émises : le suivi des retards ne peut donc pas encore
+            s'appuyer dessus." />
 
           <label style={S.label}>
             Préfixe de numérotation
@@ -101,12 +104,17 @@ export default function Identite({ retour, page = "identite" }) {
           <input style={S.input} value={fact.prefixe_numero ?? ""}
                  placeholder="aucun"
                  onChange={(e) => majFact("prefixe_numero", e.target.value)} />
+          <PasEncoreApplique quoi="Le préfixe n'apparaît pas encore sur les
+            numéros émis : la numérotation légale rend AAAA-NNNNNN. Le changer
+            touche une séquence continue — ça ne s'improvise pas." />
 
           <label style={S.label}>Mention légale en pied de facture</label>
           <textarea style={{ ...S.input, minHeight: 54 }}
                     value={fact.mention_legale ?? ""}
                     placeholder="Ex. : intérêts de retard applicables à partir de l'échéance."
                     onChange={(e) => majFact("mention_legale", e.target.value)} />
+          <PasEncoreApplique quoi="Ce texte n'est pas encore imprimé au pied du
+            PDF de facture." />
 
           <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 10, lineHeight: 1.5 }}>
             Le taux saisi ici remplace le 21 % appliqué par défaut, partout :
@@ -169,7 +177,7 @@ export default function Identite({ retour, page = "identite" }) {
                 </label>
                 <input
                   style={{ ...S.input,
-                    borderColor: invalide ? C.rouge : manque ? "#FDE68A" : undefined }}
+                    borderColor: invalide ? C.rouge : manque ? C.filetAmbre : undefined }}
                   value={val} onChange={(e) => maj(ch.cle, e.target.value)} />
                 {invalide && (
                   <div style={{ fontSize: 11.5, color: C.rouge, marginTop: 3 }}>
@@ -190,7 +198,7 @@ export default function Identite({ retour, page = "identite" }) {
                         textTransform: "uppercase", letterSpacing: ".03em" }}>
             Aperçu de l'en-tête
           </div>
-          <div style={{ padding: 12, borderRadius: 10, background: "#F8FAFC",
+          <div style={{ padding: 12, borderRadius: 10, background: C.teinteNeutre,
                         border: `1px solid ${C.bord}` }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
               {nomAffiche(valeurs) || <span style={{ color: C.rouge }}>Nom manquant</span>}
@@ -221,8 +229,8 @@ export default function Identite({ retour, page = "identite" }) {
 function Etat({ etat }) {
   if (etat.complete) {
     return (
-      <div style={{ ...bandeau, background: "#ECFDF5", borderColor: "#A7F3D0",
-                    color: "#065F46" }}>
+      <div style={{ ...bandeau, background: C.teinteVerte, borderColor: C.filetVert,
+                    color: C.encreVert }}>
         ✓ Identité complète — vos documents peuvent partir.
       </div>
     );
@@ -230,9 +238,9 @@ function Etat({ etat }) {
   const n = etat.bloquants.length;
   return (
     <div style={{ ...bandeau,
-      background: etat.invalides.length ? "#FEF2F2" : "#FFFBEB",
-      borderColor: etat.invalides.length ? "#FECACA" : "#FDE68A",
-      color: etat.invalides.length ? "#991B1B" : "#92400E" }}>
+      background: etat.invalides.length ? C.teinteRouge : C.teinteAmbre,
+      borderColor: etat.invalides.length ? C.filetRouge : C.filetAmbre,
+      color: etat.invalides.length ? C.encreRouge : C.encreAmbre }}>
       {etat.invalides.length > 0
         ? "Un champ est mal formé — corrigez-le avant d'envoyer un document."
         : `${n} champ${n > 1 ? "s" : ""} manquant${n > 1 ? "s" : ""} : un devis partirait avec un en-tête incomplet.`}
@@ -244,3 +252,35 @@ const bandeau = {
   margin: "0 16px 12px", padding: "11px 13px", borderRadius: 11,
   border: "1px solid", fontSize: 12.5, fontWeight: 600, lineHeight: 1.45,
 };
+
+/**
+ * UN RÉGLAGE SAISI MAIS PAS ENCORE APPLIQUÉ.
+ *
+ * POURQUOI CE COMPOSANT EXISTE
+ * ----------------------------
+ * Trois champs de cette page se saisissent, s'enregistrent en base, et ne sont
+ * lus par personne : le préfixe de numérotation, la mention légale, l'échéance
+ * de paiement. Vérifié en production — Roovers a saisi le préfixe « GG » et
+ * une échéance de 10 jours ; les 16 factures émises portent la numérotation
+ * `AAAA-NNNNNN` sans préfixe et une `echeance` à NULL.
+ *
+ * Un champ qui accepte une valeur sans effet est pire qu'un champ absent : il
+ * fait croire au client que sa facture porte une échéance. Tant que la chaîne
+ * n'est pas branchée, l'écran le DIT. C'est la règle « signaler, ne pas
+ * interdire » — on ne retire pas le champ, on retire l'illusion.
+ *
+ * Ces mentions disparaissent à mesure que les chantiers de
+ * `docs/maitre/25-PARAMETRES-ROADMAP.md` se ferment. Un test compte leur
+ * présence pour qu'elles ne survivent pas à leur cause.
+ */
+function PasEncoreApplique({ quoi }) {
+  return (
+    <div style={{ display: "flex", gap: 7, alignItems: "flex-start",
+                  marginTop: 6, padding: "7px 9px", borderRadius: 8,
+                  background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                  color: C.encreAmbre, fontSize: 11.5, lineHeight: 1.45 }}>
+      <span aria-hidden="true">⏳</span>
+      <span>Pas encore appliqué. {quoi}</span>
+    </div>
+  );
+}

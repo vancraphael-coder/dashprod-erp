@@ -242,10 +242,10 @@ export default function Mail({ affaireId, retour, versOffre }) {
             l'indice survit. Si on vient de le créer, on montre le code une fois. */}
         {instance && acces?.actif && (
           <div style={{ padding: "10px 12px", borderRadius: 10,
-                        background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+                        background: C.teinteVerte, border: `1px solid ${C.filetVert}` }}>
             {lien ? (
               <>
-                <div style={{ fontSize: 11.5, color: "#065F46", fontWeight: 700 }}>
+                <div style={{ fontSize: 11.5, color: C.encreVert, fontWeight: 700 }}>
                   Code de signature (notez-le, il ne sera plus affiché en entier)
                 </div>
                 <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 18,
@@ -255,7 +255,7 @@ export default function Mail({ affaireId, retour, versOffre }) {
                 </div>
               </>
             ) : (
-              <div style={{ fontSize: 11.5, color: "#065F46", fontWeight: 700 }}>
+              <div style={{ fontSize: 11.5, color: C.encreVert, fontWeight: 700 }}>
                 Code actif · se termine par <b>{acces.indice}</b>
               </div>
             )}
@@ -407,7 +407,7 @@ export default function Mail({ affaireId, retour, versOffre }) {
 
         {journal.length > 0 && (
           <div style={{ marginTop: 8, padding: 12, borderRadius: 12,
-                        background: "#F8FAFC", border: `1px solid ${C.bord}` }}>
+                        background: C.teinteNeutre, border: `1px solid ${C.bord}` }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: C.encre,
                           textTransform: "uppercase", letterSpacing: ".03em",
                           marginBottom: 6 }}>
@@ -564,8 +564,8 @@ function Minuteur({ echeance }) {
     const jours = Math.floor(reste / 86400000);
     const heures = Math.floor(reste / 3600000);
     const minutes = Math.floor(reste / 60000);
-    if (jours >= 1) { texte = `${jours} jour${jours > 1 ? "s" : ""} restant${jours > 1 ? "s" : ""}`; couleur = "#065F46"; }
-    else if (heures >= 1) { texte = `${heures} h restantes`; couleur = "#B45309"; }
+    if (jours >= 1) { texte = `${jours} jour${jours > 1 ? "s" : ""} restant${jours > 1 ? "s" : ""}`; couleur = C.encreVert; }
+    else if (heures >= 1) { texte = `${heures} h restantes`; couleur = C.encreAmbre; }
     else { texte = `${minutes} min restantes`; couleur = C.rouge; }
   }
   return (

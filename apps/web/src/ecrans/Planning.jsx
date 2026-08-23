@@ -562,9 +562,9 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
               style={{
                 display: "flex", alignItems: "center", gap: 8, width: "100%",
                 marginTop: 10, padding: "9px 12px", borderRadius: 10, cursor: "pointer",
-                border: `1.5px solid ${m.partagee ? "#A7F3D0" : C.bord}`,
-                background: m.partagee ? "#ECFDF5" : C.blanc,
-                color: m.partagee ? "#065F46" : C.muet,
+                border: `1.5px solid ${m.partagee ? C.filetVert : C.bord}`,
+                background: m.partagee ? C.teinteVerte : C.blanc,
+                color: m.partagee ? C.encreVert : C.muet,
                 fontSize: 12.5, fontWeight: 700, textAlign: "left",
               }}>
               <span>{m.partagee ? "📣" : "🔒"}</span>
@@ -785,7 +785,7 @@ function HorairesMission({ mission, onEnregistre }) {
 
   return (
     <div style={{ marginTop: 8, padding: 11, borderRadius: 10,
-                  border: `1px solid ${C.bord}`, background: "#F8FAFC" }}>
+                  border: `1px solid ${C.bord}`, background: C.teinteNeutre }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {champ("depart", "Départ", "du dépôt")}
         {champ("heure", "Déménagement", "heure client")}

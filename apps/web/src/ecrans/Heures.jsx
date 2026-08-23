@@ -78,7 +78,7 @@ export default function Heures({ retour }) {
                     <span style={{ fontWeight: 700, color: C.encre }}>{nom(id)}</span>
                     <span style={{ fontWeight: 800, color: C.encre }}>{formaterDuree(sec)}</span>
                   </div>
-                  <div style={{ height: 8, background: "#EEF2F7", borderRadius: 999 }}>
+                  <div style={{ height: 8, background: C.teinteNeutre, borderRadius: 999 }}>
                     <div style={{ height: "100%", width: `${Math.round((sec / maxSec) * 100)}%`,
                       background: "linear-gradient(90deg, #2563EB, #1D4ED8)", borderRadius: 999 }} />
                   </div>

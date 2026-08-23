@@ -105,7 +105,7 @@ export default function DemandesReseau() {
 
 const lien = {
   fontSize: 12.5, fontWeight: 700, textDecoration: "none", color: "#2563EB",
-  border: "1px solid #DBEAFE", background: "#EFF6FF", borderRadius: 999,
+  border: "1px solid #DBEAFE", background: C.teinteBleue, borderRadius: 999,
   padding: "6px 11px",
 };
 

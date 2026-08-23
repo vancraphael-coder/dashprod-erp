@@ -25,6 +25,7 @@ import { manifeste, manifestePret, packingListCsv }
 import { C, S, CT, FC, Eyebrow, LigneRoute, Compteur, HaloPhares }
   from "./theme-client.jsx";
 import FilMessages from "./FilMessages.jsx";
+import SelecteurRotatif from "../composants/SelecteurRotatif.jsx";
 
 const eur = (c) => c == null ? "—"
   : (c / 100).toFixed(2).replace(".", ",") + " €";
@@ -80,15 +81,18 @@ function EnteteDossier() {
   );
 }
 
+// Une ICÔNE par onglet, en plus du libellé : le rail du haut n'affiche que le
+// texte, mais la molette dessine des icônes. Les deux commandes lisent la MÊME
+// liste — c'est ce qui garantit qu'elles ne divergeront pas.
 const ONGLETS = [
-  ["dossier", "Mon dossier"],
-  ["inventaire", "Mes meubles"],
-  ["caisses", "Mes caisses"],
-  ["offres", "Mes offres"],
-  ["factures", "Mes factures"],
-  ["messages", "Messages"],
-  ["reseau", "Déménageurs"],
-  ["profil", "Profil"],
+  ["dossier", "Mon dossier", "dossiers"],
+  ["inventaire", "Mes meubles", "releve"],
+  ["caisses", "Mes caisses", "boite"],
+  ["offres", "Mes offres", "offre"],
+  ["factures", "Mes factures", "facture"],
+  ["messages", "Messages", "mail"],
+  ["reseau", "Déménageurs", "ressources"],
+  ["profil", "Profil", "profil"],
 ];
 
 export default function EspaceClient({ client }) {
@@ -188,6 +192,16 @@ export default function EspaceClient({ client }) {
       </div>
 
       <div style={{ height: 16 }} />
+
+      {/* LA MOLETTE — le geste de la boussole de la vitrine, porté ici.
+          L'espace client était le seul des trois espaces à ne pas la monter :
+          un test le disait déjà, et il était rouge dans le dépôt. Elle reçoit
+          les mêmes entrées que le rail du haut : deux commandes, une seule
+          vérité de navigation. */}
+      <div className="selecteur-rotatif-cadre">
+        <SelecteurRotatif actif={onglet} aller={setOnglet}
+          onglets={ONGLETS.map(([cle, label, icone]) => ({ cle, icone, label }))} />
+      </div>
 
       {onglet === "dossier"    && <Dossiers />}
       {onglet === "inventaire" && <Inventaire />}

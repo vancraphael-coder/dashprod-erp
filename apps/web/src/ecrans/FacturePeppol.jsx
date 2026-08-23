@@ -24,7 +24,7 @@ const ETAT_LIB = {
   DELIVREE: "Délivrée au destinataire", REJETEE: "Rejetée", ECHEC: "Échec",
 };
 const ETAT_COULEUR = {
-  DELIVREE: "#065F46", ACCEPTEE: "#065F46", SOUMISE: C.bleu,
+  DELIVREE: C.encreVert, ACCEPTEE: C.encreVert, SOUMISE: C.bleu,
   PRETE: C.ambre, REJETEE: C.rouge, ECHEC: C.rouge,
 };
 
@@ -83,7 +83,7 @@ export default function FacturePeppol({ factureId, affaireId, emise }) {
 
       {joign && (
         <div style={{ fontSize: 12.5, marginBottom: 10, lineHeight: 1.5,
-          color: joign.joignable ? "#065F46" : C.ambre }}>
+          color: joign.joignable ? C.encreVert : C.ambre }}>
           {joign.joignable
             ? "✓ Le client est joignable sur le réseau Peppol."
             : `⚠ ${joign.message || "Le client n'est pas joignable sur Peppol."}`}
@@ -104,15 +104,15 @@ export default function FacturePeppol({ factureId, affaireId, emise }) {
       </div>
 
       {message && (
-        <div style={{ fontSize: 12, color: C.encre, background: "#EFF6FF",
+        <div style={{ fontSize: 12, color: C.encre, background: C.teinteBleue,
                       border: `1px solid ${C.bord}`, borderRadius: 10,
                       padding: "10px 12px", marginTop: 10, lineHeight: 1.5 }}>
           {message}
         </div>
       )}
       {erreur && (
-        <div style={{ fontSize: 12, color: C.rouge, background: "#FEF2F2",
-                      border: "1px solid #FECACA", borderRadius: 10,
+        <div style={{ fontSize: 12, color: C.rouge, background: C.teinteRouge,
+                      border: `1px solid ${C.filetRouge}`, borderRadius: 10,
                       padding: "10px 12px", marginTop: 10, lineHeight: 1.5 }}>
           {erreur}
         </div>

@@ -118,13 +118,13 @@ function DroitDevisComplet({ membreId }) {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         width: "100%", padding: "11px 13px", borderRadius: 11, cursor: "pointer",
         border: `1.5px solid ${actif ? C.vert : C.bord}`,
-        background: actif ? "#ECFDF5" : "#fff",
+        background: actif ? C.teinteVerte : C.blanc,
       }}>
         <span style={{ fontSize: 13, fontWeight: 700,
-                       color: actif ? "#065F46" : C.encre, textAlign: "left" }}>
+                       color: actif ? C.encreVert : C.encre, textAlign: "left" }}>
           Création de devis complet
           <span style={{ display: "block", fontSize: 11, fontWeight: 500,
-                         color: actif ? "#047857" : C.fantome }}>
+                         color: actif ? C.encreVert : C.fantome }}>
             Onglet « Nouveau » au terrain : dossier → devis → offre → mail, prix visibles
           </span>
         </span>
@@ -168,7 +168,7 @@ function EquipementMembre({ membreId }) {
       display: "inline-flex", alignItems: "center", gap: 6, margin: "0 6px 6px 0",
       padding: "5px 10px", borderRadius: 999, cursor: "pointer", fontSize: 12,
       border: `1.5px solid ${COULEUR_EQUIP[art.etat]}`,
-      background: art.etat === "a_remplacer" ? "#FEF2F2" : "#fff",
+      background: art.etat === "a_remplacer" ? C.teinteRouge : C.blanc,
       color: COULEUR_EQUIP[art.etat], fontWeight: 600,
     }}>
       {art.article}
@@ -309,13 +309,13 @@ export default function Equipe({ retour, integre }) {
         </div>
 
         {erreur && (
-          <div style={{ marginTop: 12, padding: "9px 12px", background: "#FEF2F2",
-                        border: "1px solid #FECACA", borderRadius: 9, color: "#991B1B",
+          <div style={{ marginTop: 12, padding: "9px 12px", background: C.teinteRouge,
+                        border: `1px solid ${C.filetRouge}`, borderRadius: 9, color: C.encreRouge,
                         fontSize: 12.5 }}>{erreur}</div>
         )}
         {succes && (
-          <div style={{ marginTop: 12, padding: "9px 12px", background: "#ECFDF5",
-                        border: "1px solid #A7F3D0", borderRadius: 9, color: "#065F46",
+          <div style={{ marginTop: 12, padding: "9px 12px", background: C.teinteVerte,
+                        border: `1px solid ${C.filetVert}`, borderRadius: 9, color: C.encreVert,
                         fontSize: 12.5 }}>{succes}</div>
         )}
 
@@ -344,13 +344,13 @@ export default function Equipe({ retour, integre }) {
                 <div style={{ fontSize: 12, color: C.muet }}>{m.email}</div>
               </div>
               <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: "#fff",
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: C.blanc,
                   background: COULEUR_METIER[metier], borderRadius: 999, padding: "3px 8px" }}>
                   {METIERS[metier]}
                 </span>
                 {sesConges.length > 0 && (
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: "#92400E",
-                    background: "#FFFBEB", borderRadius: 999, padding: "3px 8px" }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: C.encreAmbre,
+                    background: C.teinteAmbre, borderRadius: 999, padding: "3px 8px" }}>
                     {sesConges.length} congé{sesConges.length > 1 ? "s" : ""}
                   </span>
                 )}
@@ -375,7 +375,7 @@ export default function Equipe({ retour, integre }) {
                       fontSize: 12, fontWeight: 700,
                       border: `1.5px solid ${metier === cle ? COULEUR_METIER[cle] : C.bord}`,
                       background: metier === cle ? COULEUR_METIER[cle] : C.blanc,
-                      color: metier === cle ? "#fff" : C.muet,
+                      color: metier === cle ? C.blanc : C.muet,
                     }}>{lib}</button>
                   ))}
                 </div>
@@ -522,8 +522,8 @@ function Autorisations({ membre }) {
             {c.titre}
             {c.sensible && (
               <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700,
-                background: "#FFFBEB", color: "#92400E", borderRadius: 999,
-                padding: "1px 6px", border: "1px solid #FDE68A" }}>sensible</span>
+                background: C.teinteAmbre, color: C.encreAmbre, borderRadius: 999,
+                padding: "1px 6px", border: `1px solid ${C.filetAmbre}` }}>sensible</span>
             )}
           </span>
           <span style={{ display: "block", fontSize: 11, color: C.fantome,

@@ -233,7 +233,7 @@ function OngletInventaire({ profil }) {
       display: "flex", width: "100%", justifyContent: "space-between",
       alignItems: "center", padding: "10px 12px", marginBottom: 6,
       borderRadius: 10, cursor: "pointer", background: C.blanc,
-      border: `1.5px solid ${art.etat === "a_remplacer" ? "#FECACA" : C.bord}`,
+      border: `1.5px solid ${art.etat === "a_remplacer" ? C.filetRouge : C.bord}`,
     }}>
       <span style={{ fontSize: 13.5, color: C.encre, fontWeight: 600 }}>{art.article}</span>
       <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
@@ -562,8 +562,8 @@ function OngletPaie() {
 
             {d.avertissement && (
               <div style={{ marginTop: 10, padding: "9px 11px", borderRadius: 9,
-                background: "#FFFBEB", border: "1px solid #FDE68A",
-                fontSize: 11.5, color: "#92400E", lineHeight: 1.45 }}>
+                background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                fontSize: 11.5, color: C.encreAmbre, lineHeight: 1.45 }}>
                 {d.avertissement}
               </div>
             )}

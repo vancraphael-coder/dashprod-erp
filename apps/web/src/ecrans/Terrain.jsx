@@ -213,7 +213,7 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
       {/* Bandeau à valider */}
       {enAttente && (
         <div style={{ margin: "-4px 0 8px", padding: "5px 9px", borderRadius: 8,
-          background: "#F5F3FF", color: "#5B21B6", fontSize: 11, fontWeight: 700 }}>
+          background: C.teinteViolette, color: C.encreViolet, fontSize: 11, fontWeight: 700 }}>
           En attente de validation par le bureau
         </div>
       )}
@@ -280,12 +280,12 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
                 background: "#1E293B", display: "flex", gap: 14,
                 justifyContent: "center", flexWrap: "wrap" }}>
                 {prevu.depart && (
-                  <span style={{ fontSize: 12.5, color: "#E2E8F0" }}>
+                  <span style={{ fontSize: 12.5, color: C.filetNeutre }}>
                     Départ prévu <b style={{ color: "#FBBF24" }}>{prevu.depart}</b>
                   </span>
                 )}
                 {prevu.arrivee && (
-                  <span style={{ fontSize: 12.5, color: "#E2E8F0" }}>
+                  <span style={{ fontSize: 12.5, color: C.filetNeutre }}>
                     Sur place <b style={{ color: "#FBBF24" }}>{prevu.arrivee}</b>
                   </span>
                 )}
@@ -318,7 +318,7 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
               <div key={pz.id} style={{ display: "flex", alignItems: "center",
                 justifyContent: "space-between", gap: 8, marginTop: 8,
                 padding: "7px 10px", borderRadius: 9, background: "#1E293B" }}>
-                <span style={{ fontSize: 12.5, color: "#E2E8F0",
+                <span style={{ fontSize: 12.5, color: C.filetNeutre,
                   fontFamily: "ui-monospace, monospace" }}>
                   Pause {heureDe(pz.debut)} → {heureDe(pz.fin)}
                 </span>
@@ -413,7 +413,7 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
               la décision d'« effectué » revient au bureau. */}
           {termineTerrain && (
             <div style={{ marginBottom: 12, padding: "11px 12px", borderRadius: 10,
-              background: "#78350F", fontSize: 12.5, color: "#FDE68A",
+              background: C.encreAmbre, fontSize: 12.5, color: C.filetAmbre,
               lineHeight: 1.45, textAlign: "center", fontWeight: 700 }}>
               ✓ Chantier remonté au bureau — en attente de confirmation
             </div>
@@ -437,11 +437,11 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
 
           {/* À démonter */}
           {mission.aDemonter.length > 0 && (
-            <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE",
+            <div style={{ background: C.teinteBleue, border: `1px solid ${C.filetBleu}`,
               borderRadius: 10, padding: "9px 12px", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#1E40AF",
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.encreBleu,
                 textTransform: "uppercase" }}>À démonter</div>
-              <div style={{ fontSize: 12.5, color: "#1E3A8A", marginTop: 2 }}>
+              <div style={{ fontSize: 12.5, color: C.encreBleu, marginTop: 2 }}>
                 {mission.aDemonter.map((it) => `${it.quantite}× ${it.nom}`).join(" · ")}
               </div>
             </div>

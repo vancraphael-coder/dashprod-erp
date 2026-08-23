@@ -52,7 +52,7 @@ export default function Bienvenue({ profil, versIdentite, versApp }) {
         {etapes.map((e, i) => (
           <div key={i} style={{ display: "flex", gap: 14, padding: 16, marginTop: 12,
                                 borderRadius: 14, background: C.blanc,
-                                border: `1px solid ${e.fait ? "#A7F3D0" : C.bord}`,
+                                border: `1px solid ${e.fait ? C.filetVert : C.bord}`,
                                 boxShadow: "0 1px 3px rgba(15,23,42,.05)" }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
                           display: "grid", placeItems: "center", fontSize: 14,

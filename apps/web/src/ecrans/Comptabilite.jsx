@@ -182,9 +182,9 @@ export default function Comptabilite({ retour }) {
           {/* Ce qui empêcherait le comptable d'accepter le fichier. */}
           {(verdict.bloquantes.length > 0 || !journalEquilibre) && (
             <div style={{ margin: "0 16px 12px", padding: "11px 13px",
-                          borderRadius: 11, background: "#FEF2F2",
-                          border: "1px solid #FECACA", fontSize: 12,
-                          color: "#991B1B", lineHeight: 1.5 }}>
+                          borderRadius: 11, background: C.teinteRouge,
+                          border: `1px solid ${C.filetRouge}`, fontSize: 12,
+                          color: C.encreRouge, lineHeight: 1.5 }}>
               <b>À corriger avant de transmettre :</b>
               {!journalEquilibre && (
                 <div style={{ marginTop: 4 }}>

@@ -232,8 +232,8 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
       {/* Guide : dire clairement ce que la personne est en train de régler et
           où ça se retrouve. Un exemple concret, pas des réglages abstraits. */}
       {groupe.champs.length > 0 && (
-        <div style={{ ...S.carte, background: "#F0F7FF", border: "1px solid #BFDBFE" }}>
-          <div style={{ fontSize: 12.5, color: "#1E40AF", lineHeight: 1.5 }}>
+        <div style={{ ...S.carte, background: C.teinteBleue, border: `1px solid ${C.filetBleu}` }}>
+          <div style={{ fontSize: 12.5, color: C.encreBleu, lineHeight: 1.5 }}>
             {groupe.cle === "pdf"
               ? "Réglez les titres et libellés du PDF d'offre. Laissez un champ vide pour garder le texte proposé. L'exemple ci-dessous montre le rendu."
               : "Réécrivez les phrases de votre mail d'offre à votre voix. Chaque champ garde le texte proposé tant que vous ne le remplacez pas — l'exemple en bas se met à jour en direct."}
@@ -249,7 +249,7 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
             Objet : <span style={{ color: C.encre, fontWeight: 700 }}>{apercu.objet}</span>
           </div>
           <pre style={{
-            margin: 0, padding: 12, borderRadius: 10, background: "#F8FAFC",
+            margin: 0, padding: 12, borderRadius: 10, background: C.teinteNeutre,
             border: `1px solid ${C.bord}`, fontSize: 12, lineHeight: 1.55,
             color: C.encre, whiteSpace: "pre-wrap",
             fontFamily: "ui-monospace, monospace",
@@ -356,17 +356,17 @@ function SousPage({ groupe, stockes, org, onStockes, retour }) {
           {cbd === undefined ? null : cbd ? (
             <div style={{ display: "flex", alignItems: "center",
                           justifyContent: "space-between", padding: "10px 12px",
-                          borderRadius: 10, background: "#ECFDF5",
-                          border: "1px solid #A7F3D0" }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: "#065F46" }}>
+                          borderRadius: 10, background: C.teinteVerte,
+                          border: `1px solid ${C.filetVert}` }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: C.encreVert }}>
                 ✓ PDF déposé
               </span>
               <a href={cbd} target="_blank" rel="noreferrer"
                  style={{ fontSize: 12.5, fontWeight: 700, color: C.bleu }}>Ouvrir</a>
             </div>
           ) : (
-            <div style={{ padding: "10px 12px", borderRadius: 10, background: "#FFFBEB",
-                          border: "1px solid #FDE68A", fontSize: 12.5, color: "#92400E" }}>
+            <div style={{ padding: "10px 12px", borderRadius: 10, background: C.teinteAmbre,
+                          border: `1px solid ${C.filetAmbre}`, fontSize: 12.5, color: C.encreAmbre }}>
               Aucun PDF déposé pour l'instant.
             </div>
           )}
@@ -502,7 +502,7 @@ function PageMails({ stockes, org, onStockes, retour }) {
               {m.piece && m.piece !== "aucun" && (
                 <span style={{ display: "inline-block", marginTop: 6, marginLeft: 6,
                                fontSize: 10.5, fontWeight: 700, padding: "2px 7px",
-                               borderRadius: 20, background: "#ECFDF5", color: "#065F46" }}>
+                               borderRadius: 20, background: C.teinteVerte, color: C.encreVert }}>
                   📎 {libellePiece(m.piece)}
                 </span>
               )}
@@ -577,7 +577,7 @@ function EditeurMail({ modele, contexte, piece, onPiece, onEnregistrer, onSuppri
 
         {/* Aperçu avec l'exemple */}
         <div style={{ marginTop: 16, padding: 14, borderRadius: 12,
-                      background: "#F8FAFC", border: `1px solid ${C.bord}` }}>
+                      background: C.teinteNeutre, border: `1px solid ${C.bord}` }}>
           <div style={{ ...sousTitre, marginBottom: 6 }}>Aperçu</div>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: C.encre }}>{apercuObjet || "—"}</div>
           <div style={{ fontSize: 12.5, color: C.encre, marginTop: 8, whiteSpace: "pre-wrap",

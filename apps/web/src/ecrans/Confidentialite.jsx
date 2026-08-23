@@ -82,8 +82,8 @@ export default function Confidentialite({ retour }) {
 
       {resultat && (
         <div style={{ margin: "0 16px 12px", padding: "11px 13px", borderRadius: 11,
-                      background: "#ECFDF5", border: "1px solid #A7F3D0",
-                      fontSize: 12.5, color: "#065F46", lineHeight: 1.5 }}>
+                      background: C.teinteVerte, border: `1px solid ${C.filetVert}`,
+                      fontSize: 12.5, color: C.encreVert, lineHeight: 1.5 }}>
           {resultat.message}
         </div>
       )}

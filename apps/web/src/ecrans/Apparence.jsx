@@ -54,8 +54,8 @@ export default function Apparence({ retour }) {
         </div>
         {app.mode === "nuit" && (
           <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10,
-                        background: "#FFFBEB", border: "1px solid #FDE68A",
-                        fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+                        background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                        fontSize: 11.5, color: C.encreAmbre, lineHeight: 1.5 }}>
             Le mode nuit est encore en rodage : quelques encadrés d'écrans
             secondaires gardent un fond clair et ne suivent pas encore. Les
             écrans principaux — dossiers, planning, devis, facture — sont prêts.

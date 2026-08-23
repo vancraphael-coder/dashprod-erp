@@ -115,8 +115,8 @@ export default function SignatureOffre({ codeInitial = "", retour }) {
                  onChange={(e) => { setCode(formater(e.target.value)); setErreur(null); }}
                  onKeyDown={(e) => e.key === "Enter" && codePret && charger()} />
           {erreur && (
-            <div style={{ fontSize: 12.5, color: C.rouge, background: "#FEF2F2",
-                          border: "1px solid #FECACA", borderRadius: 10,
+            <div style={{ fontSize: 12.5, color: C.rouge, background: C.teinteRouge,
+                          border: `1px solid ${C.filetRouge}`, borderRadius: 10,
                           padding: "10px 12px", marginTop: 10 }}>{erreur}</div>
           )}
           <button style={{ ...S.boutonPlein, marginTop: 12, opacity: codePret ? 1 : .5 }}
@@ -186,8 +186,8 @@ export default function SignatureOffre({ codeInitial = "", retour }) {
         </div>
 
         {erreur && (
-          <div style={{ fontSize: 12.5, color: C.rouge, background: "#FEF2F2",
-                        border: "1px solid #FECACA", borderRadius: 10,
+          <div style={{ fontSize: 12.5, color: C.rouge, background: C.teinteRouge,
+                        border: `1px solid ${C.filetRouge}`, borderRadius: 10,
                         padding: "10px 12px", marginTop: 10 }}>{erreur}</div>
         )}
 

@@ -282,7 +282,7 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
           )}
           {(clos || affaire?.etat === "clos") && (
             <div style={{ marginTop: 12, padding: "9px", borderRadius: 10,
-              background: "#F1F5F9", fontSize: 12.5, fontWeight: 700, color: C.muet }}>
+              background: C.teinteNeutre, fontSize: 12.5, fontWeight: 700, color: C.muet }}>
               Dossier clos
             </div>
           )}

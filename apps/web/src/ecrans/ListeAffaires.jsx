@@ -166,31 +166,31 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarn
             </div>
             {a.etat === "brouillon" && (
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#6D28D9",
-                  background: "#F5F3FF", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                  background: C.teinteViolette, borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
                   à valider
                 </span>
               )}
               {a.etat === "effectue" && a.litiges_ouverts > 0 && (
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#DC2626",
-                  background: "#FEF2F2", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                  background: C.teinteRouge, borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
                   {a.litiges_ouverts} litige{a.litiges_ouverts > 1 ? "s" : ""}
                 </span>
               )}
               {a.etat === "effectue" && !a.litiges_ouverts && a.solde_centimes > 0 && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#B45309",
-                  background: "#FFFBEB", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.encreAmbre,
+                  background: C.teinteAmbre, borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
                   impayé
                 </span>
               )}
               {a.etat === "effectue" && !a.litiges_ouverts && !a.solde_centimes && !a.a_facture && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#B45309",
-                  background: "#FFFBEB", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.encreAmbre,
+                  background: C.teinteAmbre, borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
                   à facturer
                 </span>
               )}
               {a.etat === "effectue" && !a.litiges_ouverts && !a.solde_centimes && a.a_facture && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#15803D",
-                  background: "#F0FDF4", borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.encreVert,
+                  background: C.teinteVerte, borderRadius: 999, padding: "2px 7px", marginRight: 4 }}>
                   prêt à clôturer
                 </span>
               )}

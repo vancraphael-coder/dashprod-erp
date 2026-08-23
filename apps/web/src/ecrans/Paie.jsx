@@ -109,8 +109,8 @@ export default function Paie({ retour }) {
 
       {indexationARevoir(SECTEUR_140_05) && (
         <div style={{ margin: "0 16px 12px", padding: "11px 13px", borderRadius: 11,
-                      background: "#FFFBEB", border: "1px solid #FDE68A",
-                      fontSize: 12, color: "#92400E", lineHeight: 1.5 }}>
+                      background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                      fontSize: 12, color: C.encreAmbre, lineHeight: 1.5 }}>
           <b>Indexation sectorielle à vérifier.</b> Les salaires de la SCP 140.05
           sont indexés chaque 1er janvier. Le dernier taux enregistré date du
           {" "}{SECTEUR_140_05.indexation_derniere}.
@@ -275,7 +275,7 @@ function FicheMembre({ ligne, periode, org, reglage, onReglage, sauve }) {
                onChange={(e) => onReglage("anciennete_mois", num(e.target.value))} />
 
         {sauve && (
-          <div style={{ fontSize: 11.5, color: "#065F46", marginTop: 6 }}>✓ Enregistré</div>
+          <div style={{ fontSize: 11.5, color: C.encreVert, marginTop: 6 }}>✓ Enregistré</div>
         )}
       </div>
 
@@ -295,8 +295,8 @@ function FicheMembre({ ligne, periode, org, reglage, onReglage, sauve }) {
 
         {!ligne.precompte_connu && (
           <div style={{ padding: "10px 12px", borderRadius: 10, marginTop: 10,
-                        background: "#FFFBEB", border: "1px solid #FDE68A",
-                        fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+                        background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                        fontSize: 11.5, color: C.encreAmbre, lineHeight: 1.5 }}>
             Sans taux de précompte, le net n'est pas calculé. Un chiffre inventé
             ici deviendrait un chiffre faux sur un document remis à un salarié.
           </div>
@@ -347,7 +347,7 @@ function CoutEmployeur({ ligne, reglage }) {
 
       {cout.total_centimes ? (
         <div style={{ marginTop: 10, padding: "11px 13px", borderRadius: 11,
-                      background: "#EFF6FF", border: `1px solid ${C.bord}`,
+                      background: C.teinteBleue, border: `1px solid ${C.bord}`,
                       fontSize: 12.5, color: "#0F172A", lineHeight: 1.5 }}>
           <b>{eur(horaire)} de l'heure</b> — coefficient {cout.coefficient} × le brut.
           <div style={{ fontSize: 11.5, color: C.muet, marginTop: 4 }}>
@@ -356,8 +356,8 @@ function CoutEmployeur({ ligne, reglage }) {
         </div>
       ) : (
         <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10,
-                      background: "#FFFBEB", border: "1px solid #FDE68A",
-                      fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+                      background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                      fontSize: 11.5, color: C.encreAmbre, lineHeight: 1.5 }}>
           Sans le taux d'ONSS patronale, le coût réel n'est pas calculé. Il dépend
           des réductions structurelles et du profil du travailleur — votre
           secrétariat social vous donne le vôtre.
@@ -370,7 +370,7 @@ function CoutEmployeur({ ligne, reglage }) {
 function Avertissement() {
   return (
     <div style={{ margin: "0 16px 16px", padding: "12px 14px", borderRadius: 12,
-                  background: "#EFF6FF", border: `1px solid ${C.bord}`,
+                  background: C.teinteBleue, border: `1px solid ${C.bord}`,
                   fontSize: 11.5, color: C.slate || C.muet, lineHeight: 1.55 }}>
       <b style={{ color: "#0F172A" }}>Ce n'est pas une fiche de paie officielle.</b><br />
       Le brut et les heures viennent de vos chantiers : c'est ce que votre

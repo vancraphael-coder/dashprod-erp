@@ -107,8 +107,8 @@ export default function Societes({ retour }) {
         </div>
 
         <div style={{ padding: "10px 12px", borderRadius: 10, marginTop: 12,
-                      background: "#FFFBEB", border: "1px solid #FDE68A",
-                      fontSize: 11.5, color: "#92400E", lineHeight: 1.5 }}>
+                      background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                      fontSize: 11.5, color: C.encreAmbre, lineHeight: 1.5 }}>
           Une société créée ne peut pas être supprimée : le journal d'audit
           conserve ses traces et ne s'efface jamais. Elle peut seulement être
           désactivée. Vérifiez le nom et l'e-mail avant de valider.
@@ -118,8 +118,8 @@ export default function Societes({ retour }) {
           <div style={{ fontSize: 12.5, color: C.rouge, marginTop: 10 }}>{erreur}</div>
         )}
         {succes && (
-          <div style={{ fontSize: 12.5, color: "#065F46", background: "#ECFDF5",
-                        border: "1px solid #A7F3D0", borderRadius: 10,
+          <div style={{ fontSize: 12.5, color: C.encreVert, background: C.teinteVerte,
+                        border: `1px solid ${C.filetVert}`, borderRadius: 10,
                         padding: "10px 12px", marginTop: 10, lineHeight: 1.5 }}>
             ✓ {succes}
           </div>
@@ -153,7 +153,7 @@ export default function Societes({ retour }) {
                 {o.membres} membre{o.membres > 1 ? "s" : ""} · {o.clients} client
                 {o.clients > 1 ? "s" : ""} · {o.affaires} dossier{o.affaires > 1 ? "s" : ""}
                 {" · "}
-                <span style={{ color: o.prete ? "#065F46" : C.ambre, fontWeight: 700 }}>
+                <span style={{ color: o.prete ? C.encreVert : C.ambre, fontWeight: 700 }}>
                   {o.prete ? "configurée" : "à configurer"}
                 </span>
               </span>

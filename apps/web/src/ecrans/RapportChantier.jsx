@@ -101,7 +101,7 @@ export default function RapportChantier({ mission, peutRediger }) {
               resize: "vertical" }} />
         </>
       ) : deroule ? (
-        <div style={{ fontSize: 13, color: "#E2E8F0", lineHeight: 1.5,
+        <div style={{ fontSize: 13, color: C.filetNeutre, lineHeight: 1.5,
                       padding: "8px 10px", background: "#1E293B",
                       borderRadius: 9 }}>{deroule}</div>
       ) : null}

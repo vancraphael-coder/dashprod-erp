@@ -100,16 +100,16 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
 
       {/* Écarts : le matériel parti et non justifié */}
       {vendEmballage && resume.ecarts.length > 0 && (
-        <div style={{ ...S.carte, background: "#FEF2F2", border: "1px solid #FECACA" }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: "#991B1B" }}>
+        <div style={{ ...S.carte, background: C.teinteRouge, border: `1px solid ${C.filetRouge}` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: C.encreRouge }}>
             ⚠ Matériel non justifié
           </div>
           {resume.ecarts.map((e) => (
-            <div key={e.cle} style={{ fontSize: 12, color: "#B91C1C", marginTop: 3 }}>
+            <div key={e.cle} style={{ fontSize: 12, color: C.encreRouge, marginTop: 3 }}>
               {e.nom} : {e.ecart} manquant{e.ecart > 1 ? "s" : ""}
             </div>
           ))}
-          <div style={{ fontSize: 11, color: "#B91C1C", marginTop: 6, opacity: 0.85 }}>
+          <div style={{ fontSize: 11, color: C.encreRouge, marginTop: 6, opacity: 0.85 }}>
             Enlevé − Utilisé − Repris. Perdu, cassé, ou oubli de saisie.
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
                 {/* Enl. — saisi (dépôt). Gelé pour le terrain (consultation). */}
                 <input inputMode="numeric" disabled={modeTerrain} style={{
                   ...S.input, padding: "8px 4px", textAlign: "center",
-                  borderColor: enEcart ? "#FECACA" : C.bord,
+                  borderColor: enEcart ? C.filetRouge : C.bord,
                   background: modeTerrain ? "#F1F5F9" : undefined,
                   color: modeTerrain ? C.muet : undefined,
                 }} value={brut.e ?? ""} placeholder="0"
@@ -156,7 +156,7 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
 
                 {/* Util. — CALCULÉ : enl. − rep. Jamais saisi, toujours lu. */}
                 <div style={{ padding: "8px 4px", textAlign: "center", fontSize: 13,
-                              fontWeight: 700, color: C.encre, background: "#F8FAFC",
+                              fontWeight: 700, color: C.encre, background: C.teinteNeutre,
                               borderRadius: 8, border: `1px solid ${C.doux}` }}>
                   {ligne.u}
                 </div>
@@ -165,7 +165,7 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
                     Éditable même en consultation : c'est SA saisie. */}
                 <input inputMode="numeric" style={{
                   ...S.input, padding: "8px 4px", textAlign: "center",
-                  borderColor: enEcart ? "#FECACA" : (modeTerrain ? C.ambre : C.bord),
+                  borderColor: enEcart ? C.filetRouge : (modeTerrain ? C.ambre : C.bord),
                   ...(modeTerrain ? { pointerEvents: "auto" } : null),
                 }} value={brut.r ?? ""} placeholder="0"
                   onChange={(e) => maj(a.cle, "r", e.target.value)} />
@@ -211,12 +211,12 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
       )}
 
       {vendEmballage && fournitures.length > 0 && (
-        <div style={{ ...S.carte, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#1E40AF",
+        <div style={{ ...S.carte, background: C.teinteBleue, border: `1px solid ${C.filetBleu}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.encreBleu,
                         textTransform: "uppercase", letterSpacing: ".05em" }}>
             Mentionné sur l'offre
           </div>
-          <div style={{ fontSize: 12.5, color: "#1E3A8A", marginTop: 4 }}>
+          <div style={{ fontSize: 12.5, color: C.encreBleu, marginTop: 4 }}>
             Fourniture du matériel d'emballage ({fournitures.join(", ")})
           </div>
         </div>

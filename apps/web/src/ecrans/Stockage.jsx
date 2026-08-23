@@ -440,9 +440,9 @@ function Pastille({ occupe, client, compact }) {
   return (
     <span style={{ fontSize: compact ? 10 : 11, fontWeight: 700,
       whiteSpace: "nowrap", borderRadius: 999, padding: compact ? "2px 7px" : "3px 9px",
-      color: occupe ? "#065F46" : C.muet,
-      background: occupe ? "#ECFDF5" : "transparent",
-      border: `1px solid ${occupe ? "#A7F3D0" : C.bord}` }}>
+      color: occupe ? C.encreVert : C.muet,
+      background: occupe ? C.teinteVerte : "transparent",
+      border: `1px solid ${occupe ? C.filetVert : C.bord}` }}>
       {occupe ? (compact ? "occupé" : `Occupé — ${client}`) : "libre"}
     </span>
   );

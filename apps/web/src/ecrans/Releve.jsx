@@ -209,7 +209,7 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
               {volume} / {capacite} m³{jauge.zone === "surcharge" ? " — surchargé" : ""}
             </span>
           </div>
-          <div style={{ height: 8, borderRadius: 999, background: "#EEF2F9", overflow: "hidden" }}>
+          <div style={{ height: 8, borderRadius: 999, background: C.teinteNeutre, overflow: "hidden" }}>
             <div style={{
               height: "100%", width: `${Math.min(100, jauge.pct)}%`, borderRadius: 999,
               background: jauge.zone === "surcharge" ? C.rouge
@@ -306,8 +306,8 @@ export default function Releve({ affaireId, retour, versDevis, modeTerrain }) {
             return (
               <div key={it.id} style={{
                 padding: "8px 9px", marginBottom: 6, borderRadius: 10,
-                background: it.demont || it.remont ? "#EFF6FF" : "#F8FAFC",
-                border: `1px solid ${it.demont || it.remont ? "#BFDBFE" : "transparent"}`,
+                background: it.demont || it.remont ? C.teinteBleue : C.teinteNeutre,
+                border: `1px solid ${it.demont || it.remont ? C.filetBleu : "transparent"}`,
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {/* Chevron : la ligne reste compacte, les options se déplient.

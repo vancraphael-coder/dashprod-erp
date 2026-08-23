@@ -87,8 +87,8 @@ export default function Abonnement({ retour }) {
 
       {essaiRestant > 0 && (
         <div style={{ margin: "0 16px 12px", padding: "11px 13px",
-          borderRadius: 11, background: "#EEF2FF", border: "1px solid #C7D2FE",
-          fontSize: 12.5, color: "#3730A3", lineHeight: 1.5 }}>
+          borderRadius: 11, background: C.teinteBleue, border: "1px solid #C7D2FE",
+          fontSize: 12.5, color: C.encreIndigo, lineHeight: 1.5 }}>
           <b>Essai {plan(ESSAI_PLAN)?.nom} en cours</b> — {essaiRestant} jour
           {essaiRestant > 1 ? "s" : ""} restant{essaiRestant > 1 ? "s" : ""}.
           À l'échéance, vous retrouverez votre offre {plan(actuel)?.nom} sans
@@ -141,14 +141,14 @@ export default function Abonnement({ retour }) {
                 {p.nom}
                 {estActuel && (
                   <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 700,
-                    color: C.vert, background: "#ECFDF5", borderRadius: 999,
-                    padding: "2px 8px", border: "1px solid #A7F3D0" }}>
+                    color: C.vert, background: C.teinteVerte, borderRadius: 999,
+                    padding: "2px 8px", border: `1px solid ${C.filetVert}` }}>
                     votre offre
                   </span>
                 )}
                 {!ouverte && (
                   <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 700,
-                    color: C.muet, background: "#F1F5F9", borderRadius: 999,
+                    color: C.muet, background: C.teinteNeutre, borderRadius: 999,
                     padding: "2px 8px", border: `1px solid ${C.bord}` }}>
                     bientôt
                   </span>
@@ -195,7 +195,7 @@ export default function Abonnement({ retour }) {
 
             {!ouverte && (
               <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10,
-                background: "#F8FAFC", border: `1px solid ${C.bord}`,
+                background: C.teinteNeutre, border: `1px solid ${C.bord}`,
                 fontSize: 11.5, color: C.muet, lineHeight: 1.5 }}>
                 {plan(p.cle).verrou_motif}
               </div>
@@ -227,8 +227,8 @@ export default function Abonnement({ retour }) {
               restent — c'est ce qui permet de remonter sans rien perdre. */}
           {(exig.modules_perdus || []).length > 0 && (
             <div style={{ padding: "10px 12px", borderRadius: 10,
-              background: "#FFFBEB", border: "1px solid #FDE68A",
-              fontSize: 12, color: "#92400E", lineHeight: 1.5,
+              background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+              fontSize: 12, color: C.encreAmbre, lineHeight: 1.5,
               marginBottom: 10 }}>
               <b>Vous n'aurez plus accès à :</b>{" "}
               {exig.modules_perdus.map((c) => module(c)?.titre || c).join(", ")}.
@@ -264,7 +264,7 @@ export default function Abonnement({ retour }) {
                       cursor: complet ? "default" : "pointer",
                       opacity: complet ? .45 : 1,
                       border: `1.5px solid ${choisi ? C.vert : C.bord}`,
-                      background: choisi ? "#ECFDF5" : C.blanc }}>
+                      background: choisi ? C.teinteVerte : C.blanc }}>
                     <span style={{ width: 18, height: 18, borderRadius: 5,
                       border: `1.5px solid ${choisi ? C.vert : C.bord}`,
                       background: choisi ? C.vert : "#fff", color: "#fff",
@@ -296,8 +296,8 @@ export default function Abonnement({ retour }) {
           )}
 
           {erreur && (
-            <div style={{ fontSize: 12.5, color: C.rouge, background: "#FEF2F2",
-              border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px",
+            <div style={{ fontSize: 12.5, color: C.rouge, background: C.teinteRouge,
+              border: `1px solid ${C.filetRouge}`, borderRadius: 10, padding: "10px 12px",
               marginTop: 10, lineHeight: 1.5 }}>{erreur}</div>
           )}
 

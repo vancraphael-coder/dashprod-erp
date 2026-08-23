@@ -107,12 +107,12 @@ function OngletCamions() {
     <>
       {/* Alerte agrégée : intervention nécessaire */}
       {urgents.length > 0 && (
-        <div style={{ ...S.carte, background: "#FEF2F2", border: "1px solid #FECACA" }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: "#991B1B" }}>
+        <div style={{ ...S.carte, background: C.teinteRouge, border: `1px solid ${C.filetRouge}` }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: C.encreRouge }}>
             ⚠ Intervention nécessaire
           </div>
           {urgents.map((v) => (
-            <div key={v.id} style={{ fontSize: 12, color: "#B91C1C", marginTop: 3 }}>
+            <div key={v.id} style={{ fontSize: 12, color: C.encreRouge, marginTop: 3 }}>
               {v.nom} — {alertesVehicule(v).raisons.join(" · ")}
             </div>
           ))}

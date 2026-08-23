@@ -24,14 +24,17 @@ import {
 import { C, S } from "../lib/theme.jsx";
 
 /** Une couleur par famille — repérer d'un coup d'œil, pas décorer. */
+// Le FOND et l'ENCRE viennent des jetons (ils suivent le mode nuit) ; le TRAIT
+// reste une couleur pleine, lisible sur les deux modes — c'est le même
+// principe que le texte blanc sur aplat coloré.
 const TONS = {
-  decision:   { fond: "#EEF2FF", trait: "#4F46E5", texte: "#3730A3" },
-  argent:     { fond: "#ECFDF5", trait: "#059669", texte: "#065F46" },
-  dossier:    { fond: "#EFF6FF", trait: "#2563EB", texte: "#1E40AF" },
-  planning:   { fond: "#FFFBEB", trait: "#D97706", texte: "#92400E" },
-  equipe:     { fond: "#FDF2F8", trait: "#DB2777", texte: "#9D174D" },
-  entreprise: { fond: "#F8FAFC", trait: "#64748B", texte: "#334155" },
-  autre:      { fond: "#F8FAFC", trait: "#94A3B8", texte: "#475569" },
+  decision:   { fond: C.teinteIndigo,   trait: "#4F46E5", texte: C.encreIndigo },
+  argent:     { fond: C.teinteVerte,    trait: "#059669", texte: C.encreVert },
+  dossier:    { fond: C.teinteBleue,    trait: "#2563EB", texte: C.encreBleu },
+  planning:   { fond: C.teinteAmbre,    trait: "#D97706", texte: C.encreAmbre },
+  equipe:     { fond: C.teinteRose,     trait: "#DB2777", texte: C.encreRose },
+  entreprise: { fond: C.teinteNeutre,   trait: "#64748B", texte: C.encreNeutre },
+  autre:      { fond: C.teinteNeutre,   trait: C.fantome, texte: C.encreNeutre },
 };
 
 const JOURS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];

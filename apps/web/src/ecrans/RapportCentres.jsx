@@ -107,8 +107,8 @@ export default function RapportCentres({ retour }) {
             {/* Ce qui mérite un coup de fil, pas juste un chiffre de plus. */}
             {alerte && (
               <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10,
-                            background: "#FFFBEB", border: "1px solid #FDE68A",
-                            fontSize: 12.5, color: "#92400E", lineHeight: 1.5 }}>
+                            background: C.teinteAmbre, border: `1px solid ${C.filetAmbre}`,
+                            fontSize: 12.5, color: C.encreAmbre, lineHeight: 1.5 }}>
                 {c.chantiers_sans_equipe} chantier
                 {c.chantiers_sans_equipe > 1 ? "s" : ""} sans équipe affectée
                 cette semaine.

@@ -34,6 +34,9 @@ import {
   reinitialiserMeubles,
 } from "@domaine/stocks/meubles-piece.js";
 import { C, S } from "../lib/theme.jsx";
+import { Groupe, Entree } from "../composants/ListeReglages.jsx";
+import { famillesReglages, filtrerReglages, compterReglages }
+  from "@domaine/organisation/reglages.js";
 import Apparence from "./Apparence.jsx";
 import Stockage from "./Stockage.jsx";
 import Services from "./Services.jsx";
@@ -43,12 +46,19 @@ import Centres from "./Centres.jsx";
 const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €";
 
 export default function Parametres({
-  retour, versBareme, versCout, versTextes, versArchivage,
+  retour, versBareme, versCout, versTextes, versArchivage, modules = [],
 }) {
+  // `modules` : les modules RÉELLEMENT souscrits. La règle « une porte que
+  // l'abonnement n'ouvre pas ne s'affiche pas » était appliquée dans la barre
+  // de navigation et dans le Compte, mais PAS ici : Centres logistiques,
+  // Comptabilité, Journal et Stockage se voyaient en offre Basique, où la base
+  // refuse l'accès. Une porte fermée qui se voit est une promesse qu'on ne
+  // tient pas. Le filtrage se fait dans `famillesReglages`.
   const [cats, setCats] = useState(null);
   const [ouvert, setOuvert] = useState(null);
   const [org, setOrg] = useState({});
   const [erreur, setErreur] = useState(null);
+  const [requete, setRequete] = useState("");
 
   useEffect(() => {
     obtenirCatalogues()
@@ -104,6 +114,47 @@ export default function Parametres({
   const nbCouts = coutsMateriel(cats).length;
   const etatIdentite = identiteComplete(org);
 
+  // LE RANGEMENT vient du domaine (`organisation/reglages.js`), pas d'ici.
+  // Un écran ne se monte pas hors navigateur : tant que ces familles vivaient
+  // dans le JSX, la seule façon de vérifier le rangement était de relire le
+  // fichier source au caractère près. Déplacées dans une fonction pure, elles
+  // s'éprouvent pour de vrai — y compris le cas qu'on ne voit jamais en
+  // développant, parce qu'on développe toujours en offre Pro : celui d'une
+  // famille dont TOUTES les portes sont fermées par l'abonnement.
+  //
+  // L'écran ne garde que ce qui lui appartient : associer une clé à une
+  // navigation.
+  const ACTIONS = {
+    identite: () => setOuvert("identite"),
+    depots: () => setOuvert("depots"),
+    fermetures: () => setOuvert("fermetures"),
+    bareme: versBareme,
+    facturation: () => setOuvert("facturation"),
+    textes: versTextes,
+    cout: versCout,
+    services: () => setOuvert("services"),
+    stockage: () => setOuvert("stockage"),
+    contrats: () => setOuvert("contrats"),
+    comptabilite: () => setOuvert("comptabilite"),
+    journal: () => setOuvert("journal"),
+    archivage: versArchivage,
+    abonnement: () => setOuvert("abonnement"),
+    apparence: () => setOuvert("apparence"),
+    confidentialite: () => setOuvert("confidentialite"),
+    ...Object.fromEntries(LISTES_CATALOGUE.map((l) => [l.cle, () => setOuvert(l.cle)])),
+  };
+
+  const familles = famillesReglages({
+    catalogues: cats, organisation: org, modules, nbCouts: coutsMateriel(cats).length,
+    listesCatalogue: LISTES_CATALOGUE,
+    badgeListe: (cle) => (estPersonnalise(cats, cle)
+      ? { texte: `${catalogue(cats, cle).length} articles`, actif: true }
+      : { texte: "liste par défaut", actif: false }),
+  });
+  const visibles = filtrerReglages(familles, requete);
+  const nbVisibles = compterReglages(visibles);
+  const q = requete.trim();
+
   return (
     <div style={S.page}>
       <div style={S.entete}>
@@ -114,98 +165,40 @@ export default function Parametres({
         </div>
       </div>
 
+      <div style={{ padding: "0 16px" }}>
+        {/* LA RECHERCHE. Une page de réglages honnête est longue : on ne peut
+            pas retirer des réglages pour la raccourcir. Ce qu'on peut faire,
+            c'est cesser d'obliger à la parcourir. Trois lettres suffisent à
+            atteindre « TVA » ou « congé » sans savoir dans quelle famille
+            quelqu'un les a rangés — c'est justement quand le rangement se
+            discute que la recherche sauve. */}
+        <input value={requete} onChange={(e) => setRequete(e.target.value)}
+               placeholder="Chercher un réglage — TVA, congés, cartons…"
+               aria-label="Chercher un réglage"
+               style={{ ...S.input, marginTop: 4 }} />
+        {q && (
+          <div style={{ fontSize: 11.5, color: C.muet, marginTop: 6 }}>
+            {nbVisibles === 0
+              ? "Aucun réglage ne correspond."
+              : `${nbVisibles} réglage${nbVisibles > 1 ? "s" : ""}.`}
+            <button onClick={() => setRequete("")}
+                    style={{ ...S.boutonLien, fontSize: 11.5, padding: "0 6px" }}>
+              Tout afficher
+            </button>
+          </div>
+        )}
+      </div>
+
       <div style={{ padding: "0 16px 8px" }}>
-        {/* SIX familles, chacune d'au moins deux réglages. Avant : dix
-            rubriques dont cinq n'en contenaient qu'un — un titre pour un item
-            unique n'organise rien, il allonge. Le regroupement suit ce que
-            l'utilisateur CHERCHE, pas la structure interne du logiciel. */}
-
-        <Groupe titre="Mon entreprise"
-                aide="Ce qui vous identifie sur tous les documents.">
-          <Entree premier icone="🏢" titre="Identité de l'entreprise"
-                  resume="Nom, BCE, TVA, adresse, IBAN. Source de vérité de tous les documents."
-                  badge={etatIdentite.complete
-                    ? "complète"
-                    : etatIdentite.invalides.length
-                      ? "champ invalide"
-                      : `${etatIdentite.bloquants.length} champ${etatIdentite.bloquants.length > 1 ? "s" : ""} manquant${etatIdentite.bloquants.length > 1 ? "s" : ""}`}
-                  actif={!etatIdentite.complete}
-                  onClick={() => setOuvert("identite")} />
-          <Entree icone="🏭" titre="Centres logistiques"
-                  resume="Vos dépôts, leurs équipes et leurs véhicules."
-                  onClick={() => setOuvert("depots")} />
-          <Entree icone="🗓️" titre="Fermetures de l'entreprise"
-                  resume="Congé annuel collectif, ponts. S'affichent sur le planning avec les jours fériés."
-                  onClick={() => setOuvert("fermetures")} />
-        </Groupe>
-
-        <Groupe titre="Vendre et facturer"
-                aide="Vos prix, vos documents, ce que vos clients reçoivent.">
-          <Entree premier icone="🏷️" titre="Barème (prix client)"
-                  resume="Prix horaires par équipe, forfaits, options."
-                  onClick={versBareme} />
-          <Entree icone="🧾" titre="Facturation"
-                  resume={`TVA ${tauxTva(org)} %, échéance, numérotation, mention légale.`}
-                  onClick={() => setOuvert("facturation")} />
-          <Entree icone="📝" titre="Textes des dossiers"
-                  resume="Mails, email et PDF d'offre, conditions générales."
-                  onClick={versTextes} />
-          <Entree icone="📊" titre="Comptabilité"
-                  resume="Factures émises par période, TVA, et les fichiers pour votre comptable."
-                  onClick={() => setOuvert("comptabilite")} />
-        </Groupe>
-
-        <Groupe titre="Mes catalogues"
-                aide="Les listes qui alimentent le relevé, le chantier et les fournitures.">
-          {LISTES_CATALOGUE.map((l, i) => (
-            <Entree key={l.cle} premier={i === 0} icone={l.icone} titre={l.titre}
-                    resume={l.resume}
-                    badge={estPersonnalise(cats, l.cle)
-                      ? `${catalogue(cats, l.cle).length} articles`
-                      : "liste par défaut"}
-                    actif={estPersonnalise(cats, l.cle)}
-                    onClick={() => setOuvert(l.cle)} />
-          ))}
-        </Groupe>
-
-        <Groupe titre="Stockage et services"
-                aide="Ce que vous louez et ce que vous sous-traitez.">
-          <Entree premier icone="📦" titre="Stockage"
-                  resume="Zones au sol ou à étages, boxes numérotés, occupation."
-                  onClick={() => setOuvert("stockage")} />
-          <Entree icone="📄" titre="Contrats"
-                  resume="Boxes et zones loués : échéances mensuelles et litiges."
-                  onClick={() => setOuvert("contrats")} />
-          <Entree icone="⚙️" titre="Services"
-                  resume="Grille de sous-traitance, couronnes du lift, axes du dépôt."
-                  onClick={() => setOuvert("services")} />
-        </Groupe>
-
-        <Groupe titre="Ce que ça vous coûte"
-                aide="Vos coûts internes, et ce que vous payez pour Dashprod.">
-          <Entree premier icone="📉" titre="Coûts internes"
-                  resume={`Taux horaire, carburant${nbCouts ? ` · ${nbCouts} articles issus des catalogues` : ""}.`}
-                  onClick={versCout} />
-          <Entree icone="💳" titre="Mon offre"
-                  resume="Basique, Regular ou Pro. Facturation mensuelle ou annuelle (−5 %)."
-                  onClick={() => setOuvert("abonnement")} />
-        </Groupe>
-
-        <Groupe titre="L'application et vos données"
-                aide="L'affichage, la trace de ce qui s'est passé, et vos droits.">
-          <Entree premier icone="🎨" titre="Apparence"
-                  resume="Mode clair ou nuit, couleur d'accent, matière des cartes."
-                  onClick={() => setOuvert("apparence")} />
-          <Entree icone="📖" titre="Journal"
-                  resume="Tous les mouvements et les décisions, dans l'ordre. Rien ne s'y réécrit."
-                  onClick={() => setOuvert("journal")} />
-          <Entree icone="🔒" titre="Confidentialité & données"
-                  resume="Conservation, suppression RGPD des données clients."
-                  onClick={() => setOuvert("confidentialite")} />
-          <Entree icone="🗂️" titre="Archivage"
-                  resume="Dossiers, véhicules et membres archivés."
-                  onClick={versArchivage} />
-        </Groupe>
+        {visibles.map((f) => (
+          <Groupe key={f.cle} titre={f.titre} aide={q ? null : f.aide}>
+            {f.entrees.map((e, i) => (
+              <Entree key={e.cle} premier={i === 0} icone={e.icone} titre={e.titre}
+                      resume={e.resume} badge={e.badge} actif={e.actif}
+                      onClick={ACTIONS[e.cle]} />
+            ))}
+          </Groupe>
+        ))}
       </div>
 
       {erreur && (
@@ -391,69 +384,6 @@ function EditeurListe({ liste, cats, onCats, retour }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * UN GROUPE DE RÉGLAGES.
- *
- * Avant : un titre flottait au-dessus de cartes indépendantes, et dix rubriques
- * se partageaient vingt entrées — dont cinq n'en contenaient qu'UNE. Un titre
- * de section pour un item unique est du bruit : il double la hauteur sans rien
- * apprendre.
- *
- * Ici, le groupe est un CONTENEUR : les entrées y sont cousues par des filets,
- * la première et la dernière portent les arrondis. On VOIT le groupe au lieu de
- * le lire. Chaque groupe rassemble au moins deux réglages, sinon il n'a pas
- * lieu d'être.
- */
-function Groupe({ titre, aide, children }) {
-  return (
-    <section style={{ marginTop: 22 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: C.muet,
-                    letterSpacing: ".06em", textTransform: "uppercase",
-                    margin: "0 2px 7px" }}>
-        {titre}
-      </div>
-      {aide && (
-        <div style={{ fontSize: 11.5, color: C.fantome, lineHeight: 1.45,
-                      margin: "-4px 2px 8px" }}>{aide}</div>
-      )}
-      <div style={{ border: `1px solid ${C.bord}`, borderRadius: 14,
-                    overflow: "hidden", background: C.blanc,
-                    boxShadow: "0 1px 3px rgba(15,23,42,.05)" }}>
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function Entree({ icone, titre, resume, badge, actif, onClick, premier }) {
-  return (
-    // Plus de bordure ni d'ombre propres : l'entrée vit DANS son groupe. Un
-    // filet la sépare de la précédente ; le premier item n'en porte pas, sinon
-    // il doublerait la bordure du conteneur.
-    <button onClick={onClick} style={{
-      display: "flex", alignItems: "flex-start", gap: 12, width: "100%",
-      padding: "13px 14px", border: "none",
-      borderTop: premier ? "none" : `1px solid ${C.doux || C.bord}`,
-      background: "transparent", cursor: "pointer", textAlign: "left" }}>
-      <span style={{ fontSize: 19, lineHeight: 1 }}>{icone}</span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
-          {titre}
-        </span>
-        <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2,
-                       lineHeight: 1.4 }}>{resume}</span>
-        {badge && (
-          <span style={{ display: "inline-block", marginTop: 6, fontSize: 10.5,
-                         fontWeight: 700, padding: "2px 7px", borderRadius: 20,
-                         background: actif ? C.bleuClair : C.doux,
-                         color: actif ? C.bleu : C.fantome }}>{badge}</span>
-        )}
-      </span>
-      <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
-    </button>
-  );
-}
 
 const boutonAjout = {
   padding: "11px 14px", borderRadius: 10, border: "none",

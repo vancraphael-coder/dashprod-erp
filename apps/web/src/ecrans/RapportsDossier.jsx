@@ -100,9 +100,9 @@ export default function RapportsDossier({ affaireId, retour }) {
           l'écran. */}
       {synthese.a_traiter > 0 && (
         <div style={{ margin: "0 16px 12px", padding: "11px 13px",
-                      borderRadius: 11, background: "#FFFBEB",
-                      border: "1px solid #FDE68A", fontSize: 12.5,
-                      color: "#92400E", lineHeight: 1.5 }}>
+                      borderRadius: 11, background: C.teinteAmbre,
+                      border: `1px solid ${C.filetAmbre}`, fontSize: 12.5,
+                      color: C.encreAmbre, lineHeight: 1.5 }}>
           <b>{synthese.a_traiter} écart{synthese.a_traiter > 1 ? "s" : ""} à trancher.</b>
           {" "}Tant qu'ils ne le sont pas, ils ne comptent dans aucun supplément.
         </div>
@@ -127,8 +127,8 @@ export default function RapportsDossier({ affaireId, retour }) {
           )}
           {synthese.sensibles > 0 && (
             <div style={{ marginTop: 8, padding: "9px 11px", borderRadius: 9,
-                          background: "#FEF2F2", border: "1px solid #FECACA",
-                          fontSize: 11.5, color: "#991B1B", lineHeight: 1.45 }}>
+                          background: C.teinteRouge, border: `1px solid ${C.filetRouge}`,
+                          fontSize: 11.5, color: C.encreRouge, lineHeight: 1.45 }}>
               {synthese.sensibles} constat{synthese.sensibles > 1 ? "s" : ""} sans
               impact sur le prix (dommage, réserve, incident) — mais qui engagent
               votre responsabilité.
@@ -158,7 +158,7 @@ export default function RapportsDossier({ affaireId, retour }) {
           {r.deroule && (
             <div style={{ fontSize: 13, color: C.encre, lineHeight: 1.5,
                           padding: "9px 11px", borderRadius: 9,
-                          background: "#F8FAFC", marginBottom: 8 }}>
+                          background: C.teinteNeutre, marginBottom: 8 }}>
               {r.deroule}
             </div>
           )}
@@ -181,8 +181,8 @@ export default function RapportsDossier({ affaireId, retour }) {
                       {n?.titre || c.nature}
                       {!n?.facturable && (
                         <span style={{ marginLeft: 6, fontSize: 10,
-                          background: "#FEF2F2", color: "#991B1B",
-                          border: "1px solid #FECACA", borderRadius: 999,
+                          background: C.teinteRouge, color: C.encreRouge,
+                          border: `1px solid ${C.filetRouge}`, borderRadius: 999,
                           padding: "1px 6px", fontWeight: 700 }}>
                           sans impact prix
                         </span>
@@ -227,7 +227,7 @@ export default function RapportsDossier({ affaireId, retour }) {
 
                 {enArbitrage && (
                   <div style={{ marginTop: 8, padding: 11, borderRadius: 10,
-                                background: "#F8FAFC",
+                                background: C.teinteNeutre,
                                 border: `1px solid ${C.bord}` }}>
                     <input value={motif} placeholder="Motif (facultatif)"
                       onChange={(e) => setMotif(e.target.value)}
