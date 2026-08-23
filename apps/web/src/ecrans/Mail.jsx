@@ -171,7 +171,7 @@ export default function Mail({ affaireId, retour, versOffre }) {
       {/* Sous-onglets : composer un mail classique, ou Mailprod — la messagerie
           tracée avec le client (bidirectionnelle, probante). */}
       <div style={{ display: "flex", gap: 4, margin: "0 16px 12px",
-                    background: "#EEF2F8", borderRadius: 12, padding: 4 }}>
+                    background: C.bleuClair, borderRadius: 12, padding: 4 }}>
         {[["composer", "Composer"], ["mailprod", "Mailprod"]].map(([cle, lib]) => (
           <button key={cle} onClick={() => setSousOnglet(cle)}
             style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: "none",

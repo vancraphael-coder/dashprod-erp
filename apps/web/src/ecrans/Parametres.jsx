@@ -115,87 +115,97 @@ export default function Parametres({
       </div>
 
       <div style={{ padding: "0 16px 8px" }}>
-        <Rubrique>Entreprise</Rubrique>
-        <Entree icone="🏢" titre="Identité de l'entreprise"
-                resume="Nom, BCE, TVA, adresse, IBAN. Source de vérité de tous les documents."
-                badge={etatIdentite.complete
-                  ? "complète"
-                  : etatIdentite.invalides.length
-                    ? "champ invalide"
-                    : `${etatIdentite.bloquants.length} champ${etatIdentite.bloquants.length > 1 ? "s" : ""} manquant${etatIdentite.bloquants.length > 1 ? "s" : ""}`}
-                actif={!etatIdentite.complete}
-                onClick={() => setOuvert("identite")} />
-        <Entree icone="🧾" titre="Facturation"
-                resume={`TVA ${tauxTva(org)} %, échéance, numérotation, mention légale.`}
-                onClick={() => setOuvert("facturation")} />
+        {/* SIX familles, chacune d'au moins deux réglages. Avant : dix
+            rubriques dont cinq n'en contenaient qu'un — un titre pour un item
+            unique n'organise rien, il allonge. Le regroupement suit ce que
+            l'utilisateur CHERCHE, pas la structure interne du logiciel. */}
 
-        <Rubrique>Tarification</Rubrique>
-        <Entree icone="🏷️" titre="Barème (prix client)"
-                resume="Prix horaires par équipe, forfaits, options."
-                onClick={versBareme} />
-        <Entree icone="📉" titre="Coûts internes"
-                resume={`Taux horaire, carburant${nbCouts ? ` · ${nbCouts} articles issus des catalogues` : ""}.`}
-                onClick={versCout} />
+        <Groupe titre="Mon entreprise"
+                aide="Ce qui vous identifie sur tous les documents.">
+          <Entree premier icone="🏢" titre="Identité de l'entreprise"
+                  resume="Nom, BCE, TVA, adresse, IBAN. Source de vérité de tous les documents."
+                  badge={etatIdentite.complete
+                    ? "complète"
+                    : etatIdentite.invalides.length
+                      ? "champ invalide"
+                      : `${etatIdentite.bloquants.length} champ${etatIdentite.bloquants.length > 1 ? "s" : ""} manquant${etatIdentite.bloquants.length > 1 ? "s" : ""}`}
+                  actif={!etatIdentite.complete}
+                  onClick={() => setOuvert("identite")} />
+          <Entree icone="🏭" titre="Centres logistiques"
+                  resume="Vos dépôts, leurs équipes et leurs véhicules."
+                  onClick={() => setOuvert("depots")} />
+          <Entree icone="🗓️" titre="Fermetures de l'entreprise"
+                  resume="Congé annuel collectif, ponts. S'affichent sur le planning avec les jours fériés."
+                  onClick={() => setOuvert("fermetures")} />
+        </Groupe>
 
-        <Rubrique>Catalogues</Rubrique>
-        {LISTES_CATALOGUE.map((l) => (
-          <Entree key={l.cle} icone={l.icone} titre={l.titre} resume={l.resume}
-                  badge={estPersonnalise(cats, l.cle)
-                    ? `${catalogue(cats, l.cle).length} articles`
-                    : "liste par défaut"}
-                  actif={estPersonnalise(cats, l.cle)}
-                  onClick={() => setOuvert(l.cle)} />
-        ))}
+        <Groupe titre="Vendre et facturer"
+                aide="Vos prix, vos documents, ce que vos clients reçoivent.">
+          <Entree premier icone="🏷️" titre="Barème (prix client)"
+                  resume="Prix horaires par équipe, forfaits, options."
+                  onClick={versBareme} />
+          <Entree icone="🧾" titre="Facturation"
+                  resume={`TVA ${tauxTva(org)} %, échéance, numérotation, mention légale.`}
+                  onClick={() => setOuvert("facturation")} />
+          <Entree icone="📝" titre="Textes des dossiers"
+                  resume="Mails, email et PDF d'offre, conditions générales."
+                  onClick={versTextes} />
+          <Entree icone="📊" titre="Comptabilité"
+                  resume="Factures émises par période, TVA, et les fichiers pour votre comptable."
+                  onClick={() => setOuvert("comptabilite")} />
+        </Groupe>
 
-        <Rubrique>Planning</Rubrique>
-        <Entree icone="🗓️" titre="Fermetures de l'entreprise"
-                resume="Congé annuel collectif, ponts. S'affichent sur le planning avec les jours fériés."
-                onClick={() => setOuvert("fermetures")} />
+        <Groupe titre="Mes catalogues"
+                aide="Les listes qui alimentent le relevé, le chantier et les fournitures.">
+          {LISTES_CATALOGUE.map((l, i) => (
+            <Entree key={l.cle} premier={i === 0} icone={l.icone} titre={l.titre}
+                    resume={l.resume}
+                    badge={estPersonnalise(cats, l.cle)
+                      ? `${catalogue(cats, l.cle).length} articles`
+                      : "liste par défaut"}
+                    actif={estPersonnalise(cats, l.cle)}
+                    onClick={() => setOuvert(l.cle)} />
+          ))}
+        </Groupe>
 
-        <Rubrique>Abonnement</Rubrique>
-        <Entree icone="💳" titre="Mon offre"
-                resume="Starter, Regular ou Pro. Facturation mensuelle ou annuelle."
-                onClick={() => setOuvert("abonnement")} />
+        <Groupe titre="Stockage et services"
+                aide="Ce que vous louez et ce que vous sous-traitez.">
+          <Entree premier icone="📦" titre="Stockage"
+                  resume="Zones au sol ou à étages, boxes numérotés, occupation."
+                  onClick={() => setOuvert("stockage")} />
+          <Entree icone="📄" titre="Contrats"
+                  resume="Boxes et zones loués : échéances mensuelles et litiges."
+                  onClick={() => setOuvert("contrats")} />
+          <Entree icone="⚙️" titre="Services"
+                  resume="Grille de sous-traitance, couronnes du lift, axes du dépôt."
+                  onClick={() => setOuvert("services")} />
+        </Groupe>
 
-        <Rubrique>Comptabilité</Rubrique>
-        <Entree icone="📊" titre="Comptabilité"
-                resume="Factures émises par période, TVA, et les fichiers pour votre comptable."
-                onClick={() => setOuvert("comptabilite")} />
+        <Groupe titre="Ce que ça vous coûte"
+                aide="Vos coûts internes, et ce que vous payez pour Dashprod.">
+          <Entree premier icone="📉" titre="Coûts internes"
+                  resume={`Taux horaire, carburant${nbCouts ? ` · ${nbCouts} articles issus des catalogues` : ""}.`}
+                  onClick={versCout} />
+          <Entree icone="💳" titre="Mon offre"
+                  resume="Basique, Regular ou Pro. Facturation mensuelle ou annuelle (−5 %)."
+                  onClick={() => setOuvert("abonnement")} />
+        </Groupe>
 
-        <Rubrique>Documents</Rubrique>
-        <Entree icone="📝" titre="Textes des dossiers"
-                resume="Mails, email et PDF d'offre, conditions générales."
-                onClick={versTextes} />
-
-        <Rubrique>Logistique</Rubrique>
-        <Entree icone="🏭" titre="Centres logistiques"
-                resume="Vos dépôts, leurs équipes et leurs véhicules."
-                onClick={() => setOuvert("depots")} />
-        <Entree icone="📦" titre="Stockage"
-                resume="Zones au sol ou à étages, boxes numérotés, occupation."
-                onClick={() => setOuvert("stockage")} />
-        <Entree icone="📄" titre="Contrats"
-                resume="Boxes et zones loués : échéances mensuelles et litiges."
-                onClick={() => setOuvert("contrats")} />
-        <Entree icone="⚙️" titre="Services"
-                resume="Grille de sous-traitance, couronnes du lift, axes du dépôt."
-                onClick={() => setOuvert("services")} />
-
-        <Rubrique>Affichage</Rubrique>
-        <Entree icone="🎨" titre="Apparence"
-                resume="Mode clair ou nuit, couleur d'accent, matière des cartes."
-                onClick={() => setOuvert("apparence")} />
-
-        <Rubrique>Données</Rubrique>
-        <Entree icone="📖" titre="Journal"
-                resume="Tous les mouvements et les décisions, dans l'ordre. Rien ne s'y réécrit."
-                onClick={() => setOuvert("journal")} />
-        <Entree icone="🔒" titre="Confidentialité & données"
-                resume="Conservation, suppression RGPD des données clients."
-                onClick={() => setOuvert("confidentialite")} />
-        <Entree icone="🗂️" titre="Archivage"
-                resume="Dossiers, véhicules et membres archivés."
-                onClick={versArchivage} />
+        <Groupe titre="L'application et vos données"
+                aide="L'affichage, la trace de ce qui s'est passé, et vos droits.">
+          <Entree premier icone="🎨" titre="Apparence"
+                  resume="Mode clair ou nuit, couleur d'accent, matière des cartes."
+                  onClick={() => setOuvert("apparence")} />
+          <Entree icone="📖" titre="Journal"
+                  resume="Tous les mouvements et les décisions, dans l'ordre. Rien ne s'y réécrit."
+                  onClick={() => setOuvert("journal")} />
+          <Entree icone="🔒" titre="Confidentialité & données"
+                  resume="Conservation, suppression RGPD des données clients."
+                  onClick={() => setOuvert("confidentialite")} />
+          <Entree icone="🗂️" titre="Archivage"
+                  resume="Dossiers, véhicules et membres archivés."
+                  onClick={versArchivage} />
+        </Groupe>
       </div>
 
       {erreur && (
@@ -382,20 +392,50 @@ function EditeurListe({ liste, cats, onCats, retour }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Rubrique({ children }) {
+/**
+ * UN GROUPE DE RÉGLAGES.
+ *
+ * Avant : un titre flottait au-dessus de cartes indépendantes, et dix rubriques
+ * se partageaient vingt entrées — dont cinq n'en contenaient qu'UNE. Un titre
+ * de section pour un item unique est du bruit : il double la hauteur sans rien
+ * apprendre.
+ *
+ * Ici, le groupe est un CONTENEUR : les entrées y sont cousues par des filets,
+ * la première et la dernière portent les arrondis. On VOIT le groupe au lieu de
+ * le lire. Chaque groupe rassemble au moins deux réglages, sinon il n'a pas
+ * lieu d'être.
+ */
+function Groupe({ titre, aide, children }) {
   return (
-    <div style={{ fontSize: 11, fontWeight: 700, color: C.muet, letterSpacing: ".05em",
-                  textTransform: "uppercase", margin: "18px 2px 2px" }}>{children}</div>
+    <section style={{ marginTop: 22 }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: C.muet,
+                    letterSpacing: ".06em", textTransform: "uppercase",
+                    margin: "0 2px 7px" }}>
+        {titre}
+      </div>
+      {aide && (
+        <div style={{ fontSize: 11.5, color: C.fantome, lineHeight: 1.45,
+                      margin: "-4px 2px 8px" }}>{aide}</div>
+      )}
+      <div style={{ border: `1px solid ${C.bord}`, borderRadius: 14,
+                    overflow: "hidden", background: C.blanc,
+                    boxShadow: "0 1px 3px rgba(15,23,42,.05)" }}>
+        {children}
+      </div>
+    </section>
   );
 }
 
-function Entree({ icone, titre, resume, badge, actif, onClick }) {
+function Entree({ icone, titre, resume, badge, actif, onClick, premier }) {
   return (
+    // Plus de bordure ni d'ombre propres : l'entrée vit DANS son groupe. Un
+    // filet la sépare de la précédente ; le premier item n'en porte pas, sinon
+    // il doublerait la bordure du conteneur.
     <button onClick={onClick} style={{
       display: "flex", alignItems: "flex-start", gap: 12, width: "100%",
-      marginTop: 10, padding: 14, border: `1px solid ${C.bord}`, borderRadius: 14,
-      background: C.blanc, boxShadow: "0 1px 3px rgba(15,23,42,.05)",
-      cursor: "pointer", textAlign: "left" }}>
+      padding: "13px 14px", border: "none",
+      borderTop: premier ? "none" : `1px solid ${C.doux || C.bord}`,
+      background: "transparent", cursor: "pointer", textAlign: "left" }}>
       <span style={{ fontSize: 19, lineHeight: 1 }}>{icone}</span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>

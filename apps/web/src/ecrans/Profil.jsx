@@ -85,54 +85,30 @@ export default function Profil({ profil, versParametres, versDiagnostic, versDem
             flex: 1, padding: "9px 6px", borderRadius: 10, cursor: "pointer",
             fontSize: 12.5, fontWeight: 700,
             border: `1.5px solid ${onglet === cle ? C.bleu : C.bord}`,
-            background: onglet === cle ? "#E7EFFC" : C.blanc,
+            background: onglet === cle ? C.bleuClair : C.blanc,
             color: onglet === cle ? C.bleu : C.muet }}>{lib}</button>
         ))}
       </div>
 
       {onglet === "inventaire" ? <Inventaire profil={profil} /> : <Conges />}
 
-      {peutConfigurer && versParametres && (
-        <div style={{ margin: "18px 16px 0" }}>
-          <button onClick={versParametres} style={{
-            display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
-            border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
-            boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer",
-            textAlign: "left" }}>
-            <span style={{ fontSize: 19 }}>⚙️</span>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
-                Paramètres
-              </span>
-              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
-                Barème, coûts, catalogues, textes, archivage.
-              </span>
-            </span>
-            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
-          </button>
-        </div>
-      )}
-
-      {/* Demandes du réseau : le carnet de pistes partagé (marketplace). */}
-      {versDemandes && (
-        <div style={{ margin: "12px 16px 0" }}>
-          <button onClick={versDemandes} style={{
-            display: "flex", alignItems: "center", gap: 12, width: "100%", padding: 14,
-            border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
-            boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer",
-            textAlign: "left" }}>
-            <span style={{ fontSize: 19 }}>📦</span>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
-                Demandes du réseau
-              </span>
-              <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2 }}>
-                Les particuliers qui cherchent un déménageur.
-              </span>
-            </span>
-            <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
-          </button>
-        </div>
+      {/* Les portes vers ailleurs, réunies en un bloc plutôt qu'en cartes
+          isolées. Deux boutons identiques vivaient côte à côte, copiés
+          caractère pour caractère : une copie finit toujours par diverger. */}
+      {((peutConfigurer && versParametres) || versDemandes) && (
+        <BlocPortes>
+          {peutConfigurer && versParametres && (
+            <Porte premier icone="⚙️" titre="Paramètres"
+                   resume="Barème, coûts, catalogues, textes, archivage."
+                   onClick={versParametres} />
+          )}
+          {versDemandes && (
+            <Porte premier={!(peutConfigurer && versParametres)}
+                   icone="📦" titre="Demandes du réseau"
+                   resume="Les particuliers qui cherchent un déménageur."
+                   onClick={versDemandes} />
+          )}
+        </BlocPortes>
       )}
 
       {/* Centres logistiques et compte rendu : visibles seulement si l'offre
@@ -413,3 +389,41 @@ const carteAction = {
   border: `1px solid ${C.bord}`, borderRadius: 14, background: C.blanc,
   boxShadow: "0 1px 3px rgba(15,23,42,.05)", cursor: "pointer", textAlign: "left",
 };
+
+/**
+ * Une porte vers un autre écran depuis le Compte.
+ *
+ * Ces boutons étaient copiés à l'identique — même structure, même style, deux
+ * fois. Une copie diverge toujours : l'un se corrige, l'autre est oublié. Un
+ * composant, une forme.
+ */
+function Porte({ icone, titre, resume, onClick, premier }) {
+  return (
+    <button onClick={onClick} style={{
+      display: "flex", alignItems: "center", gap: 12, width: "100%",
+      padding: "13px 14px", border: "none",
+      borderTop: premier ? "none" : `1px solid ${C.doux || C.bord}`,
+      background: "transparent", cursor: "pointer", textAlign: "left" }}>
+      <span style={{ fontSize: 19 }}>{icone}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: C.encre }}>
+          {titre}
+        </span>
+        <span style={{ display: "block", fontSize: 11.5, color: C.muet, marginTop: 2,
+                       lineHeight: 1.4 }}>{resume}</span>
+      </span>
+      <span style={{ color: C.fantome, fontSize: 18 }}>›</span>
+    </button>
+  );
+}
+
+/** Un bloc de portes, cousu comme les groupes de Paramètres. */
+function BlocPortes({ children }) {
+  return (
+    <div style={{ margin: "18px 16px 0", border: `1px solid ${C.bord}`,
+                  borderRadius: 14, overflow: "hidden", background: C.blanc,
+                  boxShadow: "0 1px 3px rgba(15,23,42,.05)" }}>
+      {children}
+    </div>
+  );
+}
