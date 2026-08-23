@@ -63,3 +63,20 @@ test("aucun FOND clair en dur dans les écrans d'app (il ignorerait le mode nuit
     "fond blanc en dur (utiliser C.blanc, qui suit le mode nuit) :\n"
     + fautes.join("\n"));
 });
+
+test("aucun FOND bleu clair en dur (il ignore le mode nuit lui aussi)", () => {
+  // Le test précédent ne cherchait que le blanc. Un fond `#E7EFFC` sur un
+  // onglet sélectionné passait donc au travers — et restait bleu pâle sur le
+  // fond nuit. Trouvé dans Profil.jsx. Le jeton `C.bleuClair` suit le mode.
+  const fautes = [];
+  const BLEU_DUR = /background(?:Color)?:\s*["'](#E7EFFC|#EEF2F8|#EFF4FC|#E8F0FE|#DBEAFE)["']/i;
+  for (const f of fichiersJsx(ECRANS)) {
+    const src = readFileSync(f, "utf8");
+    src.split("\n").forEach((ligne, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(ligne)) return;
+      if (BLEU_DUR.test(ligne)) fautes.push(`${f.replace(RACINE, "")}:${i + 1}`);
+    });
+  }
+  assert.deepEqual(fautes, [],
+    "fond bleu clair en dur (utiliser C.bleuClair) :\n" + fautes.join("\n"));
+});

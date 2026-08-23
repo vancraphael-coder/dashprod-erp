@@ -96,3 +96,47 @@ test("l'archive se déclare NON normative", () => {
   assert.match(a, /rapproche un client|preuve avant l'extension/i,
     "le filtre de Raphaël doit être rappelé");
 });
+
+/* ── Organisation des écrans Compte et Paramètres (lot 33) ──────────────── */
+
+const APP = join(dirname(fileURLToPath(import.meta.url)),
+                 "..", "..", "..", "apps", "web", "src");
+const lireEcran = (rel) => readFileSync(join(APP, rel), "utf8");
+
+test("Paramètres : plus aucun groupe solitaire", () => {
+  // Avant : dix rubriques pour vingt entrées, dont CINQ n'en contenaient
+  // qu'une. Un titre de section pour un item unique n'organise rien — il
+  // double la hauteur sans rien apprendre.
+  const src = lireEcran("ecrans/Parametres.jsx");
+  const groupes = src.split("<Groupe titre=").slice(1);
+  assert.ok(groupes.length >= 5 && groupes.length <= 7,
+    `${groupes.length} groupes : viser 5 à 7 familles lisibles`);
+  for (const g of groupes) {
+    const bloc = g.slice(0, g.indexOf("</Groupe>"));
+    const entrees = (bloc.match(/<Entree /g) || []).length
+                  + (bloc.includes("LISTES_CATALOGUE.map") ? 2 : 0);
+    assert.ok(entrees >= 2,
+      `un groupe ne contient qu'une entrée : ${bloc.slice(0, 40)}`);
+  }
+});
+
+test("Paramètres : le groupe est un CONTENEUR, pas un titre flottant", () => {
+  // On doit VOIR le groupe, pas seulement le lire. Les entrées y sont cousues
+  // par des filets ; la première n'en porte pas, sinon elle doublerait la
+  // bordure du conteneur.
+  const src = lireEcran("ecrans/Parametres.jsx");
+  assert.ok(src.includes("function Groupe("), "le groupe est un composant");
+  assert.ok(src.includes("borderTop: premier ?"),
+    "les entrées sont séparées par un filet, la première exceptée");
+  assert.equal(src.includes("<Rubrique>"), false,
+    "l'ancien titre flottant a disparu");
+});
+
+test("Compte : les portes vers ailleurs ne sont plus copiées à la main", () => {
+  // Deux boutons identiques vivaient côte à côte, caractère pour caractère.
+  // Une copie diverge toujours : l'un se corrige, l'autre est oublié.
+  const src = lireEcran("ecrans/Profil.jsx");
+  assert.ok(src.includes("function Porte("), "un composant partagé");
+  assert.ok((src.match(/<Porte /g) || []).length >= 2,
+    "les deux portes passent par lui");
+});
