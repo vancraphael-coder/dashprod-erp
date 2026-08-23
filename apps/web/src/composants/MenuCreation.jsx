@@ -34,10 +34,10 @@ const TONS_METIER = {
 };
 /** Les teintes d'étiquette, assorties aux billes. */
 const ETIQ = {
-  demenagement: { vif: "#3B82F6", sombre: "#1D4ED8" },
+  demenagement: { vif: "#3B82F6", sombre: C.encreBleu },
   sous_traitance: { vif: "#F87171", sombre: "#DC2626" },
-  lift: { vif: "#F59E0B", sombre: "#B45309" },
-  boxe: { vif: "#34D399", sombre: "#047857" },
+  lift: { vif: "#F59E0B", sombre: C.encreAmbre },
+  boxe: { vif: "#34D399", sombre: C.encreVert },
   zone: { vif: "#94A3B8", sombre: "#475569" },
 };
 
