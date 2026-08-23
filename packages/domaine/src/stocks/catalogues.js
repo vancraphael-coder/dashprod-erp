@@ -67,7 +67,11 @@ export const LISTES_CATALOGUE = Object.freeze([
   },
   {
     cle: "fournitures", titre: "Fournitures d'emballage", icone: "📦",
-    resume: "Cartons, papier, housses — facturables au client.",
+    // « facturables au client » était FAUX depuis que les fournitures ont
+    // quitté la facture du dossier : elles relèvent d'une vente séparée. Un
+    // résumé de réglage qui promet une facturation qui n'a pas lieu se paie en
+    // fournitures livrées et jamais encaissées.
+    resume: "Cartons, papier, housses. Leur coût d'achat, pour vos marges.",
   },
   {
     cle: "materiel_terrain", titre: "Matériel de terrain", icone: "🛠️",
