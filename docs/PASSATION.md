@@ -3,7 +3,7 @@
 > **À lire en entier avant de coder.** Ce document permet à une nouvelle
 > conversation de reprendre le travail sans rien casser ni rien réinventer.
 >
-> **Dernière mise à jour :** 23/08/2026 — après le lot 34.
+> **Dernière mise à jour :** 23/08/2026 — après le lot 35.
 > **À mettre à jour tous les 7 messages**, ou en fin de conversation.
 > Procédure de mise à jour : §9.
 
@@ -1031,7 +1031,63 @@ en élargissant : `Profil.jsx` (onglets) et `Mail.jsx`.
 (`#E7EFFC`, `#EEF2F8`, `#EFF4FC`, `#E8F0FE`, `#DBEAFE`). Un garde-fou qui ne
 cherche qu'une forme du bug laisse passer les autres.
 
-## 5bis. Lot 34 — 23/08/2026 (le plus récent)
+## 5ter. Lot 35 — 23/08/2026 (le plus récent)
+
+**Compteurs :** 1089 tests verts (1067 avant), build vert, migrations toujours
+à **0143** (lot entièrement pur — aucune migration).
+
+### Le socle des cartes métier
+
+`packages/domaine/src/metiers/cartes.js` — HORIZONTAL, aucun import de métier.
+Il remplace TROIS listes qui ne se parlaient pas : `EXIGENCES`
+(planning/affectation.js), `typesAvecCarte` codé en dur dans `Dossier.jsx`, et
+les étapes de `commercial/natures.js`. `EXIGENCES` en est désormais DÉRIVÉ.
+
+**Pour ajouter un métier : une entrée dans `CARTES_METIER`, rien d'autre.** Un
+test vérifie que toute nature passant par le planning a une carte principale —
+l'oubli ne peut plus donner un dossier sans aucune carte de date.
+
+### Le défaut corrigé — l'effectif vendu
+
+`EXIGENCES.demenagement.membres_min` valait **2 en dur**, pendant que le prix
+vient de `BAREME_HORAIRE[nbDemenageurs]`, choisi au devis entre 2 et 6.
+**Un dossier vendu à quatre déménageurs affichait une carte qui passait au vert
+à deux** — chantier sous-staffé ET sous-facturé, sans qu'aucun écran ne le
+dise.
+
+Le dénominateur vient maintenant du devis (`affaire.faits.nbDemenageurs`), avec
+le plancher du métier en repli. Le verdict DIT l'origine (« effectif du
+devis ») : sans ça on corrigerait la carte au lieu du devis.
+
+⚠ `Number(null) === 0` aurait déclaré « aucune personne attendue » et rendu
+toute carte verte à vide — septième occurrence du piège. Verrouillé par test.
+
+### Le tri des catalogues
+
+`listerMembresSimples()` n'a **aucun `order by`** : PostgREST rend les lignes
+dans l'ordre physique, qui change après une mise à jour. Les jetons bougeaient
+donc de place entre deux visites. On coche une équipe en visant une position
+mémorisée : un jeton qui se déplace se coche à la place d'un autre, et l'erreur
+ne se voit qu'au départ du camion.
+
+`trierMembres` / `trierVehicules` vivent dans le domaine (trois écrans qui
+trient « à peu près pareil » finissent par afficher trois ordres). Affectés en
+tête, indisponibles en queue **sans disparaître** — on signale, on n'interdit
+pas. Collateur `fr-BE` : accents ignorés, « Camion 2 » avant « Camion 10 ».
+
+### Reste à faire (lots 36 à 38)
+
+- **36** — `emballage` est aujourd'hui une FORMULE exclusive
+  (`FORMULES = [tarifaire, emballage, forfait]`), donc **un forfait ne peut
+  jamais porter d'emballage**. À transformer en drapeau indépendant.
+- **37** — mission pressentie translucide au planning. `etat_mission` n'a
+  aucun état avant `planifiee`, et `listerMissions()` ne lit que la table
+  `missions` : une date promise au client est **invisible au planning**.
+- **38** — mission multi-jours + `prestation_debut`/`prestation_fin`.
+
+---
+
+## 5bis. Lot 34 — 23/08/2026
 
 **Dépôt PUBLIC désormais** (`github.com/vancraphael-coder/dashprod-erp`). Il se
 clone depuis la sandbox. Conséquence : plus AUCUNE livraison à l'aveugle —
