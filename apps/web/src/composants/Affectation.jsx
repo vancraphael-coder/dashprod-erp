@@ -16,8 +16,9 @@
 
 import React, { useState } from "react";
 import {
-  etatAffectation, couleurVoyant, resumeAffectation, exigence,
+  etatAffectation, couleurVoyant, resumeEffectif, exigence,
 } from "@domaine/planning/affectation.js";
+import { trierMembres, trierVehicules } from "@domaine/metiers/cartes.js";
 import Bille from "./Bille.jsx";
 import { C, S } from "../lib/theme.jsx";
 
@@ -45,10 +46,14 @@ export function Voyant() { return null; }
  */
 export function VoletAffectation({
   mission, membres, flotte, valeur, onChange, ouvertParDefaut = false,
+  chiffrage = null,
 }) {
   const [ouvert, setOuvert] = useState(ouvertParDefaut);
   const a = valeur || { membres: [], vehicules: [] };
-  const verdict = etatAffectation(mission.type, a, flotte);
+  // Même source d'effectif que la carte de date : deux composants qui
+  // comptent l'équipe autrement, c'est deux réponses à « est-ce pourvu ».
+  const chif = chiffrage || {};
+  const verdict = etatAffectation(mission.type, a, flotte, chif);
   const ex = exigence(mission.type);
   const bordEtat = LISERE[couleurVoyant(verdict.etat)] || LISERE.gris;
 
@@ -92,7 +97,7 @@ export function VoletAffectation({
             )}
           </div>
           <div style={{ fontSize: 11.5, color: C.muet, marginTop: 1 }}>
-            {resumeAffectation(a)}
+            {resumeEffectif(a, mission.type, chif)}
             {verdict.etat === "partiel" && verdict.manques[0]
               ? ` — ${verdict.manques[0].toLowerCase()}` : ""}
           </div>
@@ -115,7 +120,7 @@ export function VoletAffectation({
             {(membres || []).length === 0 && (
               <span style={{ fontSize: 12, color: C.muet }}>Aucun membre actif.</span>
             )}
-            {(membres || []).map((m) => (
+            {trierMembres(membres, { affectes: a.membres || [] }).map((m) => (
               <Jeton key={m.id} actif={(a.membres || []).includes(m.id)}
                      onClick={() => basculerMembre(m.id)} texte={m.nom} />
             ))}
@@ -134,7 +139,7 @@ export function VoletAffectation({
                     : "Aucun véhicule."}
                 </span>
               )}
-              {flotteOfferte.map((v) => (
+              {trierVehicules(flotteOfferte, { affectes: a.vehicules || [] }).map((v) => (
                 <Jeton key={v.id} actif={(a.vehicules || []).includes(v.id)}
                        onClick={() => basculerVehicule(v.id)} texte={v.nom} />
               ))}

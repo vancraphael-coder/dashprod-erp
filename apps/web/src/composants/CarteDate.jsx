@@ -13,8 +13,10 @@
 
 import React, { useState } from "react";
 import {
-  etatAffectation, couleurVoyant, resumeAffectation, exigence,
+  etatAffectation, couleurVoyant, resumeAffectation, resumeEffectif,
+  exigence, effectifRequis,
 } from "@domaine/planning/affectation.js";
+import { trierMembres, trierVehicules } from "@domaine/metiers/cartes.js";
 import { permisConduite } from "@domaine/flotte/vehicules.js";
 import Bille from "./Bille.jsx";
 import { C, S } from "../lib/theme.jsx";
@@ -45,7 +47,7 @@ export default function CarteDate({
   typeMission, libelle, facultative = false,
   date, heure, onDate, onHeure,
   affectation, onAffectation, membres, flotte,
-  mission = null, dispo = null,
+  mission = null, dispo = null, chiffrage = null,
 }) {
   const [ouvert, setOuvert] = useState(false);
   // La mission fait foi dès qu'elle existe (0131). Avant, c'est le prévu.
@@ -57,8 +59,13 @@ export default function CarteDate({
   // Sans date, il n'y a rien à affecter : le voyant reste éteint et ne réclame
   // pas une équipe pour un jour qui n'existe pas.
   const posee = Boolean(date);
+  // L'effectif VENDU commande le dénominateur. Sans lui, la carte comparait
+  // l'équipe à une constante et passait au vert à deux sur un dossier chiffré
+  // pour quatre.
+  const chif = chiffrage || {};
+  const requis = effectifRequis(typeMission, chif);
   const verdict = posee
-    ? etatAffectation(typeMission, a, flotte)
+    ? etatAffectation(typeMission, a, flotte, chif)
     : { etat: "vide", manques: [], note: ex.note };
   const couleur = couleurVoyant(verdict.etat);
 
@@ -130,6 +137,21 @@ export default function CarteDate({
     ? (flotte || []).filter((v) => (v.categorie || "camion") === ex.categorie)
     : (flotte || []);
 
+  // LE TRI. Les jetons sortaient dans l'ordre de la base — un ordre qui change
+  // après une mise à jour. On coche une équipe en visant une position
+  // mémorisée : un jeton qui se déplace se coche à la place d'un autre, et
+  // l'erreur ne se voit qu'au départ du camion. Les affectés remontent (on les
+  // relit pour vérifier), les indisponibles descendent sans disparaître —
+  // on signale, on n'interdit pas.
+  const membresTries = trierMembres(membres, {
+    affectes: a.membres || [],
+    estIndisponible: (id) => Boolean(lireDispo("membre", id)),
+  });
+  const flotteTriee = trierVehicules(flotteOfferte, {
+    affectes: a.vehicules || [],
+    estIndisponible: (id) => Boolean(lireDispo("vehicule", id)),
+  });
+
   return (
     <div style={{
       ...S.carte,
@@ -158,7 +180,7 @@ export default function CarteDate({
           </div>
           <div style={{ fontSize: 11.5, color: C.muet, marginTop: 2 }}>
             {posee
-              ? resumeAffectation(a)
+              ? resumeEffectif(a, typeMission, chif)
                 + (verdict.etat === "partiel" && verdict.manques[0]
                    ? ` — ${verdict.manques[0].toLowerCase()}` : "")
               : "Aucune date posée"}
@@ -204,7 +226,7 @@ export default function CarteDate({
               Qui la fait
             </span>
             <span style={{ fontSize: 11.5, color: C.muet }}>
-              {resumeAffectation(a)}
+              {resumeEffectif(a, typeMission, chif)}
             </span>
           </button>
 
@@ -215,14 +237,25 @@ export default function CarteDate({
                 {ex.note}
               </div>
 
-              <Titre>Équipe</Titre>
+              <Titre>
+                Équipe
+                {/* Le dénominateur EST le titre : on le lit avant de cocher,
+                    pas après avoir coché. Son origine est dite, sinon « 4 »
+                    passe pour une règle du logiciel au lieu d'un choix du
+                    devis — et on le corrigerait ici plutôt qu'au bon endroit. */}
+                <span style={{ fontWeight: 700, color: C.muet,
+                               textTransform: "none", letterSpacing: 0 }}>
+                  {" — "}{(a.membres || []).length} / {requis.nombre}
+                  {requis.origine === "devis" ? " (devis)" : ""}
+                </span>
+              </Titre>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {(membres || []).length === 0 && (
                   <span style={{ fontSize: 12, color: C.muet }}>
                     Aucun membre actif.
                   </span>
                 )}
-                {(membres || []).map((m) => {
+                {membresTries.map((m) => {
                   // Le conflit se lit AU MOMENT DU CLIC, pas dans un écran
                   // qu'il faut aller ouvrir : c'est ici qu'on décide. Deux
                   // signaux se cumulent : disponibilité et permis. La
@@ -254,7 +287,7 @@ export default function CarteDate({
                           : "Aucun véhicule."}
                       </span>
                     )}
-                    {flotteOfferte.map((v) => {
+                    {flotteTriee.map((v) => {
                       const d = lireDispo("vehicule", v.id);
                       return (
                         <Jeton key={v.id} actif={(a.vehicules || []).includes(v.id)}
