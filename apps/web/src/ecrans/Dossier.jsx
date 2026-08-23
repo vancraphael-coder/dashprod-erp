@@ -241,6 +241,19 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     ? liftSuffit(liftChoisi, [...(contact?.charges || []), ...(contact?.decharges || [])])
     : { ok: true, motif: null };
 
+  // L'EFFECTIF VENDU, transmis aux cartes. C'est lui le dénominateur de
+  // « 2 membres / X » : le prix vient de BAREME_HORAIRE[nbDemenageurs], choisi
+  // au devis entre 2 et 6. Sans cette ligne, les cartes comparaient l'équipe à
+  // une constante et passaient au vert à deux sur un dossier chiffré pour
+  // quatre — sous-staffé ET sous-facturé, sans que rien ne le dise.
+  //
+  // `faits` est null tant qu'aucun scénario n'est retenu : les cartes
+  // retombent alors sur le plancher du métier, ce qui est le bon repli.
+  const chiffrage = {
+    nbDemenageurs: affaire.faits?.nbDemenageurs,
+    nbEmballeurs: affaire.faits?.nbEmballeurs,
+  };
+
   const chiffree = affaire.tvac_centimes != null;
   // Depuis la séparation des cycles (0064), on facture un dossier ENGAGÉ —
   // un acompte sur un dossier confirmé est légitime. Les anciens états
@@ -378,7 +391,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         date={contact.date} heure={contact.heure}
         onDate={(v) => maj("date", v)} onHeure={(v) => maj("heure", v)}
         affectation={prevues.principale} membres={membres} flotte={flotte}
-        mission={missionDe(typeMissionPrincipale)} dispo={dispo}
+        mission={missionDe(typeMissionPrincipale)} dispo={dispo} chiffrage={chiffrage}
         onAffectation={(a) => majAffectation("principale", typeMissionPrincipale, a)} />
 
       {parcoursComplet && (
@@ -388,7 +401,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             onDate={(v) => maj("dateVisite", v)}
             onHeure={(v) => maj("heureVisite", v)}
             affectation={prevues.visite} membres={membres} flotte={flotte}
-            mission={missionDe("visite")} dispo={dispo}
+            mission={missionDe("visite")} dispo={dispo} chiffrage={chiffrage}
             onAffectation={(a) => majAffectation("visite", "visite", a)} />
 
           <CarteDate typeMission="emballage" libelle="Emballage" facultative
@@ -396,7 +409,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             onDate={(v) => maj("dateEmballage", v)}
             onHeure={(v) => maj("heureEmballage", v)}
             affectation={prevues.emballage} membres={membres} flotte={flotte}
-            mission={missionDe("emballage")} dispo={dispo}
+            mission={missionDe("emballage")} dispo={dispo} chiffrage={chiffrage}
             onAffectation={(a) => majAffectation("emballage", "emballage", a)} />
         </>
       )}
@@ -414,7 +427,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
           </div>
           {missionsSansCarte.map((m) => (
             <VoletAffectation key={m.id} mission={m}
-              membres={membres} flotte={flotte}
+              membres={membres} flotte={flotte} chiffrage={chiffrage}
               valeur={m.affectation}
               onChange={async (a) => {
                 setMissions((l) => l.map((x) =>
