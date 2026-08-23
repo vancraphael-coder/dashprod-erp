@@ -60,21 +60,30 @@ export function rubriquesOffre(cle, entrees = {}) {
 }
 
 /**
- * LES FOURNITURES facturables d'un dossier — vente de BIENS, distincte de la
- * prestation.
+ * LES LIGNES D'UNE VENTE DE FOURNITURES — vente de BIENS, distincte de la
+ * prestation de manutention.
  *
- * Passe par cet aiguillage pour la même raison que les rubriques : le
- * composeur de facture est horizontal et n'a pas à connaître `stocks/emballage`
- * (test d'architecture). Ici, on a le droit.
+ * ⚠ CETTE FONCTION N'ALIMENTE NI LE DEVIS NI LA FACTURE. Elle l'a fait ; c'était
+ * une erreur. Une facture de prestation n'est pas le document d'une vente de
+ * biens, et les mélanger sur une même pièce mêle deux opérations que la
+ * comptabilité et la TVA distinguent. Décision de Raphaël : les fournitures
+ * font l'objet d'une vente séparée.
  *
- * Vendre un carton n'est pas prester une manutention : ce sont deux catégories
- * d'opération (§4.18), qui n'ont pas le même traitement comptable — et le
- * client a le droit de voir ce qu'il achète, dénommé et quantifié, plutôt
- * qu'un total opaque.
+ * Elle est CONSERVÉE, non supprimée, parce qu'elle porte la qualification
+ * correcte (`categorie_operation: "vente_biens"`) et la dénomination ligne à
+ * ligne — c'est la brique du futur document de vente. Un test vérifie qu'elle
+ * ne repart pas dans le chemin de facturation par inadvertance.
+ *
+ * ⚠ DÉFAUT CONNU, à corriger AVANT de la rebrancher : elle valorise au COÛT
+ * (`cout_centimes` du catalogue), pas au PRIX CLIENT. Les prix client des
+ * cartons existent — écran Barème, section « Matériel facturé » — mais ne sont
+ * lus par personne. Rebrancher cette fonction telle quelle ferait facturer les
+ * fournitures à leur prix d'achat. Voir `docs/maitre/25-PARAMETRES-ROADMAP.md`,
+ * chantier V.
  *
  * @param {string} cle nature de l'affaire
  * @param {object} entrees { emballage, catalogueFournitures }
- * @returns {object[]} lignes prêtes à poser sur la facture (vide si aucune)
+ * @returns {object[]} lignes de la vente (vide si aucune)
  */
 export function lignesFournitures(cle, entrees = {}) {
   const n = natureDe(cle) || natureDe("demenagement");
