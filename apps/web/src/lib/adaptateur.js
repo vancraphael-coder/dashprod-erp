@@ -182,7 +182,7 @@ export async function obtenirAffaire(id) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase
       .from("affaires")
-      .select("id, etat, formule, nature, centre_id, affectations, created_at, date_souhaitee, heure_souhaitee, clients(id, nom, tel, email), scenarios(retenu, entrees, resultats)")
+      .select("id, etat, formule, nature, centre_id, affectations, created_at, date_souhaitee, heure_souhaitee, emballage, clients(id, nom, tel, email), scenarios(retenu, entrees, resultats)")
       .eq("id", id).single();
     if (error) throw error;
     // On relit le scénario retenu pour restituer les faits ET les coûts saisis :
