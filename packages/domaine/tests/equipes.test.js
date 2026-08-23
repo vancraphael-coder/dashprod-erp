@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import { plage, seChevauchent, peutRejoindre, effectifSuggere,
          verdictEquipe, modeleDepuisEquipe }
   from "../src/planning/equipes.js";
+import { valoriserEmballage } from "../src/stocks/emballage.js";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -182,4 +183,35 @@ test("la note rapide est distincte de la balise d'atelier", () => {
     "elle passe par les notes de planning");
   assert.equal(/noterAtelier\(/.test(src), false,
     "et jamais par la balise d'atelier");
+});
+
+/* ── Les fournitures doivent ARRIVER jusqu'à la facture ─────────────────── */
+
+test("obtenirAffaire remonte l'emballage — sans lui, aucune fourniture facturée", () => {
+  // Bug vécu : `lignesFournitures` était branché correctement, mais
+  // `a.emballage` valait toujours undefined parce que la colonne manquait au
+  // `select`. La chaîne était juste ; la donnée n'arrivait pas. Vérifier la
+  // logique ne suffit pas — il faut vérifier que la donnée voyage.
+  const src = lireEcran("lib/adaptateur.js");
+  const sel = src.slice(src.indexOf("export async function obtenirAffaire"),
+                        src.indexOf("export async function obtenirAffaire") + 900);
+  assert.match(sel, /\.select\([^)]*emballage/,
+    "la colonne emballage doit figurer dans le select de l'affaire");
+});
+
+test("le matériel de TERRAIN n'est jamais facturé au client", () => {
+  // La clé `terrain` de l'emballage regroupe le matériel de l'entreprise —
+  // sangles, couvertures, monte-meuble. Ce sont ses outils, pas une vente.
+  // Le catalogue de fournitures ne la contient pas : elle est donc exclue par
+  // construction. Ce test fige la propriété pour qu'un ajout de catalogue ne
+  // la casse pas par inadvertance.
+  const cat = [
+    { cle: "carton_standard", nom: "Carton standard", unite: "pièce", cout_centimes: 150 },
+  ];
+  const v = valoriserEmballage(
+    { terrain: { sangles: 20, couverture: 40 }, carton_standard: { e: 10, r: 3 } }, cat);
+  assert.equal(v.lignes.length, 1, "seules les fournitures consommées sont valorisées");
+  assert.equal(v.lignes[0].quantite, 7, "10 enlevés moins 3 repris");
+  assert.equal(v.lignes.some((l) => /sangle|couvert/i.test(l.nom)), false,
+    "le matériel de l'entreprise n'est pas une vente");
 });
