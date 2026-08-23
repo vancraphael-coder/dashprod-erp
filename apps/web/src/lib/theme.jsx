@@ -39,6 +39,18 @@ if (typeof document !== "undefined") {
   for (const [cle, val] of Object.entries(m)) {
     document.documentElement.style.setProperty(cle, val);
   }
+  // Les surfaces d'interaction, en variables : la feuille de style plus bas ne
+  // peut pas lire `C`, et l'accent est réglable par la personne. Un survol
+  // écrit en dur trahirait la couleur choisie dès qu'elle n'est plus bleue.
+  // L'opacité diffère selon le mode : sur un fond sombre, un voile trop léger
+  // ne se voit pas ; sur un fond blanc, le même voile tache.
+  const rgbA = rgbAccent(APP.accent);
+  const nuit = APP.mode === "nuit";
+  document.documentElement.style.setProperty("--dp-accent", `rgb(${rgbA})`);
+  document.documentElement.style.setProperty("--dp-survol",
+    nuit ? `rgba(${rgbA}, .13)` : `rgba(${rgbA}, .055)`);
+  document.documentElement.style.setProperty("--dp-enfonce",
+    nuit ? `rgba(${rgbA}, .22)` : `rgba(${rgbA}, .11)`);
 }
 
 // Typographie du modèle validé (roovers-mobile) : Fira Sans pour le texte,
@@ -127,6 +139,56 @@ if (typeof document !== "undefined" && !document.getElementById("champs-dashprod
       .selecteur-rotatif-cadre, .selecteur-rotatif-cadre * {
         transition-duration: .001ms !important;
       }
+    }
+
+    /* ─────────────────────────────────────────────────────────────────────
+       LES LISTES DE RÉGLAGES (Compte, Paramètres).
+
+       LE DÉFAUT : la règle universelle plus haut (survol = filtre de
+       luminosité) ne produit RIEN sur un fond transparent — or les
+       entrées de réglage sont justement transparentes (elles vivent dans leur
+       groupe). Résultat : sur les deux écrans les plus denses de l'app, aucune
+       ligne ne réagissait au survol. On croyait avoir des états ; on n'en avait
+       pas. Un filtre de luminosité ne peut pas éclairer le néant : il faut
+       poser une vraie surface.
+
+       Ces règles vivent ici et non en style inline parce qu'un style inline ne
+       porte ni :hover, ni :active, ni :focus-visible — c'est la raison d'être
+       de cette feuille. */
+    .reglage-entree {
+      position: relative;
+      transition: background .14s ease;
+    }
+    .reglage-entree:not(:disabled):hover { background: var(--dp-survol); }
+    /* Le chevron avance d'un cheveu vers sa destination : le mouvement dit
+       « ceci ouvre un écran », là où la couleur seule ne dit que « cliquable ». */
+    .reglage-entree .reglage-chevron { transition: transform .16s ease, color .16s ease; }
+    .reglage-entree:not(:disabled):hover .reglage-chevron {
+      transform: translateX(3px); color: var(--dp-accent);
+    }
+    /* L'enfoncement global (translateY) déplacerait la ligne DANS son groupe et
+       ferait bâiller le filet du dessous. Une ligne cousue s'enfonce en
+       couleur, pas en position. */
+    .reglage-entree:not(:disabled):active {
+      transform: none; background: var(--dp-enfonce);
+    }
+    /* Le focus clavier doit rester DANS le groupe, qui masque son
+       débordement : un anneau porté vers l'extérieur y serait rogné. On le
+       rentre donc à l'intérieur. */
+    .reglage-entree:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 2px var(--dp-accent);
+    }
+
+    /* Les ONGLETS SEGMENTÉS (Outils & vêtements / Mes congés…). L'onglet
+       inactif ne se distinguait de l'actif que par sa couleur : au survol,
+       rien ne disait lequel on s'apprêtait à choisir. */
+    .onglet-segment { transition: background .14s ease, border-color .14s ease, color .14s ease; }
+    .onglet-segment[aria-selected="false"]:hover {
+      background: var(--dp-survol); border-color: var(--dp-accent);
+    }
+    .onglet-segment:focus-visible {
+      outline: none; box-shadow: 0 0 0 3px rgba(${rgb}, .35);
     }
   `;
   document.head.appendChild(st);

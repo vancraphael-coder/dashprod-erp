@@ -11,7 +11,7 @@ import { supabase, configPresente } from "./supabase.js";
 import { figerInstance, empreinte } from "@domaine/documents/instances.js";
 import { resoudreCbd } from "@domaine/documents/modeles.js";
 import { CGV_VERSION_COURANTE, cgv , validiteJours } from "@domaine/documents/cgv.js";
-import { rubriquesOffre, lignesFournitures } from "@domaine/releve/rubriques-offre.js";
+import { rubriquesOffre } from "@domaine/releve/rubriques-offre.js";
 import { briefMission } from "@domaine/communication/brief.js";
 
 const CLE = "dashprod-demo-v1";
@@ -739,24 +739,34 @@ export async function lignesFacturePour(affaireId) {
                   montant_htva_centimes: htva });
   }
 
-  // LES FOURNITURES SONT UNE VENTE DISTINCTE.
-  // Elles étaient chiffrées (`valoriserEmballage` existe et le dit dans son
-  // propre commentaire) mais n'atteignaient JAMAIS la facture : le client
-  // recevait une ligne unique « Déménagement », cartons compris dans un total
-  // opaque. Deux problèmes en un :
-  //   · commercialement, des fournitures fournies et non facturées ;
-  //   · légalement, vendre un bien n'est pas prester un service. Ce sont deux
-  //     catégories d'opération distinctes (§4.18), qui n'ont pas le même
-  //     traitement comptable — et le client a le droit de voir ce qu'il achète.
-  // On les pose donc en lignes propres, dénommées et quantifiées.
-  try {
-    const catalogues = await obtenirCatalogues().catch(() => ({}));
-    lignes.push(...lignesFournitures(a.nature, {
-      emballage: a.emballage || {},
-      catalogueFournitures: catalogues.fournitures || [],
-    }));
-  } catch { /* une facture doit pouvoir sortir même si le catalogue est
-                indisponible : on ne bloque pas la prestation pour un carton. */ }
+  // LES FOURNITURES NE SONT PAS SUR CETTE FACTURE.
+  //
+  // Elles étaient poussées ici en lignes propres. C'était déjà mieux que de les
+  // noyer dans un total « Déménagement » opaque, mais ce n'était pas juste pour
+  // autant : vendre un carton n'est PAS prester une manutention. Ce sont deux
+  // opérations distinctes, et une facture de prestation n'est pas le document
+  // d'une vente de biens.
+  //
+  // Décision de Raphaël, redite : les fournitures ne s'ajoutent ni au devis ni
+  // à la facture. Elles font l'objet d'une VENTE SÉPARÉE, avec son propre
+  // document.
+  //
+  // Ce qui a été RETIRÉ ici et ce qui reste à construire est écrit dans
+  // `docs/maitre/25-PARAMETRES-ROADMAP.md` (chantier V — vente de fournitures).
+  // Trois points y attendent une décision, et aucun ne se devine :
+  //   · quelle séquence légale numérote ce document (contrainte C-03 : la
+  //     numérotation est continue et sans trou — deux flux dans une seule
+  //     séquence, ou deux séquences distinctes, n'est PAS une question de
+  //     confort) ;
+  //   · quel PRIX CLIENT s'applique — aujourd'hui `valoriserEmballage` rend le
+  //     COÛT (`cout_centimes` du catalogue). Facturer au coût était le second
+  //     défaut, invisible derrière le premier ;
+  //   · quel taux de TVA pour une vente de biens intérieure.
+  //
+  // On ne laisse PAS de ligne à zéro ni de mention de remplacement : une
+  // facture qui annonce une fourniture sans la facturer est pire qu'une facture
+  // qui n'en parle pas. Le matériel d'emballage reste visible dans l'écran
+  // Matériel du dossier, qui est son inventaire — rien n'est perdu.
 
   return lignes;
 }

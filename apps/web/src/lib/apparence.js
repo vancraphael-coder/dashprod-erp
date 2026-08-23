@@ -178,6 +178,7 @@ export function jetons(app) {
       bord: "#26324A", fond: "#070B18", doux: "#1B2436", blanc: "#121A2B",
       vert: "#34D399", ambre: "#FFB627", rouge: "#FB7185",
       violet: "#A78BFA", indigo: "#818CF8", navy: "#070B18",
+      ...TEINTES_NUIT,
     };
   }
   return {
@@ -186,8 +187,61 @@ export function jetons(app) {
     bord: "#E4ECFC", fond: "#F4F7FE", doux: "#F1F5FD", blanc: "#FFFFFF",
     vert: "#059669", ambre: "#D97706", rouge: "#DC2626",
     violet: "#7C3AED", indigo: "#6366F1", navy: "#0F172A",
+    ...TEINTES_CLAIR,
   };
 }
+
+// =============================================================================
+// LES TEINTES D'ALERTE — le fond pâle d'un bandeau qui avertit, refuse ou
+// confirme.
+//
+// LE DÉFAUT QU'ELLES CORRIGENT
+// ---------------------------
+// Ces fonds étaient écrits EN DUR dans les écrans : `background: "#FFFBEB"`
+// pour un avertissement, `"#FEF2F2"` pour un refus, `"#ECFDF5"` pour une
+// confirmation. 54 occurrences, réparties sur 25 écrans. En mode nuit, chacune
+// posait un pavé lumineux sur le fond sombre — un bandeau d'alerte devenait la
+// chose la plus éclatante de l'écran, et son texte foncé y devenait illisible.
+//
+// Le garde `mode-nuit.test.js` ne surveillait que le blanc et cinq bleus : ces
+// six familles passaient au travers. Le garde est étendu en même temps que ces
+// jetons, sinon la dette se reconstitue au prochain écran.
+//
+// TROIS JETONS PAR FAMILLE, jamais un seul : un bandeau, c'est un FOND, un
+// FILET et une ENCRE. Séparés, ils divergent — un fond viré au sombre avec une
+// encre restée foncée ne se lit plus.
+//
+// Les valeurs CLAIRES sont exactement celles qui étaient écrites en dur : le
+// mode jour ne bouge pas d'un pixel. Seule la nuit est réparée.
+// =============================================================================
+
+const TEINTES_CLAIR = Object.freeze({
+  teinteAmbre: "#FFFBEB", filetAmbre: "#FDE68A", encreAmbre: "#78350F",
+  teinteRouge: "#FEF2F2", filetRouge: "#FECACA", encreRouge: "#991B1B",
+  teinteVerte: "#ECFDF5", filetVert: "#A7F3D0", encreVert: "#065F46",
+  teinteBleue: "#EFF6FF", filetBleu: "#BFDBFE", encreBleu: "#1E40AF",
+  teinteViolette: "#F5F3FF", filetViolet: "#DDD6FE", encreViolet: "#5B21B6",
+  teinteNeutre: "#F8FAFC", filetNeutre: "#E2E8F0", encreNeutre: "#334155",
+  // Deux familles de plus, requises par la palette du Journal, qui distingue
+  // sept familles d'événements. Les rabattre sur les six autres aurait rendu
+  // « décision » et « équipe » indiscernables — or c'est précisément le rôle
+  // de ces couleurs de se distinguer d'un coup d'œil.
+  teinteIndigo: "#EEF2FF", filetIndigo: "#C7D2FE", encreIndigo: "#3730A3",
+  teinteRose: "#FDF2F8", filetRose: "#FBCFE8", encreRose: "#9D174D",
+});
+
+const TEINTES_NUIT = Object.freeze({
+  // Ces fonds sont posés SUR la carte (#121A2B), pas sur le fond de page : ils
+  // doivent s'en détacher légèrement, sans virer à l'aplat saturé.
+  teinteAmbre: "#2B2107", filetAmbre: "#4A3A12", encreAmbre: "#FCD34D",
+  teinteRouge: "#2C1418", filetRouge: "#5A2530", encreRouge: "#FCA5A5",
+  teinteVerte: "#0B2A22", filetVert: "#14503F", encreVert: "#6EE7B7",
+  teinteBleue: "#10203C", filetBleu: "#2A3D63", encreBleu: "#93C5FD",
+  teinteViolette: "#1E1636", filetViolet: "#35275E", encreViolet: "#C4B5FD",
+  teinteNeutre: "#151D2E", filetNeutre: "#26324A", encreNeutre: "#C7D2E4",
+  teinteIndigo: "#171B3A", filetIndigo: "#2E3566", encreIndigo: "#A5B4FC",
+  teinteRose: "#2C1226", filetRose: "#5A2247", encreRose: "#F9A8D4",
+});
 
 /**
  * La surface d'une carte : la MATIÈRE (pleine ou verre) donne le fond et les
