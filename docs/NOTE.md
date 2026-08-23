@@ -1,84 +1,66 @@
-# Lot 32 — correctif emballage + dossier maître
+# Lot 33 — Compte et Paramètres : organiser, pas décorer
 
-`npm test` : **1042/1042 ✓** — build `apps/web` ✓ — 10 fichiers.
+`npm test` : **1046/1046 ✓** — build `apps/web` ✓ — 6 fichiers.
 **Aucune migration.**
 
-## D'abord : le planning n'était pas cassé
+## Le défaut n'était pas celui que je croyais
 
-J'ai rendu l'écran Planning pour de vrai avant de conclure. « Note du jour »,
-« Équipes du jour » et « Former une équipe » sont **tous présents** dans le
-rendu. Le code du lot 31 est correct.
+Ma première lecture disait « liste plate de vingt entrées ». C'était faux : les
+rubriques existaient déjà. Le vrai défaut était leur **granularité** — dix
+rubriques pour vingt entrées, dont **cinq n'en contenaient qu'une seule**.
 
-Ce qui manque, c'est le déploiement : le lot 31 contenait un **fichier neuf**,
-`apps/web/src/composants/PlanningJour.jsx`. S'il n'a pas été déposé, l'import
-échoue et l'écran ne peut pas monter les composants. Vérifie que ce fichier
-existe bien dans le dépôt.
+Un titre de section pour un item unique n'organise rien. Il double la hauteur
+de la page sans rien apprendre, et il donne l'illusion d'une structure là où il
+n'y a qu'une liste déguisée.
 
-## L'emballage : là, c'était un vrai bug, et il était à moi
+## Six familles, choisies selon ce qu'on cherche
 
-`lignesFournitures` était branché correctement, l'aiguillage respecté, les tests
-verts — mais **`obtenirAffaire` ne sélectionnait pas la colonne `emballage`**.
-`a.emballage` valait donc toujours `undefined`. Aucune fourniture ne pouvait
-être facturée, quelle que soit la qualité du reste.
+- **Mon entreprise** — identité, centres, fermetures
+- **Vendre et facturer** — barème, facturation, textes, comptabilité
+- **Mes catalogues** — les listes du relevé et du chantier
+- **Stockage et services** — stockage, contrats, sous-traitance
+- **Ce que ça vous coûte** — coûts internes, mon offre
+- **L'application et vos données** — apparence, journal, confidentialité,
+  archivage
 
-**La leçon, que j'ai consignée dans la méthode** : vérifier que la logique est
-correcte ne suffit pas, il faut vérifier que **la donnée arrive**. J'avais
-supposé la présence du champ au lieu de la constater. Un test statique surveille
-désormais ce `select`.
+Le regroupement suit ce que **l'utilisateur cherche**, pas la structure interne
+du logiciel. « Comptabilité » se trouve avec « facturer », pas dans une section
+solitaire ; « Mon offre » se trouve avec « coûts », parce que c'est la même
+question — combien ça me coûte.
 
-En vérifiant les données réelles, j'ai aussi trouvé quelque chose que je
-n'aurais pas deviné : la clé **`terrain`** de l'emballage regroupe le matériel
-de l'entreprise — sangles, couvertures, monte-meuble. **Ce n'est pas une vente
-au client.** Elle est exclue par construction (absente du catalogue de
-fournitures) ; j'ai figé la propriété par un test pour qu'un ajout de catalogue
-ne la casse pas par inadvertance.
+Chaque famille contient au moins deux réglages, et un test le vérifie.
 
-## Le dossier maître — `docs/maitre/`
+## Le CSS : voir le groupe, pas le lire
 
-Six documents, à lire dans l'ordre de leur numéro. C'est l'adaptateur
-documentaire que tu voulais : ouvrir une nouvelle session, une autre
-conversation ou un autre LLM, et repartir sans dériver.
+Avant, un titre flottait au-dessus de cartes indépendantes qui ne lui étaient
+liées par rien. Maintenant le groupe est un **conteneur** : les entrées y sont
+cousues par des filets fins, les arrondis sont portés par le bloc, et l'entrée
+n'a plus ni bordure ni ombre propres. La première d'un groupe ne porte pas de
+filet — sinon elle doublerait la bordure du conteneur.
 
-Sa valeur tient à **une seule propriété** : il dit qui a raison quand deux
-sources se contredisent.
+Résultat : la page est plus courte, et le regard saisit les familles d'un coup
+au lieu de lire vingt titres.
 
-```
-1. la base Supabase          → l'ÉTAT réel
-2. le dépôt                  → le CODE réel
-3. PASSATION.md              → décisions techniques, pièges
-4. 10-DECISIONS-PRODUIT.md   → décisions commerciales
-5. 20-OUVERT.md              → ce qui n'est pas tranché
-6. tout le reste             → matière à instruire, JAMAIS vérité
-```
+## Compte
 
-C'est ce qui manquait : plusieurs documents circulent, certains se contredisent,
-et sans hiérarchie un texte de réflexion pèse autant qu'un fait vérifié. Le
-CADRAGE affirmait par exemple que les prix de base manquaient — vrai en août,
-faux depuis le lot 28.
+Deux boutons de navigation vivaient côte à côte, **copiés caractère pour
+caractère**. Une copie diverge toujours : l'un se corrige un jour, l'autre est
+oublié. Composant `Porte` unique, réunis dans un bloc cousu comme les groupes
+de Paramètres — les deux écrans se ressemblent enfin.
 
-**Décidé et ouvert sont dans deux fichiers séparés**, volontairement. Les
-mélanger laisse croire qu'une décision est négociable, ou qu'une question est
-tranchée. Et chaque question ouverte **nomme le professionnel** qui doit
-trancher : « à valider par un professionnel » sans dire lequel n'aide personne.
+## Un trou dans le garde-fou du mode nuit
 
-Le fichier de démarrage dit aussi **ce qu'il ne faut PAS rouvrir** — JS pur,
-Vite, français, l'architecture horizontale. Une doc qui ne dit que ce qu'il faut
-faire laisse rediscuter le reste.
+En touchant le Compte, j'ai trouvé `background: "#E7EFFC"` en dur sur les
+onglets sélectionnés — il reste bleu pâle sur le fond nuit.
 
-`50-ARCHIVE.md` garde les grandes idées non construites (moteur de conformité,
-socle comptable complet, cartographie des métiers, pilotage IA) avec, pour
-chacune, **pourquoi elle attend**. Il se déclare explicitement non normatif,
-et rappelle ton filtre : une idée ne se construit que si elle rapproche un
-client, un usage ou un paiement.
-
-Huit tests protègent le dossier de la dérive : la hiérarchie doit rester
-énoncée dans l'ordre, les prix documentés doivent correspondre au barème
-appliqué, l'archive doit rester non normative.
+**Pourquoi le test du lot 18 ne l'avait pas vu** : il ne cherchait que le
+*blanc*. Un garde-fou qui ne connaît qu'une forme du bug laisse passer les
+autres. Élargi aux bleus clairs, il a immédiatement trouvé un **second** cas
+dans `Mail.jsx`. Les deux sont corrigés.
 
 ## À vérifier à l'œil
 
-1. Vérifier que `apps/web/src/composants/PlanningJour.jsx` existe dans le dépôt.
-   Sinon, redéposer le lot 31.
-2. Un dossier avec des cartons consommés : la facture montre maintenant les
-   fournitures en lignes séparées.
-3. Aucun matériel de terrain (sangles, couvertures) sur la facture.
+1. Paramètres : six blocs nettement séparés, entrées cousues, plus de titre
+   isolé au-dessus d'une carte unique.
+2. Compte : « Paramètres » et « Demandes du réseau » dans un même bloc.
+3. En mode nuit : onglets du Compte et de Mail sombres, plus de pavé bleu pâle.

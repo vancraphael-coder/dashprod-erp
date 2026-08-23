@@ -971,9 +971,38 @@ Au passage : la clé `terrain` de l'emballage (sangles, couvertures,
 monte-meuble) est le matériel de l'entreprise et **n'est jamais facturée**.
 Exclue par construction (absente du catalogue de fournitures), figée par test.
 
+### 4.30 Compte et Paramètres : organiser, pas décorer (lot 33)
+**Le défaut n'était pas l'absence de structure — les rubriques existaient.**
+C'était leur GRANULARITÉ : dix rubriques pour vingt entrées, dont **cinq n'en
+contenaient qu'une**. Un titre de section pour un item unique n'organise rien,
+il double la hauteur sans rien apprendre.
+
+→ **Six familles**, chacune d'au moins deux réglages, regroupées selon ce que
+l'utilisateur CHERCHE et non selon la structure interne du logiciel :
+*Mon entreprise · Vendre et facturer · Mes catalogues · Stockage et services ·
+Ce que ça vous coûte · L'application et vos données.*
+
+→ Le groupe devient un **CONTENEUR** : entrées cousues par des filets, arrondis
+portés par le bloc. On VOIT le groupe au lieu de le lire. L'entrée n'a plus ni
+bordure ni ombre propres — elle vit dans son groupe. Verrouillé par test :
+aucun groupe solitaire, 5 à 7 familles.
+
+**Compte** : deux boutons de navigation étaient copiés caractère pour caractère.
+Composant `Porte` + `BlocPortes`. Une copie diverge toujours — l'un se corrige,
+l'autre est oublié.
+
+### 4.31 Le test du mode nuit avait un trou
+Il ne cherchait que le **blanc**. Un fond `#E7EFFC` sur un onglet sélectionné
+passait donc au travers et restait bleu pâle sur le fond nuit. Deux cas trouvés
+en élargissant : `Profil.jsx` (onglets) et `Mail.jsx`.
+
+→ `mode-nuit.test.js` couvre désormais aussi les **bleus clairs en dur**
+(`#E7EFFC`, `#EEF2F8`, `#EFF4FC`, `#E8F0FE`, `#DBEAFE`). Un garde-fou qui ne
+cherche qu'une forme du bug laisse passer les autres.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 1042/1042 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**`npm test` : 1046/1046 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0142_equipes_jour_et_notes_planning`** (appliquée et
 éprouvée le 22/08 : comptabilisation sans approbation refusée, approbation
 anonyme refusée, chemin nominal validé, doublon rejeté).
@@ -1022,6 +1051,7 @@ anonyme refusée, chemin nominal validé, doublon rejeté).
 | 30 | **Fournitures facturées** (vente de biens distincte) + **domaine des équipes de journée** | — |
 | 31 | **Planning : note rapide + formation d'équipes** à l'écran | 0142 |
 | 32 | **Correctif emballage** (colonne absente du select) + **dossier maître `docs/maitre/`** | — |
+| 33 | **Compte + Paramètres réorganisés**, groupes cousus, 2 bugs mode nuit | — |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire
