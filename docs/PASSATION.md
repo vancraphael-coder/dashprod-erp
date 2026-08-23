@@ -930,9 +930,50 @@ chevauchement passerait inaperçu.
 mêmes trois personnes travaillent souvent ensemble, jamais sur le même chantier
 deux jours de suite ; garder la date ferait rejouer un passé.
 
+### 4.28 Le DOSSIER MAÎTRE — `docs/maitre/` (lot 32)
+Six documents numérotés, à lire dans l'ordre. Il existe pour qu'une nouvelle
+session, une autre conversation ou un autre LLM reprenne sans dériver.
+
+Sa valeur tient à **une** propriété : il dit QUI A RAISON quand deux sources se
+contredisent.
+
+| Rang | Source | Autorité |
+|---|---|---|
+| 1 | la base Supabase | l'ÉTAT réel |
+| 2 | le dépôt | le CODE réel |
+| 3 | `PASSATION.md` | décisions techniques, pièges |
+| 4 | `10-DECISIONS-PRODUIT.md` | décisions commerciales |
+| 5 | `20-OUVERT.md` | ce qui n'est pas tranché |
+| 6 | tout le reste | matière à instruire, **jamais vérité** |
+
+Fichiers : `00-DEMARRER-ICI` · `10-DECISIONS-PRODUIT` · `20-OUVERT` ·
+`30-REGLES-IA-EXTERNE` · `40-METHODE` · `50-ARCHIVE`.
+
+**Décidé et ouvert sont dans DEUX fichiers séparés** — les mélanger laisse
+croire qu'une décision est négociable ou qu'une question est tranchée.
+Chaque question ouverte nomme le professionnel qui doit trancher.
+
+Verrouillé par `dossier-maitre.test.js` : la hiérarchie doit rester énoncée
+dans l'ordre, les prix publiés doivent correspondre au barème appliqué (le
+CADRAGE d'origine affirmait qu'ils manquaient — vrai en août, faux depuis
+0140), l'archive doit se déclarer non normative.
+
+### 4.29 « La logique est juste mais rien n'arrive » (lot 32)
+`lignesFournitures` était branché correctement, l'aiguillage respecté, les
+tests verts — mais `obtenirAffaire` **ne sélectionnait pas la colonne
+`emballage`**. `a.emballage` valait toujours `undefined` : aucune fourniture ne
+pouvait être facturée.
+
+**Vérifier que la logique est correcte ne suffit pas : il faut vérifier que la
+DONNÉE arrive.** Test statique ajouté sur le `select`.
+
+Au passage : la clé `terrain` de l'emballage (sangles, couvertures,
+monte-meuble) est le matériel de l'entreprise et **n'est jamais facturée**.
+Exclue par construction (absente du catalogue de fournitures), figée par test.
+
 ## 5. État au 17/08/2026
 
-**`npm test` : 1032/1032 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**`npm test` : 1042/1042 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
 **Migrations appliquées : jusqu'à `0142_equipes_jour_et_notes_planning`** (appliquée et
 éprouvée le 22/08 : comptabilisation sans approbation refusée, approbation
 anonyme refusée, chemin nominal validé, doublon rejeté).
@@ -980,6 +1021,7 @@ anonyme refusée, chemin nominal validé, doublon rejeté).
 | 29 | **Point d'accès : envoi ET réception** — fonction serveur, webhook, secret hors du navigateur | 0141 |
 | 30 | **Fournitures facturées** (vente de biens distincte) + **domaine des équipes de journée** | — |
 | 31 | **Planning : note rapide + formation d'équipes** à l'écran | 0142 |
+| 32 | **Correctif emballage** (colonne absente du select) + **dossier maître `docs/maitre/`** | — |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire
