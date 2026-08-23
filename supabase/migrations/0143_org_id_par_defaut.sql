@@ -1,0 +1,40 @@
+-- 0143 — APPLIQUÉE ET ÉPROUVÉE le 22/08/2026.
+-- LE DÉFAUT `org_id` MANQUANT : six tables inécrivables depuis l'application.
+--
+-- LE DÉFAUT
+-- ---------
+-- Les tables historiques portent `org_id uuid not null default jwt_org()`.
+-- Les six tables créées durant cette session avaient le `not null` mais PAS le
+-- défaut. Le front insère sans `org_id` — c'est correct, l'organisation vient
+-- de la session et non du navigateur — donc chaque insertion violait la
+-- contrainte et ÉCHOUAIT.
+--
+-- Toutes les écritures ont échoué depuis leur création :
+--   · notes_atelier (0138)        — la balise « i » n'a jamais rien enregistré
+--   · factures_fournisseur (0139)
+--   · peppol_evenements (0141)
+--   · equipes_jour, modeles_equipe, notes_planning (0142)
+--
+-- Symptôme observé : « rien ne change à l'écran ». Ni le code applicatif, ni le
+-- domaine, ni le déploiement n'étaient en cause : la porte d'écriture était
+-- murée.
+--
+-- POURQUOI LE ROLLBACK N'AVAIT RIEN VU
+-- ------------------------------------
+-- Les blocs de vérification fournissaient EUX-MÊMES l'org_id
+-- (`insert into … (org_id, …) values (v_org, …)`). Ils prouvaient la STRUCTURE,
+-- jamais le chemin réel. Une migration doit être exercée TELLE QUE
+-- L'APPLICATION l'utilise — sans org_id — et non telle qu'il est commode de la
+-- tester.
+--
+--   alter table … alter column org_id set default jwt_org();
+--   pour : notes_atelier · factures_fournisseur · peppol_evenements ·
+--          equipes_jour · modeles_equipe · notes_planning
+--
+-- `jwt_org()` et non une valeur envoyée par le client : laisser le navigateur
+-- choisir son org_id reviendrait à le laisser écrire chez le voisin. La policy
+-- `with check` le refuserait, mais on ne bâtit pas une sécurité sur le fait
+-- qu'une seconde barrière rattrape la première.
+--
+-- Éprouvée : les 6 défauts posés, puis insertion SANS org_id sur equipes_jour,
+-- notes_planning et notes_atelier — abouties, org_id correctement résolu.
