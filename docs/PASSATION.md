@@ -356,6 +356,37 @@ Tout mouvement s'arrête sous `prefers-reduced-motion` et au pointeur grossier.
 - **Aucune facture récurrente n'est émise automatiquement** — le bureau décide
 - Le **carnet est bâti sur `clients`**, jamais une table parallèle
 
+### 3.17 Une table sans `default jwt_org()` est INÉCRIVABLE — et l'échec est muet
+**Le bug le plus coûteux de la session.** Les tables historiques portent
+`org_id uuid not null default jwt_org()`. Six tables créées à la suite ont eu le
+`not null` mais **pas le défaut**.
+
+Le front insère sans `org_id` — c'est CORRECT : l'organisation vient de la
+session, jamais du navigateur. Mais sans défaut, chaque insertion violait la
+contrainte et échouait. **Toutes les écritures ont échoué depuis leur
+création** : la balise « i » (0138), les factures fournisseur (0139), les
+événements Peppol (0141), les équipes/modèles/notes de planning (0142).
+
+Symptôme observé : « rien ne change à l'écran », deux lots de suite. Ni le code
+applicatif, ni le domaine, ni le déploiement n'étaient en cause — j'ai cherché
+du côté du rendu et du déploiement pendant trois échanges. **La porte
+d'écriture était murée.**
+
+**POURQUOI LE ROLLBACK N'AVAIT RIEN VU** — et c'est la vraie leçon : les blocs
+de vérification fournissaient EUX-MÊMES l'org_id
+(`insert into … (org_id, …) values (v_org, …)`). Ils prouvaient la STRUCTURE,
+jamais le chemin réel.
+
+> **Une migration doit être exercée telle que l'APPLICATION l'utilise,
+> pas telle qu'il est commode de la tester.**
+
+Corollaire du §4.29 (« la logique est juste mais rien n'arrive ») : là c'était
+l'inverse — la donnée partait, mais la table la refusait.
+
+Garde-fou : `ecriture-org.test.js` refuse toute nouvelle table à
+`org_id not null` sans `default jwt_org()`. Portée assumée aux migrations ≥ 0138
+(les antérieures sont des stubs ; la base fait foi sur elles).
+
 ### 3.15 Une const fléchée appelée AVANT sa ligne = écran blanc
 Cousin du hook-après-return. Une `const nom = (...) => …` n'est PAS hoistée :
 l'appeler plus haut dans le corps d'un composant lève « Cannot access nom before
@@ -1002,8 +1033,8 @@ cherche qu'une forme du bug laisse passer les autres.
 
 ## 5. État au 17/08/2026
 
-**`npm test` : 1046/1046 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
-**Migrations appliquées : jusqu'à `0142_equipes_jour_et_notes_planning`** (appliquée et
+**`npm test` : 1049/1049 ✓ — build `apps/web` ✓ (le décompte varie légèrement : certains tests scannent les fichiers présents)**
+**Migrations appliquées : jusqu'à `0143_org_id_par_defaut`** (appliquée et
 éprouvée le 22/08 : comptabilisation sans approbation refusée, approbation
 anonyme refusée, chemin nominal validé, doublon rejeté).
 ### Lots livrés
@@ -1052,6 +1083,7 @@ anonyme refusée, chemin nominal validé, doublon rejeté).
 | 31 | **Planning : note rapide + formation d'équipes** à l'écran | 0142 |
 | 32 | **Correctif emballage** (colonne absente du select) + **dossier maître `docs/maitre/`** | — |
 | 33 | **Compte + Paramètres réorganisés**, groupes cousus, 2 bugs mode nuit | — |
+| 34 | **CORRECTIF MAJEUR — `org_id` sans défaut : 6 tables inécrivables** depuis leur création | 0143 |
 | 19 | **Design — sélecteur rotatif** : le geste du variateur vitrine, porté dans bureau + terrain | — |
 
 ### Reste à faire

@@ -1,66 +1,84 @@
-# Lot 33 — Compte et Paramètres : organiser, pas décorer
+# Lot 34 — CORRECTIF : six tables étaient inécrivables
 
-`npm test` : **1046/1046 ✓** — build `apps/web` ✓ — 6 fichiers.
-**Aucune migration.**
+`npm test` : **1049/1049 ✓** — build `apps/web` ✓ — 4 fichiers.
+**Migration `0143` appliquée et éprouvée. Rien à redéployer côté code : le
+correctif est en base.**
 
-## Le défaut n'était pas celui que je croyais
+## C'était ça, et c'était moi
 
-Ma première lecture disait « liste plate de vingt entrées ». C'était faux : les
-rubriques existaient déjà. Le vrai défaut était leur **granularité** — dix
-rubriques pour vingt entrées, dont **cinq n'en contenaient qu'une seule**.
+Tu avais raison d'insister. Ce n'était ni le rendu, ni le déploiement, ni un
+fichier manquant. J'ai cherché du mauvais côté pendant trois échanges.
 
-Un titre de section pour un item unique n'organise rien. Il double la hauteur
-de la page sans rien apprendre, et il donne l'illusion d'une structure là où il
-n'y a qu'une liste déguisée.
+Les tables historiques (`affaires`, `missions`) portent :
 
-## Six familles, choisies selon ce qu'on cherche
+```sql
+org_id uuid not null default jwt_org()
+```
 
-- **Mon entreprise** — identité, centres, fermetures
-- **Vendre et facturer** — barème, facturation, textes, comptabilité
-- **Mes catalogues** — les listes du relevé et du chantier
-- **Stockage et services** — stockage, contrats, sous-traitance
-- **Ce que ça vous coûte** — coûts internes, mon offre
-- **L'application et vos données** — apparence, journal, confidentialité,
-  archivage
+**Les six tables que j'ai créées avaient le `not null` mais pas le défaut.**
 
-Le regroupement suit ce que **l'utilisateur cherche**, pas la structure interne
-du logiciel. « Comptabilité » se trouve avec « facturer », pas dans une section
-solitaire ; « Mon offre » se trouve avec « coûts », parce que c'est la même
-question — combien ça me coûte.
+Le front insère sans `org_id` — et c'est correct : l'organisation vient de la
+session, jamais du navigateur. Mais sans défaut, chaque insertion violait la
+contrainte et échouait.
 
-Chaque famille contient au moins deux réglages, et un test le vérifie.
+**Toutes les écritures ont échoué depuis leur création :**
 
-## Le CSS : voir le groupe, pas le lire
+| Table | Lot | Ce qui ne marchait pas |
+|---|---|---|
+| `notes_atelier` | 21 | la balise « i » n'a **jamais** rien enregistré |
+| `factures_fournisseur` | 26 | réception Peppol |
+| `peppol_evenements` | 29 | journal du webhook |
+| `equipes_jour` | 31 | les équipes |
+| `modeles_equipe` | 31 | les équipes types |
+| `notes_planning` | 31 | la note rapide |
 
-Avant, un titre flottait au-dessus de cartes indépendantes qui ne lui étaient
-liées par rien. Maintenant le groupe est un **conteneur** : les entrées y sont
-cousues par des filets fins, les arrondis sont portés par le bloc, et l'entrée
-n'a plus ni bordure ni ombre propres. La première d'un groupe ne porte pas de
-filet — sinon elle doublerait la bordure du conteneur.
+Le planning s'affichait probablement très bien. C'est l'enregistrement qui
+tombait — donc rien ne restait, donc « rien n'a changé ».
 
-Résultat : la page est plus courte, et le regard saisit les familles d'un coup
-au lieu de lire vingt titres.
+## Pourquoi mes propres vérifications n'ont rien vu
 
-## Compte
+C'est la partie que je dois t'expliquer, parce qu'elle remet en cause une
+habitude que je croyais solide.
 
-Deux boutons de navigation vivaient côte à côte, **copiés caractère pour
-caractère**. Une copie diverge toujours : l'un se corrige un jour, l'autre est
-oublié. Composant `Porte` unique, réunis dans un bloc cousu comme les groupes
-de Paramètres — les deux écrans se ressemblent enfin.
+J'éprouve chaque migration dans un bloc `do $$ … rollback $$`. Ces blocs
+écrivaient :
 
-## Un trou dans le garde-fou du mode nuit
+```sql
+insert into equipes_jour (org_id, jour, nom) values (v_org, ...)
+                          ^^^^^^ je fournissais l'org_id moi-même
+```
 
-En touchant le Compte, j'ai trouvé `background: "#E7EFFC"` en dur sur les
-onglets sélectionnés — il reste bleu pâle sur le fond nuit.
+Ils prouvaient que **la structure** tenait. Ils ne testaient jamais **le chemin
+que l'application emprunte** — celui où l'org_id n'est pas fourni.
 
-**Pourquoi le test du lot 18 ne l'avait pas vu** : il ne cherchait que le
-*blanc*. Un garde-fou qui ne connaît qu'une forme du bug laisse passer les
-autres. Élargi aux bleus clairs, il a immédiatement trouvé un **second** cas
-dans `Mail.jsx`. Les deux sont corrigés.
+> **Une migration doit être exercée telle que l'application l'utilise,
+> pas telle qu'il est commode de la tester.**
 
-## À vérifier à l'œil
+C'est consigné en §3.17 de la passation, à côté des autres pièges vécus.
 
-1. Paramètres : six blocs nettement séparés, entrées cousues, plus de titre
-   isolé au-dessus d'une carte unique.
-2. Compte : « Paramètres » et « Demandes du réseau » dans un même bloc.
-3. En mode nuit : onglets du Compte et de Mail sombres, plus de pavé bleu pâle.
+C'est aussi le miroir exact du bug de l'emballage du lot 32 : là, la logique
+était juste mais la donnée n'arrivait pas. Ici, la donnée partait mais la table
+la refusait. Même famille — **vérifier la logique ne suffit jamais, il faut
+suivre le chemin complet.**
+
+## Le garde-fou
+
+`ecriture-org.test.js` refuse désormais toute nouvelle table à
+`org_id not null` sans `default jwt_org()`.
+
+Portée assumée et dite : il ne regarde que les migrations à partir de 0138.
+Les antérieures sont des stubs — le SQL a été appliqué en direct, leur fichier
+ne porte pas l'historique. Prétendre les vérifier depuis les fichiers
+produirait un test faux, pire qu'un test absent. La base fait foi sur elles.
+
+## À vérifier — ça devrait marcher maintenant
+
+1. **Planning** → une note du jour → « Noter ». Elle doit rester après
+   rechargement.
+2. **Planning** → « Former une équipe » → une personne → une mission →
+   « Enregistrer ». L'équipe doit apparaître dans la liste.
+3. **La balise « i »** de n'importe quelle page → une remarque → « Envoyer » →
+   onglet Historique : elle doit y être. (Elle n'a jamais fonctionné jusqu'ici.)
+
+Si l'un des trois échoue encore, dis-le-moi : ce sera un autre problème, et
+j'aurai éliminé celui-là pour de bon.
