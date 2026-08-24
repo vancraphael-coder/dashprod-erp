@@ -3892,13 +3892,18 @@ export async function listerTiers() {
 export async function equipesDuJour(jour) {
   if (modeDonnees() !== "reel") return [];
   const { data, error } = await supabase.from("equipes_jour")
-    .select("id, jour, nom, equipe_membres(utilisateur_id), equipe_missions(mission_id)")
+    .select("id, jour, nom, equipe_membres(utilisateur_id), "
+          + "equipe_missions(mission_id), equipe_vehicules(vehicule_id)")
     .eq("jour", jour).order("cree_le");
   if (error) throw new Error(error.message);
   return (data || []).map((e) => ({
     id: e.id, jour: e.jour, nom: e.nom,
     membres: (e.equipe_membres || []).map((m) => m.utilisateur_id),
     missions: (e.equipe_missions || []).map((m) => m.mission_id),
+    // 0144 : une équipe part avec quelque chose. Sans ce champ, deux équipes
+    // du même jour pouvaient se voir attribuer le même camion sans que rien
+    // ne le dise.
+    vehicules: (e.equipe_vehicules || []).map((v) => v.vehicule_id),
   }));
 }
 
@@ -3907,7 +3912,9 @@ export async function equipesDuJour(jour) {
  * différentiel : l'écran envoie l'état voulu, et un différentiel finirait par
  * diverger de la base au premier aller-retour manqué (même raison qu'au lot 10).
  */
-export async function sauverEquipeJour({ id, jour, nom, membres = [], missions = [] }) {
+export async function sauverEquipeJour({
+  id, jour, nom, membres = [], missions = [], vehicules = [],
+}) {
   if (modeDonnees() !== "reel") return null;
   let equipeId = id;
   if (!equipeId) {
@@ -3921,6 +3928,7 @@ export async function sauverEquipeJour({ id, jour, nom, membres = [], missions =
     if (error) throw new Error(error.message);
     await supabase.from("equipe_membres").delete().eq("equipe_id", equipeId);
     await supabase.from("equipe_missions").delete().eq("equipe_id", equipeId);
+    await supabase.from("equipe_vehicules").delete().eq("equipe_id", equipeId);
   }
   if (membres.length) {
     const { error } = await supabase.from("equipe_membres")
@@ -3930,6 +3938,11 @@ export async function sauverEquipeJour({ id, jour, nom, membres = [], missions =
   if (missions.length) {
     const { error } = await supabase.from("equipe_missions")
       .insert(missions.map((m) => ({ equipe_id: equipeId, mission_id: m })));
+    if (error) throw new Error(error.message);
+  }
+  if (vehicules.length) {
+    const { error } = await supabase.from("equipe_vehicules")
+      .insert(vehicules.map((v) => ({ equipe_id: equipeId, vehicule_id: v })));
     if (error) throw new Error(error.message);
   }
   return equipeId;
