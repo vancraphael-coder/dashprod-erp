@@ -129,3 +129,14 @@ c'est un axe unique et assumé.
   `prestation_fin` **n'existent pas dans `factures`**. La période part donc
   toujours vide. Et `missions.date` est une date simple, sans plage. Voir le
   lot 38.
+
+- **Toute la flotte est offerte sur toute carte mission.** (Décision de
+  Raphaël, 23/08/2026.) La catégorie attendue est un MINIMUM, pas une
+  exclusivité : un lift exige un lift, mais rien n'empêche d'ajouter la voiture
+  qui le suit ou un second camion. Les véhicules sont **groupés par catégorie**,
+  le groupe attendu en tête — c'est un ordre, jamais un filtre. Le verdict ne
+  signale plus que l'ABSENCE de la catégorie requise.
+
+- **Un véhicule peut être assigné à une équipe du jour** (migration 0144). Le
+  même véhicule sur deux créneaux disjoints est légitime ; le chevauchement est
+  un AVERTISSEMENT, jamais un blocage.
