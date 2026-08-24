@@ -1,134 +1,104 @@
-# Lot 35 — le socle des cartes métier
+# Lot 36 — toute la flotte, groupée, et le véhicule de l'équipe du jour
 
-**23/08/2026.** **1089 tests verts** (1067 avant), build vert.
-**Aucune migration** — lot entièrement pur.
-
----
-
-## Ce qui change à l'écran
-
-1. Chaque carte affiche **« 2 membres / 4 »**, et le 4 est **l'effectif vendu**.
-2. Les jetons de membres et de véhicules ne bougent plus de place.
-3. Le verdict dit **d'où vient** le nombre attendu : « (effectif du devis) ».
+**23/08/2026.** **1100 tests verts** (1094 avant), build vert.
+**Migration 0144** — appliquée et vérifiée en base.
 
 ---
 
-## 1. Le défaut principal — le dénominateur était une constante
+## 1. Toute la flotte, sur toute carte mission
 
-`EXIGENCES.demenagement.membres_min` valait **2, écrit en dur**. Le prix, lui,
-vient de `BAREME_HORAIRE[nbDemenageurs]`, effectif choisi au devis **entre 2 et
-6**.
+La flotte était **filtrée** sur la catégorie attendue : un lift ne voyait que
+des lifts, un déménagement que des camions. On ne pouvait donc ni ajouter la
+voiture qui suit le lift, ni un second camion sur un gros chantier — deux
+besoins courants du terrain, purement interdits par le logiciel.
 
-**Conséquence : un dossier vendu à quatre déménageurs affichait une carte qui
-passait au vert à deux.** Le voyant certifiait « pourvu » sur un chantier
-sous-staffé — et sous-facturé, puisque le client paie quatre personnes.
+Le filtre a disparu des **deux** composants (`CarteDate` et `VoletAffectation`).
+Un test refuse qu'il revienne dans un seul : les deux offriraient alors des
+flottes différentes pour la même mission, et c'est exactement la divergence que
+ce dépôt paie à répétition.
 
-Le dénominateur vient désormais de `affaire.faits.nbDemenageurs`. Trois règles,
-toutes testées :
+## 2. La catégorie devient un minimum, pas une exclusivité
 
-- **le devis prime** — 4 vendus, 4 attendus ;
-- **le plancher du métier rattrape** quand le devis est absent : `Number(null)`
-  vaut 0, et « 0 personne attendue » aurait rendu **toute carte verte à vide**.
-  Septième occurrence de ce piège dans le dépôt ;
-- **un devis SOUS le plancher ne fait pas descendre la carte** — un
-  déménagement chiffré à une personne est un devis à revoir, pas une consigne
-  de terrain.
+Corollaire nécessaire, et c'est le vrai gain. L'ancienne règle signalait
+**chaque** véhicule d'une autre catégorie comme une faute : un lift accompagné
+d'une voiture clignotait en orange, alors que l'attelage est correct.
 
-Le motif affiché dit l'origine : « 4 personnes attendues (effectif du devis) ».
-Sans ça, « 4 » passe pour une règle du logiciel et on corrigerait la carte au
-lieu du devis.
+À force de clignoter à tort, l'orange ne veut plus rien dire et on cesse de le
+lire — c'est ainsi qu'un avertissement utile se perd.
 
-La visite reste à une personne quel que soit le devis. L'emballage a son propre
-effectif : il se fait souvent à deux quand le camion part à quatre.
+Désormais, une seule chose est signalée : **l'absence de la catégorie requise.**
+« Aucun lift parmi les véhicules affectés ». Ce que l'ancienne règle protégeait
+reste protégé — partir sur un lift avec un seul camion est toujours une erreur,
+et elle se dit.
 
-## 2. Un catalogue unique, pour les métiers à venir
+## 3. Groupement par catégorie
 
-`packages/domaine/src/metiers/cartes.js` remplace **trois listes qui ne se
-parlaient pas** :
+Offrir quinze véhicules à plat redonnerait le problème que le tri venait de
+régler : on cherche « le lift », pas « un véhicule ». Chaque famille a son
+en-tête, et le groupe attendu remonte en tête avec la mention « attendu pour
+cette mission » — sans cette phrase, on croirait à un ordre arbitraire.
 
-- `EXIGENCES` dans `planning/affectation.js` — cinq types figés ;
-- `typesAvecCarte = [principale, visite, emballage]` codé en dur dans
-  `Dossier.jsx` — une liste qui ignorait `lift` et `sous_traitance` ;
-- les étapes de `commercial/natures.js`.
+**C'est un ordre, jamais un filtre : aucun véhicule ne disparaît.** Une
+catégorie inconnue reste visible plutôt que de s'évaporer — un véhicule
+invisible ne se cherche pas, il se rachète.
 
-`EXIGENCES` en est maintenant **dérivé**, plus recopié.
+⚠ **Correction d'une erreur du lot 35 :** j'avais écrit les rangs de catégorie
+pour « fourgon » et « remorque ». L'énumération SQL `categorie_vehicule` ne
+connaît que **camion | lift | voiture**. Les rangs ne s'appliquaient donc à
+rien et le groupement retombait en silence sur l'ordre alphabétique. Un test
+verrouille maintenant l'accord avec la base.
 
-**Pour ajouter un métier demain : une entrée dans `CARTES_METIER`.** Un test
-vérifie que toute nature passant par le planning possède une carte principale —
-l'oubli ne peut plus produire un dossier sans aucune carte de date, panne qui
-ne se voit qu'en ouvrant un dossier de cette nature.
+## 4. Un véhicule dans l'équipe du jour — migration 0144
 
-Le fichier est **horizontal** : il décrit la *forme* d'une carte, jamais le prix
-ni le contenu d'un métier. Aucun import de `releve/`, `stocks/` ou
-`chiffrage/lift.js` — vérifié par `architecture.test.js`.
+Une équipe de journée avait des personnes et des missions, **jamais de
+véhicule**. Or on ne compose pas une équipe sans savoir avec quoi elle part :
+deux équipes du même jour pouvaient se voir attribuer le même camion, et on ne
+s'en apercevait **qu'au dépôt, le matin**, quand il n'y en avait qu'un.
 
-## 3. Le tri des catalogues
+`equipe_vehicules` suit exactement le patron de 0142 : table de liaison **sans
+`org_id`**, qui hérite du cloisonnement par jointure sur `equipes_jour`. En
+ajouter un créerait une seconde vérité de tenant, qu'on finirait par oublier de
+tenir d'accord avec la première.
 
-`listerMembresSimples()` n'a **aucun `order by`**. PostgREST rend alors les
-lignes dans l'ordre physique de la table, qui **change après une mise à jour** :
-les mêmes noms changeaient de place entre deux visites du même écran.
+**Aucune contrainte `unique(jour, vehicule)`** — et c'est délibéré. Le même
+camion peut servir le matin puis l'après-midi. Une contrainte aveugle
+interdirait ce cas légitime : c'est le domaine qui juge le chevauchement
+horaire, et il le met en **avertissement**, jamais en blocage. Ta règle
+s'applique ici aussi : on signale, on n'interdit pas.
 
-Ce n'est pas qu'inélégant. On coche une équipe en visant une position
-mémorisée : un jeton qui se déplace **se coche à la place d'un autre**, et
-l'erreur ne se voit qu'au départ du camion.
+Vérifié après application : RLS active, 1 politique, 2 index, colonnes
+conformes.
 
-`trierMembres` / `trierVehicules` vivent dans le domaine — trois écrans qui
-trient « à peu près pareil » finissent par afficher trois ordres. Les affectés
-remontent (on les relit pour vérifier, pas pour les chercher), les indisponibles
-descendent **sans disparaître** : on signale, on n'interdit pas. Collateur
-`fr-BE` — accents ignorés, et « Camion 2 » avant « Camion 10 ».
+Détail au passage : le message de conflit était écrit pour une personne
+(« déjà engagée »). Sur un camion, l'accord faux fait douter du message entier —
+et un avertissement dont on doute cesse d'être lu.
 
-## 4. Éprouvé par sabotage
-
-Vingt-deux tests verts du premier coup ne prouvent rien. J'ai donc cassé le
-code exprès, trois fois :
+## 5. Éprouvé par sabotage
 
 | Sabotage | Tests rouges |
 |---|---|
-| l'effectif revient à une constante | 4 |
-| le tri rend l'ordre reçu | 2 |
-| `Number(null)` laissé passer | 4 |
-
-Code remis, 22 verts.
+| le conflit de véhicule devient bloquant | 2 |
+| le groupement redevient un filtre | 1 |
+| l'exigence de catégorie disparaît | 1 |
 
 ---
 
 ## Ce qui n'a PAS été fait
 
-- **Aucune migration.** Rien dans ce lot n'en demandait.
-- **`VoletAffectation` et `CarteDate` restent deux composants.** Ils partagent
-  maintenant la même source d'effectif et le même tri, mais leur fusion est un
-  autre chantier — le faire ici aurait mêlé deux risques.
-- **Le tri n'est pas ajouté côté SQL.** Un `order by` dans
-  `listerMembresSimples()` serait utile, mais le tri métier (affectés en tête)
-  ne peut vivre qu'ici : deux tris concurrents rouvriraient la divergence.
+- **Les modèles d'équipe ne retiennent toujours que les personnes.** Un modèle
+  qui figerait un camion le réserverait pour toutes les journées où on
+  l'applique — l'inverse de ce qu'on veut d'un modèle.
+- **Le planning n'affiche pas encore le véhicule sur la vignette de mission.**
+  Il est visible sur la ligne de l'équipe ; l'ajouter aussi sur la mission
+  demande de trancher quelle source fait foi quand les deux divergent. À
+  instruire, pas à deviner.
 
 ## À vérifier à l'œil
 
-1. Ouvrir un dossier chiffré à **4 déménageurs** : la carte doit dire
-   « 2 membres / 4 » et rester orange jusqu'à quatre.
-2. Un dossier **sans devis** : le dénominateur retombe à 2, sans « (devis) ».
-3. Recharger deux fois le même dossier : **les jetons ne bougent plus**.
-4. Un membre en congé : il reste **cliquable**, en fin de liste.
-
----
-
-## Décisions consignées au dossier maître
-
-Tes deux réponses sont inscrites dans `docs/maitre/10-DECISIONS-PRODUIT.md` :
-
-- **mission pressentie → on signale, on n'interdit pas** ;
-- **mission multi-jours → un seul document**, détaillant par jour les heures et
-  le nombre de membres, prévus puis exacts. Vue d'ensemble instantanée, pas de
-  recollement entre pièces. Correspond exactement à `InvoicePeriod` côté Peppol.
-
-⚠ Fondation manquante pour ce dernier point, constatée en base : `ubl.js` émet
-déjà `<cac:InvoicePeriod>`, mais **`prestation_debut` et `prestation_fin`
-n'existent pas dans `factures`** — la période part toujours vide. Et
-`missions.date` est une date simple, sans plage. C'est le lot 38.
-
-## Suite proposée
-
-**36** — sortir `emballage` des formules exclusives (aujourd'hui un forfait ne
-peut **jamais** porter d'emballage). **37** — le pressenti translucide au
-planning. **38** — multi-jours et période de facturation.
+1. Carte d'un **lift** : les lifts en tête avec « attendu pour cette mission »,
+   **puis camions et voitures**, tous cliquables.
+2. Lift **+ voiture** affectés : plus aucun orange.
+3. Lift **sans lift** : « Aucun lift parmi les véhicules affectés ».
+4. Planning → une journée → **« Avec quoi »** : les véhicules groupés.
+5. Deux équipes, même camion, horaires qui se chevauchent : **avertissement**,
+   et l'enregistrement reste possible.

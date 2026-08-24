@@ -3,7 +3,7 @@
 > **À lire en entier avant de coder.** Ce document permet à une nouvelle
 > conversation de reprendre le travail sans rien casser ni rien réinventer.
 >
-> **Dernière mise à jour :** 23/08/2026 — après le lot 35.
+> **Dernière mise à jour :** 23/08/2026 — après le lot 36.
 > **À mettre à jour tous les 7 messages**, ou en fin de conversation.
 > Procédure de mise à jour : §9.
 
@@ -1031,7 +1031,30 @@ en élargissant : `Profil.jsx` (onglets) et `Mail.jsx`.
 (`#E7EFFC`, `#EEF2F8`, `#EFF4FC`, `#E8F0FE`, `#DBEAFE`). Un garde-fou qui ne
 cherche qu'une forme du bug laisse passer les autres.
 
-## 5ter. Lot 35 — 23/08/2026 (le plus récent)
+## 5quater. Lot 36 — 23/08/2026 (le plus récent)
+
+**Compteurs :** 1100 tests verts (1094 avant), build vert, **migration 0144**
+(dernière migration : **0144**).
+
+- Toute la flotte offerte sur toute carte mission ; véhicules GROUPÉS par
+  catégorie (`grouperVehicules`), groupe attendu en tête. Le filtre par
+  catégorie a disparu des DEUX composants — un test refuse qu'il revienne dans
+  un seul, ce qui rouvrirait la divergence.
+- L'exigence de catégorie est devenue « AU MOINS UN de cette catégorie ».
+  Avant, un lift accompagné d'une voiture clignotait en orange : chaque
+  compagnon comptait comme une faute, et l'orange finissait par ne plus rien
+  vouloir dire.
+- ⚠ `categorie_vehicule` ne connaît que **camion | lift | voiture**. Le premier
+  jet du lot 35 citait « fourgon » et « remorque » : les rangs ne s'appliquaient
+  à rien et le groupement retombait en silence sur l'alphabet. Un test verrouille
+  désormais l'accord avec l'énumération SQL.
+- `equipe_vehicules` (0144) : une équipe du jour part avec quelque chose. Aucun
+  `unique(jour, vehicule)` — le même camion peut servir matin puis après-midi ;
+  c'est le domaine qui juge le chevauchement, en AVERTISSEMENT.
+
+---
+
+## 5ter. Lot 35 — 23/08/2026
 
 **Compteurs :** 1089 tests verts (1067 avant), build vert, migrations toujours
 à **0143** (lot entièrement pur — aucune migration).
