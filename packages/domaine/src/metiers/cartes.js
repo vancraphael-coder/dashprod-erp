@@ -266,7 +266,69 @@ export function trierMembres(membres = [], { affectes = [], estIndisponible = nu
  * Un lift et un fourgon ne se cherchent pas dans la même intention : regrouper
  * par catégorie évite de balayer toute la flotte pour trouver le seul lift.
  */
-const RANG_CATEGORIE = { lift: 0, camion: 1, fourgon: 2, remorque: 3 };
+/**
+ * Les catégories réelles de la base (`categorie_vehicule` : camion | lift |
+ * voiture). L'ordre est celui du poids sur le chantier : ce qui porte la
+ * charge d'abord, ce qui suit ensuite.
+ *
+ * Une catégorie inconnue tombe en fin de liste plutôt que de disparaître —
+ * une valeur ajoutée à l'énumération SQL sans passer ici doit rester visible,
+ * pas s'évaporer.
+ */
+export const CATEGORIES_VEHICULE = Object.freeze([
+  { cle: "camion", titre: "Camions", rang: 0 },
+  { cle: "lift", titre: "Lifts", rang: 1 },
+  { cle: "voiture", titre: "Voitures", rang: 2 },
+]);
+
+const RANG_CATEGORIE = Object.fromEntries(
+  CATEGORIES_VEHICULE.map((c) => [c.cle, c.rang]));
+
+/** Le titre affichable d'une catégorie — jamais une clé brute à l'écran. */
+export function titreCategorie(cle) {
+  const c = CATEGORIES_VEHICULE.find((x) => x.cle === cle);
+  if (c) return c.titre;
+  // Une catégorie inconnue s'affiche telle quelle, capitalisée : mieux vaut un
+  // intitulé imparfait qu'un véhicule sans en-tête.
+  const brut = String(cle || "autre");
+  return brut.charAt(0).toUpperCase() + brut.slice(1) + "s";
+}
+
+/**
+ * LES VÉHICULES GROUPÉS PAR CATÉGORIE, prêts à être affichés avec un en-tête.
+ *
+ * Toute la flotte est offerte sur toute carte mission (décision de Raphaël) :
+ * on peut ajouter la voiture qui suit le lift, ou un second camion. Mais
+ * dérouler quinze véhicules à plat redonnerait le problème que le tri venait de
+ * régler — on cherche « le lift », pas « un véhicule ». Le groupe porte donc
+ * l'en-tête, et le regard saute directement à la bonne famille.
+ *
+ * `categorieAttendue` remonte le groupe qui satisfait la mission : sur un lift,
+ * les lifts d'abord. Elle ne CACHE rien — c'est un ordre, pas un filtre.
+ *
+ * @returns {{cle: string, titre: string, attendue: boolean, vehicules: Array}[]}
+ *          les groupes non vides uniquement
+ */
+export function grouperVehicules(flotte = [], {
+  affectes = [], estIndisponible = null, categorieAttendue = null,
+} = {}) {
+  const tries = trierVehicules(flotte, { affectes, estIndisponible });
+  const groupes = new Map();
+  for (const v of tries) {
+    const cle = v?.categorie || "camion";
+    if (!groupes.has(cle)) {
+      groupes.set(cle, {
+        cle, titre: titreCategorie(cle),
+        attendue: Boolean(categorieAttendue) && cle === categorieAttendue,
+        vehicules: [],
+      });
+    }
+    groupes.get(cle).vehicules.push(v);
+  }
+  return [...groupes.values()].sort((a, b) =>
+    (b.attendue ? 1 : 0) - (a.attendue ? 1 : 0)
+    || (RANG_CATEGORIE[a.cle] ?? 8) - (RANG_CATEGORIE[b.cle] ?? 8));
+}
 
 export function trierVehicules(flotte = [], { affectes = [], estIndisponible = null } = {}) {
   const coches = new Set(affectes || []);
