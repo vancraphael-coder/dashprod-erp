@@ -18,7 +18,7 @@ import React, { useState } from "react";
 import {
   etatAffectation, couleurVoyant, resumeEffectif, exigence,
 } from "@domaine/planning/affectation.js";
-import { trierMembres, trierVehicules } from "@domaine/metiers/cartes.js";
+import { trierMembres, grouperVehicules } from "@domaine/metiers/cartes.js";
 import Bille from "./Bille.jsx";
 import { C, S } from "../lib/theme.jsx";
 
@@ -66,11 +66,12 @@ export function VoletAffectation({
     onChange({ ...a, vehicules: l.includes(id) ? l.filter((x) => x !== id) : [...l, id] });
   }
 
-  // Un lift ne se réserve qu'avec un lift : proposer un fourgon ici n'aurait
-  // aucun sens. Les autres missions gardent toute la flotte.
-  const flotteOfferte = ex.categorie
-    ? (flotte || []).filter((v) => (v.categorie || "camion") === ex.categorie)
-    : (flotte || []);
+  // Toute la flotte, groupée par catégorie — même règle que la carte de date.
+  // Deux composants qui offrent des flottes différentes, c'est deux réponses à
+  // « quels véhicules puis-je mettre sur cette mission ».
+  const groupesVehicules = grouperVehicules(flotte || [], {
+    affectes: a.vehicules || [], categorieAttendue: ex.categorie,
+  });
 
   return (
     <div style={{
@@ -127,23 +128,30 @@ export function VoletAffectation({
           </div>
 
           <div style={{ marginTop: 12 }}>
-            <Titre>
-              Véhicules
-              {ex.categorie ? ` — ${ex.categorie}s seulement` : ""}
-            </Titre>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {flotteOfferte.length === 0 && (
-                <span style={{ fontSize: 12, color: C.muet }}>
-                  {ex.categorie
-                    ? `Aucun véhicule de catégorie ${ex.categorie} dans la flotte.`
-                    : "Aucun véhicule."}
-                </span>
-              )}
-              {trierVehicules(flotteOfferte, { affectes: a.vehicules || [] }).map((v) => (
-                <Jeton key={v.id} actif={(a.vehicules || []).includes(v.id)}
-                       onClick={() => basculerVehicule(v.id)} texte={v.nom} />
-              ))}
-            </div>
+            <Titre>Véhicules</Titre>
+            {groupesVehicules.length === 0 && (
+              <span style={{ fontSize: 12, color: C.muet }}>
+                Aucun véhicule dans la flotte.
+              </span>
+            )}
+            {groupesVehicules.map((g) => (
+              <div key={g.cle} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 700,
+                              color: g.attendue ? C.bleu : C.fantome,
+                              marginBottom: 5 }}>
+                  {g.titre}
+                  {g.attendue && (
+                    <span style={{ fontWeight: 400 }}> — attendu ici</span>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {g.vehicules.map((v) => (
+                    <Jeton key={v.id} actif={(a.vehicules || []).includes(v.id)}
+                           onClick={() => basculerVehicule(v.id)} texte={v.nom} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {verdict.manques.length > 0 && (

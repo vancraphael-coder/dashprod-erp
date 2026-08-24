@@ -16,7 +16,7 @@ import {
   etatAffectation, couleurVoyant, resumeAffectation, resumeEffectif,
   exigence, effectifRequis,
 } from "@domaine/planning/affectation.js";
-import { trierMembres, trierVehicules } from "@domaine/metiers/cartes.js";
+import { trierMembres, grouperVehicules } from "@domaine/metiers/cartes.js";
 import { permisConduite } from "@domaine/flotte/vehicules.js";
 import Bille from "./Bille.jsx";
 import { C, S } from "../lib/theme.jsx";
@@ -131,11 +131,16 @@ export default function CarteDate({
       (flotte || []).find((v) => v.id === id)?.nom]),
   ].filter(([d]) => d);
 
-  // Un lift ne se réserve qu'avec un lift : proposer un fourgon n'aurait
-  // aucun sens.
-  const flotteOfferte = ex.categorie
-    ? (flotte || []).filter((v) => (v.categorie || "camion") === ex.categorie)
-    : (flotte || []);
+  // TOUTE LA FLOTTE EST OFFERTE, sur toute carte (décision de Raphaël).
+  // Elle était filtrée sur la catégorie attendue : un lift ne voyait que des
+  // lifts, un déménagement que des camions. On ne pouvait donc ni ajouter la
+  // voiture qui suit le lift, ni un second camion sur un gros chantier — des
+  // besoins courants du terrain.
+  //
+  // Rien n'est perdu côté vigilance : le domaine signale toujours l'ABSENCE de
+  // la catégorie requise (« aucun lift parmi les véhicules affectés »). Ce qui
+  // disparaît, c'est le faux reproche fait au renfort légitime.
+  const flotteOfferte = flotte || [];
 
   // LE TRI. Les jetons sortaient dans l'ordre de la base — un ordre qui change
   // après une mise à jour. On coche une équipe en visant une position
@@ -147,9 +152,12 @@ export default function CarteDate({
     affectes: a.membres || [],
     estIndisponible: (id) => Boolean(lireDispo("membre", id)),
   });
-  const flotteTriee = trierVehicules(flotteOfferte, {
+  // Groupés par catégorie : quinze véhicules à plat redonneraient le problème
+  // que le tri venait de régler. On cherche « le lift », pas « un véhicule ».
+  const groupesVehicules = grouperVehicules(flotteOfferte, {
     affectes: a.vehicules || [],
     estIndisponible: (id) => Boolean(lireDispo("vehicule", id)),
+    categorieAttendue: ex.categorie,
   });
 
   return (
@@ -276,26 +284,39 @@ export default function CarteDate({
                   choix sans objet. */}
               {ex.vehicule !== "aucun" && ex.titre !== "Visite" && (
                 <div style={{ marginTop: 12 }}>
-                  <Titre>
-                    Véhicules{ex.categorie ? ` — ${ex.categorie}s seulement` : ""}
-                  </Titre>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {flotteOfferte.length === 0 && (
-                      <span style={{ fontSize: 12, color: C.muet }}>
-                        {ex.categorie
-                          ? `Aucun véhicule de catégorie ${ex.categorie}.`
-                          : "Aucun véhicule."}
-                      </span>
-                    )}
-                    {flotteTriee.map((v) => {
-                      const d = lireDispo("vehicule", v.id);
-                      return (
-                        <Jeton key={v.id} actif={(a.vehicules || []).includes(v.id)}
-                               onClick={() => basculerVehicule(v.id)} texte={v.nom}
-                               alerte={d?.niveau} raison={d?.raison} />
-                      );
-                    })}
-                  </div>
+                  <Titre>Véhicules</Titre>
+                  {groupesVehicules.length === 0 && (
+                    <span style={{ fontSize: 12, color: C.muet }}>
+                      Aucun véhicule dans la flotte.
+                    </span>
+                  )}
+                  {groupesVehicules.map((g) => (
+                    <div key={g.cle} style={{ marginBottom: 10 }}>
+                      {/* L'en-tête dit la famille ET, pour celle qu'attend la
+                          mission, POURQUOI elle est en tête. Sans ce mot, on
+                          croirait à un ordre arbitraire. */}
+                      <div style={{ fontSize: 10.5, fontWeight: 700,
+                                    color: g.attendue ? C.bleu : C.fantome,
+                                    marginBottom: 5 }}>
+                        {g.titre}
+                        {g.attendue && (
+                          <span style={{ fontWeight: 400 }}>
+                            {" "}— attendu pour cette mission
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {g.vehicules.map((v) => {
+                          const d = lireDispo("vehicule", v.id);
+                          return (
+                            <Jeton key={v.id} actif={(a.vehicules || []).includes(v.id)}
+                                   onClick={() => basculerVehicule(v.id)} texte={v.nom}
+                                   alerte={d?.niveau} raison={d?.raison} />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 

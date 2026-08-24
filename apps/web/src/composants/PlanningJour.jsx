@@ -21,6 +21,7 @@ import {
   notesDuJour, ajouterNoteJour, supprimerNoteJour,
 } from "../lib/adaptateur.js";
 import { verdictEquipe, modeleDepuisEquipe } from "@domaine/planning/equipes.js";
+import { grouperVehicules, trierMembres } from "@domaine/metiers/cartes.js";
 import { C, S } from "../lib/theme.jsx";
 
 /* ── Note rapide ────────────────────────────────────────────────────────── */
@@ -74,10 +75,13 @@ export function NoteRapideJour({ jour }) {
 
 /* ── Formation d'équipe ─────────────────────────────────────────────────── */
 
-export function EquipesDuJour({ jour, membres = [], missionsDuJour = [] }) {
+export function EquipesDuJour({
+  jour, membres = [], missionsDuJour = [], flotte = [],
+}) {
   const [equipes, setEquipes] = useState([]);
   const [modeles, setModeles] = useState([]);
-  const [brouillon, setBrouillon] = useState(null); // {id?, nom, membres[], missions[]}
+  // {id?, nom, membres[], missions[], vehicules[]}
+  const [brouillon, setBrouillon] = useState(null);
   const [erreur, setErreur] = useState(null);
 
   async function recharger() {
@@ -104,13 +108,31 @@ export function EquipesDuJour({ jour, membres = [], missionsDuJour = [] }) {
     return par;
   }, [equipes, brouillon, missionsParId]);
 
+  /**
+   * Ce que chaque VÉHICULE tient déjà ce jour-là (0144). Même raisonnement que
+   * pour les personnes — et il compte davantage : deux équipes qui se croient
+   * chacune propriétaire du même camion ne s'en aperçoivent qu'au dépôt, le
+   * matin, quand il n'y en a qu'un.
+   */
+  const engagementsParVehicule = useMemo(() => {
+    const par = {};
+    for (const e of equipes) {
+      if (brouillon && e.id === brouillon.id) continue;
+      const ms = e.missions.map((id) => missionsParId.get(id)).filter(Boolean);
+      for (const v of e.vehicules || []) (par[v] = par[v] || []).push(...ms);
+    }
+    return par;
+  }, [equipes, brouillon, missionsParId]);
+
   const verdict = useMemo(() => {
     if (!brouillon) return null;
     return verdictEquipe(
       { membres: brouillon.membres,
+        vehicules: brouillon.vehicules || [],
         missions: brouillon.missions.map((id) => missionsParId.get(id)).filter(Boolean) },
-      { membres, engagementsParMembre });
-  }, [brouillon, missionsParId, membres, engagementsParMembre]);
+      { membres, flotte, engagementsParMembre, engagementsParVehicule });
+  }, [brouillon, missionsParId, membres, flotte,
+      engagementsParMembre, engagementsParVehicule]);
 
   async function enregistrer() {
     if (!verdict?.ok) return;
@@ -141,7 +163,7 @@ export function EquipesDuJour({ jour, membres = [], missionsDuJour = [] }) {
         <label style={{ ...S.label, marginTop: 0 }}>Équipes du jour</label>
         {!brouillon && (
           <button style={S.boutonLien}
-            onClick={() => setBrouillon({ nom: "", membres: [], missions: [] })}>
+            onClick={() => setBrouillon({ nom: "", membres: [], missions: [], vehicules: [] })}>
             + Former une équipe
           </button>
         )}
@@ -172,6 +194,11 @@ export function EquipesDuJour({ jour, membres = [], missionsDuJour = [] }) {
           </div>
           <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
             {e.membres.map((u) => membres.find((m) => m.id === u)?.nom || "?").join(", ")}
+            {(e.vehicules || []).length > 0 && (
+              <> · {e.vehicules
+                .map((id) => flotte.find((v) => v.id === id)?.nom || "?")
+                .join(", ")}</>
+            )}
             {e.missions.length > 0 && ` · ${e.missions.length} mission${e.missions.length > 1 ? "s" : ""}`}
           </div>
         </div>
@@ -204,7 +231,7 @@ export function EquipesDuJour({ jour, membres = [], missionsDuJour = [] }) {
 
           <label style={S.label}>Qui</label>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {membres.map((m) => {
+            {trierMembres(membres, { affectes: brouillon.membres }).map((m) => {
               const actif = brouillon.membres.includes(m.id);
               return (
                 <button key={m.id} style={{ ...S.boutonPuce,
@@ -218,6 +245,45 @@ export function EquipesDuJour({ jour, membres = [], missionsDuJour = [] }) {
               );
             })}
           </div>
+
+          {/* LE VÉHICULE DE L'ÉQUIPE (0144). Une équipe part avec quelque
+              chose : sans ce champ, deux équipes du même jour pouvaient se
+              voir attribuer le même camion sans que rien ne le dise — et on
+              s'en apercevait au dépôt, le matin.
+
+              Groupés par catégorie comme partout ailleurs : on cherche « le
+              lift », pas « un véhicule ». */}
+          <label style={S.label}>Avec quoi</label>
+          {flotte.length === 0 ? (
+            <div style={{ fontSize: 12, color: C.fantome }}>
+              Aucun véhicule dans la flotte.
+            </div>
+          ) : (
+            grouperVehicules(flotte, { affectes: brouillon.vehicules || [] })
+              .map((g) => (
+                <div key={g.cle} style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700,
+                                color: C.fantome, marginBottom: 5 }}>
+                    {g.titre}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {g.vehicules.map((v) => {
+                      const actif = (brouillon.vehicules || []).includes(v.id);
+                      return (
+                        <button key={v.id} style={{ ...S.boutonPuce,
+                            border: `1.5px solid ${actif ? C.bleu : C.bord}`,
+                            background: actif ? C.bleuClair : C.blanc,
+                            color: actif ? C.bleu : C.muet }}
+                          onClick={() => setBrouillon({ ...brouillon,
+                            vehicules: bascule(brouillon.vehicules || [], v.id) })}>
+                          {v.nom}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))
+          )}
 
           <label style={S.label}>Sur quelles missions</label>
           {missionsDuJour.length === 0 ? (
