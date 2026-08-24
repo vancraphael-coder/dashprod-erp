@@ -11,11 +11,13 @@ import assert from "node:assert/strict";
 import {
   CARTES_METIER, carteMetier, cartesDeNature, cartePrincipale,
   effectifAttendu, origineEffectif, trierMembres, trierVehicules,
+  grouperVehicules, titreCategorie, CATEGORIES_VEHICULE,
 } from "../src/metiers/cartes.js";
 import {
   EXIGENCES, exigence, effectifRequis, etatAffectation, resumeEffectif,
 } from "../src/planning/affectation.js";
 import { NATURES } from "../src/commercial/natures.js";
+import { verdictEquipe } from "../src/planning/equipes.js";
 
 /* ── Le catalogue ────────────────────────────────────────────────────────── */
 
@@ -183,6 +185,14 @@ test("effectifRequis reste utilisable sans chiffrage du tout", () => {
 
 /* ── Le tri des catalogues ───────────────────────────────────────────────── */
 
+/** Les trois catégories réelles de la base. */
+const FLOTTE = [
+  { id: "a", nom: "Camion 10", categorie: "camion" },
+  { id: "b", nom: "Camion 2", categorie: "camion" },
+  { id: "c", nom: "Lift B", categorie: "lift" },
+  { id: "d", nom: "Kangoo", categorie: "voiture" },
+];
+
 const GENS = [
   { id: "3", nom: "Zoé" }, { id: "1", nom: "émile" },
   { id: "2", nom: "Ana" }, { id: "4", nom: "Bob" },
@@ -221,15 +231,42 @@ test("les affectés remontent, les indisponibles descendent sans disparaître", 
   assert.equal(r.length, GENS.length, "personne n'est retiré de la liste");
 });
 
-test("les véhicules se groupent par catégorie, chiffres lus comme des nombres", () => {
+test("les véhicules se trient par catégorie, chiffres lus comme des nombres", () => {
   // « Camion 10 » après « Camion 2 » : un tri texte les inverserait.
-  const flotte = [
-    { id: "a", nom: "Camion 10", categorie: "camion" },
-    { id: "b", nom: "Camion 2", categorie: "camion" },
-    { id: "c", nom: "Lift B", categorie: "lift" },
-  ];
-  assert.deepEqual(trierVehicules(flotte).map((v) => v.nom),
-    ["Lift B", "Camion 2", "Camion 10"]);
+  // L'ordre des catégories suit l'énumération RÉELLE de la base
+  // (`categorie_vehicule` : camion | lift | voiture) — la première version de
+  // ce test citait « fourgon » et « remorque », qui n'existent pas.
+  assert.deepEqual(trierVehicules(FLOTTE).map((v) => v.nom),
+    ["Camion 2", "Camion 10", "Lift B", "Kangoo"]);
+});
+
+test("toute la flotte est offerte, groupée, rien n'est caché", () => {
+  // DÉCISION DE RAPHAËL : tout type de véhicule peut être posé sur une carte
+  // mission. Le groupe attendu remonte, mais AUCUN véhicule ne disparaît —
+  // c'est un ordre, pas un filtre. Avant, un lift n'offrait que des lifts : on
+  // ne pouvait pas ajouter la voiture qui le suit.
+  const groupes = grouperVehicules(FLOTTE, { categorieAttendue: "lift" });
+  assert.equal(groupes[0].cle, "lift", "le groupe attendu vient en tête");
+  assert.equal(groupes[0].attendue, true);
+  const tous = groupes.flatMap((g) => g.vehicules.map((v) => v.id));
+  assert.equal(tous.length, FLOTTE.length, "aucun véhicule n'est retiré");
+});
+
+test("une catégorie inconnue reste visible plutôt que de s'évaporer", () => {
+  // Une valeur ajoutée à l'énumération SQL sans passer par le catalogue doit
+  // rester affichée : un véhicule invisible ne se cherche pas, il se rachète.
+  const g = grouperVehicules([...FLOTTE, { id: "x", nom: "Nacelle", categorie: "nacelle" }]);
+  const inconnue = g.find((x) => x.cle === "nacelle");
+  assert.ok(inconnue, "le groupe inconnu doit exister");
+  assert.equal(inconnue.titre, "Nacelles");
+  assert.equal(g[g.length - 1].cle, "nacelle", "et passer en fin de liste");
+});
+
+test("les groupes vides ne laissent pas d'en-tête orphelin", () => {
+  // Un titre « Lifts » au-dessus de rien ressemble à un bug.
+  const g = grouperVehicules([{ id: "a", nom: "C1", categorie: "camion" }]);
+  assert.deepEqual(g.map((x) => x.cle), ["camion"]);
+  assert.deepEqual(grouperVehicules([]), []);
 });
 
 test("les listes vides et les entrées bancales ne font pas tomber le tri", () => {
@@ -237,4 +274,85 @@ test("les listes vides et les entrées bancales ne font pas tomber le tri", () =
   assert.deepEqual(trierMembres(), []);
   assert.deepEqual(trierVehicules(null), []);
   assert.equal(trierMembres([{ id: "x" }, { id: "y", nom: "A" }]).length, 2);
+});
+
+
+test("le catalogue de catégories colle à l'énumération SQL", () => {
+  // CE QUI CASSE SANS CE TEST : le code cite « fourgon » et « remorque » — ce
+  // fut le cas — alors que `categorie_vehicule` ne connaît que camion, lift et
+  // voiture. Les rangs ne s'appliquent alors à rien et le groupement retombe
+  // silencieusement sur l'ordre alphabétique.
+  assert.deepEqual(CATEGORIES_VEHICULE.map((c) => c.cle),
+    ["camion", "lift", "voiture"]);
+  assert.equal(titreCategorie("lift"), "Lifts");
+  assert.equal(titreCategorie(null), "Autres");
+});
+
+/* ── Le véhicule dans l'équipe du jour (0144) ────────────────────────────── */
+
+test("un véhicule sur deux créneaux DISJOINTS du même jour ne gêne pas", () => {
+  // Le même camion peut servir le matin puis l'après-midi. Une contrainte
+  // aveugle en base interdirait ce cas parfaitement légitime — c'est pourquoi
+  // la règle vit ici et non dans un `unique(jour, vehicule)`.
+  const v = verdictEquipe(
+    { membres: ["a", "b"], vehicules: ["c1"],
+      missions: [{ id: "m1", heure_debut: "08:00", heure_fin: "12:00" }] },
+    { flotte: [{ id: "c1", nom: "Camion 1" }],
+      engagementsParVehicule: {
+        c1: [{ id: "m9", heure_debut: "13:00", heure_fin: "17:00" }] } });
+  assert.equal(v.avertissements.some((a) => a.includes("Camion 1")), false);
+});
+
+test("un véhicule sur deux créneaux QUI SE CHEVAUCHENT est signalé", () => {
+  // CE QUI CASSE SANS CE TEST : deux équipes se croient chacune propriétaire
+  // du même camion et ne s'en aperçoivent qu'au dépôt, le matin, quand il n'y
+  // en a qu'un.
+  const v = verdictEquipe(
+    { membres: ["a", "b"], vehicules: ["c1"],
+      missions: [{ id: "m1", heure_debut: "08:00", heure_fin: "12:00" }] },
+    { flotte: [{ id: "c1", nom: "Camion 1" }],
+      engagementsParVehicule: {
+        c1: [{ id: "m9", heure_debut: "10:00", heure_fin: "14:00" }] } });
+  assert.ok(v.avertissements.some((a) => a.includes("Camion 1")));
+  // SIGNALE, N'INTERDIT PAS : le bureau garde la main (véhicule libéré plus
+  // tôt, permutation de dernière minute).
+  assert.equal(v.ok, true, "un conflit de véhicule ne doit jamais bloquer");
+  assert.deepEqual(v.bloquant, []);
+});
+
+test("le message d'un véhicule s'accorde au masculin", () => {
+  // « Déjà engagée » est écrit pour une personne. Sur un camion, l'accord faux
+  // fait douter du message — et un avertissement dont on doute cesse d'être lu.
+  const v = verdictEquipe(
+    { membres: ["a"], vehicules: ["c1"],
+      missions: [{ id: "m1", heure_debut: "08:00", heure_fin: "12:00" }] },
+    { flotte: [{ id: "c1", nom: "Camion 1" }],
+      engagementsParVehicule: {
+        c1: [{ id: "m9", heure_debut: "10:00", heure_fin: "14:00" }] } });
+  const msg = v.avertissements.find((a) => a.includes("Camion 1"));
+  assert.match(msg, /déjà engagé /, "accord masculin attendu");
+  assert.equal(/engagée/.test(msg), false);
+});
+
+test("une équipe avec missions mais sans véhicule mérite un regard", () => {
+  const v = verdictEquipe(
+    { membres: ["a", "b"], vehicules: [],
+      missions: [{ id: "m1", heure_debut: "08:00", heure_fin: "12:00" }] },
+    { flotte: [] });
+  assert.ok(v.avertissements.some((a) => /Aucun véhicule/.test(a)));
+  assert.equal(v.ok, true);
+});
+
+test("une équipe SANS mission ne réclame pas de véhicule", () => {
+  // La question ne se pose pas encore : réclamer un camion pour une équipe
+  // qu'on vient de nommer serait du bruit.
+  const v = verdictEquipe({ membres: ["a"], vehicules: [], missions: [] }, {});
+  assert.equal(v.avertissements.some((a) => /Aucun véhicule/.test(a)), false);
+});
+
+test("le verdict d'équipe reste valide sans aucune donnée de véhicule", () => {
+  // Les appelants d'avant 0144 n'en passent pas.
+  const v = verdictEquipe({ membres: ["a"], missions: [] }, {});
+  assert.equal(v.ok, true);
+  assert.equal(v.vehicules, 0);
 });

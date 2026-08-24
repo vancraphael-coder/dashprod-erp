@@ -116,23 +116,21 @@ test("visite préalable et jour d'emballage n'existent que pour un déménagemen
     "le drapeau doit venir du domaine, pas d'une liste de natures écrite sur place");
 });
 
-test("un lift ne se réserve qu'avec un véhicule de catégorie lift", () => {
-  // Le filtre a quitté l'écran Dossier avec les sélecteurs de niveau dossier
-  // (lot 10f) : c'est la CARTE DE DATE qui offre les véhicules, et elle filtre
-  // par l'exigence du type de mission — donc un lift ne propose que des lifts,
-  // partout où on affecte, et non plus seulement sur cet écran-là.
-  const src = lire("composants/CarteDate.jsx");
-  assert.ok(/flotteOfferte\s*=\s*ex\.categorie/.test(src),
-    "la flotte offerte doit être filtrée par l'exigence du type de mission");
-  assert.ok(src.includes("v.categorie || \"camion\") === ex.categorie"),
-    "le filtre doit comparer la catégorie du véhicule à celle exigée");
-  // Les autres types gardent toute la flotte : le filtre est un ternaire.
-  assert.ok(src.includes(": (flotte || []);"),
-    "hors exigence de catégorie, aucune restriction ne doit s'appliquer");
-  // Et l'exigence dit bien « lift » pour un lift.
+test("un lift EXIGE un lift, sans interdire les autres véhicules", () => {
+  // RÈGLE RÉVISÉE (lot 36, décision de Raphaël) : « tout type de véhicule peut
+  // être défini dans les cartes mission ». La flotte n'est donc plus filtrée.
+  //
+  // L'exigence, elle, TIENT TOUJOURS : un lift doit toujours partir avec un
+  // lift. Ce qui change, c'est le moment où elle s'exprime — plus en cachant
+  // des véhicules à l'écran, mais en signalant leur absence dans le verdict.
+  // C'est la règle du produit : on signale, on n'interdit pas.
   const ex = lireDomaine("planning/affectation.js");
-  assert.ok(ex.includes('categorie: "lift"'),
-    "l'exigence du type lift doit imposer la catégorie lift");
+  assert.ok(ex.includes('categorie: "lift"')
+            || lireDomaine("metiers/cartes.js").includes('categorie: "lift"'),
+    "l'exigence du type lift doit toujours imposer la catégorie lift");
+  assert.ok(ex.includes("Aucun ${e.categorie} parmi les véhicules affectés")
+            || ex.includes("parmi les véhicules affectés"),
+    "l'absence de la catégorie requise doit être signalée dans le verdict");
 });
 
 test("l'étage maximal du lift est réellement confronté aux adresses", () => {

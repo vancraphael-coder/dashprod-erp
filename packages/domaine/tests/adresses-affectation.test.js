@@ -151,13 +151,30 @@ test("un déménagement exige deux personnes ET un camion", () => {
   assert.equal(couleurVoyant(ok.etat), "vert");
 });
 
-test("un fourgon sur un lift est une ERREUR, pas une variante", () => {
+test("un lift SANS lift reste une erreur — la catégorie requise doit être là", () => {
+  // RÈGLE RÉVISÉE (lot 36, décision de Raphaël) : la catégorie attendue est un
+  // MINIMUM, pas une exclusivité. Ce qui est signalé n'est plus « ce véhicule
+  // n'est pas un lift » mais « aucun lift parmi les véhicules affectés ».
+  //
+  // Ce que ce test protège est INCHANGÉ : partir sur un lift avec un seul
+  // camion reste une erreur, et elle se dit.
   const faux = etatAffectation("lift", { membres: ["m1"], vehicules: ["c1"] }, FLOTTE);
   assert.equal(faux.etat, "partiel");
-  assert.match(faux.manques.join(" "), /n'est pas un lift/);
+  assert.match(faux.manques.join(" "), /Aucun lift parmi/);
 
   const vrai = etatAffectation("lift", { membres: ["m1"], vehicules: ["l1"] }, FLOTTE);
   assert.equal(vrai.etat, "complet");
+});
+
+test("un lift ACCOMPAGNÉ d'un autre véhicule ne clignote plus", () => {
+  // CE QUE L'ANCIENNE RÈGLE CASSAIT : le lift part rarement seul — une voiture
+  // ou un camion le suit. Chaque compagnon était compté comme une faute, si
+  // bien qu'un attelage correct restait orange. À force, l'orange ne voulait
+  // plus rien dire et on cessait de le lire.
+  const r = etatAffectation("lift",
+    { membres: ["m1"], vehicules: ["l1", "c1"] }, FLOTTE);
+  assert.equal(r.etat, "complet");
+  assert.deepEqual(r.manques, []);
 });
 
 test("l'emballage se passe de véhicule", () => {
@@ -369,10 +386,24 @@ test("rien n'est repris d'une mission à l'autre", () => {
   assert.equal(/heriter|reprise automatique/i.test(src), false);
 });
 
-test("le volet n'offre que les véhicules de la bonne catégorie", () => {
-  const src = lire("composants/Affectation.jsx");
-  assert.ok(src.includes("ex.categorie"));
-  assert.ok(src.includes('(v.categorie || "camion") === ex.categorie'));
+test("les deux commandes offrent TOUTE la flotte, groupée par catégorie", () => {
+  // RÈGLE RÉVISÉE (lot 36) : la flotte n'est plus filtrée. On doit pouvoir
+  // ajouter la voiture qui suit le lift ou un second camion — des besoins
+  // courants que le filtre interdisait purement.
+  //
+  // CE QUI CASSE SANS CE TEST : le filtre revient dans UN des deux composants
+  // (la carte de date ou le volet), et les deux offrent alors des flottes
+  // différentes pour la même mission. C'est exactement la divergence que ce
+  // dépôt paie à répétition.
+  for (const f of ["composants/Affectation.jsx", "composants/CarteDate.jsx"]) {
+    const src = lire(f);
+    assert.ok(src.includes("grouperVehicules"),
+      `${f} doit grouper la flotte par catégorie`);
+    assert.equal(src.includes('(v.categorie || "camion") === ex.categorie'), false,
+      `${f} ne doit plus FILTRER la flotte sur la catégorie attendue`);
+    assert.ok(src.includes("categorieAttendue"),
+      `${f} doit remonter le groupe attendu, sans cacher les autres`);
+  }
 });
 
 /* ── Lot 10b : une mission par date ─────────────────────────────────────── */
