@@ -472,7 +472,7 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
       {!lectureSeule && (
         <>
           <NoteRapideJour jour={jourSel} />
-          <EquipesDuJour jour={jourSel} membres={membres}
+          <EquipesDuJour jour={jourSel} membres={membres} flotte={flotte}
                          missionsDuJour={duJourComplet} />
         </>
       )}
