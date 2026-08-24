@@ -129,13 +129,19 @@ export function effectifSuggere(missions = []) {
  * d'enregistrer, `avertissements` pour ce qui mérite un regard sans interdire.
  * Le bureau garde la main.
  *
- * @param {object} equipe { membres: string[], missions: object[] }
- * @param {object} contexte { engagementsParMembre: { [membreId]: object[] } }
+ * @param {object} equipe { membres: string[], missions: object[], vehicules: string[] }
+ * @param {object} contexte {
+ *   engagementsParMembre: { [membreId]: object[] },
+ *   engagementsParVehicule: { [vehiculeId]: object[] },
+ *   flotte: object[]
+ * }
  */
 export function verdictEquipe(equipe = {}, contexte = {}) {
   const membres = equipe.membres || [];
   const missions = equipe.missions || [];
+  const vehicules = equipe.vehicules || [];
   const engagements = contexte.engagementsParMembre || {};
+  const engagementsVehicule = contexte.engagementsParVehicule || {};
 
   const bloquant = [];
   const avertissements = [];
@@ -174,13 +180,48 @@ export function verdictEquipe(equipe = {}, contexte = {}) {
       + "n'apparaîtra sur aucun chantier.");
   }
 
+  // ── Règle 4 : LE VÉHICULE (0144). ────────────────────────────────────────
+  //
+  // Un véhicule dans deux équipes du même jour n'est pas forcément une faute :
+  // le même camion peut servir le matin puis l'après-midi. C'est le
+  // CHEVAUCHEMENT qui pose problème — et un camion, contrairement à une
+  // personne, ne peut vraiment pas être coupé en deux.
+  //
+  // Pourtant ce n'est PAS bloquant, et c'est délibéré : le bureau connaît des
+  // situations que le logiciel ignore (un véhicule libéré plus tôt, une
+  // permutation de dernière minute). On signale, on n'interdit pas — la règle
+  // du produit vaut aussi ici.
+  for (const id of vehicules) {
+    const r = peutRejoindre(missions, engagementsVehicule[id] || []);
+    if (!r.ok) {
+      // « Déjà engagée » est écrit pour une personne. Sur un camion, l'accord
+      // faux fait douter du message tout entier — et un avertissement dont on
+      // doute est un avertissement qu'on cesse de lire.
+      avertissements.push(
+        `${nomVehicule(contexte, id)} : ${r.motif.replace(/^Déjà engagée/, "déjà engagé")}`);
+    }
+  }
+
+  // Une équipe qui a des missions mais aucun véhicule mérite un regard : la
+  // plupart des chantiers en demandent un. Sans mission, la question ne se
+  // pose pas encore.
+  if (missions.length > 0 && vehicules.length === 0) {
+    avertissements.push("Aucun véhicule affecté à cette équipe.");
+  }
+
   return {
     ok: bloquant.length === 0,
     bloquant,
     avertissements,
     effectif: membres.length,
     effectif_suggere: missions.length ? effectifSuggere(missions) : 0,
+    vehicules: vehicules.length,
   };
+}
+
+function nomVehicule(contexte, id) {
+  const v = (contexte.flotte || []).find((x) => x.id === id);
+  return v?.nom || "Ce véhicule";
 }
 
 function nomDe(contexte, id) {

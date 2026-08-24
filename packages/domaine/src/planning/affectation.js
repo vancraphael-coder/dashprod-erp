@@ -144,16 +144,31 @@ export function etatAffectation(type, affectation, flotte, chiffrage = {}) {
   if (e.membres_max && membres.length > e.membres_max) {
     manques.push(`Une seule personne suffit — ${membres.length} sont affectées`);
   }
-  if (e.vehicule === "requis" && vehicules.length === 0) {
-    manques.push(e.categorie === "lift" ? "Aucun lift affecté" : "Aucun véhicule affecté");
-  }
-  // La catégorie compte : un fourgon sur un lift n'est pas une variante.
-  if (e.categorie && vehicules.length > 0 && Array.isArray(flotte)) {
-    const mauvais = vehicules
-      .map((id) => flotte.find((v) => v.id === id))
-      .filter((v) => v && (v.categorie || "camion") !== e.categorie);
-    for (const v of mauvais) {
-      manques.push(`${v.nom || "Ce véhicule"} n'est pas un ${e.categorie}`);
+  // LA CATÉGORIE EST UN MINIMUM, PAS UNE EXCLUSIVITÉ.
+  //
+  // Avant, la carte n'offrait QUE la catégorie attendue (un lift ne voyait que
+  // des lifts) et signalait chaque véhicule d'une autre catégorie comme une
+  // faute. Deux conséquences, toutes deux fausses :
+  //
+  //   · on ne pouvait pas ajouter la voiture qui suit le lift, ni un second
+  //     camion sur un gros déménagement — le besoin réel du terrain ;
+  //   · un lift accompagné d'une voiture clignotait en orange, alors que
+  //     l'attelage est correct.
+  //
+  // La bonne lecture : la mission exige AU MOINS UN véhicule de sa catégorie.
+  // Tout le reste est un renfort légitime, jamais un défaut. On ne signale donc
+  // que l'ABSENCE de la catégorie requise.
+  if (e.vehicule === "requis") {
+    const connus = Array.isArray(flotte)
+      ? vehicules.map((id) => flotte.find((v) => v.id === id)).filter(Boolean)
+      : [];
+    if (vehicules.length === 0) {
+      manques.push(e.categorie === "lift" ? "Aucun lift affecté" : "Aucun véhicule affecté");
+    } else if (e.categorie && connus.length > 0
+               && !connus.some((v) => (v.categorie || "camion") === e.categorie)) {
+      // Des véhicules sont affectés, mais aucun de la catégorie attendue :
+      // c'est le seul cas qui mérite un avertissement.
+      manques.push(`Aucun ${e.categorie} parmi les véhicules affectés`);
     }
   }
 
