@@ -17,7 +17,7 @@ import {
   EXIGENCES, exigence, effectifRequis, etatAffectation, resumeEffectif,
 } from "../src/planning/affectation.js";
 import { NATURES } from "../src/commercial/natures.js";
-import { verdictEquipe } from "../src/planning/equipes.js";
+import { verdictEquipe, affectationDepuisEquipes, missionsImpactees, tonEquipe, tonMissionParEquipe } from "../src/planning/equipes.js";
 
 /* ── Le catalogue ────────────────────────────────────────────────────────── */
 
@@ -355,4 +355,88 @@ test("le verdict d'équipe reste valide sans aucune donnée de véhicule", () =>
   const v = verdictEquipe({ membres: ["a"], missions: [] }, {});
   assert.equal(v.ok, true);
   assert.equal(v.vehicules, 0);
+});
+
+/* ── Les ressources d'équipe réservées pour ses missions (lot 37a) ───────── */
+
+test("une équipe verse ses membres ET véhicules à la mission qu'elle vise", () => {
+  // DÉCISION DE RAPHAËL : composer une équipe et lui donner un camion, c'est
+  // mettre ce camion sur les chantiers de cette équipe — sans ressaisir
+  // l'affectation mission par mission.
+  const eqs = [{ missions: ["m1"], membres: ["a", "b"], vehicules: ["c1"] }];
+  assert.deepEqual(affectationDepuisEquipes("m1", eqs),
+    { membres: ["a", "b"], vehicules: ["c1"] });
+  // Une mission qu'aucune équipe ne vise ne reçoit rien.
+  assert.deepEqual(affectationDepuisEquipes("m2", eqs),
+    { membres: [], vehicules: [] });
+});
+
+test("deux équipes sur la même mission s'ADDITIONNENT, sans s'écraser", () => {
+  // CE QUI CASSE SANS CE TEST : l'équipe du matin et celle de l'après-midi
+  // visent le même gros déménagement. Écraser à l'enregistrement effacerait le
+  // travail de l'autre. On fait l'union — et les doublons fondent.
+  const eqs = [
+    { missions: ["m1"], membres: ["a", "b"], vehicules: ["c1"] },
+    { missions: ["m1", "m2"], membres: ["b", "c"], vehicules: ["c2"] },
+  ];
+  const r = affectationDepuisEquipes("m1", eqs);
+  assert.deepEqual([...r.membres].sort(), ["a", "b", "c"]);
+  assert.deepEqual([...r.vehicules].sort(), ["c1", "c2"]);
+  assert.equal(r.membres.filter((x) => x === "b").length, 1, "pas de doublon");
+});
+
+test("on recalcule les missions QUITTÉES autant que celles reprises", () => {
+  // Sinon un camion retiré d'une équipe resterait collé à l'ancienne mission.
+  assert.deepEqual(
+    missionsImpactees({ missions: ["m1", "m3"] }, { missions: ["m1", "m2"] }).sort(),
+    ["m1", "m2", "m3"]);
+  // Nouvelle équipe (pas d'avant) : seules les missions visées.
+  assert.deepEqual(missionsImpactees(null, { missions: ["m5"] }), ["m5"]);
+});
+
+/* ── La couleur du groupe de travail (lot 37a) ───────────────────────────── */
+
+test("chaque équipe du jour reçoit une couleur DISTINCTE, et jamais le bleu", () => {
+  // Le bleu est le ton de marque, celui d'une carte SANS équipe. Une équipe
+  // n° 1 en bleu se confondrait avec « pas encore d'équipe ».
+  const tons = [0, 1, 2, 3, 4, 5, 6].map(tonEquipe);
+  assert.equal(new Set(tons).size, tons.length, "les 7 premiers tons diffèrent");
+  assert.equal(tons.includes("bleu"), false, "le bleu de marque est réservé");
+});
+
+test("la couleur d'une équipe est STABLE : elle suit le rang, pas un tirage", () => {
+  // CE QUI CASSE SANS CE TEST : une couleur tirée au hasard changerait à chaque
+  // rechargement, et le repère visuel « même équipe » deviendrait un
+  // kaléidoscope. Le rang vient de l'ordre de création.
+  assert.equal(tonEquipe(0), tonEquipe(0));
+  assert.equal(tonEquipe(1), "orange");
+  // Au-delà de la palette, on reboucle plutôt que de rendre une équipe incolore.
+  assert.equal(tonEquipe(7), tonEquipe(0));
+});
+
+test("la bille d'une mission prend le ton de la 1re équipe qui la porte", () => {
+  const eqs = [{ missions: ["m1"] }, { missions: ["m2", "m1"] }];
+  assert.equal(tonMissionParEquipe("m1", eqs), tonEquipe(0));  // 1re équipe
+  assert.equal(tonMissionParEquipe("m2", eqs), tonEquipe(1));
+  // Aucune équipe ne la porte → bleu de marque.
+  assert.equal(tonMissionParEquipe("mX", eqs), "bleu");
+  assert.equal(tonMissionParEquipe("m1", []), "bleu");
+});
+
+test("toute carte porte les deux sélections — la visite y compris (lot 37a)", () => {
+  // DÉCISION DE RAPHAËL : membres ET véhicules sur chaque carte mission, même
+  // la visite. Aucune carte ne doit interdire le véhicule (`besoin: "aucun"`) —
+  // la voiture de service qui emmène l'estimateur doit pouvoir être notée.
+  for (const c of CARTES_METIER) {
+    assert.notEqual(c.vehicule.besoin, "aucun",
+      `la carte « ${c.cle} » interdit le véhicule : plus aucune ne le doit`);
+  }
+  // La visite précise : facultatif, pas exigé — elle ne réclame pas de camion,
+  // mais en accepte un.
+  const visite = carteMetier("visite");
+  assert.equal(visite.vehicule.besoin, "facultatif");
+  // Et son verdict ne se plaint JAMAIS d'un véhicule manquant.
+  const v = etatAffectation("visite", { membres: ["m1"], vehicules: [] }, []);
+  assert.equal(v.etat, "complet");
+  assert.equal(v.manques.some((m) => /véhicule|lift/i.test(m)), false);
 });
