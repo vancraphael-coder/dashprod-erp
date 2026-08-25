@@ -19,6 +19,8 @@ const CLE_DEMO_FORCEE = "dashprod-demo-forcee";
 
 import { tauxTva } from "@domaine/organisation/identite.js";
 import { natureValide } from "@domaine/commercial/natures.js";
+import { affectationDepuisEquipes, missionsImpactees }
+  from "@domaine/planning/equipes.js";
 
 /** Force la session en mode démo (découverte via compte Google, quota vérifié). */
 export function activerDemoForcee() {
@@ -3916,6 +3918,14 @@ export async function sauverEquipeJour({
   id, jour, nom, membres = [], missions = [], vehicules = [],
 }) {
   if (modeDonnees() !== "reel") return null;
+  // Les missions que cette équipe visait AVANT ce changement : nécessaires pour
+  // recalculer les missions qu'elle quitte, pas seulement celles qu'elle prend.
+  let missionsAvant = [];
+  if (id) {
+    const { data } = await supabase.from("equipe_missions")
+      .select("mission_id").eq("equipe_id", id);
+    missionsAvant = (data || []).map((r) => r.mission_id);
+  }
   let equipeId = id;
   if (!equipeId) {
     const { data, error } = await supabase.from("equipes_jour")
@@ -3945,7 +3955,45 @@ export async function sauverEquipeJour({
       .insert(vehicules.map((v) => ({ equipe_id: equipeId, vehicule_id: v })));
     if (error) throw new Error(error.message);
   }
+
+  // LES RESSOURCES DE L'ÉQUIPE SONT RÉSERVÉES POUR SES MISSIONS.
+  //
+  // Décision de Raphaël : donner un camion à une équipe, c'est le mettre sur
+  // les chantiers de cette équipe. On propage donc membres et véhicules vers
+  // l'affectation de chaque mission concernée — sans quoi le camion resterait
+  // « sur l'équipe » mais absent de la mission, et le planning l'ignorerait.
+  //
+  // On recalcule les missions que l'équipe vient de QUITTER autant que celles
+  // qu'elle vise : sinon un camion retiré d'une équipe resterait collé à
+  // l'ancienne mission. Et l'affectation résultante est l'UNION de toutes les
+  // équipes du jour visant la mission (`affectationDepuisEquipes`), jamais un
+  // écrasement — deux équipes sur un même gros chantier ne s'effacent pas.
+  await propagerEquipesVersMissions(jour, missionsAvant, missions);
+
   return equipeId;
+}
+
+/**
+ * Réécrit l'affectation des missions touchées par un changement d'équipe, à
+ * partir de l'UNION des équipes du jour. Tolérante aux erreurs par mission :
+ * une mission déjà facturée peut refuser l'affectation (RLS), et cela ne doit
+ * pas faire échouer l'enregistrement de l'équipe elle-même.
+ */
+async function propagerEquipesVersMissions(jour, missionsAvant, missionsApres) {
+  const aRecalculer = missionsImpactees(
+    { missions: missionsAvant || [] }, { missions: missionsApres || [] });
+  if (aRecalculer.length === 0) return;
+  const equipes = await equipesDuJour(jour).catch(() => []);
+  for (const mid of aRecalculer) {
+    const { membres, vehicules } = affectationDepuisEquipes(mid, equipes);
+    // cmd_mission_affecter REMPLACE l'affectation de la mission par l'union
+    // calculée : c'est voulu, l'union EST l'état complet voulu pour cette
+    // mission au vu de toutes ses équipes.
+    try {
+      await supabase.rpc("cmd_mission_affecter", {
+        p_mission: mid, p_membres: membres, p_vehicules: vehicules });
+    } catch { /* mission close ou hors droits : on n'échoue pas pour autant */ }
+  }
 }
 
 export async function supprimerEquipeJour(id) {
