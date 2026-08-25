@@ -140,3 +140,22 @@ c'est un axe unique et assumé.
 - **Un véhicule peut être assigné à une équipe du jour** (migration 0144). Le
   même véhicule sur deux créneaux disjoints est légitime ; le chevauchement est
   un AVERTISSEMENT, jamais un blocage.
+
+## Équipes du jour : réservation, sélections, couleur (lot 37a, 25/08/2026)
+
+- **Les membres et véhicules d'une équipe du jour sont RÉSERVÉS pour ses
+  missions.** Enregistrer une équipe pousse son affectation sur chaque mission
+  liée — sans ressaisie. Plusieurs équipes peuvent viser la même mission : on
+  fait l'UNION de ce qu'elles apportent, jamais un écrasement, et l'on
+  recalcule aussi les missions qu'une équipe quitte.
+
+- **Toute carte mission porte les deux sélections (membres ET véhicules), la
+  visite comprise.** Aucune carte n'interdit le véhicule : la voiture de
+  service de l'estimateur doit pouvoir être notée. La nuance est dans le
+  verdict — un véhicule « facultatif » n'est jamais réclamé, seulement
+  disponible.
+
+- **La 2ᵉ bille de la carte mission (bandeau « Qui la fait ») prend la couleur
+  du GROUPE DE TRAVAIL.** La couleur se DÉDUIT du rang de l'équipe dans la
+  journée — non stockée, donc stable et sans trou à la suppression. Le bleu de
+  marque est réservé à « pas encore d'équipe ».
