@@ -247,3 +247,116 @@ export function modeleDepuisEquipe(equipe = {}, nom) {
   }
   return { ok: true, modele: { nom: libelle, membres: [...membres] } };
 }
+
+/**
+ * L'AFFECTATION QU'UNE MISSION REÇOIT DE SES ÉQUIPES DU JOUR.
+ *
+ * Décision de Raphaël : les membres et véhicules d'une équipe sont RÉSERVÉS
+ * pour les missions qu'elle a sélectionnées. Composer une équipe et lui donner
+ * un camion, c'est mettre ce camion sur les chantiers de cette équipe — sans
+ * ressaisir l'affectation mission par mission.
+ *
+ * LE PIÈGE QUE CETTE FONCTION ÉVITE : plusieurs équipes peuvent viser la même
+ * mission (l'équipe du matin et celle de l'après-midi sur un gros
+ * déménagement). Écraser l'affectation à chaque enregistrement effacerait le
+ * travail de l'autre équipe. On fait donc l'UNION de ce que toutes les équipes
+ * de la journée apportent à cette mission — jamais un remplacement.
+ *
+ * Les doublons sont fondus : deux équipes qui partagent une personne ne
+ * l'affectent pas deux fois.
+ *
+ * @param {string} missionId
+ * @param {object[]} equipesDuJour [{ missions:[], membres:[], vehicules:[] }]
+ * @returns {{membres: string[], vehicules: string[]}}
+ */
+export function affectationDepuisEquipes(missionId, equipesDuJour = []) {
+  const membres = new Set();
+  const vehicules = new Set();
+  for (const e of equipesDuJour || []) {
+    if (!(e?.missions || []).includes(missionId)) continue;
+    for (const m of e.membres || []) membres.add(m);
+    for (const v of e.vehicules || []) vehicules.add(v);
+  }
+  return { membres: [...membres], vehicules: [...vehicules] };
+}
+
+/**
+ * Les missions dont l'affectation CHANGE si l'on enregistre `equipe`.
+ *
+ * Sert à ne réécrire que le nécessaire : les missions que l'équipe vient de
+ * quitter (leur ancienne affectation doit être recalculée sans elle) ET celles
+ * qu'elle vise désormais. Réécrire toutes les missions du jour à chaque
+ * enregistrement serait coûteux et risquerait d'écraser des affectations
+ * posées à la main ailleurs.
+ *
+ * @param {object} equipeAvant état précédent de l'équipe (ou null si nouvelle)
+ * @param {object} equipeApres état voulu
+ * @returns {string[]} identifiants de missions à recalculer
+ */
+export function missionsImpactees(equipeAvant, equipeApres) {
+  const av = new Set((equipeAvant?.missions) || []);
+  const ap = new Set((equipeApres?.missions) || []);
+  return [...new Set([...av, ...ap])];
+}
+
+// =============================================================================
+// LA COULEUR D'UNE ÉQUIPE DU JOUR
+//
+// Décision de Raphaël : la deuxième bille de la carte mission (celle du
+// bandeau « Qui la fait ») prend la couleur du GROUPE DE TRAVAIL — l'équipe du
+// jour à laquelle la mission appartient. Sur un planning chargé, la couleur
+// dit d'un coup d'œil « ces trois chantiers, c'est la même équipe », là où
+// relire des noms demande de l'attention.
+//
+// La couleur n'est PAS stockée : elle se DÉDUIT de la position de l'équipe dans
+// la journée. Trois raisons :
+//   · pas de colonne à migrer, pas de valeur à maintenir cohérente ;
+//   · une équipe supprimée ne laisse pas un « trou » de couleur ;
+//   · deux équipes d'une même journée ont toujours des couleurs distinctes
+//     tant qu'elles tiennent dans la palette — ce qu'un choix libre ne
+//     garantirait pas (deux fois le même bleu).
+//
+// Les tons sont ceux de la bille (`matiere-bille.js`), choisis pour rester
+// lisibles côte à côte. `bleu` est RÉSERVÉ : c'est le ton de marque, celui
+// d'une carte sans équipe encore constituée. Une équipe reçoit donc une
+// couleur AUTRE que le bleu, pour que « pas encore d'équipe » et « équipe n° 1 »
+// ne se confondent pas.
+// =============================================================================
+
+/** Les tons d'équipe, dans l'ordre d'attribution. Le bleu de marque est exclu. */
+export const TONS_EQUIPE = Object.freeze([
+  "vert", "orange", "mauve", "ambre", "rose", "rouge", "gris",
+]);
+
+/**
+ * Le ton d'une équipe d'après son RANG dans la journée (0 = première créée).
+ *
+ * Au-delà de la palette, on reboucle : mieux vaut deux verts sur une très
+ * grosse journée qu'une équipe sans couleur. Le rang vient de l'ordre de
+ * création (`cree_le`), stable, et non d'un tirage — sinon la couleur d'une
+ * équipe changerait à chaque rechargement.
+ */
+export function tonEquipe(rang) {
+  const i = Number(rang);
+  if (!Number.isInteger(i) || i < 0) return TONS_EQUIPE[0];
+  return TONS_EQUIPE[i % TONS_EQUIPE.length];
+}
+
+/**
+ * Le ton à donner à la bille d'une MISSION : celui de la première équipe du
+ * jour qui la porte, `bleu` si aucune ne la porte encore.
+ *
+ * « La première » et non « toutes » : une bille a une couleur, pas plusieurs.
+ * Si deux équipes se partagent une mission (matin/après-midi), la bille prend
+ * la couleur de la première — l'appartenance fine se lit en dépliant, la bille
+ * ne sert qu'au repérage d'ensemble.
+ *
+ * @param {string} missionId
+ * @param {object[]} equipesDuJour équipes du jour, DANS L'ORDRE de création
+ * @returns {string} un ton de `matiere-bille.js`
+ */
+export function tonMissionParEquipe(missionId, equipesDuJour = []) {
+  const rang = (equipesDuJour || []).findIndex(
+    (e) => (e?.missions || []).includes(missionId));
+  return rang < 0 ? "bleu" : tonEquipe(rang);
+}
