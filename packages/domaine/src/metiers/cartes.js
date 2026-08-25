@@ -89,8 +89,13 @@ export const CARTES_METIER = Object.freeze([
     // Une visite ne se chiffre pas à l'effectif : c'est une personne qui passe
     // regarder. Le chiffrage du déménagement ne la concerne pas.
     effectif: { source: SOURCE_EFFECTIF.CARTE, plancher: 1, plafond: 1 },
-    vehicule: { besoin: "aucun", categorie: null },
-    note: "Une personne passe estimer. Un camion n'y sert à rien.",
+    // « facultatif », pas « aucun » : on n'EXIGE pas de véhicule pour estimer,
+    // mais la voiture de service qui emmène l'estimateur doit pouvoir être
+    // notée — décision de Raphaël, toute carte dispose des deux sélections.
+    // La nuance tient dans le verdict : un véhicule facultatif ne déclenche
+    // jamais d'avertissement d'absence, il reste seulement disponible.
+    vehicule: { besoin: "facultatif", categorie: null },
+    note: "Une personne passe estimer. Une voiture de service, si besoin.",
   },
   {
     cle: "emballage",
