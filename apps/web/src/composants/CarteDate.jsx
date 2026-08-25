@@ -47,7 +47,7 @@ export default function CarteDate({
   typeMission, libelle, facultative = false,
   date, heure, onDate, onHeure,
   affectation, onAffectation, membres, flotte,
-  mission = null, dispo = null, chiffrage = null,
+  mission = null, dispo = null, chiffrage = null, tonEquipe = "bleu",
 }) {
   const [ouvert, setOuvert] = useState(false);
   // La mission fait foi dès qu'elle existe (0131). Avant, c'est le prévu.
@@ -228,10 +228,20 @@ export default function CarteDate({
               borderTop: `1px solid ${C.bord}`, background: "none",
               cursor: "pointer", textAlign: "left",
             }}>
-            <Bille taille="jeton" ton="bleu" signe="chevron" actif={ouvert} />
+            {/* LA 2ᵉ BILLE prend la couleur du GROUPE DE TRAVAIL (décision de
+                Raphaël). Sur un planning chargé, elle dit d'un coup d'œil « ces
+                chantiers, c'est la même équipe » — là où relire des noms
+                demande de l'attention. Bleu (marque) tant qu'aucune équipe du
+                jour ne porte la mission. */}
+            <Bille taille="jeton" ton={tonEquipe} signe="chevron" actif={ouvert} />
             <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700,
                            color: C.encre }}>
               Qui la fait
+              {tonEquipe !== "bleu" && (
+                <span style={{ fontWeight: 400, fontSize: 11, color: C.muet }}>
+                  {" "}— groupe du jour
+                </span>
+              )}
             </span>
             <span style={{ fontSize: 11.5, color: C.muet }}>
               {resumeEffectif(a, typeMission, chif)}
@@ -280,9 +290,14 @@ export default function CarteDate({
                 })}
               </div>
 
-              {/* Une visite n'emporte pas de véhicule : ne pas proposer un
-                  choix sans objet. */}
-              {ex.vehicule !== "aucun" && ex.titre !== "Visite" && (
+              {/* TOUTE CARTE MISSION porte les deux sélections, y compris la
+                  visite (décision de Raphaël). Un véhicule seulement
+                  « facultatif » ne déclenche aucun reproche d'absence — il est
+                  simplement disponible, pour la voiture de service qui emmène
+                  l'estimateur. Le choix n'est masqué que si le métier interdit
+                  vraiment tout véhicule (`besoin: "aucun"`), ce qu'aucune carte
+                  ne fait aujourd'hui. */}
+              {ex.vehicule !== "aucun" && (
                 <div style={{ marginTop: 12 }}>
                   <Titre>Véhicules</Titre>
                   {groupesVehicules.length === 0 && (
