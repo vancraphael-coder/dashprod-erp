@@ -3,7 +3,7 @@
 > **À lire en entier avant de coder.** Ce document permet à une nouvelle
 > conversation de reprendre le travail sans rien casser ni rien réinventer.
 >
-> **Dernière mise à jour :** 23/08/2026 — après le lot 36.
+> **Dernière mise à jour :** 25/08/2026 — après le lot 37a.
 > **À mettre à jour tous les 7 messages**, ou en fin de conversation.
 > Procédure de mise à jour : §9.
 
@@ -1031,7 +1031,32 @@ en élargissant : `Profil.jsx` (onglets) et `Mail.jsx`.
 (`#E7EFFC`, `#EEF2F8`, `#EFF4FC`, `#E8F0FE`, `#DBEAFE`). Un garde-fou qui ne
 cherche qu'une forme du bug laisse passer les autres.
 
-## 5quater. Lot 36 — 23/08/2026 (le plus récent)
+## 5-5. Lot 37a — 25/08/2026 (le plus récent)
+
+**Compteurs :** 1107 tests verts (1100 avant), build vert, migrations toujours
+à **0144** — lot ENTIÈREMENT PUR (couleur déduite, affectation via
+`cmd_mission_affecter` déjà en place).
+
+- `affectationDepuisEquipes(missionId, equipes)` — l'UNION de ce que les
+  équipes du jour apportent à une mission. Écraser aurait effacé le travail
+  d'une équipe partageant le chantier ; `missionsImpactees` recalcule aussi les
+  missions quittées. Branché dans `sauverEquipeJour` → `cmd_mission_affecter`,
+  tolérant aux missions closes (RLS).
+- La CARTE VISITE porte les deux sélections : `vehicule.besoin` passé de
+  `"aucun"` à `"facultatif"`. Le verdict ne réclame jamais un véhicule
+  facultatif — il reste seulement disponible.
+- `tonEquipe(rang)` / `tonMissionParEquipe(missionId, equipes)` — couleur
+  DÉDUITE du rang, jamais stockée. Bleu de marque RÉSERVÉ à « sans équipe ».
+  La 2ᵉ bille de `CarteDate` la porte ; `Dossier.jsx` charge les équipes des
+  seuls jours concernés.
+- ⚠ Rappel : le corps d'une carte (membres/véhicules) n'apparaît que DÉPLIÉ.
+  Un rendu SSR de l'état initial ne montre donc pas les jetons — ce n'est pas
+  un bug, c'est l'accordéon. Tester l'invariant sur le bandeau, pas sur le
+  contenu replié.
+
+---
+
+## 5quater. Lot 36 — 23/08/2026
 
 **Compteurs :** 1100 tests verts (1094 avant), build vert, **migration 0144**
 (dernière migration : **0144**).

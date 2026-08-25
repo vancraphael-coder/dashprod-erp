@@ -1,104 +1,101 @@
-# Lot 36 — toute la flotte, groupée, et le véhicule de l'équipe du jour
+# Lot 37a — réservation des ressources d'équipe, sélections partout, couleur du groupe
 
-**23/08/2026.** **1100 tests verts** (1094 avant), build vert.
-**Migration 0144** — appliquée et vérifiée en base.
+**25/08/2026.** **1107 tests verts** (1100 avant), build vert.
+**Aucune migration** — lot entièrement pur.
+
+Trois demandes, et une préparation directe du lot 37 (le pressenti).
 
 ---
 
-## 1. Toute la flotte, sur toute carte mission
+## 1. Les ressources d'une équipe sont réservées pour ses missions
 
-La flotte était **filtrée** sur la catégorie attendue : un lift ne voyait que
-des lifts, un déménagement que des camions. On ne pouvait donc ni ajouter la
-voiture qui suit le lift, ni un second camion sur un gros chantier — deux
-besoins courants du terrain, purement interdits par le logiciel.
+Enregistrer une équipe du jour pousse désormais ses **membres et véhicules**
+sur l'affectation de chaque mission qu'elle vise — sans ressaisir mission par
+mission. Donner un camion à une équipe, c'est le mettre sur ses chantiers.
 
-Le filtre a disparu des **deux** composants (`CarteDate` et `VoletAffectation`).
-Un test refuse qu'il revienne dans un seul : les deux offriraient alors des
-flottes différentes pour la même mission, et c'est exactement la divergence que
-ce dépôt paie à répétition.
+**Le piège évité.** Plusieurs équipes peuvent viser la même mission — celle du
+matin et celle de l'après-midi sur un gros déménagement. Écraser l'affectation
+à chaque enregistrement effacerait le travail de l'autre équipe. On fait donc
+l'**union** de ce que toutes les équipes du jour apportent à la mission, jamais
+un remplacement. Les doublons fondent : une personne dans deux équipes n'est
+pas affectée deux fois.
 
-## 2. La catégorie devient un minimum, pas une exclusivité
+Et l'on recalcule aussi les missions qu'une équipe **quitte** — sinon un camion
+retiré resterait collé à l'ancienne mission. La propagation passe par
+`cmd_mission_affecter`, qui existait déjà, et tolère une mission close (elle
+refuse l'affectation par RLS sans faire échouer l'enregistrement de l'équipe).
 
-Corollaire nécessaire, et c'est le vrai gain. L'ancienne règle signalait
-**chaque** véhicule d'une autre catégorie comme une faute : un lift accompagné
-d'une voiture clignotait en orange, alors que l'attelage est correct.
+## 2. Les deux sélections sur toute carte, la visite comprise
 
-À force de clignoter à tort, l'orange ne veut plus rien dire et on cesse de le
-lire — c'est ainsi qu'un avertissement utile se perd.
+La visite avait `véhicule: "aucun"`, ce qui **masquait** le choix de véhicule.
+Elle passe à `"facultatif"` : la voiture de service qui emmène l'estimateur
+peut être notée. La nuance est dans le verdict — un véhicule facultatif n'est
+**jamais réclamé**, il reste seulement disponible. Aucune carte n'interdit plus
+le véhicule.
 
-Désormais, une seule chose est signalée : **l'absence de la catégorie requise.**
-« Aucun lift parmi les véhicules affectés ». Ce que l'ancienne règle protégeait
-reste protégé — partir sur un lift avec un seul camion est toujours une erreur,
-et elle se dit.
+## 3. La 2ᵉ bille prend la couleur du groupe de travail
 
-## 3. Groupement par catégorie
+La bille du bandeau « Qui la fait » prend le ton de l'**équipe du jour** qui
+porte la mission. Sur un planning chargé, la couleur dit d'un coup d'œil « ces
+chantiers, c'est la même équipe » — là où relire des noms demande de
+l'attention.
 
-Offrir quinze véhicules à plat redonnerait le problème que le tri venait de
-régler : on cherche « le lift », pas « un véhicule ». Chaque famille a son
-en-tête, et le groupe attendu remonte en tête avec la mention « attendu pour
-cette mission » — sans cette phrase, on croirait à un ordre arbitraire.
+La couleur est **déduite du rang** de l'équipe dans la journée, pas stockée :
 
-**C'est un ordre, jamais un filtre : aucun véhicule ne disparaît.** Une
-catégorie inconnue reste visible plutôt que de s'évaporer — un véhicule
-invisible ne se cherche pas, il se rachète.
+- pas de colonne à migrer, pas de valeur à maintenir cohérente ;
+- une équipe supprimée ne laisse pas un trou de couleur ;
+- surtout, la couleur est **stable** — un tirage au hasard changerait à chaque
+  rechargement, transformant le repère en kaléidoscope ;
+- deux équipes d'une même journée ont des couleurs distinctes tant qu'elles
+  tiennent dans la palette.
 
-⚠ **Correction d'une erreur du lot 35 :** j'avais écrit les rangs de catégorie
-pour « fourgon » et « remorque ». L'énumération SQL `categorie_vehicule` ne
-connaît que **camion | lift | voiture**. Les rangs ne s'appliquaient donc à
-rien et le groupement retombait en silence sur l'ordre alphabétique. Un test
-verrouille maintenant l'accord avec la base.
+Le **bleu de marque est réservé** à « pas encore d'équipe » : équipe n° 1 en
+bleu se confondrait avec l'absence d'équipe.
 
-## 4. Un véhicule dans l'équipe du jour — migration 0144
+---
 
-Une équipe de journée avait des personnes et des missions, **jamais de
-véhicule**. Or on ne compose pas une équipe sans savoir avec quoi elle part :
-deux équipes du même jour pouvaient se voir attribuer le même camion, et on ne
-s'en apercevait **qu'au dépôt, le matin**, quand il n'y en avait qu'un.
-
-`equipe_vehicules` suit exactement le patron de 0142 : table de liaison **sans
-`org_id`**, qui hérite du cloisonnement par jointure sur `equipes_jour`. En
-ajouter un créerait une seconde vérité de tenant, qu'on finirait par oublier de
-tenir d'accord avec la première.
-
-**Aucune contrainte `unique(jour, vehicule)`** — et c'est délibéré. Le même
-camion peut servir le matin puis l'après-midi. Une contrainte aveugle
-interdirait ce cas légitime : c'est le domaine qui juge le chevauchement
-horaire, et il le met en **avertissement**, jamais en blocage. Ta règle
-s'applique ici aussi : on signale, on n'interdit pas.
-
-Vérifié après application : RLS active, 1 politique, 2 index, colonnes
-conformes.
-
-Détail au passage : le message de conflit était écrit pour une personne
-(« déjà engagée »). Sur un camion, l'accord faux fait douter du message entier —
-et un avertissement dont on doute cesse d'être lu.
-
-## 5. Éprouvé par sabotage
+## Éprouvé par sabotage
 
 | Sabotage | Tests rouges |
 |---|---|
-| le conflit de véhicule devient bloquant | 2 |
-| le groupement redevient un filtre | 1 |
-| l'exigence de catégorie disparaît | 1 |
+| l'union redevient un écrasement | 1 |
+| le bleu de marque entre dans la palette d'équipe | 2 |
+| la visite réinterdit le véhicule | 1 |
+
+Vérifié aussi par **rendu réel** : les trois cartes (visite avec véhicules,
+mission colorée, carte sans équipe) rendent sans erreur, et la mention « groupe
+du jour » est bien présente sur la mission colorée.
 
 ---
 
 ## Ce qui n'a PAS été fait
 
-- **Les modèles d'équipe ne retiennent toujours que les personnes.** Un modèle
+- **Aucune migration.** La couleur se déduit, l'affectation réutilise
+  `cmd_mission_affecter`. Rien à ajouter en base.
+- **Les modèles d'équipe ne retiennent toujours que les personnes** — un modèle
   qui figerait un camion le réserverait pour toutes les journées où on
-  l'applique — l'inverse de ce qu'on veut d'un modèle.
-- **Le planning n'affiche pas encore le véhicule sur la vignette de mission.**
-  Il est visible sur la ligne de l'équipe ; l'ajouter aussi sur la mission
-  demande de trancher quelle source fait foi quand les deux divergent. À
-  instruire, pas à deviner.
+  l'applique.
+- **La bille n'affiche qu'UNE couleur.** Si deux équipes se partagent une
+  mission, la bille prend celle de la première ; l'appartenance fine se lit en
+  dépliant. Une bille bicolore compliquerait le repère au lieu de l'aider.
 
 ## À vérifier à l'œil
 
-1. Carte d'un **lift** : les lifts en tête avec « attendu pour cette mission »,
-   **puis camions et voitures**, tous cliquables.
-2. Lift **+ voiture** affectés : plus aucun orange.
-3. Lift **sans lift** : « Aucun lift parmi les véhicules affectés ».
-4. Planning → une journée → **« Avec quoi »** : les véhicules groupés.
-5. Deux équipes, même camion, horaires qui se chevauchent : **avertissement**,
-   et l'enregistrement reste possible.
+1. Planning → une journée → créer deux équipes, chacune sur une mission :
+   ouvrir le dossier, **les deux billets « Qui la fait » ont des couleurs
+   différentes**.
+2. Mettre un camion dans une équipe : il apparaît sur l'affectation de la
+   mission (carte dépliée).
+3. Deux équipes sur la **même** mission : leurs membres et véhicules
+   **s'additionnent** sur la mission, aucun n'écrase l'autre.
+4. Carte **Visite** dépliée : le bloc **Véhicules** est là, mais partir sans
+   véhicule ne déclenche aucun avertissement.
+
+---
+
+## Suite
+
+**37** — le pressenti translucide au planning : `etat_mission` n'a aucun état
+avant `planifiee`, et `listerMissions()` ne lit que la table `missions` — une
+date promise au client est invisible au planning. **36bis** — emballage sorti
+des formules exclusives.
