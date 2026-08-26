@@ -155,7 +155,50 @@ c'est un axe unique et assumé.
   verdict — un véhicule « facultatif » n'est jamais réclamé, seulement
   disponible.
 
-- **La 2ᵉ bille de la carte mission (bandeau « Qui la fait ») prend la couleur
-  du GROUPE DE TRAVAIL.** La couleur se DÉDUIT du rang de l'équipe dans la
-  journée — non stockée, donc stable et sans trou à la suppression. Le bleu de
-  marque est réservé à « pas encore d'équipe ».
+- **~~La 2ᵉ bille de la carte mission prend la couleur du groupe de travail.~~**
+  ANNULÉ le 25/08/2026. Pas de couleur par nature NI par équipe. Et
+  (correction du 25/08) c'est la bille STATIQUE en haut de carte qui est
+  SUPPRIMÉE, pas la dynamique : la dynamique de l'accordéon reste, c'est elle
+  qui l'actionne (son chevron pivote avec l'état). Quand aucune date n'est
+  posée, un repère plat « + » garde l'affordance d'ajout.
+
+## Équipe du jour : panne, double équipe, modèles (lot 37b, 25/08/2026)
+
+- **Un véhicule modifiable à volonté dans l'équipe du jour, mais une PANNE
+  bloque.** État mécanique « urgent » = blocage critique (le premier blocage
+  matériel de l'app) : l'équipe doit être réorganisée autour d'un autre
+  véhicule. « surveiller » n'immobilise pas — le camion roule, on le signale
+  ailleurs.
+- **Une équipe peut porter plusieurs missions sans défaut.** Le défaut naît
+  quand une PERSONNE appartient à deux équipes DISTINCTES en même temps le même
+  jour (chevauchement d'horaires) — bloquant, et le message nomme l'autre
+  équipe. Deux missions non simultanées ne gênent pas.
+- **Les MODÈLES (pré-enregistrement) n'appliquent aucun contrôle de conflit.**
+  Une personne peut figurer dans plusieurs modèles : ce sont des rosters
+  réutilisables, pas des engagements d'un jour. Les équipes sont mouvantes d'un
+  jour à l'autre ; le modèle ne retient QUE des personnes.
+
+## Postes et permissions (lot 38, 25/08/2026)
+
+- **Onze postes nommés par métier** remplacent le choix de 13 capacités à la
+  main : fondateur, gérant, secrétaire, chef d'équipe, livreur, monteur,
+  chauffeur, liftier, déménageur, intérimaire, visite terrain. Source de
+  vérité : `rh/postes.js`. Migration 0145 (additive, anciens rôles conservés).
+- **Métier ≠ permission.** Les cinq métiers d'exécution (déménageur, livreur,
+  monteur, chauffeur, liftier) ont EXACTEMENT les mêmes droits logiciels ; seul
+  le métier (l'étiquette) diffère.
+- **La hiérarchie n'est pas un empilement pur.** `cloturer_chantier` est un
+  geste de terrain : la secrétaire (bureau), pourtant de rang supérieur au chef
+  d'équipe, ne l'a pas. Monter vers la direction ouvre l'argent et les réglages ;
+  ça ne recopie pas les gestes de terrain.
+- **Promotion / rétrogradation** = un cran de rang. Les cinq métiers de rang 4
+  se promeuvent vers chef d'équipe (rang 3), pas l'un vers l'autre.
+- **Confier les accès** : fondateur et gérant de plein droit ; secrétaire
+  UNIQUEMENT si octroyé par un fondateur ou un gérant ; le terrain jamais.
+  L'octroi lui-même ne peut venir que d'un fondateur ou d'un gérant (pas de
+  chaîne d'élévation).
+- **Visite terrain** : accès en lecture seule, complété par une SÉLECTION DE
+  PAGES modifiables. Les écrans sensibles (paie, paramètres, facturation,
+  compta) ne sont jamais dans le catalogue partageable.
+- **Maison mère = absence de centre (`centre_id null`)**, pas une ligne. Les
+  membres se transfèrent PAR LOT entre centres ou depuis/vers la maison mère.
