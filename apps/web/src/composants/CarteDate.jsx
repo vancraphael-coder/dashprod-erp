@@ -47,7 +47,7 @@ export default function CarteDate({
   typeMission, libelle, facultative = false,
   date, heure, onDate, onHeure,
   affectation, onAffectation, membres, flotte,
-  mission = null, dispo = null, chiffrage = null, tonEquipe = "bleu",
+  mission = null, dispo = null, chiffrage = null,
 }) {
   const [ouvert, setOuvert] = useState(false);
   // La mission fait foi dès qu'elle existe (0131). Avant, c'est le prévu.
@@ -169,14 +169,18 @@ export default function CarteDate({
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10,
                     padding: "13px 14px 11px" }}>
-        {/* La PETITE bille, pas la grosse. Raphaël a demandé de retirer la
-            grosse bille de tête (taille bouton) : elle pesait sur une carte
-            déjà dense. La `jeton` suffit comme repère et porte le même
-            mouvement (survol, parallaxe) — l'état, lui, reste dit par la barre
-            latérale, jamais par la bille. */}
-        <Bille taille="jeton" ton="bleu"
-               signe={posee ? undefined : "plus"}
-               titre={`${libelle} — ${resumeAffectation(a)}`} />
+        {/* Plus de bille statique ici (décision de Raphaël) : la seule bille de
+            la carte est la dynamique de l'accordéon, qui l'actionne. Quand
+            aucune date n'est posée, on garde l'indice « à poser » sous forme
+            d'un petit repère plat — l'affordance d'ajout ne disparaît pas, elle
+            cesse seulement d'être une bille. */}
+        {!posee && (
+          <span aria-hidden="true" style={{
+            width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            border: `1.5px dashed ${C.fantome}`, color: C.fantome,
+            fontSize: 15, lineHeight: 1 }}>+</span>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: C.encre }}>
             {libelle}
@@ -228,20 +232,14 @@ export default function CarteDate({
               borderTop: `1px solid ${C.bord}`, background: "none",
               cursor: "pointer", textAlign: "left",
             }}>
-            {/* LA 2ᵉ BILLE prend la couleur du GROUPE DE TRAVAIL (décision de
-                Raphaël). Sur un planning chargé, elle dit d'un coup d'œil « ces
-                chantiers, c'est la même équipe » — là où relire des noms
-                demande de l'attention. Bleu (marque) tant qu'aucune équipe du
-                jour ne porte la mission. */}
-            <Bille taille="jeton" ton={tonEquipe} signe="chevron" actif={ouvert} />
+            {/* LA BILLE DYNAMIQUE — c'est elle qui actionne l'accordéon
+                (décision de Raphaël). Son chevron pivote avec l'état ouvert :
+                le mouvement EST l'affordance. Pas de couleur d'équipe (cette
+                idée a été abandonnée) — le ton neutre suffit. */}
+            <Bille taille="jeton" ton="bleu" signe="chevron" actif={ouvert} />
             <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700,
                            color: C.encre }}>
               Qui la fait
-              {tonEquipe !== "bleu" && (
-                <span style={{ fontWeight: 400, fontSize: 11, color: C.muet }}>
-                  {" "}— groupe du jour
-                </span>
-              )}
             </span>
             <span style={{ fontSize: 11.5, color: C.muet }}>
               {resumeEffectif(a, typeMission, chif)}

@@ -109,6 +109,22 @@ export function EquipesDuJour({
   }, [equipes, brouillon, missionsParId]);
 
   /**
+   * Les NOMS des autres équipes du jour où chaque personne figure déjà. Sert à
+   * nommer le conflit (« déjà dans l'équipe du matin ») au lieu de renvoyer un
+   * vague « occupé ». Ne concerne que les équipes du jour — un modèle
+   * n'alimente pas cette table.
+   */
+  const equipesDuMembre = useMemo(() => {
+    const par = {};
+    equipes.forEach((e, i) => {
+      if (brouillon && e.id === brouillon.id) return;
+      const nom = e.nom || `Équipe ${i + 1}`;
+      for (const u of e.membres) (par[u] = par[u] || []).push(nom);
+    });
+    return par;
+  }, [equipes, brouillon]);
+
+  /**
    * Ce que chaque VÉHICULE tient déjà ce jour-là (0144). Même raisonnement que
    * pour les personnes — et il compte davantage : deux équipes qui se croient
    * chacune propriétaire du même camion ne s'en aperçoivent qu'au dépôt, le
@@ -130,9 +146,10 @@ export function EquipesDuJour({
       { membres: brouillon.membres,
         vehicules: brouillon.vehicules || [],
         missions: brouillon.missions.map((id) => missionsParId.get(id)).filter(Boolean) },
-      { membres, flotte, engagementsParMembre, engagementsParVehicule });
+      { membres, flotte, engagementsParMembre, engagementsParVehicule,
+        equipesDuMembre });
   }, [brouillon, missionsParId, membres, flotte,
-      engagementsParMembre, engagementsParVehicule]);
+      engagementsParMembre, engagementsParVehicule, equipesDuMembre]);
 
   async function enregistrer() {
     if (!verdict?.ok) return;
