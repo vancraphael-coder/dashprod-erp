@@ -133,7 +133,11 @@ export function effectifSuggere(missions = []) {
  * @param {object} contexte {
  *   engagementsParMembre: { [membreId]: object[] },
  *   engagementsParVehicule: { [vehiculeId]: object[] },
- *   flotte: object[]
+ *   flotte: object[],
+ *   equipesDuMembre: { [membreId]: string[] } noms des AUTRES équipes du jour
+ *     où la personne figure déjà. Vide pour un modèle (pré-enregistrement) :
+ *     une personne peut figurer dans plusieurs modèles sans conflit, ce sont
+ *     des rosters réutilisables, pas des engagements d'un jour donné.
  * }
  */
 export function verdictEquipe(equipe = {}, contexte = {}) {
@@ -142,6 +146,7 @@ export function verdictEquipe(equipe = {}, contexte = {}) {
   const vehicules = equipe.vehicules || [];
   const engagements = contexte.engagementsParMembre || {};
   const engagementsVehicule = contexte.engagementsParVehicule || {};
+  const equipesDuMembre = contexte.equipesDuMembre || {};
 
   const bloquant = [];
   const avertissements = [];
@@ -153,10 +158,25 @@ export function verdictEquipe(equipe = {}, contexte = {}) {
 
   // ── Règle 3 : chevauchement horaire, par personne. Bloquant : la même
   //    personne ne peut pas être à deux endroits en même temps. ─────────────
+  //
+  // PRÉCISION DE RAPHAËL : une équipe peut porter plusieurs missions sans
+  // défaut ; le défaut naît quand une PERSONNE appartient à deux équipes
+  // DISTINCTES en même temps le même jour. Deux missions non simultanées ne
+  // gênent pas — d'où le contrôle par chevauchement d'horaires. Et ceci ne
+  // vaut QUE pour les équipes d'un jour : un modèle (pré-enregistrement) ne
+  // passe pas ici, ses `engagements` sont vides.
   for (const id of membres) {
     const r = peutRejoindre(missions, engagements[id] || []);
     if (!r.ok) {
-      bloquant.push(`${nomDe(contexte, id)} : ${r.motif}`);
+      // Nommer l'autre équipe quand on la connaît : « déjà dans l'équipe du
+      // matin » se corrige d'un coup d'œil, là où « occupé sur une mission »
+      // oblige à chercher où.
+      const autres = equipesDuMembre[id] || [];
+      const ou = autres.length
+        ? ` (déjà dans ${autres.length > 1 ? "les équipes" : "l'équipe"} `
+          + `${autres.map((n) => `« ${n} »`).join(", ")})`
+        : "";
+      bloquant.push(`${nomDe(contexte, id)} : ${r.motif}${ou}`);
     }
   }
 
@@ -180,7 +200,27 @@ export function verdictEquipe(equipe = {}, contexte = {}) {
       + "n'apparaîtra sur aucun chantier.");
   }
 
-  // ── Règle 4 : LE VÉHICULE (0144). ────────────────────────────────────────
+  // ── Règle 4 : LE VÉHICULE EN PANNE bloque (décision de Raphaël). ──────────
+  //
+  // C'est le SEUL blocage lié au véhicule, et le premier blocage matériel de
+  // l'application. Une panne n'est pas un congé qu'on peut assumer d'un clic :
+  // un camion « urgent » ne roulera pas le jour dit, et l'équipe entière doit
+  // être repensée autour d'un autre véhicule. Le laisser en simple
+  // avertissement inviterait à passer outre une impossibilité physique.
+  //
+  // « urgent » est l'état mécanique le plus grave (`ETATS_MECANIQUES` :
+  // ok < surveiller < urgent). « surveiller » n'immobilise pas le véhicule :
+  // il roule encore, on le signale seulement. On ne bloque donc que sur urgent.
+  for (const id of vehicules) {
+    const v = (contexte.flotte || []).find((x) => x.id === id);
+    if (v && v.etat_mecanique === "urgent") {
+      bloquant.push(
+        `${v.nom || "Ce véhicule"} est en panne (état mécanique urgent) : `
+        + "réorganisez l'équipe autour d'un autre véhicule.");
+    }
+  }
+
+  // ── Règle 5 : chevauchement horaire du VÉHICULE. AVERTIT seulement. ───────
   //
   // Un véhicule dans deux équipes du même jour n'est pas forcément une faute :
   // le même camion peut servir le matin puis l'après-midi. C'est le
@@ -297,66 +337,4 @@ export function missionsImpactees(equipeAvant, equipeApres) {
   const av = new Set((equipeAvant?.missions) || []);
   const ap = new Set((equipeApres?.missions) || []);
   return [...new Set([...av, ...ap])];
-}
-
-// =============================================================================
-// LA COULEUR D'UNE ÉQUIPE DU JOUR
-//
-// Décision de Raphaël : la deuxième bille de la carte mission (celle du
-// bandeau « Qui la fait ») prend la couleur du GROUPE DE TRAVAIL — l'équipe du
-// jour à laquelle la mission appartient. Sur un planning chargé, la couleur
-// dit d'un coup d'œil « ces trois chantiers, c'est la même équipe », là où
-// relire des noms demande de l'attention.
-//
-// La couleur n'est PAS stockée : elle se DÉDUIT de la position de l'équipe dans
-// la journée. Trois raisons :
-//   · pas de colonne à migrer, pas de valeur à maintenir cohérente ;
-//   · une équipe supprimée ne laisse pas un « trou » de couleur ;
-//   · deux équipes d'une même journée ont toujours des couleurs distinctes
-//     tant qu'elles tiennent dans la palette — ce qu'un choix libre ne
-//     garantirait pas (deux fois le même bleu).
-//
-// Les tons sont ceux de la bille (`matiere-bille.js`), choisis pour rester
-// lisibles côte à côte. `bleu` est RÉSERVÉ : c'est le ton de marque, celui
-// d'une carte sans équipe encore constituée. Une équipe reçoit donc une
-// couleur AUTRE que le bleu, pour que « pas encore d'équipe » et « équipe n° 1 »
-// ne se confondent pas.
-// =============================================================================
-
-/** Les tons d'équipe, dans l'ordre d'attribution. Le bleu de marque est exclu. */
-export const TONS_EQUIPE = Object.freeze([
-  "vert", "orange", "mauve", "ambre", "rose", "rouge", "gris",
-]);
-
-/**
- * Le ton d'une équipe d'après son RANG dans la journée (0 = première créée).
- *
- * Au-delà de la palette, on reboucle : mieux vaut deux verts sur une très
- * grosse journée qu'une équipe sans couleur. Le rang vient de l'ordre de
- * création (`cree_le`), stable, et non d'un tirage — sinon la couleur d'une
- * équipe changerait à chaque rechargement.
- */
-export function tonEquipe(rang) {
-  const i = Number(rang);
-  if (!Number.isInteger(i) || i < 0) return TONS_EQUIPE[0];
-  return TONS_EQUIPE[i % TONS_EQUIPE.length];
-}
-
-/**
- * Le ton à donner à la bille d'une MISSION : celui de la première équipe du
- * jour qui la porte, `bleu` si aucune ne la porte encore.
- *
- * « La première » et non « toutes » : une bille a une couleur, pas plusieurs.
- * Si deux équipes se partagent une mission (matin/après-midi), la bille prend
- * la couleur de la première — l'appartenance fine se lit en dépliant, la bille
- * ne sert qu'au repérage d'ensemble.
- *
- * @param {string} missionId
- * @param {object[]} equipesDuJour équipes du jour, DANS L'ORDRE de création
- * @returns {string} un ton de `matiere-bille.js`
- */
-export function tonMissionParEquipe(missionId, equipesDuJour = []) {
-  const rang = (equipesDuJour || []).findIndex(
-    (e) => (e?.missions || []).includes(missionId));
-  return rang < 0 ? "bleu" : tonEquipe(rang);
 }
