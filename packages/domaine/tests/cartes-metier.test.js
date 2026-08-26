@@ -17,7 +17,7 @@ import {
   EXIGENCES, exigence, effectifRequis, etatAffectation, resumeEffectif,
 } from "../src/planning/affectation.js";
 import { NATURES } from "../src/commercial/natures.js";
-import { verdictEquipe, affectationDepuisEquipes, missionsImpactees, tonEquipe, tonMissionParEquipe } from "../src/planning/equipes.js";
+import { verdictEquipe, affectationDepuisEquipes, missionsImpactees, modeleDepuisEquipe } from "../src/planning/equipes.js";
 
 /* ── Le catalogue ────────────────────────────────────────────────────────── */
 
@@ -394,35 +394,6 @@ test("on recalcule les missions QUITTÉES autant que celles reprises", () => {
   assert.deepEqual(missionsImpactees(null, { missions: ["m5"] }), ["m5"]);
 });
 
-/* ── La couleur du groupe de travail (lot 37a) ───────────────────────────── */
-
-test("chaque équipe du jour reçoit une couleur DISTINCTE, et jamais le bleu", () => {
-  // Le bleu est le ton de marque, celui d'une carte SANS équipe. Une équipe
-  // n° 1 en bleu se confondrait avec « pas encore d'équipe ».
-  const tons = [0, 1, 2, 3, 4, 5, 6].map(tonEquipe);
-  assert.equal(new Set(tons).size, tons.length, "les 7 premiers tons diffèrent");
-  assert.equal(tons.includes("bleu"), false, "le bleu de marque est réservé");
-});
-
-test("la couleur d'une équipe est STABLE : elle suit le rang, pas un tirage", () => {
-  // CE QUI CASSE SANS CE TEST : une couleur tirée au hasard changerait à chaque
-  // rechargement, et le repère visuel « même équipe » deviendrait un
-  // kaléidoscope. Le rang vient de l'ordre de création.
-  assert.equal(tonEquipe(0), tonEquipe(0));
-  assert.equal(tonEquipe(1), "orange");
-  // Au-delà de la palette, on reboucle plutôt que de rendre une équipe incolore.
-  assert.equal(tonEquipe(7), tonEquipe(0));
-});
-
-test("la bille d'une mission prend le ton de la 1re équipe qui la porte", () => {
-  const eqs = [{ missions: ["m1"] }, { missions: ["m2", "m1"] }];
-  assert.equal(tonMissionParEquipe("m1", eqs), tonEquipe(0));  // 1re équipe
-  assert.equal(tonMissionParEquipe("m2", eqs), tonEquipe(1));
-  // Aucune équipe ne la porte → bleu de marque.
-  assert.equal(tonMissionParEquipe("mX", eqs), "bleu");
-  assert.equal(tonMissionParEquipe("m1", []), "bleu");
-});
-
 test("toute carte porte les deux sélections — la visite y compris (lot 37a)", () => {
   // DÉCISION DE RAPHAËL : membres ET véhicules sur chaque carte mission, même
   // la visite. Aucune carte ne doit interdire le véhicule (`besoin: "aucun"`) —
@@ -439,4 +410,81 @@ test("toute carte porte les deux sélections — la visite y compris (lot 37a)",
   const v = etatAffectation("visite", { membres: ["m1"], vehicules: [] }, []);
   assert.equal(v.etat, "complet");
   assert.equal(v.manques.some((m) => /véhicule|lift/i.test(m)), false);
+});
+
+/* ── Panne critique et double équipe (lot 37b) ───────────────────────────── */
+
+test("un véhicule en panne BLOQUE l'équipe — premier blocage matériel", () => {
+  // DÉCISION DE RAPHAËL : un véhicule modifiable à volonté, mais une panne
+  // (« urgent ») force à réorganiser l'équipe. Une panne n'est pas un congé
+  // qu'on assume d'un clic : le camion ne roulera pas.
+  const flotte = [
+    { id: "hs", nom: "Camion HS", etat_mecanique: "urgent" },
+    { id: "ok", nom: "Camion OK", etat_mecanique: "ok" },
+    { id: "sv", nom: "Camion Surv", etat_mecanique: "surveiller" },
+  ];
+  const mis = [{ id: "m1", heure_debut: "08:00", heure_fin: "12:00" }];
+  const panne = verdictEquipe(
+    { membres: ["a", "b"], missions: mis, vehicules: ["hs"] }, { flotte });
+  assert.equal(panne.ok, false, "une panne bloque");
+  assert.match(panne.bloquant.join(" "), /en panne/);
+  assert.match(panne.bloquant.join(" "), /réorganisez/);
+});
+
+test("« surveiller » n'immobilise pas : le véhicule roule encore", () => {
+  // CE QUI CASSE SANS CE TEST : bloquer sur « surveiller » clouerait au sol un
+  // camion en état de rouler, pour un simple point de vigilance. Seul
+  // « urgent » est une panne.
+  const flotte = [{ id: "sv", nom: "Surv", etat_mecanique: "surveiller" }];
+  const mis = [{ id: "m1", heure_debut: "08:00", heure_fin: "12:00" }];
+  const v = verdictEquipe(
+    { membres: ["a", "b"], missions: mis, vehicules: ["sv"] }, { flotte });
+  assert.equal(v.ok, true, "surveiller ne bloque pas");
+  // Il ne doit pas non plus passer en silence : la flotte le signale par
+  // ailleurs (alertesVehicule), mais l'équipe reste enregistrable.
+});
+
+test("un membre dans deux équipes distinctes le même jour est signalé, nommé", () => {
+  // PRÉCISION DE RAPHAËL : une équipe peut porter plusieurs missions ; le
+  // défaut est une PERSONNE dans deux équipes distinctes en même temps. Le
+  // message nomme l'autre équipe — « déjà dans l'équipe du matin » se corrige
+  // d'un coup d'œil.
+  const mA = [{ id: "m1", heure_debut: "08:00", heure_fin: "12:00", libelle: "Dupont" }];
+  const v = verdictEquipe(
+    { membres: ["a"], missions: mA, vehicules: [] },
+    { membres: [{ id: "a", nom: "Ana" }],
+      engagementsParMembre: {
+        a: [{ id: "m2", heure_debut: "10:00", heure_fin: "14:00", libelle: "Martin" }] },
+      equipesDuMembre: { a: ["Équipe matin"] } });
+  assert.equal(v.ok, false);
+  assert.match(v.bloquant[0], /^Ana/, "le nom de la personne est résolu");
+  assert.match(v.bloquant[0], /Équipe matin/, "l'autre équipe est nommée");
+});
+
+test("deux missions NON simultanées dans une équipe ne créent aucun défaut", () => {
+  // Une équipe qui enchaîne matin puis après-midi est légitime.
+  const missions = [
+    { id: "m1", heure_debut: "08:00", heure_fin: "12:00" },
+    { id: "m2", heure_debut: "13:00", heure_fin: "17:00" },
+  ];
+  const v = verdictEquipe({ membres: ["a", "b"], missions, vehicules: [] }, {});
+  assert.equal(v.ok, true);
+});
+
+test("un MODÈLE (pré-enregistrement) n'applique aucun contrôle de conflit", () => {
+  // PRÉCISION DE RAPHAËL : une personne peut figurer dans plusieurs modèles
+  // sans défaut — ce sont des rosters réutilisables, pas des engagements d'un
+  // jour. Le modèle ne passe pas par les engagements du jour (contexte vide).
+  //
+  // CE QUI CASSE SANS CE TEST : quelqu'un branche la détection de conflit sur
+  // la création de modèle, et il devient impossible de mettre la même personne
+  // dans « Équipe A » et « Équipe B » alors que ce sont deux gabarits parmi
+  // lesquels on choisira selon le jour.
+  const modele = modeleDepuisEquipe({ membres: ["a", "b", "c"] }, "Grand camion");
+  assert.equal(modele.ok, true, "un modèle se crée sans vérifier de conflit de jour");
+  assert.deepEqual(modele.modele.membres, ["a", "b", "c"]);
+  // Et un modèle ne retient QUE des personnes : ni date, ni mission, ni
+  // véhicule — rien qui puisse entrer en conflit.
+  assert.equal("missions" in modele.modele, false);
+  assert.equal("vehicules" in modele.modele, false);
 });

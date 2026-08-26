@@ -24,8 +24,8 @@ test("le dossier maître est complet et se lit dans un ordre", () => {
   // La numérotation N'EST PAS décorative : elle donne l'ordre de lecture à
   // quelqu'un qui arrive sans contexte.
   const attendus = ["00-DEMARRER-ICI.md", "10-DECISIONS-PRODUIT.md",
-    "20-OUVERT.md", "25-PARAMETRES-ROADMAP.md", "30-REGLES-IA-EXTERNE.md",
-    "40-METHODE.md", "50-ARCHIVE.md"];
+    "20-OUVERT.md", "25-PARAMETRES-ROADMAP.md", "26-GARDE-MEUBLES-ROADMAP.md",
+    "30-REGLES-IA-EXTERNE.md", "40-METHODE.md", "50-ARCHIVE.md"];
   const presents = readdirSync(MAITRE).filter((f) => f.endsWith(".md")).sort();
   assert.deepEqual(presents, attendus.sort());
 });
@@ -181,4 +181,15 @@ test("la roadmap dit que les mentions « pas encore appliqué » doivent mourir"
     "le composant de signalement existe");
   assert.ok((id.match(/<PasEncoreApplique /g) || []).length >= 3,
     "les trois réglages inertes sont signalés");
+});
+
+test("la roadmap garde-meubles nomme la dépendance qui la bloque", () => {
+  // Le piège serait de bâtir l'établissement réservé au « bon centre » sans les
+  // permissions par membre — une barrière contournable qu'on croirait fermée.
+  const r = lire("26-GARDE-MEUBLES-ROADMAP.md");
+  assert.match(r, /permissions par membre/i);
+  assert.match(r, /création d'un nouveau centre|création de centre/i);
+  assert.match(r, /fausse barrière|sécurité de façade|garde-fou d'affichage/i,
+    "le risque d'une sécurité de façade doit être écrit");
+  assert.match(r, /faisable/i, "ce qui est faisable maintenant doit être distingué");
 });
