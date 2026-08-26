@@ -1,56 +1,98 @@
-# Lot 37a — réservation des ressources d'équipe, sélections partout, couleur du groupe
+# Lot 38 — le socle des permissions (+ corrections 37b)
 
-**25/08/2026.** **1107 tests verts** (1100 avant), build vert.
-**Aucune migration** — lot entièrement pur.
+**25/08/2026.** **1133 tests verts**, build vert. **Migration 0145** appliquée
+et vérifiée.
 
-Trois demandes, et une préparation directe du lot 37 (le pressenti).
+Ce lot fait deux choses : il corrige le 37b (jamais déposé), et il pose la
+LOGIQUE des trois fondations. L'écran complet suit dans un lot séparé — je
+l'explique à la fin.
 
 ---
 
-## 1. Les ressources d'une équipe sont réservées pour ses missions
+## D'abord, les corrections du 37b
 
-Enregistrer une équipe du jour pousse désormais ses **membres et véhicules**
-sur l'affectation de chaque mission qu'elle vise — sans ressaisir mission par
-mission. Donner un camion à une équipe, c'est le mettre sur ses chantiers.
+**La bille : j'avais inversé, c'est corrigé.** Tu voulais que la bille STATIQUE
+(haut de carte) disparaisse et que la DYNAMIQUE (accordéon) reste, puisque
+c'est elle qui actionne le dépliage. C'est maintenant le cas : la bille de
+l'accordéon est de retour (chevron qui pivote), et le haut de carte n'a plus de
+bille — juste un repère « + » discret quand aucune date n'est posée.
 
-**Le piège évité.** Plusieurs équipes peuvent viser la même mission — celle du
-matin et celle de l'après-midi sur un gros déménagement. Écraser l'affectation
-à chaque enregistrement effacerait le travail de l'autre équipe. On fait donc
-l'**union** de ce que toutes les équipes du jour apportent à la mission, jamais
-un remplacement. Les doublons fondent : une personne dans deux équipes n'est
-pas affectée deux fois.
+Le reste du 37b est inchangé et toujours là : **panne = blocage critique**,
+**conflit « deux équipes » nommé**, **modèles sans contrôle de conflit**.
 
-Et l'on recalcule aussi les missions qu'une équipe **quitte** — sinon un camion
-retiré resterait collé à l'ancienne mission. La propagation passe par
-`cmd_mission_affecter`, qui existait déjà, et tolère une mission close (elle
-refuse l'affectation par RLS sans faire échouer l'enregistrement de l'équipe).
+---
 
-## 2. Les deux sélections sur toute carte, la visite comprise
+## Les trois fondations — ce qui est fait
 
-La visite avait `véhicule: "aucun"`, ce qui **masquait** le choix de véhicule.
-Elle passe à `"facultatif"` : la voiture de service qui emmène l'estimateur
-peut être notée. La nuance est dans le verdict — un véhicule facultatif n'est
-**jamais réclamé**, il reste seulement disponible. Aucune carte n'interdit plus
-le véhicule.
+En explorant, j'ai trouvé que **presque tout le socle existait déjà** :
+`utilisateurs.centre_id`, les tables `roles / role_capacites /
+utilisateur_roles`, six postes déjà hiérarchisés, et les commandes
+`cmd_centre_definir`, `cmd_centre_affecter_membre`, `cmd_affecter_role`. Le
+problème n'était pas de construire, mais — tes mots — que « les postes ne sont
+pas bien définis » et « les permissions trop vastes ».
 
-## 3. La 2ᵉ bille prend la couleur du groupe de travail
+### 1. La grille des postes, conçue (le cœur, tu me l'as délégué)
 
-La bille du bandeau « Qui la fait » prend le ton de l'**équipe du jour** qui
-porte la mission. Sur un planning chargé, la couleur dit d'un coup d'œil « ces
-chantiers, c'est la même équipe » — là où relire des noms demande de
-l'attention.
+`packages/domaine/src/rh/postes.js` définit **onze postes nommés par métier** :
+fondateur, gérant, secrétaire, chef d'équipe, livreur, monteur, chauffeur,
+liftier, déménageur, intérimaire, visite terrain.
 
-La couleur est **déduite du rang** de l'équipe dans la journée, pas stockée :
+On ne coche plus 13 capacités : on choisit un poste. Quelques partis pris que
+tu retoucheras :
 
-- pas de colonne à migrer, pas de valeur à maintenir cohérente ;
-- une équipe supprimée ne laisse pas un trou de couleur ;
-- surtout, la couleur est **stable** — un tirage au hasard changerait à chaque
-  rechargement, transformant le repère en kaléidoscope ;
-- deux équipes d'une même journée ont des couleurs distinctes tant qu'elles
-  tiennent dans la palette.
+- **Métier ≠ permission.** Les cinq métiers d'exécution (déménageur, livreur,
+  monteur, chauffeur, liftier) ont **exactement les mêmes droits logiciels**.
+  Ils se distinguent par ce qu'ils FONT, pas par ce que l'outil autorise. Les
+  séparer en droits identiques n'ajouterait que du bruit.
+- **La hiérarchie n'est pas un empilement mécanique.** `cloturer_chantier` est
+  un geste de terrain (arrêter le décompte de l'équipe sur place) : la
+  secrétaire, au bureau, ne l'a **pas**, même si son rang dépasse celui du chef
+  d'équipe. Monter vers la direction ouvre l'argent et les réglages ; ça ne
+  recopie pas les gestes de terrain. Un test verrouille ce choix pour qu'on ne
+  le « corrige » pas par erreur.
+- **Le terrain ne voit jamais l'argent** — ni prix, ni paie, ni facturation.
 
-Le **bleu de marque est réservé** à « pas encore d'équipe » : équipe n° 1 en
-bleu se confondrait avec l'absence d'équipe.
+### 2. Promotion / rétrogradation
+
+Chaque poste a un **rang**. Promouvoir = monter d'un cran, rétrograder =
+descendre d'un cran. Les cinq métiers de rang 4 se promeuvent vers chef
+d'équipe (rang 3), jamais l'un vers l'autre. L'écran présentera ça comme un
+curseur, pas 13 cases.
+
+### 3. Confier les accès — ta règle exacte
+
+- **Fondateur et gérant** : de plein droit.
+- **Secrétaire** : uniquement si un fondateur ou un gérant le lui a **octroyé**.
+- **Le terrain** : jamais.
+- Et l'octroi lui-même ne peut venir que d'un fondateur ou d'un gérant : pas de
+  chaîne où une secrétaire octroierait à une autre.
+
+### 4. Visite terrain — sélection de pages
+
+Accès en **lecture seule**, complété par une **sélection multiple de pages**
+qu'on ouvre en modification (`PAGES_MODIFIABLES`). Les écrans sensibles — paie,
+paramètres, facturation, compta — **ne sont jamais** dans le catalogue
+partageable. Une page inconnue passée par erreur est ignorée, pas ouverte.
+
+### 5. Transfert de membres, par lot
+
+`organisation/centres.js` : la **maison mère = absence de centre** (`null`),
+pas une ligne fantôme. `transfererMembres(ids, centreId)` déplace **plusieurs
+membres à la fois**, entre centres ou depuis/vers la maison mère, en ne comptant
+que ceux qui bougent vraiment.
+
+---
+
+## La migration 0145 — prudente, sur des rôles de production
+
+**Vérifié avant de toucher quoi que ce soit** : 6 membres en « direction », 1 en
+« demenageur ». La migration est **additive** : elle ajoute les 11 postes, garde
+les anciens rôles, et ne touche **aucune affectation**. Détruire « direction »
+aurait retiré ses 14 capacités à 6 personnes d'un coup.
+
+**Vérifié après** : les 11 postes existent avec les bons comptes de capacités,
+`confier_les_acces` n'est QUE sur fondateur + gérant, les affectations sont
+intactes. Idempotente : rejouable sans dégât.
 
 ---
 
@@ -58,44 +100,40 @@ bleu se confondrait avec l'absence d'équipe.
 
 | Sabotage | Tests rouges |
 |---|---|
-| l'union redevient un écrasement | 1 |
-| le bleu de marque entre dans la palette d'équipe | 2 |
-| la visite réinterdit le véhicule | 1 |
-
-Vérifié aussi par **rendu réel** : les trois cartes (visite avec véhicules,
-mission colorée, carte sans équipe) rendent sans erreur, et la mention « groupe
-du jour » est bien présente sur la mission colorée.
+| la secrétaire confie les accès sans octroi | 1 |
+| le terrain gagne « voir les prix » | 1 |
+| visite terrain accepte une page inconnue | 1 |
+| le transfert oublie de filtrer les « déjà là » | 2 |
 
 ---
 
-## Ce qui n'a PAS été fait
+## Ce qui reste à câbler — le prochain lot
 
-- **Aucune migration.** La couleur se déduit, l'affectation réutilise
-  `cmd_mission_affecter`. Rien à ajouter en base.
-- **Les modèles d'équipe ne retiennent toujours que les personnes** — un modèle
-  qui figerait un camion le réserverait pour toutes les journées où on
-  l'applique.
-- **La bille n'affiche qu'UNE couleur.** Si deux équipes se partagent une
-  mission, la bille prend celle de la première ; l'appartenance fine se lit en
-  dépliant. Une bille bicolore compliquerait le repère au lieu de l'aider.
+J'ai posé la logique et la base, **pas encore tout l'écran**. Il manque :
+
+- **Créer un centre AVEC transfert multiple** au moment de la création (la
+  création existe déjà ; il faut y greffer le transfert que ce lot rend
+  possible).
+- **L'écran d'attribution de poste** par membre — le curseur promouvoir /
+  rétrograder, et la sélection de pages pour « visite terrain ».
+- **La garde « confier les accès »** : seul un poste qui en a le droit voit cet
+  écran.
+
+Tout est prêt côté logique et base (`cmd_affecter_role` existe). C'est du
+câblage d'écran, sans nouvelle décision — je l'ai gardé pour un lot dédié plutôt
+que de livrer une UI à moitié faite.
+
+---
 
 ## À vérifier à l'œil
 
-1. Planning → une journée → créer deux équipes, chacune sur une mission :
-   ouvrir le dossier, **les deux billets « Qui la fait » ont des couleurs
-   différentes**.
-2. Mettre un camion dans une équipe : il apparaît sur l'affectation de la
-   mission (carte dépliée).
-3. Deux équipes sur la **même** mission : leurs membres et véhicules
-   **s'additionnent** sur la mission, aucun n'écrase l'autre.
-4. Carte **Visite** dépliée : le bloc **Véhicules** est là, mais partir sans
-   véhicule ne déclenche aucun avertissement.
-
----
+1. Ouvrir un dossier : la carte mission n'a **plus de bille en haut**, mais la
+   bille de l'accordéon (« Qui la fait ») **actionne bien le dépliage** (son
+   chevron pivote).
+2. Rien d'autre n'est visible pour l'instant côté permissions — c'est normal,
+   l'écran arrive au prochain lot.
 
 ## Suite
 
-**37** — le pressenti translucide au planning : `etat_mission` n'a aucun état
-avant `planifiee`, et `listerMissions()` ne lit que la table `missions` — une
-date promise au client est invisible au planning. **36bis** — emballage sorti
-des formules exclusives.
+Le câblage d'écran des permissions (ci-dessus), puis le **36bis** (emballage
+sorti des formules exclusives).

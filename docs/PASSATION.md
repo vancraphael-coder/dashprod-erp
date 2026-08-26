@@ -1056,6 +1056,49 @@ cherche qu'une forme du bug laisse passer les autres.
 
 ---
 
+## 5-6. Lot 38 — 25/08/2026 (le plus récent) — SOCLE DES PERMISSIONS
+
+**Compteurs :** 1133 tests verts, build vert, **migration 0145** (dernière
+migration : 0145).
+
+Ce lot pose la LOGIQUE des trois fondations ; l'UI complète suit dans un lot
+séparé (voir « reste à câbler »).
+
+### Ce qui est fait et éprouvé
+- `rh/postes.js` — 11 postes nommés (fondateur → visite terrain), paquets de
+  capacités par empilement (SOCLE_TERRAIN → ENCADREMENT → ADMINISTRATION →
+  DIRECTION), `rang` pour promouvoir/rétrograder, `confie_les_acces`
+  (true / "si_octroye" / false), et l'accès sur mesure « visite terrain » avec
+  `PAGES_MODIFIABLES`. Tests + sabotage (4 sabotages détectés).
+- `organisation/centres.js` — maison mère = null, `preparerTransfert` (par lot,
+  filtre les « déjà là », dédoublonne), `resumeTransfert`, `membresDuCentre`.
+- `adaptateur.transfererMembres(ids, centreId)` — transfert par lot, tolérant
+  par membre (n'échoue pas en tout-ou-rien).
+- Migration 0145 : ADDITIVE. Les 11 postes seedés par org, capacités
+  resynchronisées. Anciens rôles CONSERVÉS, affectations INTACTES (6 direction,
+  1 demenageur vérifiés avant/après). `confier_les_acces` uniquement sur
+  fondateur + gérant.
+
+### Reste à câbler (prochain lot)
+- Centres.jsx : action « créer un centre » AVEC transfert multiple de membres
+  au moment de la création (la création existe déjà via `definirDepot` →
+  `cmd_centre_definir` ; il manque le transfert intégré).
+- Écran d'attribution de poste par membre (promouvoir/rétrograder au curseur,
+  pas 13 cases) + sélection de pages pour « visite terrain ».
+- Câbler la garde « confier les accès » : seul un poste qui `peutConfierAcces`
+  voit l'écran d'attribution.
+- `cmd_affecter_role(p_utilisateur, p_role_cle)` existe déjà côté base pour
+  poser le poste.
+
+### Pièges
+- La hiérarchie N'EST PAS un empilement pur : `cloturer_chantier` (terrain)
+  manque à la secrétaire (bureau) alors qu'elle est de rang supérieur. Le test
+  `postes.test.js` le VERROUILLE — ne pas « corriger » en empilement.
+- Migration touchant des rôles de PRODUCTION : toujours additive, jamais de
+  suppression de rôle occupé.
+
+---
+
 ## 5quater. Lot 36 — 23/08/2026
 
 **Compteurs :** 1100 tests verts (1094 avant), build vert, **migration 0144**
