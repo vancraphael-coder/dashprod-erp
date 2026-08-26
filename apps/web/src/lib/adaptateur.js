@@ -3687,6 +3687,34 @@ export async function affecterMembreCentre(membreId, centreId, responsable) {
   return data;
 }
 
+/**
+ * Transfère PLUSIEURS membres vers un centre (ou la maison mère si `centreId`
+ * est null). Décision de Raphaël : on transfère par lots, pas un par un.
+ *
+ * Chaque affectation passe par la commande unitaire déjà éprouvée
+ * (`cmd_centre_affecter_membre`). On les enchaîne et on renvoie le compte de
+ * ce qui a réellement bougé. Une erreur sur un membre n'annule pas les autres :
+ * mieux vaut neuf transferts sur dix, signalés, qu'un tout-ou-rien qui laisse
+ * l'utilisateur sans savoir où il en est.
+ *
+ * @param {string[]} membreIds
+ * @param {string|null} centreId  null = maison mère
+ * @returns {{ transferes: number, echecs: {id:string, motif:string}[] }}
+ */
+export async function transfererMembres(membreIds, centreId) {
+  let transferes = 0;
+  const echecs = [];
+  for (const id of membreIds || []) {
+    try {
+      await affecterMembreCentre(id, centreId || null, false);
+      transferes += 1;
+    } catch (e) {
+      echecs.push({ id, motif: e.message });
+    }
+  }
+  return { transferes, echecs };
+}
+
 /** Affecter un véhicule ou un dossier à un centre (maison mère). */
 export async function affecterAuCentre(quoi, id, centreId) {
   const { data, error } = await supabase.rpc("cmd_centre_affecter", {
