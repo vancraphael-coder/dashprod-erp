@@ -22,7 +22,6 @@ import {
   exigencesCloture, cloturerDossier, rouvrirDossier,
   reconciliationAffaire, confirmerMission, renvoyerChantier,
   prerequisEffectue, marquerEffectue, caissesPlan,
-  equipesDuJour,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -31,7 +30,6 @@ import { CIVILITES } from "@domaine/crm/civilite.js";
 import { synthese, verdict, pictoStatut, lignesBilan, mentionDerogation }
   from "@domaine/crm/cloture.js";
 import { lecteurDisponibilite } from "@domaine/operations/missions.js";
-import { tonMissionParEquipe } from "@domaine/planning/equipes.js";
 import Bille from "../composants/Bille.jsx";
 import CarteDate from "../composants/CarteDate.jsx";
 import { VoletAffectation } from "../composants/Affectation.jsx";
@@ -87,10 +85,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   // visible. Un doublon ne se voit qu'en regardant au-delà du dossier courant.
   const [toutesMissions, setToutesMissions] = useState([]);
   const [conges, setConges] = useState([]);
-  // Les équipes du jour, par date : elles donnent la COULEUR de chaque mission
-  // (décision de Raphaël — la bille du bandeau « Qui la fait » prend le ton du
-  // groupe de travail). On les charge par jour concerné, pas toutes.
-  const [equipesParJour, setEquipesParJour] = useState({});
   // L'affectation PRÉVUE par date. Elle vit sur l'affaire et existe donc dès
   // la saisie, avant qu'une mission existe en base.
   const [prevues, setPrevues] = useState({});
@@ -136,26 +130,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     declarerModifs(modifie, () => enregistrerRef.current && enregistrerRef.current());
     return () => declarerModifs(false, null);
   }, [modifie]);
-
-  // Les équipes des jours où ce dossier a une mission. La couleur d'une mission
-  // vient de l'équipe qui la porte : il faut donc les équipes de ces jours-là.
-  // On ne charge que les jours concernés — inutile de balayer le calendrier.
-  useEffect(() => {
-    const jours = [...new Set(missions.map((m) => m.date).filter(Boolean))];
-    if (jours.length === 0) { setEquipesParJour({}); return; }
-    let vivant = true;
-    Promise.all(jours.map((j) => equipesDuJour(j).then((e) => [j, e]).catch(() => [j, []])))
-      .then((paires) => { if (vivant) setEquipesParJour(Object.fromEntries(paires)); });
-    return () => { vivant = false; };
-  }, [missions]);
-
-  // Le TON de chaque mission, déduit de la première équipe du jour qui la
-  // porte. `bleu` (marque) tant qu'aucune équipe ne la prend : « pas encore
-  // d'équipe » et « équipe n° 1 » ne doivent pas se confondre.
-  const tonDeMission = (m) => {
-    if (!m?.id || !m?.date) return "bleu";
-    return tonMissionParEquipe(m.id, equipesParJour[m.date] || []);
-  };
 
   // La règle de conflit vient du domaine : elle ne doit exister qu'une fois.
   // AVANT le return conditionnel : un hook placé après ne serait pas appelé au
@@ -418,7 +392,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
         onDate={(v) => maj("date", v)} onHeure={(v) => maj("heure", v)}
         affectation={prevues.principale} membres={membres} flotte={flotte}
         mission={missionDe(typeMissionPrincipale)} dispo={dispo} chiffrage={chiffrage}
-        tonEquipe={tonDeMission(missionDe(typeMissionPrincipale))}
         onAffectation={(a) => majAffectation("principale", typeMissionPrincipale, a)} />
 
       {parcoursComplet && (
@@ -429,7 +402,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             onHeure={(v) => maj("heureVisite", v)}
             affectation={prevues.visite} membres={membres} flotte={flotte}
             mission={missionDe("visite")} dispo={dispo} chiffrage={chiffrage}
-            tonEquipe={tonDeMission(missionDe("visite"))}
             onAffectation={(a) => majAffectation("visite", "visite", a)} />
 
           <CarteDate typeMission="emballage" libelle="Emballage" facultative
@@ -438,7 +410,6 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
             onHeure={(v) => maj("heureEmballage", v)}
             affectation={prevues.emballage} membres={membres} flotte={flotte}
             mission={missionDe("emballage")} dispo={dispo} chiffrage={chiffrage}
-            tonEquipe={tonDeMission(missionDe("emballage"))}
             onAffectation={(a) => majAffectation("emballage", "emballage", a)} />
         </>
       )}
