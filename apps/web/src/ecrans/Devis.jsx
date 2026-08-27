@@ -12,7 +12,7 @@ import {
   obtenirEquipeAffaire, listerMembresSimples, tauxMembres, obtenirParametresPrix, depots,
   obtenirOrganisation, contexteMainOeuvre,
   litigesAffaire, ouvrirLitige, avancerLitige, resoudreLitige, scenarioRetenu,
-  etatFacturation, heuresAffaire, validerHeures,
+  etatFacturation, heuresAffaire, validerHeures, heuresMembresAffaire,
 } from "../lib/adaptateur.js";
 import { chiffrerAffaire, manqueAuChiffrage }
   from "@domaine/chiffrage/scenario-nature.js";
@@ -23,6 +23,8 @@ import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
 import { lignesMainOeuvre, coutMainOeuvre, mentionLignesRetirees, TON_HISTORIQUE }
   from "@domaine/rh/main-oeuvre.js";
 import { calculDefinitif, euroCentimes } from "@domaine/pilotage/calcul-definitif.js";
+import { mainOeuvreReelle, pointagesParMembre, ecartHeures }
+  from "@domaine/pilotage/main-oeuvre-reelle.js";
 import { CIRCUITS, typesLitige, libelleType, libelleEtape, couleurType,
          etapeSuivante, issues as issuesLitige, progression } from "@domaine/crm/litige.js";
 import { C, S, ZONES_MARGE, euros, declarerModifs} from "../lib/theme.jsx";
@@ -561,14 +563,36 @@ const BTN_PETIT = { padding: "6px 11px", borderRadius: 8, border: "none",
 function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peutVoirPrix, versFacture }) {
   const [prevu, setPrevu] = useState(null);
   const [facturation, setFacturation] = useState(null);
+  // Les heures RÉELLEMENT POINTÉES, par membre (pointage individuel 0147/0148).
+  // Elles remplacent l'estimation du devis dès qu'elles existent : c'est tout
+  // l'objet du circuit — le « réel » cesse d'être le prévu déguisé.
+  const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
     scenarioRetenu(affaireId).then(setPrevu).catch(() => setPrevu(null));
     etatFacturation(affaireId).then(setFacturation).catch(() => setFacturation(null));
+    heuresMembresAffaire(affaireId).then(setSessions).catch(() => setSessions([]));
   }, [affaireId]);
 
-  // Main-d'œuvre réelle : coutMainOeuvre renvoie déjà des EUROS (taux €/h × h).
-  const moEuros = coutMainOeuvre(equipe, heuresMO);
+  // Le taux interne de chaque membre, tiré des lignes d'équipe déjà résolues.
+  const tauxParMembre = useMemo(() => {
+    const t = {};
+    for (const l of equipe || []) if (l.tauxConnu) t[l.id] = l.taux;
+    return t;
+  }, [equipe]);
+
+  // Main-d'œuvre RÉELLE : heures pointées × coût interne, par membre. Repli sur
+  // l'estimation tant que personne n'a pointé (dossier pas encore exécuté).
+  const { pointages, collectivesIgnorees } = useMemo(
+    () => pointagesParMembre(sessions), [sessions]);
+  const moReelle = useMemo(
+    () => mainOeuvreReelle({ pointages, taux: tauxParMembre,
+      membres: (equipe || []).map((l) => ({ id: l.id, nom: l.nom })) }),
+    [pointages, tauxParMembre, equipe]);
+
+  const aPointage = pointages.length > 0;
+  // coutMainOeuvre renvoie des EUROS (taux €/h × h). Réel si pointé, estimé sinon.
+  const moEuros = aPointage ? moReelle.coutEuros : coutMainOeuvre(equipe, heuresMO);
   const reel = {
     mainOeuvre: moEuros,
     carburant: coutsReels.carburantEuros,
@@ -605,6 +629,64 @@ function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peu
           <Colonne titre="Facturé" sousTitre={ETATS_FACT_LIB[col.facture.etat] || ""}
             valeur={euroCentimes(col.facture.du)} connu={col.facture.connu} accent={C.bleu} />
         </div>
+
+        {/* CARTE INFO « HEURES POINTÉES » (circuit terrain → calcul définitif).
+            Dès que le terrain a pointé, ses heures RÉELLES par membre
+            remplacent l'estimation du devis dans la main-d'œuvre réelle.
+            Située ici, dans le Calcul définitif, comme demandé. Réservée à qui
+            voit les prix — le coût interne n'est pas public. */}
+        {peutVoirPrix && aPointage && (
+          <div style={{ marginTop: 12, borderTop: `1px solid ${C.bord}`, paddingTop: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: C.encre,
+                          marginBottom: 6 }}>
+              Heures pointées
+              <span style={{ fontWeight: 400, color: C.muet }}>
+                {" "}· {moReelle.heuresTotales} h réelles
+                {" "}({euroCentimes(Math.round(moReelle.coutEuros * 100))} au coût interne)
+              </span>
+            </div>
+            {moReelle.lignes.map((l) => (
+              <div key={l.membreId} style={{ display: "flex", justifyContent: "space-between",
+                    fontSize: 11.5, color: C.muet, padding: "2px 0" }}>
+                <span>{l.nom}</span>
+                <span>
+                  {l.heures} h
+                  {l.tauxConnu
+                    ? ` × ${l.taux} €/h = ${euroCentimes(Math.round(l.coutEuros * 100))}`
+                    : " · taux non renseigné"}
+                </span>
+              </div>
+            ))}
+            {/* L'écart au devis en heures : le déclencheur de la lecture bureau.
+                Le module ne juge pas la cause — facturable ou surcoût interne :
+                cette décision viendra au bureau (lot suivant). */}
+            {(() => {
+              const e = ecartHeures(heuresMO, moReelle.heuresTotales);
+              if (e.ecart === 0) return null;
+              return (
+                <div style={{ marginTop: 6, fontSize: 11.5,
+                      color: e.depassement ? C.ambre : C.muet }}>
+                  {e.depassement ? "• " : ""}
+                  {e.depassement
+                    ? `${e.ecart} h de plus que le devis (${e.prevues} h prévues). `
+                      + "Le bureau décide ce qui est facturable ou interne."
+                    : `${Math.abs(e.ecart)} h de moins que prévu.`}
+                </div>
+              );
+            })()}
+            {moReelle.sansPointage.length > 0 && (
+              <div style={{ marginTop: 4, fontSize: 11, color: C.muet }}>
+                {moReelle.sansPointage.length} membre(s) affecté(s) sans pointage.
+              </div>
+            )}
+            {collectivesIgnorees > 0 && (
+              <div style={{ marginTop: 4, fontSize: 11, color: C.muet }}>
+                {collectivesIgnorees} pointage(s) collectif(s) non ventilé(s) —
+                antérieurs au pointage individuel.
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Marges — seulement pour qui voit les prix */}
         {peutVoirPrix && (

@@ -22,6 +22,7 @@ import {
   exigencesCloture, cloturerDossier, rouvrirDossier,
   reconciliationAffaire, confirmerMission, renvoyerChantier,
   prerequisEffectue, marquerEffectue, caissesPlan,
+  equipeParMission,
 } from "../lib/adaptateur.js";
 import { alertesVehicule } from "@domaine/flotte/vehicules.js";
 import { urlItineraire } from "@domaine/communication/brief.js";
@@ -85,6 +86,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   // visible. Un doublon ne se voit qu'en regardant au-delà du dossier courant.
   const [toutesMissions, setToutesMissions] = useState([]);
   const [conges, setConges] = useState([]);
+  const [equipesMission, setEquipesMission] = useState({});
   // L'affectation PRÉVUE par date. Elle vit sur l'affaire et existe donc dès
   // la saisie, avant qu'une mission existe en base.
   const [prevues, setPrevues] = useState({});
@@ -106,6 +108,7 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
     missionsAffaire(affaireId).then(setMissions).catch(() => setMissions([]));
     listerMissions().then(setToutesMissions).catch(() => setToutesMissions([]));
     listerConges().then(setConges).catch(() => setConges([]));
+    equipeParMission().then(setEquipesMission).catch(() => setEquipesMission({}));
     obtenirInstance(affaireId).then(setInstance).catch(() => {});
     // L'amorce suit le MÉTIER : créer une ligne de déchargement vide sur un
     // lift laisserait une adresse fantôme en base, dans un groupe que l'écran
@@ -135,8 +138,8 @@ export default function Dossier({ affaireId, retour, versReleve, versDevis, vers
   // AVANT le return conditionnel : un hook placé après ne serait pas appelé au
   // premier rendu, et React rend un écran blanc (§3 — attrapé par le test).
   const dispo = useMemo(
-    () => lecteurDisponibilite({ missions: toutesMissions, conges }),
-    [toutesMissions, conges]);
+    () => lecteurDisponibilite({ missions: toutesMissions, conges, equipeParMission: equipesMission }),
+    [toutesMissions, conges, equipesMission]);
 
   if (!affaire || !contact) return null;
 
