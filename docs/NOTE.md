@@ -1,139 +1,91 @@
-# Lot 38 — le socle des permissions (+ corrections 37b)
+# Lot 40 — le circuit : pointage individuel → coût réel
 
-**25/08/2026.** **1133 tests verts**, build vert. **Migration 0145** appliquée
-et vérifiée.
+**27/08/2026.** **1153 tests verts**, build vert. **Migrations 0146, 0147, 0148**
+appliquées et vérifiées.
 
-Ce lot fait deux choses : il corrige le 37b (jamais déposé), et il pose la
-LOGIQUE des trois fondations. L'écran complet suit dans un lot séparé — je
-l'explique à la fin.
-
----
-
-## D'abord, les corrections du 37b
-
-**La bille : j'avais inversé, c'est corrigé.** Tu voulais que la bille STATIQUE
-(haut de carte) disparaisse et que la DYNAMIQUE (accordéon) reste, puisque
-c'est elle qui actionne le dépliage. C'est maintenant le cas : la bille de
-l'accordéon est de retour (chevron qui pivote), et le haut de carte n'a plus de
-bille — juste un repère « + » discret quand aucune date n'est posée.
-
-Le reste du 37b est inchangé et toujours là : **panne = blocage critique**,
-**conflit « deux équipes » nommé**, **modèles sans contrôle de conflit**.
+Livré en un bloc, comme demandé. Deux corrections, la suppression des anciens
+postes, et le cœur du circuit terrain → Calcul définitif.
 
 ---
 
-## Les trois fondations — ce qui est fait
+## Les deux corrections
 
-En explorant, j'ai trouvé que **presque tout le socle existait déjà** :
-`utilisateurs.centre_id`, les tables `roles / role_capacites /
-utilisateur_roles`, six postes déjà hiérarchisés, et les commandes
-`cmd_centre_definir`, `cmd_centre_affecter_membre`, `cmd_affecter_role`. Le
-problème n'était pas de construire, mais — tes mots — que « les postes ne sont
-pas bien définis » et « les permissions trop vastes ».
+- **Permis** : l'alerte n'apparaît QUE si le membre ne possède pas le bon
+  permis. `permisConduite` le faisait déjà ; c'est maintenant verrouillé par
+  test (dont « un permis supérieur couvre le requis »).
+- **Équipe à plusieurs missions** : deux missions du même jour affiliées à la
+  MÊME équipe ne sont plus un doublon. Le vrai doublon reste deux équipes
+  DISTINCTES. Corrigé dans `disponibiliteRessource`, câblé par `equipeParMission`.
 
-### 1. La grille des postes, conçue (le cœur, tu me l'as délégué)
+## Les anciens postes supprimés — migration 0146
 
-`packages/domaine/src/rh/postes.js` définit **onze postes nommés par métier** :
-fondateur, gérant, secrétaire, chef d'équipe, livreur, monteur, chauffeur,
-liftier, déménageur, intérimaire, visite terrain.
+Seuls les 11 postes transmis subsistent. Les membres de « direction » ont été
+remontés en « gerant » AVANT suppression (fondateur et gérant ont les mêmes
+droits ; tu désigneras le(s) fondateur(s)). Résultat vérifié en base : 0 ancien
+poste, 0 lien orphelin, 8 membres conservent leur poste.
 
-On ne coche plus 13 capacités : on choisit un poste. Quelques partis pris que
-tu retoucheras :
+J'ai aussi corrigé au passage une incohérence dépôt↔base : le nettoyage avait
+été fait en base sans fichier de migration. C'est maintenant tracé (0146).
 
-- **Métier ≠ permission.** Les cinq métiers d'exécution (déménageur, livreur,
-  monteur, chauffeur, liftier) ont **exactement les mêmes droits logiciels**.
-  Ils se distinguent par ce qu'ils FONT, pas par ce que l'outil autorise. Les
-  séparer en droits identiques n'ajouterait que du bruit.
-- **La hiérarchie n'est pas un empilement mécanique.** `cloturer_chantier` est
-  un geste de terrain (arrêter le décompte de l'équipe sur place) : la
-  secrétaire, au bureau, ne l'a **pas**, même si son rang dépasse celui du chef
-  d'équipe. Monter vers la direction ouvre l'argent et les réglages ; ça ne
-  recopie pas les gestes de terrain. Un test verrouille ce choix pour qu'on ne
-  le « corrige » pas par erreur.
-- **Le terrain ne voit jamais l'argent** — ni prix, ni paie, ni facturation.
+## Le circuit — pointage individuel (choix A)
 
-### 2. Promotion / rétrogradation
+**Migration 0147** : `chrono_sessions.utilisateur_id`. Chacun pointe pour soi.
+**Migration 0148** : `cmd_pointage_definir` cible la session DE L'ACTEUR (même
+signature, l'app terrain n'a rien à changer) ; nouvelle `cmd_heures_membres_affaire`
+qui rend les heures par membre.
 
-Chaque poste a un **rang**. Promouvoir = monter d'un cran, rétrograder =
-descendre d'un cran. Les cinq métiers de rang 4 se promeuvent vers chef
-d'équipe (rang 3), jamais l'un vers l'autre. L'écran présentera ça comme un
-curseur, pas 13 cases.
+Les 32 sessions collectives d'avant 0147 gardent `utilisateur_id null` : lisibles
+comme « heures du chantier, non ventilées ». On ne réécrit pas le passé.
 
-### 3. Confier les accès — ta règle exacte
+**La main-d'œuvre réelle** (`pilotage/main-oeuvre-reelle.js`) : les heures
+pointées de chaque membre × son **coût interne**. C'est ta décision, et ta
+raison est juste : la paie agrège au niveau du JOUR (deux déménagements d'un
+membre dans une journée y sont fondus), on ne peut pas la répartir par mission.
+Le pointage, lui, est par mission.
 
-- **Fondateur et gérant** : de plein droit.
-- **Secrétaire** : uniquement si un fondateur ou un gérant le lui a **octroyé**.
-- **Le terrain** : jamais.
-- Et l'octroi lui-même ne peut venir que d'un fondateur ou d'un gérant : pas de
-  chaîne où une secrétaire octroierait à une autre.
+Ce module remplace le défaut où `heuresMO = faits.heures` : le « réel » du
+Calcul définitif était l'estimation du devis déguisée. Désormais, dès que le
+terrain a pointé, le réel est le vrai.
 
-### 4. Visite terrain — sélection de pages
+**Ton principe est respecté par construction.** Les heures des membres sont un
+coût interne : elles grossissent la colonne « réel » et réduisent la marge, sans
+jamais toucher le « facturé ». Le module MESURE l'écart prévu/réel ; il ne juge
+PAS s'il est facturable ou interne — cette décision est celle du bureau, et
+c'est le lot suivant (surcoût interne).
 
-Accès en **lecture seule**, complété par une **sélection multiple de pages**
-qu'on ouvre en modification (`PAGES_MODIFIABLES`). Les écrans sensibles — paie,
-paramètres, facturation, compta — **ne sont jamais** dans le catalogue
-partageable. Une page inconnue passée par erreur est ignorée, pas ouverte.
-
-### 5. Transfert de membres, par lot
-
-`organisation/centres.js` : la **maison mère = absence de centre** (`null`),
-pas une ligne fantôme. `transfererMembres(ids, centreId)` déplace **plusieurs
-membres à la fois**, entre centres ou depuis/vers la maison mère, en ne comptant
-que ceux qui bougent vraiment.
-
----
-
-## La migration 0145 — prudente, sur des rôles de production
-
-**Vérifié avant de toucher quoi que ce soit** : 6 membres en « direction », 1 en
-« demenageur ». La migration est **additive** : elle ajoute les 11 postes, garde
-les anciens rôles, et ne touche **aucune affectation**. Détruire « direction »
-aurait retiré ses 14 capacités à 6 personnes d'un coup.
-
-**Vérifié après** : les 11 postes existent avec les bons comptes de capacités,
-`confier_les_acces` n'est QUE sur fondateur + gérant, les affectations sont
-intactes. Idempotente : rejouable sans dégât.
-
----
+**La carte info « heures pointées »** apparaît dans dossier/devis/Calcul
+définitif dès que le terrain a pointé — là où tu l'as située. Elle montre les
+heures par membre, le coût interne, l'écart au devis, et signale les pointages
+manquants. Réservée à `voir_prix`.
 
 ## Éprouvé par sabotage
 
-| Sabotage | Tests rouges |
+| Sabotage | Rouges |
 |---|---|
-| la secrétaire confie les accès sans octroi | 1 |
-| le terrain gagne « voir les prix » | 1 |
-| visite terrain accepte une page inconnue | 1 |
-| le transfert oublie de filtrer les « déjà là » | 2 |
+| la même équipe redevient un doublon | 1 |
+| le permis alerte même quand il est détenu | 2 |
+| heures uniformes pour tous (défaut d'origine) | 4 |
+| taux inconnu compté 0 sans le signaler | 1 |
+| le non-pointé disparaît de la liste | 1 |
+| la session collective se voit attribuée | 1 |
 
 ---
 
-## Ce qui reste à câbler — le prochain lot
+## Ce qui reste (prochains lots du circuit)
 
-J'ai posé la logique et la base, **pas encore tout l'écran**. Il manque :
-
-- **Créer un centre AVEC transfert multiple** au moment de la création (la
-  création existe déjà ; il faut y greffer le transfert que ce lot rend
-  possible).
-- **L'écran d'attribution de poste** par membre — le curseur promouvoir /
-  rétrograder, et la sélection de pages pour « visite terrain ».
-- **La garde « confier les accès »** : seul un poste qui en a le droit voit cet
-  écran.
-
-Tout est prêt côté logique et base (`cmd_affecter_role` existe). C'est du
-câblage d'écran, sans nouvelle décision — je l'ai gardé pour un lot dédié plutôt
-que de livrer une UI à moitié faite.
-
----
+- **Surcoût interne** : marquer un dépassement d'heures comme interne (panne
+  retour, retard, nettoyage) — il reste dans le réel, jamais dans le facturé.
+  Tes réponses sont acquises : marquable au chantier ET au bureau, décision de
+  facturer au bureau ; terrain déclare et fige, secrétaire corrige.
+- **Photos** attachées aux constats (le seul élément manquant du rapport).
+- Puis **39** (écrans permissions).
 
 ## À vérifier à l'œil
 
-1. Ouvrir un dossier : la carte mission n'a **plus de bille en haut**, mais la
-   bille de l'accordéon (« Qui la fait ») **actionne bien le dépliage** (son
-   chevron pivote).
-2. Rien d'autre n'est visible pour l'instant côté permissions — c'est normal,
-   l'écran arrive au prochain lot.
-
-## Suite
-
-Le câblage d'écran des permissions (ci-dessus), puis le **36bis** (emballage
-sorti des formules exclusives).
+1. App terrain : pointer un départ/arrivée → c'est TA session, tu ne vois pas
+   celle des coéquipiers.
+2. Dossier → Devis → Calcul définitif : une fois pointé, la carte « Heures
+   pointées » montre chaque membre avec ses vraies heures, et le « réel »
+   reflète le coût interne, pas l'estimation.
+3. Deux missions d'un dossier faites par la même équipe : plus d'alerte
+   « déjà pris » à tort.
