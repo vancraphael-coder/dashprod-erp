@@ -11,7 +11,9 @@
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
-import { rapportHebdo } from "../lib/adaptateur.js";
+import { rapportHebdo, centreRapports, centreRapportEcrire } from "../lib/adaptateur.js";
+import { CADENCES, fenetre, rapportTexteValide, historiqueRange }
+  from "@domaine/organisation/rapport-centre.js";
 import { C, S, euros } from "../lib/theme.jsx";
 
 export default function RapportCentres({ retour }) {
@@ -120,6 +122,11 @@ export default function RapportCentres({ retour }) {
                 ✓ Tous les chantiers de la semaine ont une équipe.
               </div>
             )}
+
+            {/* Le rapport TEXTE tri-cadence + historique. Vit SOUS les KPI, ne
+                les modifie pas : les chiffres au-dessus restent la carte de
+                Raphaël, ceci est en plus. */}
+            <RapportTexte centreId={c.centre_id} peutRediger={data.sensible} />
           </div>
         );
       })}
@@ -135,6 +142,97 @@ export default function RapportCentres({ retour }) {
     </div>
   );
 }
+
+function RapportTexte({ centreId, peutRediger }) {
+  const [cadence, setCadence] = useState("jour");
+  const [texte, setTexte] = useState("");
+  const [histo, setHisto] = useState([]);
+  const [err, setErr] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [ouvert, setOuvert] = useState(false);
+
+  async function charger() {
+    try { setHisto(historiqueRange(await centreRapports(centreId))); }
+    catch { setHisto([]); }
+  }
+  useEffect(() => { if (ouvert) charger(); }, [ouvert, centreId]);
+
+  async function enregistrer() {
+    setErr(null); setMsg(null);
+    const v = rapportTexteValide(texte);
+    if (!v.ok) { setErr(v.message); return; }
+    const f = fenetre(cadence, new Date());
+    try {
+      await centreRapportEcrire(centreId, cadence, f.debut, f.fin, v.texte);
+      setTexte(""); setMsg("Rapport enregistré.");
+      await charger();
+    } catch (e) { setErr(e.message); }
+  }
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.doux}` }}>
+      <button onClick={() => setOuvert((o) => !o)}
+        style={{ ...S.boutonLien, paddingLeft: 0, fontWeight: 700 }}>
+        {ouvert ? "▾ " : "▸ "}Rapport du responsable
+      </button>
+
+      {ouvert && (
+        <div style={{ marginTop: 8 }}>
+          {peutRediger && (
+            <>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                {CADENCES.map((c) => (
+                  <button key={c.cle} onClick={() => setCadence(c.cle)}
+                    style={{
+                      ...S.boutonLien, padding: "4px 10px", borderRadius: 8,
+                      fontSize: 12, fontWeight: cadence === c.cle ? 800 : 500,
+                      background: cadence === c.cle ? C.teinte : "transparent",
+                      color: cadence === c.cle ? C.encre : C.muet,
+                    }}>{c.titre}</button>
+                ))}
+                <span style={{ marginLeft: "auto", fontSize: 11.5, color: C.fantome }}>
+                  {fenetre(cadence, new Date()).titre}
+                </span>
+              </div>
+              <textarea value={texte} onChange={(e) => setTexte(e.target.value)}
+                placeholder="Ce qui s'est passé sur la période…"
+                style={{ ...S.input, minHeight: 64, resize: "vertical" }} />
+              <div style={{ display: "flex", gap: 8, marginTop: 6, alignItems: "center" }}>
+                <button style={S.boutonPlein} onClick={enregistrer}>Enregistrer</button>
+                {msg && <span style={{ fontSize: 12, color: C.vert }}>{msg}</span>}
+                {err && <span style={{ fontSize: 12, color: C.rouge }}>{err}</span>}
+              </div>
+            </>
+          )}
+
+          {/* L'historique — toutes cadences confondues, du plus récent. */}
+          {histo.length === 0 ? (
+            <div style={{ marginTop: 8, fontSize: 12, color: C.fantome }}>
+              Aucun rapport pour l'instant.
+            </div>
+          ) : (
+            <div style={{ marginTop: 10 }}>
+              {histo.map((h) => (
+                <div key={h.id} style={{ marginTop: 8, paddingTop: 8,
+                      borderTop: `1px solid ${C.doux}` }}>
+                  <div style={{ fontSize: 11, color: C.fantome, marginBottom: 2 }}>
+                    {LIBELLE_CADENCE[h.cadence] || h.cadence}
+                    {" · "}{jour(h.debut)}
+                    {h.redige_par ? ` · ${h.redige_par}` : ""}
+                  </div>
+                  <div style={{ fontSize: 13, color: C.encre, whiteSpace: "pre-wrap",
+                                lineHeight: 1.5 }}>{h.texte}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const LIBELLE_CADENCE = { jour: "Jour", semaine: "Semaine", mois: "Mois" };
 
 function Bloc({ titre, children }) {
   return (
