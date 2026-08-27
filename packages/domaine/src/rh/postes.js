@@ -70,6 +70,11 @@ const DIRECTION = [
   "emettre_facture", "voir_paie", "gerer_referentiels",
 ];
 
+// Le responsable de dépôt : l'administration, plus la gestion du dépôt et du
+// garde-meubles. Décision de Raphaël : mêmes attributions que la secrétaire,
+// avec en plus ce qui relève de son statut — le dépôt lui-même.
+const RESPONSABLE_DEPOT = [...ADMINISTRATION, "gerer_depot"];
+
 /**
  * LE CATALOGUE.
  *
@@ -108,6 +113,14 @@ export const POSTES = Object.freeze([
     resume: "Monte les dossiers, planifie, fait signer. Ne touche ni à la "
           + "facturation ni à la paie. Peut confier les accès UNIQUEMENT si un "
           + "fondateur ou un gérant le lui a octroyé.",
+  },
+  {
+    cle: "responsable_depot", titre: "Responsable dépôt", rang: 2,
+    famille: "administration", confie_les_acces: "si_octroye",
+    capacites: RESPONSABLE_DEPOT,
+    resume: "Les attributions d'une secrétaire, plus la gestion du dépôt et du "
+          + "garde-meubles (boxes, zones, contrats). Suit son centre au jour le "
+          + "jour. Peut confier les accès uniquement si on le lui a octroyé.",
   },
   {
     cle: "chef_equipe", titre: "Chef d'équipe", rang: 3,

@@ -72,6 +72,10 @@ export const CAPACITES = Object.freeze([
   { cle: "gerer_referentiels", sensible: true,
     titre: "Régler les paramètres de l'entreprise",
     detail: "Barème, catalogues, textes, identité, confidentialité." },
+  { cle: "gerer_depot",
+    titre: "Gérer le dépôt et le garde-meubles",
+    detail: "Boxes, zones, contrats de stockage, entrées et sorties d'un "
+          + "centre logistique." },
 ]);
 
 /** Capacités du terrain, dans l'ordre du catalogue. */
