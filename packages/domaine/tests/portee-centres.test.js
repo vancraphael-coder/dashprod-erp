@@ -66,3 +66,22 @@ test("filtrerParCentre ne mélange JAMAIS deux centres", () => {
   assert.deepEqual(filtrerParCentre(dossiers, MAISON_MERE).map((d) => d.id), [3]);
   assert.deepEqual(filtrerParCentre(dossiers, "gand").map((d) => d.id), [2]);
 });
+
+/* ── Filtrage des dépôts (stockage) selon la portée ──────────────────────── */
+
+test("le sélecteur de dépôt du stockage ne montre que les centres visibles", () => {
+  // Reproduit la logique de Stockage.jsx : filtrer la liste des dépôts sur la
+  // portée. Un responsable dépôt ne voit que le sien dans le sélecteur.
+  const depots = [{ id: "anvers" }, { id: "gand" }, { id: "liege" }];
+  const filtrer = (acteur) => {
+    const p = porteeCentres(acteur, depots);
+    return p.tousCentres ? depots
+      : depots.filter((c) => p.centresVisibles.some((v) => (v ?? null) === (c.id ?? null)));
+  };
+  assert.deepEqual(
+    filtrer({ poste: "responsable_depot", centre_id: "gand" }).map((d) => d.id),
+    ["gand"], "le responsable dépôt ne voit que Gand");
+  assert.deepEqual(
+    filtrer({ poste: "secretaire", centre_id: "anvers" }).map((d) => d.id),
+    ["anvers", "gand", "liege"], "la secrétaire voit tous les dépôts");
+});
