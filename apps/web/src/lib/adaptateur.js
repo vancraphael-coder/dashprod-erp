@@ -626,6 +626,24 @@ export async function desarchiverMembre(utilisateurId) {
 }
 
 /** Liste les missions (avec affectations) — planning bureau. */
+/**
+ * L'équipe du jour de chaque mission : { [missionId]: equipeId }.
+ *
+ * Deux missions de la MÊME équipe ne sont pas un doublon d'affectation — c'est
+ * la même présence. Le lecteur de disponibilité en a besoin pour ne pas
+ * signaler à tort une personne présente sur le déménagement ET l'emballage du
+ * même jour, quand ces deux missions relèvent d'une seule équipe.
+ */
+export async function equipeParMission() {
+  if (modeDonnees() !== "reel") return {};
+  const { data, error } = await supabase.from("equipe_missions")
+    .select("mission_id, equipe_id");
+  if (error) return {};
+  const par = {};
+  for (const r of data || []) par[r.mission_id] = r.equipe_id;
+  return par;
+}
+
 export async function listerMissions() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.from("missions")
@@ -1603,7 +1621,7 @@ export async function mesMissionsTerrain(utilisateurId) {
                affaires!inner(archive_le, etat, clients(nom), notes_commerciales),
                mission_affectations(utilisateur_id, utilisateurs(nom)),
                mission_vehicules(vehicules(nom)),
-               chrono_sessions(id, debut, fin, type)`)
+               chrono_sessions(id, debut, fin, type, utilisateur_id)`)
       // MÊME RÈGLE QUE LE PLANNING BUREAU. La vue terrain a son propre chemin
       // de données : sans ça le bureau annule et le terrain se déplace quand même.
       .is("affaires.archive_le", null)
@@ -1633,7 +1651,12 @@ export async function mesMissionsTerrain(utilisateurId) {
           .map((it) => ({ nom: it.nom, quantite: it.quantite || 1 })),
         heure_depart_prevue: m.heure_depart_prevue,
         heure_arrivee_prevue: m.heure_arrivee_prevue,
-        sessions: (m.chrono_sessions || []).map((s) => ({ id: s.id, debut: s.debut, fin: s.fin, type: s.type })),
+        // Pointage INDIVIDUEL (0147) : chacun ne voit QUE ses sessions. Les
+        // sessions collectives héritées (utilisateur_id null, d'avant 0147)
+        // restent visibles à tous, faute de propriétaire.
+        sessions: (m.chrono_sessions || [])
+          .filter((s) => s.utilisateur_id == null || s.utilisateur_id === utilisateurId)
+          .map((s) => ({ id: s.id, debut: s.debut, fin: s.fin, type: s.type })),
       };
     }));
     return enrichies;
@@ -2300,6 +2323,36 @@ export async function prerequisEffectue(affaireId) {
  * Les heures de chaque mission d'un dossier, avec leur état de validation —
  * pour le cadran du Calcul définitif.
  */
+/**
+ * Les heures PAR MEMBRE d'une affaire (pointage individuel, migration 0147/0148).
+ * Une ligne par (mission, membre) qui a pointé : { mission_id, utilisateur_id,
+ * depart, arrivee, date, type, etat }. C'est ce que le circuit valorise au coût
+ * interne dans le Calcul définitif.
+ */
+export async function heuresMembresAffaire(affaireId) {
+  if (modeDonnees() === "reel") {
+    const { data, error } = await supabase.rpc("cmd_heures_membres_affaire",
+      { p_affaire: affaireId });
+    if (error) throw error;
+    return data || [];
+  }
+  // Démo : on ventile les sessions par membre si l'info existe, sinon on
+  // retombe sur l'affectation de la mission (mêmes heures pour l'équipe).
+  const d = lireDemo();
+  const lignes = [];
+  for (const m of (d.missions || []).filter(
+    (x) => x.affaire_id === affaireId && x.etat !== "annulee")) {
+    const t = (m.sessions || []).find((s) => (s.type || "travail") === "travail") || {};
+    const affectes = (m.affectations || []).map((a) => a.utilisateur_id).filter(Boolean);
+    if (affectes.length === 0) continue;
+    for (const uid of affectes) {
+      lignes.push({ mission_id: m.id, utilisateur_id: uid, type: m.type,
+        date: m.date, etat: m.etat, depart: t.debut || null, arrivee: t.fin || null });
+    }
+  }
+  return lignes;
+}
+
 export async function heuresAffaire(affaireId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.rpc("cmd_heures_affaire", { p_affaire: affaireId });
