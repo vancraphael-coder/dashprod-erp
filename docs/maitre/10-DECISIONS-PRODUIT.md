@@ -263,3 +263,34 @@ c'est un axe unique et assumé.
 - **Reste à câbler** : la BASCULE de centre pour secrétaire+ dans les écrans de
   travail (dossiers/planning/stockage filtrés sur le centre choisi). La portée
   domaine est prête ; c'est le câblage d'écran qui suit.
+
+## Bascule de centre (lot 43, 27/08/2026)
+
+- **`mon_profil` expose `poste` et `centre_id`** (migration 0152, additive) —
+  la bascule a besoin de savoir qui est l'acteur.
+- **Sélecteur de centre** (`composants/SelecteurCentre.jsx`) piloté par
+  `porteeCentres` : n'apparaît QUE pour secrétaire+ (peutBasculer). Responsable
+  dépôt et terrain n'en voient pas.
+- **Écran dossiers filtré par centre** via `filtrerParCentre`, AVANT les vues :
+  compteurs et urgences ne comptent que le centre courant. Pas de régression
+  pour un gérant sans centre (atterrit sur maison mère, rien ne disparaît).
+- **Reste à câbler** : la même bascule sur PLANNING et STOCKAGE (même patron :
+  sélecteur + filtrerParCentre). Fait sur les dossiers, l'écran pivot.
+
+## Bascule étendue (lot 44, 27/08/2026)
+
+- **Planning** filtré par centre (missions), même patron que les dossiers :
+  sélecteur + filtrerParCentre, avant grille/pastilles/charge. Jamais en
+  lecture seule (le terrain n'a pas de bascule).
+- **Stockage** : il avait DÉJÀ son sélecteur de dépôt natif. On l'a restreint à
+  la PORTÉE — un responsable dépôt n'y voit que son centre ; secrétaire+ tous.
+- `listerMissions` expose désormais `centre_id`.
+
+## À FAIRE EN PRIORITÉ — finir les postes/permissions (avant le circuit)
+
+Demande explicite de Raphaël : les postes/permissions doivent être TERMINÉS
+avant de reprendre le reste. Reste à câbler (le domaine est prêt depuis lot 38) :
+- écran d'attribution de poste par membre (promouvoir/rétrograder) ;
+- sélection des pages modifiables pour « visite terrain » ;
+- garde « confier les accès » (seul un poste qui peutConfierAcces voit l'écran) ;
+- octroi de la confiance à une secrétaire par fondateur/gérant.
