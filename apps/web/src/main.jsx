@@ -641,7 +641,7 @@ function App() {
   } else if (route.ecran === "demandes") {
     ecran = <DemandesReseau />;
   } else if (route.ecran === "equipe") {
-    ecran = <Ressources />;
+    ecran = <Ressources profil={profil} />;
   } else if (route.ecran === "planning") {
     ecran = <Planning ouvrirDossier={nav.dossier} jourInitial={route.jour}
                       profil={profil} centres={centresOrg}
