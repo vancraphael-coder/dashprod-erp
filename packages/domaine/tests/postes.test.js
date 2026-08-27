@@ -25,14 +25,32 @@ test("aucun poste ne cite une capacité qui n'existe pas", () => {
     "un poste référence une capacité inconnue");
 });
 
-test("les 11 profils demandés existent, nommés", () => {
-  const attendus = ["fondateur", "gerant", "secretaire", "chef_equipe",
-    "livreur", "monteur", "chauffeur", "liftier", "demenageur",
+test("les 12 profils demandés existent, nommés", () => {
+  const attendus = ["fondateur", "gerant", "secretaire", "responsable_depot",
+    "chef_equipe", "livreur", "monteur", "chauffeur", "liftier", "demenageur",
     "interimaire", "visite_terrain"];
   for (const cle of attendus) {
     assert.ok(poste(cle), `le poste « ${cle} » doit exister`);
   }
   assert.equal(POSTES.length, attendus.length, "ni plus, ni moins");
+});
+
+test("le responsable dépôt = attributions secrétaire + gestion du dépôt", () => {
+  // Décision de Raphaël : mêmes attributions qu'une secrétaire, PLUS ce qui
+  // relève de son statut — le dépôt lui-même.
+  const secr = new Set(capacitesDuPoste("secretaire"));
+  const dep = new Set(capacitesDuPoste("responsable_depot"));
+  for (const c of secr) {
+    assert.ok(dep.has(c), `le responsable dépôt doit garder « ${c} » de la secrétaire`);
+  }
+  assert.ok(posteADroit("responsable_depot", "gerer_depot"),
+    "le responsable dépôt gère le dépôt");
+  assert.equal(posteADroit("secretaire", "gerer_depot"), false,
+    "la secrétaire, elle, ne gère pas le dépôt");
+  // Il ne touche pas plus à l'argent que la secrétaire.
+  for (const interdit of ["voir_paie", "emettre_facture", "gerer_referentiels"]) {
+    assert.equal(posteADroit("responsable_depot", interdit), false);
+  }
 });
 
 test("les cinq métiers d'exécution ont EXACTEMENT les mêmes droits", () => {
