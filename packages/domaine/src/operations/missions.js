@@ -146,11 +146,22 @@ export const NIVEAUX_DISPO = Object.freeze(["libre", "double", "indisponible"]);
  * @param {{debut: string, fin: string}[]} [p.conges]
  *        congés de la personne — vide pour un véhicule
  */
-export function disponibiliteRessource({ date, missionId, affectations, conges }) {
+export function disponibiliteRessource({ date, missionId, affectations, conges, equipeCourante = null }) {
   const enConge = estEnConge(conges, date);
   // On exclut la mission courante : être affecté ICI n'est pas un doublon.
-  const ailleurs = (affectations || []).filter(
-    (a) => a.missionId !== missionId && memeJour(a.date, date));
+  // On exclut AUSSI les missions du même jour qui relèvent de la MÊME équipe :
+  // une équipe peut porter plusieurs missions (déménagement + emballage le même
+  // jour), et être sur deux missions d'UNE SEULE équipe n'est pas être pris
+  // deux fois — c'est la même présence. Le vrai doublon, c'est deux ÉQUIPES
+  // distinctes. (Précision de Raphaël.)
+  const ailleurs = (affectations || []).filter((a) => {
+    if (a.missionId === missionId) return false;
+    if (!memeJour(a.date, date)) return false;
+    // Même équipe que la mission courante ? Alors ce n'est pas un doublon.
+    if (equipeCourante != null && a.equipeId != null
+        && a.equipeId === equipeCourante) return false;
+    return true;
+  });
 
   const niveau = enConge ? "indisponible" : ailleurs.length > 0 ? "double" : "libre";
   return {
@@ -202,14 +213,19 @@ export function verdictMission({ date, missionId, membres, vehicules }) {
  *   (`{utilisateur_id}`) et `camions` (identifiants)
  * @param {object[]} p.conges congés, avec `utilisateur_id`, `etat`, `debut`, `fin`
  */
-export function lecteurDisponibilite({ missions = [], conges = [] } = {}) {
+export function lecteurDisponibilite({ missions = [], conges = [], equipeParMission = {} } = {}) {
+  // L'équipe du jour à laquelle une mission est affiliée, s'il y en a une.
+  // Deux missions de la MÊME équipe ne sont pas un doublon : c'est la même
+  // présence. `equipeParMission` : { [missionId]: equipeId }.
+  const equipeDe = (mid) => equipeParMission[mid] ?? null;
+
   const engagementsMembre = (id) => missions
     .filter((m) => (m.affectations || []).some((a) => a.utilisateur_id === id))
-    .map((m) => ({ missionId: m.id, date: m.date }));
+    .map((m) => ({ missionId: m.id, date: m.date, equipeId: equipeDe(m.id) }));
 
   const engagementsVehicule = (id) => missions
     .filter((m) => (m.camions || []).includes(id))
-    .map((m) => ({ missionId: m.id, date: m.date }));
+    .map((m) => ({ missionId: m.id, date: m.date, equipeId: equipeDe(m.id) }));
 
   // SEULS les congés ACCORDÉS rendent indisponible. Une demande en attente
   // n'est pas une absence : bloquer dessus laisserait le membre décider seul
@@ -220,14 +236,15 @@ export function lecteurDisponibilite({ missions = [], conges = [] } = {}) {
 
   return {
     membre: (id, { date, missionId } = {}) => disponibiliteRessource({
-      date, missionId,
+      date, missionId, equipeCourante: equipeDe(missionId),
       affectations: engagementsMembre(id), conges: congesDe(id),
     }),
     // Un véhicule ne prend pas de congé : seule la double réservation le
     // concerne. Aucun contrôle n'existait avant — un camion pouvait être posé
     // sur deux chantiers le même jour sans que rien ne le signale.
     vehicule: (id, { date, missionId } = {}) => disponibiliteRessource({
-      date, missionId, affectations: engagementsVehicule(id), conges: [],
+      date, missionId, equipeCourante: equipeDe(missionId),
+      affectations: engagementsVehicule(id), conges: [],
     }),
   };
 }
