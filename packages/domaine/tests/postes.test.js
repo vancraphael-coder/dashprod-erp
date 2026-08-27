@@ -208,3 +208,33 @@ test("chaque poste se présente : titre, résumé, rang", () => {
     assert.equal(typeof p.rang, "number", `${p.cle} : rang numérique requis`);
   }
 });
+
+/* ── L'octroi « confier les accès » tel que l'écran l'utilise ─────────────── */
+
+test("octroi de confiance : réservé au fondateur/gérant ET aux postes octroyables", () => {
+  // Reproduit la garde de l'écran AttributionPoste : la case n'apparaît que si
+  // l'acteur peut octroyer ET que le poste cible est prévu pour recevoir
+  // l'octroi (confie_les_acces === "si_octroye").
+  const peutOctroyerSur = (posteActeur, posteCible) => {
+    const p = poste(posteCible);
+    return peutOctroyerConfiance(posteActeur)
+      && p && p.confie_les_acces === "si_octroye";
+  };
+  // Un gérant PEUT octroyer à une secrétaire ou un responsable dépôt.
+  assert.equal(peutOctroyerSur("gerant", "secretaire"), true);
+  assert.equal(peutOctroyerSur("fondateur", "responsable_depot"), true);
+  // Mais PAS à un poste de direction (qui a déjà le droit de plein exercice)…
+  assert.equal(peutOctroyerSur("gerant", "gerant"), false);
+  // …ni à un poste de terrain (qui ne confie jamais).
+  assert.equal(peutOctroyerSur("gerant", "demenageur"), false);
+  assert.equal(peutOctroyerSur("gerant", "visite_terrain"), false);
+  // Une secrétaire, même octroyée, ne peut PAS octroyer à son tour.
+  assert.equal(peutOctroyerSur("secretaire", "secretaire"), false);
+});
+
+test("le responsable dépôt est octroyable, comme la secrétaire", () => {
+  assert.equal(poste("responsable_depot").confie_les_acces, "si_octroye");
+  // Et une fois octroyé, il PEUT confier les accès.
+  assert.equal(peutConfierAcces("responsable_depot", true), true);
+  assert.equal(peutConfierAcces("responsable_depot", false), false);
+});
