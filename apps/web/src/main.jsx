@@ -35,7 +35,7 @@ import { CGU, Confidentialite as ConfidentialitePublique, MentionsLegales }
 import Bienvenue from "./ecrans/Bienvenue.jsx";
 import EspaceClient from "./ecrans/EspaceClient.jsx";
 import SignatureOffre from "./ecrans/SignatureOffre.jsx";
-import { clientMoi, obtenirOrganisation } from "./lib/adaptateur.js";
+import { clientMoi, obtenirOrganisation, depots } from "./lib/adaptateur.js";
 import { identiteComplete } from "@domaine/organisation/identite.js";
 import Dossier from "./ecrans/Dossier.jsx";
 import Releve from "./ecrans/Releve.jsx";
@@ -54,6 +54,7 @@ import Carnet from "./ecrans/Carnet.jsx";
 import Stockage from "./ecrans/Stockage.jsx";
 import Centres from "./ecrans/Centres.jsx";
 import RapportCentres from "./ecrans/RapportCentres.jsx";
+import SelecteurCentre from "./composants/SelecteurCentre.jsx";
 import DemandesReseau from "./ecrans/DemandesReseau.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
@@ -426,6 +427,20 @@ function App() {
   const [charge, setCharge] = useState(false);
   const [route, setRoute] = useState({ ecran: "liste", affaireId: null });
   const [gardeEnAttente, setGardeEnAttente] = useState(null); // () => void — navigation différée
+  // Bascule de centre (secrétaire+). undefined = pas encore choisi → le domaine
+  // (porteeCentres) place l'acteur sur son centre par défaut. Voir SelecteurCentre.
+  const [centresOrg, setCentresOrg] = useState([]);
+  const [centreChoisi, setCentreChoisi] = useState(undefined);
+
+  // Charger la liste des centres dès qu'on a un profil bureau : le sélecteur en
+  // a besoin. Inutile pour le terrain (il n'a pas de bascule).
+  useEffect(() => {
+    if (!profil) return;
+    const bureau = (profil.capacites || []).includes("gerer_planning")
+      || (profil.capacites || []).includes("gerer_referentiels");
+    if (!bureau) return;
+    depots(false).then((l) => setCentresOrg(l || [])).catch(() => setCentresOrg([]));
+  }, [profil]);
 
   useEffect(() => {
     sessionCourante().then(async (s) => {
@@ -628,14 +643,16 @@ function App() {
   } else if (route.ecran === "equipe") {
     ecran = <Ressources />;
   } else if (route.ecran === "planning") {
-    ecran = <Planning ouvrirDossier={nav.dossier} jourInitial={route.jour} />;
+    ecran = <Planning ouvrirDossier={nav.dossier} jourInitial={route.jour}
+                      profil={profil} centres={centresOrg}
+                      centreChoisi={centreChoisi} onChoisirCentre={setCentreChoisi} />;
   } else if (route.ecran === "carnet") {
     ecran = <Carnet retour={nav.liste} ouvrirDossier={nav.dossier}
                     nouvelleAffaire={nav.nouvelle} />;
   } else if (route.ecran === "conversations") {
     ecran = <Conversations ouvrirDossier={nav.dossier} ouvrirPlanning={nav.planningJour} />;
   } else if (route.ecran === "stockage") {
-    ecran = <Stockage retour={nav.liste} />;
+    ecran = <Stockage retour={nav.liste} profil={profil} />;
   } else if (route.ecran === "centres") {
     ecran = <Centres retour={nav.compte} />;
   } else if (route.ecran === "rapport") {
@@ -665,7 +682,7 @@ function App() {
       versBareme={nav.bareme} versCout={nav.cout}
       versTextes={nav.textes} versArchivage={nav.archivage}
       modules={acces?.modules || []}
-      peutGererCentres={peutGererEquipe} />;
+      peutGererCentres={peutGererEquipe} profil={profil} />;
   } else if (route.ecran === "bareme") {
     ecran = <Bareme retour={() => nav.parametres()} />;
   } else if (route.ecran === "cout") {
@@ -682,7 +699,9 @@ function App() {
     ecran = <Facture affaireId={route.affaireId} retour={retourDossier} />;
   } else {
     ecran = <ListeAffaires ouvrirAffaire={nav.dossier} nouvelleAffaire={nav.nouvelle}
-                           versCarnet={nav.carnet} />;
+                           versCarnet={nav.carnet}
+                           profil={profil} centres={centresOrg}
+                           centreChoisi={centreChoisi} onChoisirCentre={setCentreChoisi} />;
   }
 
   return (
