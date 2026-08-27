@@ -247,3 +247,19 @@ c'est un axe unique et assumé.
 - **Rapports jour / semaine / mois** en CARTE TEXTE + HISTORIQUE, SANS casser
   les KPI de la carte déjà présente (`RapportCentres.jsx` / `cmd_rapport_hebdo`,
   à généraliser par période).
+
+## Lot centres — portée + rapports texte (lot 42, 27/08/2026)
+
+- **Portée par centre** (`organisation/centres.js` : `porteeCentres`,
+  `peutVoirCentre`, `filtrerParCentre`). Responsable dépôt = SON centre, sans
+  bascule. Secrétaire/gérant/fondateur = tous les centres + maison mère, avec
+  bascule. Le terrain reste dans le sien. `filtrerParCentre` ne mélange jamais
+  deux centres — le « sans interférer » de Raphaël.
+- **Rapports texte tri-cadence** (`organisation/rapport-centre.js`) : fenêtres
+  jour / semaine (lundi belge) / mois, `fin` exclusive. Table `centre_rapports`
+  (migration 0150, org_id DEFAULT jwt_org()), RPC `cmd_centre_rapport_ecrire` /
+  `cmd_centre_rapports` (0151). Carte texte + historique AJOUTÉE sous les KPI de
+  RapportCentres.jsx — les KPI ne sont pas touchés.
+- **Reste à câbler** : la BASCULE de centre pour secrétaire+ dans les écrans de
+  travail (dossiers/planning/stockage filtrés sur le centre choisi). La portée
+  domaine est prête ; c'est le câblage d'écran qui suit.
