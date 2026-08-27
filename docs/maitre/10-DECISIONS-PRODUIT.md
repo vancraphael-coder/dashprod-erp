@@ -202,3 +202,26 @@ c'est un axe unique et assumé.
   compta) ne sont jamais dans le catalogue partageable.
 - **Maison mère = absence de centre (`centre_id null`)**, pas une ligne. Les
   membres se transfèrent PAR LOT entre centres ou depuis/vers la maison mère.
+
+## Circuit terrain → coût réel (lot 40, 27/08/2026)
+
+- **Pointage INDIVIDUEL** (choix A de Raphaël) : `chrono_sessions.utilisateur_id`
+  (migration 0147). Chacun pointe pour soi ; le bureau corrige via
+  `cmd_valider_heures`. Les sessions collectives d'avant 0147 (utilisateur_id
+  null) restent lisibles, non ventilées.
+- **Main-d'œuvre RÉELLE = heures pointées × COÛT INTERNE**, par membre
+  (`pilotage/main-oeuvre-reelle.js`). Pas la paie : la paie agrège au niveau du
+  JOUR (deux déménagements d'un membre dans une journée y sont fondus), on ne
+  peut pas la répartir par mission. Le pointage, lui, est par mission.
+- **Les heures des membres sont un COÛT INTERNE, pas un coût client.** Le
+  Calcul définitif sépare déjà réel (coût) et facturé (client) : un dépassement
+  d'heures grossit le réel et réduit la marge, sans toucher le facturé. Le
+  module MESURE l'écart prévu/réel ; il ne juge PAS s'il est facturable ou
+  interne — décision du bureau (lot suivant : surcoût interne).
+- **Carte info « heures pointées »** dans dossier/devis/Calcul définitif, dès
+  que le terrain a pointé. Réservée à `voir_prix`.
+- **Corrections** : alerte permis UNIQUEMENT si le bon permis manque ; deux
+  missions du même jour d'une MÊME équipe ne sont pas un doublon (seules deux
+  équipes distinctes le sont).
+- **Anciens postes SUPPRIMÉS** (migration 0146) : seuls les 11 transmis
+  subsistent ; « direction » remonté en « gerant » avant suppression.
