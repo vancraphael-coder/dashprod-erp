@@ -151,7 +151,7 @@ export async function listerAffaires() {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase
       .from("affaires")
-      .select("id, etat, formule, created_at, date_souhaitee, clients(id, nom, tel), scenarios(retenu, resultats)")
+      .select("id, etat, formule, created_at, date_souhaitee, centre_id, clients(id, nom, tel), scenarios(retenu, resultats)")
       .is("archive_le", null)
       .order("created_at", { ascending: false });
     if (error) throw error;
@@ -163,6 +163,7 @@ export async function listerAffaires() {
       return enrichir({
         id: a.id, etat: a.etat, formule: a.formule, creeLe: a.created_at,
         date_souhaitee: a.date_souhaitee || null,
+        centre_id: a.centre_id || null,
         client: a.clients,
         tvac_centimes: r.tvac_centimes ?? null,
         marge_pct: r.marge_pct ?? null,
@@ -655,7 +656,7 @@ export async function listerMissions() {
       // archivage laissait des missions futures déjà annulées au planning.
       // Le "!inner" est indispensable — sans lui PostgREST fait une jointure
       // externe, garde la ligne et vide l'objet imbriqué : le fantôme reste.
-      .select("id, date, heure, heure_depart_prevue, heure_arrivee_prevue, type, etat, affaire_id, partagee_le, affaires!inner(archive_le, etat, clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
+      .select("id, date, heure, heure_depart_prevue, heure_arrivee_prevue, type, etat, affaire_id, centre_id, partagee_le, affaires!inner(archive_le, etat, clients(nom)), mission_affectations(utilisateur_id), mission_vehicules(vehicule_id)")
       .is("affaires.archive_le", null)
       .neq("etat", "annulee")
       .neq("affaires.etat", "annule")
@@ -663,6 +664,7 @@ export async function listerMissions() {
     if (error) throw error;
     return (data || []).map((m) => ({
       id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
+      centre_id: m.centre_id || null,
       heure_depart_prevue: m.heure_depart_prevue,
       heure_arrivee_prevue: m.heure_arrivee_prevue,
       // Le bureau voit TOUT, partagé ou non : il prépare puis publie.
@@ -1641,6 +1643,7 @@ export async function mesMissionsTerrain(utilisateurId) {
       const inventaire = await obtenirReleve(m.affaire_id).catch(() => []);
       return {
         id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
+      centre_id: m.centre_id || null,
         affaire_id: m.affaire_id,
         client: m.affaires?.clients?.nom,
         remarques: m.affaires?.notes_commerciales || "",
@@ -1672,6 +1675,7 @@ export async function mesMissionsTerrain(utilisateurId) {
       const inv = (d.releves && d.releves[m.affaire_id]) || [];
       return {
         id: m.id, date: m.date, heure: m.heure, type: m.type, etat: m.etat,
+      centre_id: m.centre_id || null,
         affaire_id: m.affaire_id,
         client: m.client || d.clients.find((c) => c.id === a?.clientId)?.nom,
         remarques: contact.notes || "",
