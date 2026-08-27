@@ -3777,6 +3777,27 @@ export async function affecterAuCentre(quoi, id, centreId) {
 }
 
 /** Le compte rendu hebdomadaire, un centre ou tous. */
+/**
+ * Écrit un rapport texte de centre sur une période (jour/semaine/mois).
+ * `centreId` null = maison mère. Conservé en historique.
+ */
+export async function centreRapportEcrire(centreId, cadence, debut, fin, texte) {
+  const { data, error } = await supabase.rpc("cmd_centre_rapport_ecrire", {
+    p_centre: centreId || null, p_cadence: cadence,
+    p_debut: debut, p_fin: fin, p_texte: texte });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.message || "Rapport refusé.");
+  return data;
+}
+
+/** L'historique des rapports texte d'un centre (null = maison mère). */
+export async function centreRapports(centreId) {
+  const { data, error } = await supabase.rpc("cmd_centre_rapports",
+    { p_centre: centreId || null });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 export async function rapportHebdo(centreId, semaine) {
   const { data, error } = await supabase.rpc("cmd_rapport_hebdo", {
     p_centre: centreId || null, p_semaine: semaine || null });
