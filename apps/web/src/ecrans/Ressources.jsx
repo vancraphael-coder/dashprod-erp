@@ -23,7 +23,7 @@ const PICTO_CAT = { camion: "🚛", lift: "🪜", voiture: "🚗" };
 const LIBELLE_MECA = { ok: "OK", surveiller: "À surveiller", urgent: "URGENT" };
 const COULEUR_MECA = { ok: "#059669", surveiller: "#D97706", urgent: "#DC2626" };
 
-export default function Ressources() {
+export default function Ressources({ profil }) {
   const [onglet, setOnglet] = useState("camions");
   return (
     <div style={S.page}>
@@ -42,7 +42,7 @@ export default function Ressources() {
       </div>
       {onglet === "camions" ? <OngletCamions />
         : onglet === "heures" ? <Heures />
-        : <Equipe integre />}
+        : <Equipe integre profil={profil} />}
     </div>
   );
 }

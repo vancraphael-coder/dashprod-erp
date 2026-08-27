@@ -20,6 +20,11 @@ import {
   capacitesTerrain, capacitesBureau, capacitesEffectives, origineCapacite,
   resumeAcces,
 } from "@domaine/rh/capacites.js";
+import {
+  POSTES, poste as posteDe, postePromu, posteRetrograde, peutConfierAcces,
+  peutOctroyerConfiance, PAGES_MODIFIABLES, accesVisiteTerrain,
+} from "@domaine/rh/postes.js";
+import { definirPoste, definirPagesVisite } from "../lib/adaptateur.js";
 import { DemandesConges } from "../composants/Conges.jsx";
 import { C, S, Confirmation } from "../lib/theme.jsx";
 
@@ -218,7 +223,7 @@ const LIBELLES_ROLE = {
 const METIERS = { chef_equipe: "Chef d'équipe", chauffeur: "Chauffeur", demenageur: "Déménageur" };
 const COULEUR_METIER = { chef_equipe: "#6366F1", chauffeur: "#2563EB", demenageur: "#64748B" };
 
-export default function Equipe({ retour, integre }) {
+export default function Equipe({ retour, integre, profil }) {
   const [membres, setMembres] = useState([]);
   const [email, setEmail] = useState("");
   const [nom, setNom] = useState("");
@@ -362,6 +367,14 @@ export default function Equipe({ retour, integre }) {
 
             {ouvertIci && (
               <div style={{ marginTop: 10, borderTop: `1px solid ${C.bord}`, paddingTop: 8 }}>
+                {/* Le POSTE (permissions lisibles) — promouvoir/rétrograder,
+                    et pages modifiables pour visite terrain. Gardé par le poste
+                    de l'acteur (confier_les_acces). */}
+                <AttributionPoste membre={m}
+                  posteActeur={profil?.poste}
+                  octroiActeur={(profil?.capacites || []).includes("confier_les_acces")}
+                  onRecharger={recharger} />
+
                 {/* Autorisations : ce que le logiciel permet à ce membre.
                     Distinct du métier terrain, qui décrit ce qu'il FAIT. */}
                 <Autorisations membre={m} />
@@ -465,6 +478,170 @@ export default function Equipe({ retour, integre }) {
  * Les autorisations sensibles (argent, données de toute l'équipe) sont
  * signalées : les accorder doit être un choix conscient, pas un clic distrait.
  */
+// L'ATTRIBUTION DE POSTE — le cœur des permissions lisibles. On choisit un
+// poste (au lieu de cocher 13 capacités), on promeut ou rétrograde d'un cran,
+// et pour « visite terrain » on choisit les pages modifiables. Gardé par
+// `confier_les_acces` : seul un poste qui en a le droit voit ces commandes.
+function AttributionPoste({ membre, posteActeur, octroiActeur, onRecharger }) {
+  const [enCours, setEnCours] = useState(false);
+  const [err, setErr] = useState(null);
+  const [pages, setPages] = useState(membre.pages_modifiables || []);
+  // L'état des capacités du membre : sert à savoir si « confier les accès » lui
+  // est DÉJÀ octroyé à titre individuel (la case ci-dessous).
+  const [capEtat, setCapEtat] = useState(null);
+
+  useEffect(() => {
+    capacitesMembre(membre.id).then(setCapEtat).catch(() => setCapEtat(null));
+  }, [membre.id]);
+
+  const peut = peutConfierAcces(posteActeur, octroiActeur);
+  const courant = posteDe(membre.poste) || null;
+  const promu = membre.poste ? postePromu(membre.poste) : null;
+  const retro = membre.poste ? posteRetrograde(membre.poste) : null;
+
+  // L'octroi de « confier les accès » : réservé au fondateur/gérant, et ne
+  // concerne QUE les postes prévus pour le recevoir (secrétaire, resp. dépôt).
+  const posteObj = posteDe(membre.poste);
+  const posteOctroyable = posteObj && posteObj.confie_les_acces === "si_octroye";
+  const peutOctroyer = peutOctroyerConfiance(posteActeur) && posteOctroyable;
+  const aConfiance = (capEtat?.capacitesIndividuelles || []).includes("confier_les_acces");
+
+  async function basculerConfiance() {
+    setErr(null);
+    try {
+      await definirCapacite(membre.id, "confier_les_acces", !aConfiance);
+      setCapEtat(await capacitesMembre(membre.id));
+    } catch (e) { setErr(e.message); }
+  }
+
+  async function poser(cle) {
+    setEnCours(true); setErr(null);
+    try { await definirPoste(membre.id, cle); onRecharger && onRecharger(); }
+    catch (e) { setErr(e.message); }
+    finally { setEnCours(false); }
+  }
+
+  async function basculerPage(cle) {
+    const suivant = pages.includes(cle)
+      ? pages.filter((p) => p !== cle) : [...pages, cle];
+    setPages(suivant);
+    try { await definirPagesVisite(membre.id, suivant); }
+    catch (e) { setErr(e.message); }
+  }
+
+  return (
+    <div style={{ marginBottom: 12, paddingBottom: 10,
+                  borderBottom: `1px solid ${C.bord}` }}>
+      <label style={S.label}>Poste</label>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>
+          {courant ? courant.titre : "Aucun poste"}
+        </span>
+        {courant && (
+          <span style={{ fontSize: 11.5, color: C.muet }}>{courant.resume}</span>
+        )}
+      </div>
+
+      {!peut ? (
+        <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 6 }}>
+          Vous ne pouvez pas modifier les accès de ce membre.
+        </div>
+      ) : (
+        <>
+          {/* Promouvoir / rétrograder d'un cran — pas 13 cases. */}
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <button disabled={!retro || enCours}
+              onClick={() => retro && poser(retro.cle)}
+              style={{ ...S.boutonLien, opacity: retro ? 1 : 0.4 }}>
+              ↓ Rétrograder{retro ? ` (${retro.titre})` : ""}
+            </button>
+            <button disabled={!promu || enCours}
+              onClick={() => promu && poser(promu.cle)}
+              style={{ ...S.boutonLien, opacity: promu ? 1 : 0.4 }}>
+              ↑ Promouvoir{promu ? ` (${promu.titre})` : ""}
+            </button>
+          </div>
+
+          {/* Choisir un poste directement (repli explicite). */}
+          <details style={{ marginTop: 8 }}>
+            <summary style={{ fontSize: 12, color: C.muet, cursor: "pointer" }}>
+              Choisir un autre poste
+            </summary>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+              {POSTES.map((p) => (
+                <button key={p.cle} disabled={enCours} onClick={() => poser(p.cle)}
+                  title={p.resume}
+                  style={{
+                    padding: "5px 10px", borderRadius: 999, fontSize: 12,
+                    cursor: "pointer",
+                    border: `1.5px solid ${membre.poste === p.cle ? C.bleu : C.bord}`,
+                    background: membre.poste === p.cle ? C.bleuClair : C.blanc,
+                    color: membre.poste === p.cle ? C.bleu : C.muet,
+                    fontWeight: membre.poste === p.cle ? 800 : 500,
+                  }}>{p.titre}</button>
+              ))}
+            </div>
+          </details>
+
+          {/* Visite terrain : la sélection des pages modifiables. */}
+          {membre.poste === "visite_terrain" && (
+            <div style={{ marginTop: 10 }}>
+              <label style={S.label}>Pages modifiables</label>
+              <div style={{ fontSize: 11.5, color: C.muet, marginBottom: 6 }}>
+                {accesVisiteTerrain(pages).lectureSeule
+                  ? "Lecture seule pour l'instant — cochez ce qu'il peut modifier."
+                  : "Il peut modifier les pages cochées ; tout le reste en lecture."}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {PAGES_MODIFIABLES.map((pg) => {
+                  const actif = pages.includes(pg.cle);
+                  return (
+                    <button key={pg.cle} onClick={() => basculerPage(pg.cle)}
+                      title={pg.detail}
+                      style={{
+                        padding: "5px 10px", borderRadius: 8, fontSize: 12,
+                        cursor: "pointer",
+                        border: `1.5px solid ${actif ? C.vert : C.bord}`,
+                        background: actif ? C.teinteVert || "#E8F5E9" : C.blanc,
+                        color: actif ? C.vert : C.muet,
+                        fontWeight: actif ? 700 : 500,
+                      }}>{actif ? "✓ " : ""}{pg.titre}</button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Octroyer « confier les accès » — réservé au fondateur/gérant, et
+              seulement pour un poste prévu pour le recevoir (secrétaire, resp.
+              dépôt). C'est le geste par lequel la direction délègue la
+              distribution des accès. */}
+          {peutOctroyer && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8,
+                            marginTop: 12, cursor: "pointer" }}>
+              <input type="checkbox" checked={aConfiance}
+                     onChange={basculerConfiance}
+                     style={{ marginTop: 2 }} />
+              <span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.encre }}>
+                  Peut confier les accès
+                </span>
+                <span style={{ display: "block", fontSize: 11.5, color: C.muet }}>
+                  Autorise ce membre à attribuer un poste, promouvoir ou
+                  rétrograder les autres. À n'accorder qu'à une personne de
+                  confiance.
+                </span>
+              </span>
+            </label>
+          )}
+
+          {err && <div style={{ fontSize: 12, color: C.rouge, marginTop: 6 }}>{err}</div>}
+        </>
+      )}
+    </div>
+  );
+}
+
 function Autorisations({ membre }) {
   const [etat, setEtat] = useState(null);
   const [erreur, setErreur] = useState(null);
