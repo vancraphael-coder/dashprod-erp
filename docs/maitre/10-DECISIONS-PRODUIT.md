@@ -294,3 +294,27 @@ avant de reprendre le reste. Reste à câbler (le domaine est prêt depuis lot 3
 - sélection des pages modifiables pour « visite terrain » ;
 - garde « confier les accès » (seul un poste qui peutConfierAcces voit l'écran) ;
 - octroi de la confiance à une secrétaire par fondateur/gérant.
+
+## Permissions TERMINÉES (lot 45, 27/08/2026)
+
+L'écran des postes/permissions est complet (le domaine l'était depuis lot 38) :
+
+- **Attribution de poste par membre** dans Equipe.jsx (composant
+  `AttributionPoste`, en tête des autorisations) : poste actuel, **promouvoir /
+  rétrograder** d'un cran, ou choix direct d'un poste. Commande
+  `cmd_definir_poste` (migration 0153) : REMPLACE le poste (ne cumule pas),
+  gardée par `confier_les_acces`.
+- **Visite terrain** : sélection des **pages modifiables** (colonne
+  `utilisateurs.pages_modifiables`, `cmd_definir_pages_visite`, migration 0154).
+  Seules les pages partageables sont conservées (jamais paie/paramètres).
+- **Octroi « confier les accès »** : une CASE À COCHER (décision de Raphaël),
+  visible UNIQUEMENT pour le fondateur/gérant (`peutOctroyerConfiance`) et
+  seulement sur un poste octroyable (secrétaire, responsable dépôt). Passe par
+  `definirCapacite('confier_les_acces')` — déjà gardé côté base par
+  `gerer_referentiels` (que seuls fondateur/gérant ont). Double protection.
+- La garde de l'écran : si l'acteur ne `peutConfierAcces`, il voit « Vous ne
+  pouvez pas modifier les accès de ce membre ».
+- `listerMembres` expose `poste` et `pages_modifiables`.
+
+Éprouvé par sabotage (poste terrain rendu octroyable → rouge ; secrétaire qui
+pourrait octroyer → rouge).
