@@ -47,7 +47,7 @@ const euros = (c) => (Number(c || 0) / 100).toFixed(2).replace(".", ",") + " €
 
 export default function Parametres({
   retour, versBareme, versCout, versTextes, versArchivage, modules = [],
-  peutGererCentres = false,
+  peutGererCentres = false, profil = null,
 }) {
   // `modules` : les modules RÉELLEMENT souscrits. La règle « une porte que
   // l'abonnement n'ouvre pas ne s'affiche pas » était appliquée dans la barre
@@ -80,7 +80,7 @@ export default function Parametres({
     return <Services retour={() => setOuvert(null)} />;
   }
   if (ouvert === "stockage") {
-    return <Stockage retour={() => setOuvert(null)} />;
+    return <Stockage retour={() => setOuvert(null)} profil={profil} />;
   }
   if (ouvert === "depots") {
     return <Centres retour={() => setOuvert(null)} peutGererCentres={peutGererCentres} />;

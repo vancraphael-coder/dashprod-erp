@@ -16,6 +16,8 @@ import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour, filtrerMissions }
   from "@domaine/operations/agenda.js";
 import { libelleTypeMission } from "@domaine/operations/missions.js";
+import { filtrerParCentre, porteeCentres } from "@domaine/organisation/centres.js";
+import SelecteurCentre from "../composants/SelecteurCentre.jsx";
 import { disponibiliteRessource, verdictMission, lecteurDisponibilite }
   from "@domaine/operations/missions.js";
 import { qualifierJour } from "@domaine/planning/jours-feries.js";
@@ -56,7 +58,8 @@ const bandeauStyle = (fond, bord, couleur) => ({
  *      non publiée reste au bureau — c'est la règle posée en 0044, et la
  *      contourner ici viderait le partage de son sens.
  */
-export default function Planning({ ouvrirDossier, lectureSeule = false, jourInitial }) {
+export default function Planning({ ouvrirDossier, lectureSeule = false, jourInitial,
+  profil, centres = [], centreChoisi, onChoisirCentre }) {
   const [missions, setMissions] = useState([]);
   const [membres, setMembres] = useState([]);       // actifs (sélection)
   const [tousMembres, setTousMembres] = useState([]); // + archivés (affichage)
@@ -102,12 +105,23 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
   }
   useEffect(() => { recharger(); }, []);
 
-  const grille = useMemo(() => grilleMois(annee, mois, missions), [annee, mois, missions]);
+  // Bascule de centre (secrétaire+). On filtre les missions AVANT la grille, les
+  // pastilles et la charge : « sans interférer », un centre à la fois.
+  const portee = useMemo(
+    () => porteeCentres({ poste: profil?.poste, centre_id: profil?.centre_id }, centres),
+    [profil, centres]);
+  const centreEffectif = centreChoisi === undefined ? portee.centreParDefaut : centreChoisi;
+  const missionsCentre = useMemo(
+    () => (portee.peutBasculer || profil?.centre_id != null
+            ? filtrerParCentre(missions, centreEffectif) : missions),
+    [missions, centreEffectif, portee, profil]);
+
+  const grille = useMemo(() => grilleMois(annee, mois, missionsCentre), [annee, mois, missionsCentre]);
   // Les filtres agissent APRÈS le calcul de disponibilité mais AVANT l'affichage.
   // Placés ici, ils ne faussent pas les conflits — un doublon reste un doublon
   // même si l'on masque son type — ils ne font que taire ce qu'on ne veut pas
   // voir aujourd'hui.
-  const duJourComplet = useMemo(() => missionsDuJour(missions, jourSel), [missions, jourSel]);
+  const duJourComplet = useMemo(() => missionsDuJour(missionsCentre, jourSel), [missionsCentre, jourSel]);
   const duJour = useMemo(
     () => filtrerMissions(duJourComplet, { typesMasques, membresMasques }),
     [duJourComplet, typesMasques, membresMasques]);
@@ -233,6 +247,13 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
         </div>
         <button onClick={moisSuivant} style={btnFleche}>→</button>
       </div>
+
+      {/* Bascule de centre — secrétaire+ seulement, jamais en lecture seule
+          (le terrain n'a pas de bascule). Le domaine (porteeCentres) décide. */}
+      {!lectureSeule && (
+        <SelecteurCentre profil={profil} centres={centres}
+          choisi={centreChoisi} onChoisir={onChoisirCentre} />
+      )}
 
       {/* Grille du mois */}
       <div style={{ ...S.carte, padding: 12 }}>

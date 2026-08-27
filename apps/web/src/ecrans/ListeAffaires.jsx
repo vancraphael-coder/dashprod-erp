@@ -11,7 +11,9 @@ import { caSigne } from "@domaine/pilotage/finances.js";
 import { zoneMarge } from "@domaine/chiffrage/moteur.js";
 import { regrouperParHorizon, compteurUrgent } from "@domaine/crm/horizons.js";
 import { VUES, filtrerParVue, compteursVues, urgencesVues } from "@domaine/crm/vues-dossiers.js";
+import { filtrerParCentre, porteeCentres } from "@domaine/organisation/centres.js";
 import MenuCreation from "../composants/MenuCreation.jsx";
+import SelecteurCentre from "../composants/SelecteurCentre.jsx";
 import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 
 // Le cycle ENTIER est filtrable : sans « facturé / payé / clos », la fin de
@@ -27,7 +29,8 @@ import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 // avec son compteur. On retrouve d'un coup d'œil où est la charge. Les vues
 // vivent dans le domaine (crm/vues-dossiers), testées.
 
-export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarnet }) {
+export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarnet,
+  profil, centres = [], centreChoisi, onChoisirCentre }) {
   const [affaires, setAffaires] = useState([]);
   const [menuOuvert, setMenuOuvert] = useState(false);
   const [recherche, setRecherche] = useState("");
@@ -45,13 +48,27 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarn
     });
   }, []);
 
-  const compteurs = useMemo(() => compteursVues(affaires), [affaires]);
-  const urgences = useMemo(() => urgencesVues(affaires), [affaires]);
+  // Le centre effectif : ce que l'acteur a choisi, sinon son centre par défaut
+  // (le domaine tranche). On filtre TOUTE la liste dessus AVANT les vues, pour
+  // que compteurs et urgences ne comptent que le centre courant — « sans
+  // interférer ».
+  const portee = useMemo(
+    () => porteeCentres({ poste: profil?.poste, centre_id: profil?.centre_id }, centres),
+    [profil, centres]);
+  const centreEffectif = centreChoisi === undefined ? portee.centreParDefaut : centreChoisi;
+  const affairesCentre = useMemo(
+    () => (portee.tousCentres || portee.peutBasculer || profil?.centre_id != null
+            ? filtrerParCentre(affaires, centreEffectif)
+            : affaires),
+    [affaires, centreEffectif, portee, profil]);
 
-  const visibles = useMemo(() => filtrerParVue(affaires, vue)
+  const compteurs = useMemo(() => compteursVues(affairesCentre), [affairesCentre]);
+  const urgences = useMemo(() => urgencesVues(affairesCentre), [affairesCentre]);
+
+  const visibles = useMemo(() => filtrerParVue(affairesCentre, vue)
     .filter((a) => !recherche ||
       (a.client?.nom || "").toLowerCase().includes(recherche.toLowerCase())),
-  [affaires, recherche, vue]);
+  [affairesCentre, recherche, vue]);
 
   // Regroupement par horizon : en retard / aujourd'hui / demain / cette semaine
   // / semaines nommées / mois. Une liste plate ne dit pas ce qui presse.
@@ -132,6 +149,11 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarn
           })}
         </div>
       </div>
+
+      {/* La bascule de centre — n'apparaît que pour secrétaire+ (le domaine en
+          décide). Le responsable dépôt et le terrain n'en voient pas. */}
+      <SelecteurCentre profil={profil} centres={centres}
+        choisi={centreChoisi} onChoisir={onChoisirCentre} />
 
       {groupes.length === 0 && (
         <div style={{ ...S.carte, textAlign: "center", color: C.muet, fontSize: 13,

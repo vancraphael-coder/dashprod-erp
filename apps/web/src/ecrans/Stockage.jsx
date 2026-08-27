@@ -23,13 +23,14 @@ import {
   montantPeriodeBox,
 } from "@domaine/stocks/stockage.js";
 import { repereDe, repereVersChamps } from "@domaine/stocks/repere.js";
+import { porteeCentres } from "@domaine/organisation/centres.js";
 import { BadgeRepere, SaisieRepere, MiniPlan } from "../composants/Repere.jsx";
 import { C, S, euros } from "../lib/theme.jsx";
 
 const PAGES = [["zones", "Zones"], ["boxes", "Boxes"]];
 const SOUS_ZONES = [["sol", "Au sol"], ["sol_etages", "Au sol + étages"]];
 
-export default function Stockage({ retour }) {
+export default function Stockage({ retour, profil }) {
   const [page, setPage] = useState("zones");
   const [centres, setCentres] = useState([]);
   const [depotId, setDepotId] = useState(null);
@@ -40,8 +41,16 @@ export default function Stockage({ retour }) {
 
   useEffect(() => {
     depots().then((d) => {
-      setCentres(d);
-      if (d.length && !depotId) setDepotId(d[0].id);
+      // Portée par centre : un responsable dépôt ne voit QUE son centre dans le
+      // sélecteur. Secrétaire+ voit tous les dépôts. Le domaine décide.
+      const portee = porteeCentres(
+        { poste: profil?.poste, centre_id: profil?.centre_id }, d);
+      const visibles = portee.tousCentres
+        ? d
+        : d.filter((c) => portee.centresVisibles.some(
+            (v) => (v ?? null) === (c.id ?? null)));
+      setCentres(visibles);
+      if (visibles.length && !depotId) setDepotId(visibles[0].id);
     }).catch(() => setCentres([]));
     // Un échec n'est pas bloquant : le domaine retombe sur allée/rangée/étage.
     axesStockage().then(setAxesOrg).catch(() => setAxesOrg(null));
