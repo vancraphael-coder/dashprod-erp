@@ -19,7 +19,7 @@ import { C, S } from "../lib/theme.jsx";
 const ONGLETS = [["centres", "Centres"], ["membres", "Membres"],
                  ["vehicules", "Véhicules"]];
 
-export default function Centres({ retour }) {
+export default function Centres({ retour, peutGererCentres = false }) {
   const [onglet, setOnglet] = useState("centres");
   const [liste, setListe] = useState(null);
   const [rep, setRep] = useState(null);
@@ -69,7 +69,13 @@ export default function Centres({ retour }) {
     } catch (e) { setErr(e.message); }
   }
 
-  const maisonMere = rep != null;   // la vue de répartition n'existe qu'au siège
+  // La vue de RÉPARTITION (qui est où) n'existe qu'au siège, et seulement
+  // quand la base l'autorise. Mais AJOUTER un centre ne doit PAS en dépendre :
+  // sinon on ne peut jamais créer le PREMIER (cercle vicieux — la répartition
+  // n'apparaît qu'une fois qu'on est déjà multi-centres). Le droit d'ajouter
+  // vient de la capacité de gérer les référentiels, transmise par l'app.
+  const maisonMere = rep != null;   // vue de répartition
+  const peutGerer = peutGererCentres;  // droit d'ajouter / modifier un centre
 
   return (
     <div style={S.page}>
@@ -147,7 +153,7 @@ export default function Centres({ retour }) {
                 <Compteur label="Véhicules" valeur={d.vehicules} />
                 <Compteur label="Dossiers ouverts" valeur={d.dossiers_ouverts} />
               </div>
-              {maisonMere && (
+              {peutGerer && (
                 <div style={{ display: "flex", gap: 14, marginTop: 8,
                               alignItems: "center", flexWrap: "wrap" }}>
                   <button style={{ ...S.boutonLien, paddingLeft: 0 }}
@@ -164,7 +170,7 @@ export default function Centres({ retour }) {
             </div>
           ))}
 
-          {maisonMere && (form ? (
+          {peutGerer && (form ? (
             <div style={S.carte}>
               <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 6 }}>
                 {form.id ? "Modifier le centre" : "Nouveau centre"}
