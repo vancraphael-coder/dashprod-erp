@@ -363,14 +363,23 @@ export async function monProfil() {
 export async function listerMembres() {
   const { data, error } = await supabase
     .from("utilisateurs")
-    .select("id, nom, email, actif, permis_detenus, code95_echeance, utilisateur_roles(roles(cle, libelle))")
+    .select("id, nom, email, actif, permis_detenus, code95_echeance, pages_modifiables, centre_id, utilisateur_roles(roles(cle, libelle))")
     .eq("actif", true);
   if (error) throw error;
-  return (data || []).map((u) => ({
-    id: u.id, nom: u.nom, email: u.email, actif: u.actif,
-    permis_detenus: u.permis_detenus || [], code95_echeance: u.code95_echeance || null,
-    roles: (u.utilisateur_roles || []).map((r) => r.roles?.cle).filter(Boolean),
-  }));
+  const POSTES_CONNUS = ["fondateur", "gerant", "secretaire", "responsable_depot",
+    "chef_equipe", "livreur", "monteur", "chauffeur", "liftier", "demenageur",
+    "interimaire", "visite_terrain"];
+  return (data || []).map((u) => {
+    const roles = (u.utilisateur_roles || []).map((r) => r.roles?.cle).filter(Boolean);
+    return {
+      id: u.id, nom: u.nom, email: u.email, actif: u.actif,
+      permis_detenus: u.permis_detenus || [], code95_echeance: u.code95_echeance || null,
+      pages_modifiables: u.pages_modifiables || [],
+      centre_id: u.centre_id || null,
+      roles,
+      poste: roles.find((r) => POSTES_CONNUS.includes(r)) || null,
+    };
+  });
 }
 
 /** Bureau : enregistre les permis détenus et l'échéance code 95 d'un membre. */
@@ -394,6 +403,27 @@ export async function definirPermis(utilisateurId, permis, code95) {
  * Invite un membre (email + rôle) — le master décide qui rejoint quel secteur.
  * Deux commandes gardées enchaînées : provisionner puis affecter (cmd_*, 0004).
  */
+/**
+ * Définit LE poste d'un membre (remplace, ne cumule pas). Gardé côté base par
+ * `confier_les_acces`. Sert à promouvoir / rétrograder / basculer en visite
+ * terrain.
+ */
+export async function definirPoste(membreId, poste) {
+  const { data, error } = await supabase.rpc("cmd_definir_poste", {
+    p_utilisateur: membreId, p_poste: poste });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.message || "Refus\u00e9.");
+  return data;
+}
+
+/** Définit les pages modifiables d'un accès « visite terrain ». */
+export async function definirPagesVisite(membreId, pages) {
+  const { data, error } = await supabase.rpc("cmd_definir_pages_visite", {
+    p_utilisateur: membreId, p_pages: pages || [] });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function inviterMembre({ email, nom, roleCle }) {
   const { data: id, error } = await supabase.rpc("cmd_inviter_utilisateur", {
     p_email: email, p_nom: nom,
