@@ -225,3 +225,25 @@ c'est un axe unique et assumé.
   équipes distinctes le sont).
 - **Anciens postes SUPPRIMÉS** (migration 0146) : seuls les 11 transmis
   subsistent ; « direction » remonté en « gerant » avant suppression.
+
+## Responsable dépôt + accès création de centre (lot 41, 27/08/2026)
+
+- **Poste « responsable dépôt »** (migration 0149) : attributions de secrétaire
+  + `gerer_depot` (boxes, zones, contrats). Ne touche ni paie, ni facturation,
+  ni réglages. Douzième poste.
+- **Capacité `gerer_depot`** ajoutée au domaine (`capacites.js`) — elle existait
+  en base mais manquait côté code.
+- **Bouton d'ajout de centre RÉPARÉ.** Il dépendait de `repartitionCentres()`,
+  qui n'aboutit qu'une fois multi-centres : on ne pouvait donc jamais créer le
+  PREMIER centre. Le droit d'ajouter/modifier dépend désormais de la capacité
+  (`gerer_referentiels`), pas de l'existence d'une répartition.
+
+## À FAIRE — lot centres (cadré le 27/08/2026)
+
+- **Responsable dépôt ne voit QUE son centre.** Scoping sur `centre_id` de
+  l'acteur, sur tous les écrans qu'il ouvre.
+- **Secrétaire+ accède à TOUS les centres et leurs écrans**, sans interférer
+  avec la maison mère ni les autres centres (bascule de centre).
+- **Rapports jour / semaine / mois** en CARTE TEXTE + HISTORIQUE, SANS casser
+  les KPI de la carte déjà présente (`RapportCentres.jsx` / `cmd_rapport_hebdo`,
+  à généraliser par période).
