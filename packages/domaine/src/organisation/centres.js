@@ -82,3 +82,97 @@ export function membresDuCentre(membres, centreId) {
   const cible = centreOuMaisonMere(centreId);
   return (membres || []).filter((m) => centreOuMaisonMere(m.centre_id) === cible);
 }
+
+// =============================================================================
+// LA PORTÉE PAR CENTRE — qui voit quoi (lot centres, 27/08/2026)
+//
+// Deux règles, arrêtées par Raphaël :
+//   · le RESPONSABLE DÉPÔT ne voit QUE son centre ;
+//   · SECRÉTAIRE ET AU-DESSUS voient TOUS les centres et leurs écrans, sans
+//     interférer avec la maison mère ni les autres centres — ils basculent
+//     d'un centre à l'autre.
+//
+// « Sans interférer » : voir un autre centre est une CONSULTATION cadrée, pas
+// une fusion. Chaque écran reste filtré sur le centre choisi ; on ne mélange
+// jamais les dossiers de deux centres dans une même liste.
+//
+// Ce module ne lit aucune base : il DÉCIDE, à partir du poste et du centre de
+// l'acteur, la liste des centres visibles et si la bascule est permise. Le
+// filtrage effectif (requêtes, RLS) s'appuie dessus.
+// =============================================================================
+
+/** Les postes qui voient TOUS les centres. Secrétaire et au-dessus. */
+const POSTES_TOUS_CENTRES = new Set([
+  "fondateur", "gerant", "secretaire", "responsable_depot",
+]);
+// NB : le responsable dépôt est dans la liste des postes « bureau », mais sa
+// portée est RESTREINTE à son centre — voir `porteeCentres`. Sa présence ici ne
+// vaut que pour dire « c'est un poste bureau », pas « voit tout ».
+
+/**
+ * La portée de centres d'un acteur.
+ *
+ * @param {object} acteur { poste, centre_id }
+ * @param {object[]} centres tous les centres de l'org [{ id, nom }]
+ * @returns {{
+ *   tousCentres: boolean,        // voit-il l'ensemble ?
+ *   centresVisibles: (string|null)[],  // ids visibles ; null = maison mère
+ *   centreParDefaut: string|null,      // sur quel centre il atterrit
+ *   peutBasculer: boolean        // peut-il changer de centre ?
+ * }}
+ */
+export function porteeCentres(acteur = {}, centres = []) {
+  const poste = acteur.poste || null;
+  const sien = centreOuMaisonMere(acteur.centre_id);
+
+  // Le responsable dépôt : SON centre, rien d'autre. Même s'il est « bureau ».
+  if (poste === "responsable_depot") {
+    return {
+      tousCentres: false,
+      centresVisibles: [sien],
+      centreParDefaut: sien,
+      peutBasculer: false,
+    };
+  }
+
+  // Secrétaire, gérant, fondateur : tous les centres + la maison mère.
+  if (POSTES_TOUS_CENTRES.has(poste)) {
+    const tous = [MAISON_MERE, ...(centres || []).map((c) => c.id)];
+    return {
+      tousCentres: true,
+      centresVisibles: tous,
+      // On atterrit sur SON centre s'il en a un, sinon la maison mère.
+      centreParDefaut: sien,
+      peutBasculer: true,
+    };
+  }
+
+  // Le terrain et les accès sur mesure : leur centre de rattachement, sans
+  // bascule. Ils ne « visitent » pas les centres — ils travaillent dans le leur.
+  return {
+    tousCentres: false,
+    centresVisibles: [sien],
+    centreParDefaut: sien,
+    peutBasculer: false,
+  };
+}
+
+/**
+ * Un acteur peut-il OUVRIR les écrans du centre `cible` ?
+ * La règle « sans interférer » se réduit à : la cible est-elle dans sa portée ?
+ */
+export function peutVoirCentre(acteur, centres, cible) {
+  const p = porteeCentres(acteur, centres);
+  const c = centreOuMaisonMere(cible);
+  return p.centresVisibles.some((v) => centreOuMaisonMere(v) === c);
+}
+
+/**
+ * Filtre une liste d'objets porteurs de `centre_id` sur le centre choisi.
+ * Garantit le « sans interférer » : jamais deux centres dans la même liste.
+ * La maison mère (centre_id null) est un centre comme un autre ici.
+ */
+export function filtrerParCentre(objets, centreChoisi) {
+  const c = centreOuMaisonMere(centreChoisi);
+  return (objets || []).filter((o) => centreOuMaisonMere(o.centre_id) === c);
+}
