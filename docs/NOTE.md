@@ -1,52 +1,59 @@
-# Lot 47 — garde anti-verrouillage des postes
+# Lot 48 — le surcoût interne, branché de bout en bout
 
-**28/08/2026.** **1175 tests verts**, build vert. **Migration 0155** appliquée
-et vérifiée.
+**28/08/2026.** **1184 tests verts**, build vert. **Migrations 0156, 0157**
+appliquées et vérifiées.
 
-Fait suite à l'incident : ton compte gérant s'était retrouvé secrétaire (via le
-nouvel écran d'attribution) et tu avais perdu Ressources/Paramètres/Avis. Déjà
-rétabli en base. Ce lot pose la garde pour que ça ne puisse plus arriver.
+C'est le circuit que tu voulais : marquer le temps qui déborde pour NOS aléas
+(panne au retour, retard, nettoyage) comme un coût interne — qui ronge la marge
+mais que **le client ne paie jamais**.
 
-## Ce qui protège maintenant
+## Le terrain déclare et fige
 
-Deux verrous, **en base ET à l'écran** :
+Sur le rapport de chantier, le chef d'équipe a un bouton **« Signaler un surcoût
+interne »**. Il choisit le motif (panne au retour, retard, nettoyage, matériel
+oublié, autre), saisit un **temps en heures** — **jamais de prix**, le terrain
+ne voit pas les euros — et **déclare + fige** d'un geste. Une fois figé, c'est
+au bureau.
 
-1. **On ne modifie pas son propre poste.** Sur ton propre compte, l'écran
-   affiche « C'est votre compte : vous ne pouvez pas modifier votre propre
-   poste. Un autre gérant ou fondateur peut le faire. » — et la commande refuse.
-   C'est ce qui t'aurait évité l'incident.
+## Le bureau voit et corrige
 
-2. **On ne retire pas le dernier fondateur/gérant.** Impossible de rétrograder
-   le dernier dirigeant : sinon plus personne n'a accès aux réglages et
-   l'organisation se verrouille dehors. Le bouton se grise, et la commande
-   refuse avec « ce serait le dernier fondateur ou gérant ».
+Dans le **Calcul définitif** (là où sont les heures pointées), une carte
+**« Surcoût interne »** apparaît : le temps à notre charge, valorisé au coût
+interne moyen de l'équipe. Ce montant **s'ajoute au coût RÉEL** — et **jamais au
+facturé**. Le bureau (gerer_planning) peut **corriger** les heures ou
+**supprimer** une déclaration.
 
-La règle vit surtout **dans la commande base** (`cmd_definir_poste`, migration
-0155) — c'est le seul endroit qui protège quelle que soit l'interface. L'écran
-la reflète pour éviter même le clic.
+## Le principe, verrouillé par test
+
+`effetSurCalcul` renvoie `{ ajouteAuReel, ajouteAuFacture: 0 }`. Un test
+reproduit exactement l'usage du Calcul définitif : le réel absorbe le surcoût,
+le facturé ne bouge pas d'un centime. Le sabotage qui enverrait le surcoût sur
+la facture passe **rouge**.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| on peut modifier son propre poste | 1 |
-| le dernier dirigeant peut être retiré | 1 |
+| le surcoût interne touche le facturé | 2 |
+| le terrain modifie même figé | 1 |
+| un motif inconnu compte quand même | 1 |
+| effetSurCalcul renvoie au facturé (intégration) | 2 |
 
-## Sur l'incident lui-même
+## Un piège attrapé au passage
 
-Ce n'était **pas** une perte de code — rien de Dashprod n'avait été supprimé.
-Ton compte avait juste été affecté au poste « secrétaire » (probablement en
-testant le nouvel écran sur toi-même), et la secrétaire n'a pas accès aux
-réglages. Remis en « gérant » en base, tout est revenu.
+Un `EOF` de heredoc s'était glissé dans le fichier de test — c'est le test qui
+**exécute vraiment** le fichier qui l'a fait tomber (`ReferenceError: EOF`).
+Nettoyé. C'est exactement pourquoi on éprouve chaque fichier.
 
 ## À vérifier à l'œil
 
-1. Sur TON compte dans l'équipe : le bloc Poste affiche le message « c'est votre
-   compte », pas de boutons.
-2. Sur un autre membre : Promouvoir/Rétrograder fonctionnent, mais on ne peut
-   pas descendre le dernier dirigeant.
+1. **Terrain** (rapport de chantier) : le bouton « Signaler un surcoût interne »,
+   saisie en heures, sans prix, « Déclarer et figer ».
+2. **Bureau** (Calcul définitif d'un dossier avec un surcoût) : la carte
+   « Surcoût interne », le coût ajouté au Réel, le Facturé inchangé, le bouton
+   « Corriger ».
 
 ## Suite
 
-Retour au **circuit** : le domaine du surcoût interne est prêt (lot précédent),
-il reste à le brancher (table, RPC, terrain, bureau), puis les photos.
+Reste au circuit : les **photos** sur les constats (dernier élément du rapport
+de chantier).
