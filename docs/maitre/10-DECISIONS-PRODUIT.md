@@ -318,3 +318,15 @@ L'écran des postes/permissions est complet (le domaine l'était depuis lot 38) 
 
 Éprouvé par sabotage (poste terrain rendu octroyable → rouge ; secrétaire qui
 pourrait octroyer → rouge).
+
+## Garde anti-verrouillage des postes (lot 47, 28/08/2026)
+
+INCIDENT : un compte gérant s'est retrouvé secrétaire (via le nouvel écran
+d'attribution) et a perdu Ressources/Paramètres. Rétabli en base. Deux verrous
+ajoutés, en base ET à l'écran :
+- **On ne modifie pas son PROPRE poste** — qu'un autre dirigeant le fasse.
+- **On ne retire pas le DERNIER fondateur/gérant** d'une organisation (sinon
+  personne ne peut plus accéder aux réglages : verrouillage total).
+Domaine : `peutAttribuerPoste` (postes.js), éprouvé par sabotage. Base :
+`cmd_definir_poste` (migration 0155) applique les mêmes règles — le seul endroit
+qui protège vraiment.
