@@ -344,3 +344,57 @@ export function capacitesFantomes() {
   }
   return fautes;
 }
+
+// -----------------------------------------------------------------------------
+// GARDES D'ATTRIBUTION — éviter l'auto-verrouillage (incident du 28/08/2026)
+// -----------------------------------------------------------------------------
+
+/** Les postes de DIRECTION : ceux qui administrent (réglages, argent, accès).
+ *  Ce sont eux qu'une organisation ne peut pas se permettre de perdre. */
+export const POSTES_DIRECTION = Object.freeze(["fondateur", "gerant"]);
+
+/** Ce poste administre-t-il l'organisation ? */
+export function estDirection(cle) {
+  return POSTES_DIRECTION.includes(cle);
+}
+
+/**
+ * Peut-on attribuer `posteCible` au membre `membreId` ?
+ *
+ * Deux verrous, nés d'un incident réel où un gérant s'est rétrogradé lui-même
+ * et a perdu l'accès aux réglages :
+ *   1. on ne modifie pas SON PROPRE poste (qu'un autre dirigeant le fasse) ;
+ *   2. on ne retire pas le DERNIER fondateur/gérant de l'organisation.
+ *
+ * Pur : l'écran l'utilise pour désactiver les commandes ; la base l'applique
+ * pour de vrai (cmd_definir_poste).
+ *
+ * @param {object} p
+ * @param {string} p.acteurId   qui fait l'action
+ * @param {string} p.membreId   sur qui
+ * @param {string} p.posteCible  le poste visé
+ * @param {object[]} p.membres  [{ id, poste }] de l'organisation
+ * @returns {{ ok: boolean, raison: string|null, message: string|null }}
+ */
+export function peutAttribuerPoste({ acteurId, membreId, posteCible, membres = [] } = {}) {
+  if (acteurId && membreId && acteurId === membreId) {
+    return { ok: false, raison: "soi_meme",
+      message: "Vous ne pouvez pas modifier votre propre poste. "
+             + "Demandez à un autre gérant ou fondateur." };
+  }
+  // La cible quitte-t-elle la direction ?
+  if (!estDirection(posteCible)) {
+    const cibleEstDirigeante = (membres || [])
+      .some((m) => m.id === membreId && estDirection(m.poste));
+    if (cibleEstDirigeante) {
+      const autresDirigeants = (membres || [])
+        .filter((m) => m.id !== membreId && estDirection(m.poste)).length;
+      if (autresDirigeants === 0) {
+        return { ok: false, raison: "dernier_dirigeant",
+          message: "Impossible : ce serait le dernier fondateur ou gérant. "
+                 + "Nommez d'abord un autre dirigeant." };
+      }
+    }
+  }
+  return { ok: true, raison: null, message: null };
+}
