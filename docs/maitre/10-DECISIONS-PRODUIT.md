@@ -330,3 +330,17 @@ ajoutés, en base ET à l'écran :
 Domaine : `peutAttribuerPoste` (postes.js), éprouvé par sabotage. Base :
 `cmd_definir_poste` (migration 0155) applique les mêmes règles — le seul endroit
 qui protège vraiment.
+
+## Surcoût interne — circuit branché (lot 48, 28/08/2026)
+
+Le domaine (pilotage/surcout-interne.js) est branché de bout en bout :
+- **Terrain** (RapportChantier.jsx) : le chef d'équipe signale un surcoût
+  (panne retour, retard, nettoyage, matériel oublié, autre), en HEURES, sans
+  prix, et le FIGE d'emblée. RPC cmd_surcout_declarer.
+- **Bureau** (Devis.jsx, Calcul définitif) : une carte « Surcoût interne » sous
+  « Heures pointées ». Le coût (heures × taux interne moyen) s'ajoute au coût
+  RÉEL, JAMAIS au facturé (effetSurCalcul, gardé par sabotage). Le bureau
+  corrige/supprime (cmd_surcout_corriger, gerer_planning).
+- **Base** : table surcouts_internes (0156, org_id DEFAULT jwt_org()), 3 RPC
+  (0157).
+- Piège heredoc EOF attrapé par le test qui exécute vraiment le fichier.
