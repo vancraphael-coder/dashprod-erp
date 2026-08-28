@@ -1,73 +1,52 @@
-# Lot 45 — les postes/permissions, terminés
+# Lot 47 — garde anti-verrouillage des postes
 
-**27/08/2026.** **1170 tests verts**, build vert. **Migrations 0153, 0154**
-appliquées et vérifiées.
+**28/08/2026.** **1175 tests verts**, build vert. **Migration 0155** appliquée
+et vérifiée.
 
-Comme tu l'avais demandé, les permissions sont **finies avant de reprendre le
-reste**. Le domaine était prêt depuis le lot 38 ; ce lot pose tout l'écran.
+Fait suite à l'incident : ton compte gérant s'était retrouvé secrétaire (via le
+nouvel écran d'attribution) et tu avais perdu Ressources/Paramètres/Avis. Déjà
+rétabli en base. Ce lot pose la garde pour que ça ne puisse plus arriver.
 
----
+## Ce qui protège maintenant
 
-## L'écran d'attribution de poste
+Deux verrous, **en base ET à l'écran** :
 
-Dans l'équipe, en dépliant un membre, un bloc **Poste** apparaît en tête de ses
-autorisations :
+1. **On ne modifie pas son propre poste.** Sur ton propre compte, l'écran
+   affiche « C'est votre compte : vous ne pouvez pas modifier votre propre
+   poste. Un autre gérant ou fondateur peut le faire. » — et la commande refuse.
+   C'est ce qui t'aurait évité l'incident.
 
-- **Le poste actuel** avec son résumé.
-- **↑ Promouvoir / ↓ Rétrograder** d'un cran (les cinq métiers d'exécution
-  montent vers chef d'équipe, etc.).
-- **Choisir un autre poste** directement (repli).
-- On ne coche plus 13 capacités : on choisit un poste. La grille de capacités
-  détaillée reste dessous, pour les cas fins.
+2. **On ne retire pas le dernier fondateur/gérant.** Impossible de rétrograder
+   le dernier dirigeant : sinon plus personne n'a accès aux réglages et
+   l'organisation se verrouille dehors. Le bouton se grise, et la commande
+   refuse avec « ce serait le dernier fondateur ou gérant ».
 
-Côté base : `cmd_definir_poste` (migration 0153) **remplace** le poste (un
-membre n'en a qu'un), et n'est ouverte qu'à qui a `confier_les_acces`.
-
-## Visite terrain — la sélection des pages
-
-Quand un membre est en **visite terrain**, une zone « Pages modifiables »
-apparaît : on coche les écrans qu'il peut modifier (dossiers, planning, relevé,
-matériel, stockage, carnet, messages). Tout le reste est en lecture.
-
-La colonne `utilisateurs.pages_modifiables` (migration 0154) ne conserve QUE les
-pages partageables — impossible d'ouvrir l'écriture sur la paie ou les
-paramètres par ce biais.
-
-## L'octroi « confier les accès » — une case à cocher
-
-Comme tu l'as dit : **une case à cocher**. Elle n'apparaît que pour le
-**fondateur/gérant** (`peutOctroyerConfiance`) et seulement sur un poste prévu
-pour la recevoir (**secrétaire, responsable dépôt**). La cocher autorise ce
-membre à attribuer des postes à son tour.
-
-**Double protection** : l'écran masque la case pour tout autre acteur, et côté
-base `definirCapacite` exige déjà `gerer_referentiels` — que seuls fondateur et
-gérant possèdent. Une secrétaire, même octroyée, ne peut donc pas octroyer à une
-autre : pas de chaîne d'élévation.
-
-## La garde de l'écran
-
-Si l'acteur ne peut pas confier les accès, il voit « Vous ne pouvez pas modifier
-les accès de ce membre » — les commandes de poste ne s'affichent pas.
+La règle vit surtout **dans la commande base** (`cmd_definir_poste`, migration
+0155) — c'est le seul endroit qui protège quelle que soit l'interface. L'écran
+la reflète pour éviter même le clic.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| un poste de terrain devient octroyable | 2 |
-| une secrétaire peut octroyer à son tour | 2 |
+| on peut modifier son propre poste | 1 |
+| le dernier dirigeant peut être retiré | 1 |
 
-(En plus des 27 assertions déjà en place sur postes, promotion, octroi.)
+## Sur l'incident lui-même
+
+Ce n'était **pas** une perte de code — rien de Dashprod n'avait été supprimé.
+Ton compte avait juste été affecté au poste « secrétaire » (probablement en
+testant le nouvel écran sur toi-même), et la secrétaire n'a pas accès aux
+réglages. Remis en « gérant » en base, tout est revenu.
 
 ## À vérifier à l'œil
 
-1. Équipe → déplier un membre : le bloc **Poste** avec Promouvoir/Rétrograder.
-2. Le passer en **Visite terrain** : la sélection des pages apparaît.
-3. Sur une **secrétaire**, connecté en **gérant** : la case « Peut confier les
-   accès ». Connecté en secrétaire : tu ne la vois pas.
-4. Un membre terrain n'a ni la case, ni (si tu n'as pas le droit) les commandes.
+1. Sur TON compte dans l'équipe : le bloc Poste affiche le message « c'est votre
+   compte », pas de boutons.
+2. Sur un autre membre : Promouvoir/Rétrograder fonctionnent, mais on ne peut
+   pas descendre le dernier dirigeant.
 
 ## Suite
 
-Les postes/permissions sont terminés. On peut reprendre le **circuit** :
-surcoût interne, puis photos sur les constats.
+Retour au **circuit** : le domaine du surcoût interne est prêt (lot précédent),
+il reste à le brancher (table, RPC, terrain, bureau), puis les photos.
