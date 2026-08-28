@@ -14,7 +14,9 @@
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
-import { lireRapport, ecrireDeroule, declarerConstat } from "../lib/adaptateur.js";
+import { lireRapport, ecrireDeroule, declarerConstat, surcoutDeclarer }
+  from "../lib/adaptateur.js";
+import { MOTIFS_INTERNES, surcoutValide } from "@domaine/pilotage/surcout-interne.js";
 import { NATURES, nature, constatValide, syntheseRapport }
   from "@domaine/operations/rapport-chantier.js";
 import { heureDe, secondesTravail, formaterDuree } from "@domaine/operations/pointage.js";
@@ -219,6 +221,93 @@ export default function RapportChantier({ mission, peutRediger }) {
           du bureau
         </div>
       )}
+
+      {/* Le SURCOÛT INTERNE — panne, retard, nettoyage. Du temps à notre charge,
+          jamais facturé au client. Le terrain le déclare et le fige. */}
+      {peutRediger && <SurcoutInterneTerrain mission={mission} />}
+    </div>
+  );
+}
+
+// Le chef d'équipe déclare un surcoût interne et le fige. Une fois figé, c'est
+// au bureau de corriger. Sans prix : le terrain ne voit jamais d'euros.
+function SurcoutInterneTerrain({ mission }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [motif, setMotif] = useState("panne_retour");
+  const [heures, setHeures] = useState("");
+  const [note, setNote] = useState("");
+  const [err, setErr] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [enCours, setEnCours] = useState(false);
+
+  async function declarer() {
+    setErr(null); setMsg(null);
+    const v = surcoutValide({ motif, heures: Number(String(heures).replace(",", ".")), note });
+    if (!v.ok) { setErr(v.message); return; }
+    setEnCours(true);
+    try {
+      // Le terrain fige d'emblée : sa déclaration est un fait constaté.
+      await surcoutDeclarer(mission.id, { motif, heures: v.surcout.heures, note, fige: true });
+      setMsg("Surcoût déclaré. Le bureau pourra l'ajuster.");
+      setHeures(""); setNote(""); setOuvert(false);
+    } catch (e) { setErr(e.message); }
+    finally { setEnCours(false); }
+  }
+
+  if (!ouvert) {
+    return (
+      <div style={{ marginTop: 12 }}>
+        {msg && <div style={{ fontSize: 11.5, color: "#4ADE80", marginBottom: 6 }}>{msg}</div>}
+        <button onClick={() => { setOuvert(true); setMsg(null); }}
+          style={{ width: "100%", padding: "10px 14px", borderRadius: 9, cursor: "pointer",
+            border: "1px solid #475569", background: "transparent",
+            color: "#CBD5E1", fontSize: 13, fontWeight: 700 }}>
+          + Signaler un surcoût interne (panne, retard, nettoyage)
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 12, padding: 12, borderRadius: 10,
+                  border: "1px solid #475569", background: "#0F172A" }}>
+      <div style={{ fontSize: 12, fontWeight: 800, color: "#fff", marginBottom: 4 }}>
+        Surcoût interne
+      </div>
+      <div style={{ fontSize: 11, color: "#94A3B8", marginBottom: 8 }}>
+        Du temps à notre charge — jamais facturé au client.
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+        {MOTIFS_INTERNES.map((m) => (
+          <button key={m.cle} onClick={() => setMotif(m.cle)}
+            style={{ padding: "6px 10px", borderRadius: 999, fontSize: 12, cursor: "pointer",
+              border: `1.5px solid ${motif === m.cle ? "#38BDF8" : "#475569"}`,
+              background: motif === m.cle ? "#0C4A6E" : "transparent",
+              color: motif === m.cle ? "#fff" : "#CBD5E1",
+              fontWeight: motif === m.cle ? 700 : 500 }}>{m.titre}</button>
+        ))}
+      </div>
+      <input value={heures} onChange={(e) => setHeures(e.target.value)}
+        inputMode="decimal" placeholder="Temps en heures (ex. 1.5)"
+        style={champSombre} />
+      <textarea value={note} onChange={(e) => setNote(e.target.value)}
+        placeholder={motif === "autre_interne" ? "Précisez…" : "Détail (facultatif)"}
+        style={{ ...champSombre, marginTop: 8, minHeight: 48 }} />
+      {err && <div style={{ fontSize: 12, color: "#F87171", marginTop: 6 }}>{err}</div>}
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <button onClick={declarer} disabled={enCours}
+          style={{ flex: 1, padding: "10px 14px", borderRadius: 9, cursor: "pointer",
+            border: "none", background: "#38BDF8", color: "#04283A",
+            fontSize: 13, fontWeight: 800 }}>
+          Déclarer et figer
+        </button>
+        <button onClick={() => { setOuvert(false); setErr(null); }}
+          style={{ padding: "10px 14px", borderRadius: 9, cursor: "pointer",
+            border: "1px solid #475569", background: "transparent",
+            color: "#CBD5E1", fontSize: 13, fontWeight: 700 }}>
+          Annuler
+        </button>
+      </div>
     </div>
   );
 }

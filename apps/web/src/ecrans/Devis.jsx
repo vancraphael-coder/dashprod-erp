@@ -13,6 +13,7 @@ import {
   obtenirOrganisation, contexteMainOeuvre,
   litigesAffaire, ouvrirLitige, avancerLitige, resoudreLitige, scenarioRetenu,
   etatFacturation, heuresAffaire, validerHeures, heuresMembresAffaire,
+  surcoutsAffaire, surcoutCorriger, monProfil,
 } from "../lib/adaptateur.js";
 import { chiffrerAffaire, manqueAuChiffrage }
   from "@domaine/chiffrage/scenario-nature.js";
@@ -23,6 +24,8 @@ import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
 import { lignesMainOeuvre, coutMainOeuvre, mentionLignesRetirees, TON_HISTORIQUE }
   from "@domaine/rh/main-oeuvre.js";
 import { calculDefinitif, euroCentimes } from "@domaine/pilotage/calcul-definitif.js";
+import { coutInterne, effetSurCalcul, MOTIFS_INTERNES }
+  from "@domaine/pilotage/surcout-interne.js";
 import { mainOeuvreReelle, pointagesParMembre, ecartHeures }
   from "@domaine/pilotage/main-oeuvre-reelle.js";
 import { CIRCUITS, typesLitige, libelleType, libelleEtape, couleurType,
@@ -567,12 +570,36 @@ function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peu
   // Elles remplacent l'estimation du devis dès qu'elles existent : c'est tout
   // l'objet du circuit — le « réel » cesse d'être le prévu déguisé.
   const [sessions, setSessions] = useState([]);
+  const [surcouts, setSurcouts] = useState([]);
+  const [peutGererPlanning, setPeutGererPlanning] = useState(false);
 
   useEffect(() => {
     scenarioRetenu(affaireId).then(setPrevu).catch(() => setPrevu(null));
     etatFacturation(affaireId).then(setFacturation).catch(() => setFacturation(null));
     heuresMembresAffaire(affaireId).then(setSessions).catch(() => setSessions([]));
+    surcoutsAffaire(affaireId).then(setSurcouts).catch(() => setSurcouts([]));
+    monProfil()
+      .then((p) => setPeutGererPlanning((p?.capacites || []).includes("gerer_planning")))
+      .catch(() => setPeutGererPlanning(false));
   }, [affaireId]);
+
+  // Correction bureau d'un surcoût : ajuster les heures, ou le supprimer. Le
+  // terrain a figé ; le bureau ajuste. Simple et direct (prompt), le module
+  // domaine garde la règle « jamais facturé ».
+  async function corrigerSurcout(s) {
+    const saisie = window.prompt(
+      `Corriger « ${s.motif} » — heures (0 pour supprimer) :`, String(s.heures));
+    if (saisie == null) return;
+    const h = Number(saisie.replace(",", "."));
+    try {
+      if (!Number.isFinite(h) || h <= 0) {
+        await surcoutCorriger(s.id, { supprimer: true });
+      } else {
+        await surcoutCorriger(s.id, { heures: h });
+      }
+      setSurcouts(await surcoutsAffaire(affaireId));
+    } catch (e) { window.alert(e.message); }
+  }
 
   // Le taux interne de chaque membre, tiré des lignes d'équipe déjà résolues.
   const tauxParMembre = useMemo(() => {
@@ -593,11 +620,26 @@ function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peu
   const aPointage = pointages.length > 0;
   // coutMainOeuvre renvoie des EUROS (taux €/h × h). Réel si pointé, estimé sinon.
   const moEuros = aPointage ? moReelle.coutEuros : coutMainOeuvre(equipe, heuresMO);
+
+  // SURCOÛT INTERNE : panne, retard, nettoyage. On le valorise au coût interne
+  // MOYEN de l'équipe, et on l'ajoute au coût RÉEL — jamais au facturé (c'est le
+  // principe : le client ne paie pas nos aléas). Voir surcout-interne.js.
+  const tauxMoyenInterne = useMemo(() => {
+    const vals = Object.values(tauxParMembre);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  }, [tauxParMembre]);
+  const surcoutCalc = useMemo(
+    () => coutInterne(surcouts, tauxMoyenInterne), [surcouts, tauxMoyenInterne]);
+  const effetSurcout = useMemo(
+    () => effetSurCalcul(surcoutCalc.coutEuros), [surcoutCalc]);
+
   const reel = {
     mainOeuvre: moEuros,
     carburant: coutsReels.carburantEuros,
     materiel: coutsReels.materielEuros,
-    divers: coutsReels.diversEuros,
+    // Le surcoût interne grossit le coût réel. effetSurcout.ajouteAuReel porte
+    // la garantie « jamais au facturé » par construction.
+    divers: coutsReels.diversEuros + effetSurcout.ajouteAuReel,
     peages: coutsReels.peagesEuros,
   };
 
@@ -685,6 +727,42 @@ function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peu
                 antérieurs au pointage individuel.
               </div>
             )}
+          </div>
+        )}
+
+        {/* CARTE « SURCOÛT INTERNE » — panne, retard, nettoyage. Ajouté au coût
+            RÉEL, JAMAIS au facturé. Le bureau peut corriger (gerer_planning). */}
+        {peutVoirPrix && surcouts.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: `1px solid ${C.bord}`, paddingTop: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: C.encre, marginBottom: 6 }}>
+              Surcoût interne
+              <span style={{ fontWeight: 400, color: C.muet }}>
+                {" "}· {surcoutCalc.heures} h à notre charge
+                {" "}({euroCentimes(Math.round(surcoutCalc.coutEuros * 100))} au coût interne)
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: C.muet, marginBottom: 6 }}>
+              Jamais facturé au client — cela ronge la marge, pas son devis.
+            </div>
+            {surcouts.map((s) => {
+              const m = MOTIFS_INTERNES.find((x) => x.cle === s.motif);
+              return (
+                <div key={s.id} style={{ display: "flex", justifyContent: "space-between",
+                      alignItems: "center", fontSize: 11.5, color: C.muet, padding: "3px 0" }}>
+                  <span>
+                    {m?.titre || s.motif} · {s.heures} h
+                    {s.note ? ` — ${s.note}` : ""}
+                    {s.fige ? "" : " (non figé)"}
+                  </span>
+                  {peutGererPlanning && (
+                    <button onClick={() => corrigerSurcout(s)}
+                      style={{ ...S.boutonLien, fontSize: 11, padding: "2px 6px" }}>
+                      Corriger
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
