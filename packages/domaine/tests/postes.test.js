@@ -238,3 +238,47 @@ test("le responsable dépôt est octroyable, comme la secrétaire", () => {
   assert.equal(peutConfierAcces("responsable_depot", true), true);
   assert.equal(peutConfierAcces("responsable_depot", false), false);
 });
+
+/* ── Gardes d'attribution (incident du 28/08 : auto-verrouillage) ────────── */
+
+import { peutAttribuerPoste, estDirection, POSTES_DIRECTION } from "../src/rh/postes.js";
+
+test("on ne peut pas modifier son PROPRE poste", () => {
+  // L'incident réel : un gérant se rétrograde secrétaire et perd les réglages.
+  const membres = [{ id: "a", poste: "gerant" }, { id: "b", poste: "gerant" }];
+  const r = peutAttribuerPoste({ acteurId: "a", membreId: "a",
+    posteCible: "secretaire", membres });
+  assert.equal(r.ok, false);
+  assert.equal(r.raison, "soi_meme");
+});
+
+test("on ne peut pas retirer le DERNIER fondateur/gérant", () => {
+  // Sinon l'organisation se verrouille dehors : plus personne pour les réglages.
+  const membres = [{ id: "a", poste: "gerant" }, { id: "b", poste: "demenageur" }];
+  const r = peutAttribuerPoste({ acteurId: "x", membreId: "a",
+    posteCible: "demenageur", membres });
+  assert.equal(r.ok, false);
+  assert.equal(r.raison, "dernier_dirigeant");
+});
+
+test("rétrograder un dirigeant reste possible s'il en reste un autre", () => {
+  const membres = [{ id: "a", poste: "gerant" }, { id: "c", poste: "fondateur" }];
+  assert.equal(peutAttribuerPoste({ acteurId: "x", membreId: "a",
+    posteCible: "secretaire", membres }).ok, true);
+});
+
+test("passer fondateur → gérant ne déclenche pas le verrou (reste dirigeant)", () => {
+  // Changement latéral dans la direction : toujours un dirigeant, donc permis
+  // (par un autre que soi).
+  const membres = [{ id: "a", poste: "fondateur" }];
+  assert.equal(peutAttribuerPoste({ acteurId: "x", membreId: "a",
+    posteCible: "gerant", membres }).ok, true);
+});
+
+test("les postes de direction sont fondateur et gérant", () => {
+  assert.deepEqual([...POSTES_DIRECTION], ["fondateur", "gerant"]);
+  assert.equal(estDirection("fondateur"), true);
+  assert.equal(estDirection("gerant"), true);
+  assert.equal(estDirection("secretaire"), false);
+  assert.equal(estDirection("responsable_depot"), false);
+});
