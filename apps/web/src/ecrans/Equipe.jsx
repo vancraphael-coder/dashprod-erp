@@ -21,7 +21,7 @@ import {
 } from "@domaine/rh/capacites.js";
 import {
   POSTES, poste as posteDe, postePromu, posteRetrograde, peutConfierAcces,
-  peutOctroyerConfiance, PAGES_MODIFIABLES, accesVisiteTerrain,
+  peutOctroyerConfiance, peutAttribuerPoste, PAGES_MODIFIABLES, accesVisiteTerrain,
 } from "@domaine/rh/postes.js";
 import { definirPoste, definirPagesVisite } from "../lib/adaptateur.js";
 import { DemandesConges } from "../composants/Conges.jsx";
@@ -371,6 +371,8 @@ export default function Equipe({ retour, integre, profil }) {
                     de l'acteur (confier_les_acces). */}
                 <AttributionPoste membre={m}
                   posteActeur={profil?.poste}
+                  acteurId={profil?.utilisateur_id}
+                  membres={membres}
                   octroiActeur={(profil?.capacites || []).includes("confier_les_acces")}
                   onRecharger={recharger} />
 
@@ -481,12 +483,10 @@ export default function Equipe({ retour, integre, profil }) {
 // poste (au lieu de cocher 13 capacités), on promeut ou rétrograde d'un cran,
 // et pour « visite terrain » on choisit les pages modifiables. Gardé par
 // `confier_les_acces` : seul un poste qui en a le droit voit ces commandes.
-function AttributionPoste({ membre, posteActeur, octroiActeur, onRecharger }) {
+function AttributionPoste({ membre, posteActeur, acteurId, membres = [], octroiActeur, onRecharger }) {
   const [enCours, setEnCours] = useState(false);
   const [err, setErr] = useState(null);
   const [pages, setPages] = useState(membre.pages_modifiables || []);
-  // L'état des capacités du membre : sert à savoir si « confier les accès » lui
-  // est DÉJÀ octroyé à titre individuel (la case ci-dessous).
   const [capEtat, setCapEtat] = useState(null);
 
   useEffect(() => {
@@ -497,6 +497,14 @@ function AttributionPoste({ membre, posteActeur, octroiActeur, onRecharger }) {
   const courant = posteDe(membre.poste) || null;
   const promu = membre.poste ? postePromu(membre.poste) : null;
   const retro = membre.poste ? posteRetrograde(membre.poste) : null;
+
+  // GARDE anti-verrouillage (incident du 28/08) : on ne modifie pas son propre
+  // poste, et on ne retire pas le dernier dirigeant. On calcule le verrou pour
+  // le poste que CHAQUE bouton viserait, et on désactive en conséquence.
+  const membresLite = (membres || []).map((x) => ({ id: x.id, poste: x.poste }));
+  const verrou = (cle) => peutAttribuerPoste({
+    acteurId, membreId: membre.id, posteCible: cle, membres: membresLite });
+  const estMoi = acteurId && membre.id === acteurId;
 
   // L'octroi de « confier les accès » : réservé au fondateur/gérant, et ne
   // concerne QUE les postes prévus pour le recevoir (secrétaire, resp. dépôt).
@@ -514,6 +522,8 @@ function AttributionPoste({ membre, posteActeur, octroiActeur, onRecharger }) {
   }
 
   async function poser(cle) {
+    const v = verrou(cle);
+    if (!v.ok) { setErr(v.message); return; }
     setEnCours(true); setErr(null);
     try { await definirPoste(membre.id, cle); onRecharger && onRecharger(); }
     catch (e) { setErr(e.message); }
@@ -541,17 +551,24 @@ function AttributionPoste({ membre, posteActeur, octroiActeur, onRecharger }) {
         )}
       </div>
 
-      {!peut ? (
+      {estMoi ? (
+        <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 6 }}>
+          C'est votre compte : vous ne pouvez pas modifier votre propre poste.
+          Un autre gérant ou fondateur peut le faire.
+        </div>
+      ) : !peut ? (
         <div style={{ fontSize: 11.5, color: C.fantome, marginTop: 6 }}>
           Vous ne pouvez pas modifier les accès de ce membre.
         </div>
       ) : (
         <>
-          {/* Promouvoir / rétrograder d'un cran — pas 13 cases. */}
+          {/* Promouvoir / rétrograder d'un cran — pas 13 cases. Chaque bouton
+              est gardé : on ne retire pas le dernier dirigeant. */}
           <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-            <button disabled={!retro || enCours}
+            <button disabled={!retro || enCours || !verrou(retro?.cle).ok}
               onClick={() => retro && poser(retro.cle)}
-              style={{ ...S.boutonLien, opacity: retro ? 1 : 0.4 }}>
+              style={{ ...S.boutonLien,
+                       opacity: (retro && verrou(retro.cle).ok) ? 1 : 0.4 }}>
               ↓ Rétrograder{retro ? ` (${retro.titre})` : ""}
             </button>
             <button disabled={!promu || enCours}
