@@ -14,7 +14,6 @@ import {
   listerCapacitesMembre, definirCreationComplete, CAPACITES_DEVIS_COMPLET,
   capacitesMembre, definirCapacite, definirPermis,
 } from "../lib/adaptateur.js";
-import { ROLES } from "@domaine/noyau/permissions.js";
 import { PERMIS } from "@domaine/flotte/vehicules.js";
 import {
   capacitesTerrain, capacitesBureau, capacitesEffectives, origineCapacite,
@@ -216,10 +215,9 @@ function EquipementMembre({ membreId }) {
   );
 }
 
-const LIBELLES_ROLE = {
-  direction: "Direction", coordination: "Coordination", commercial: "Commercial",
-  chef_equipe: "Chef d'équipe", demenageur: "Déménageur",
-};
+// Les libellés des rôles, dérivés des POSTES (source unique). Sert à afficher
+// le rôle d'un membre en clair.
+const LIBELLES_ROLE = Object.fromEntries(POSTES.map((p) => [p.cle, p.titre]));
 const METIERS = { chef_equipe: "Chef d'équipe", chauffeur: "Chauffeur", demenageur: "Déménageur" };
 const COULEUR_METIER = { chef_equipe: "#6366F1", chauffeur: "#2563EB", demenageur: "#64748B" };
 
@@ -301,15 +299,16 @@ export default function Equipe({ retour, integre, profil }) {
         <label style={S.label}>Email Google</label>
         <input style={S.input} type="email" value={email}
                onChange={(e) => setEmail(e.target.value)} placeholder="jean@gmail.com" />
-        <label style={S.label}>Secteur</label>
+        <label style={S.label}>Poste</label>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {Object.keys(ROLES).map((cle) => (
-            <button key={cle} onClick={() => setRole(cle)} style={{
+          {POSTES.map((p) => (
+            <button key={p.cle} onClick={() => setRole(p.cle)} title={p.resume}
+              style={{
               padding: "7px 12px", borderRadius: 999, cursor: "pointer",
-              border: `1.5px solid ${role === cle ? C.bleu : C.bord}`,
-              background: role === cle ? C.bleuClair : C.blanc,
-              color: role === cle ? C.bleu : C.muet, fontSize: 12, fontWeight: 600,
-            }}>{LIBELLES_ROLE[cle] || cle}</button>
+              border: `1.5px solid ${role === p.cle ? C.bleu : C.bord}`,
+              background: role === p.cle ? C.bleuClair : C.blanc,
+              color: role === p.cle ? C.bleu : C.muet, fontSize: 12, fontWeight: 600,
+            }}>{p.titre}</button>
           ))}
         </div>
 
