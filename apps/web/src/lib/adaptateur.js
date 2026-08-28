@@ -2363,6 +2363,36 @@ export async function prerequisEffectue(affaireId) {
  * depart, arrivee, date, type, etat }. C'est ce que le circuit valorise au coût
  * interne dans le Calcul définitif.
  */
+/**
+ * Déclare un surcoût interne sur une mission (panne, retard, nettoyage…).
+ * `fige` : le terrain fige d'emblée sa déclaration.
+ */
+export async function surcoutDeclarer(missionId, { motif, heures, note, fige } = {}) {
+  const { data, error } = await supabase.rpc("cmd_surcout_declarer", {
+    p_mission: missionId, p_motif: motif, p_heures: heures,
+    p_note: note || "", p_fige: Boolean(fige) });
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.message || "Refusé.");
+  return data;
+}
+
+/** Corrige un surcoût interne (bureau). p_supprimer pour l'effacer. */
+export async function surcoutCorriger(id, { heures, note, motif, supprimer } = {}) {
+  const { data, error } = await supabase.rpc("cmd_surcout_corriger", {
+    p_id: id, p_heures: heures ?? null, p_note: note ?? null,
+    p_motif: motif ?? null, p_supprimer: Boolean(supprimer) });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Les surcoûts internes d'une affaire (toutes ses missions). */
+export async function surcoutsAffaire(affaireId) {
+  const { data, error } = await supabase.rpc("cmd_surcouts_affaire",
+    { p_affaire: affaireId });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 export async function heuresMembresAffaire(affaireId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.rpc("cmd_heures_membres_affaire",
