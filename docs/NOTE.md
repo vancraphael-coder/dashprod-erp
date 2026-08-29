@@ -1,54 +1,56 @@
-# Vague 1, lot A — l'échéance de paiement
+# Vague 1, lot B — la communication structurée (OGM), enfin stockée
 
-**29/08/2026.** **1197 tests verts**, build vert. **Migration 0160** appliquée et
-vérifiée. Premier lot de la vague « fermer la boucle de l'argent ».
+**29/08/2026.** **1206 tests verts**, build vert. **Migrations 0161 + 0162**
+appliquées et vérifiées. Deuxième lot de la vague « fermer la boucle de
+l'argent ».
 
 ## Le défaut corrigé
 
-16 factures émises, **16 sans échéance**. Ton réglage (échéance en jours) était
-saisi mais n'agissait pas. Désormais :
+La communication (l'OGM, ce +++123/4567/89012+++ que le client recopie dans son
+virement) était **calculée à l'affichage du PDF et jamais gardée en base**. Le
+client recevait une communication que ton système ignorait — donc **impossible
+de rapprocher un virement de sa facture**.
 
-- À l'émission, la facture reçoit une **date d'échéance** = date d'émission +
-  ton délai réglé. Elle se **fige** avec le numéro : plus jamais modifiable.
-- **Les 16 factures déjà émises ne sont PAS touchées** — comme tu l'as confirmé,
-  on n'écrit pas le passé. La règle s'applique aux factures suivantes.
-- Si le délai n'est pas réglé, **défaut prudent à 30 jours** (jamais 0, jamais
-  négatif).
+Désormais : à l'émission, la communication est **posée et figée** avec le numéro.
 
-## Ce que tu vois
+## Le réglage est respecté
 
-- **Sur le PDF** : « Émise le … / Échéance : … ».
-- **Sur la fiche facture**, sous le solde, tant qu'elle n'est pas payée :
-  - **« En retard depuis X jours »** en rouge si l'échéance est dépassée ;
-  - **« Échoit dans X jours »** en ambre si elle approche ;
-  - la date d'échéance sinon.
+- Si tu actives « communication structurée » : une **OGM belge** (+++…+++),
+  celle que les banques rapprochent automatiquement.
+- Sinon : le **numéro de facture** comme communication libre.
+- Dans les deux cas elle est **stockée** — donc rapprochable. C'est ce qui
+  débloque le lot C (rapprochement des paiements).
 
-C'est le premier pas vers le suivi des retards et les relances (lots suivants).
+## Trois bénéfices d'un coup
 
-## Un piège attrapé au passage
+1. **Rapprochement possible** : la communication existe enfin en base.
+2. **PDF juste** : il lit la valeur stockée (et affiche le bon libellé selon
+   qu'elle est structurée ou libre). Les anciennes factures gardent un affichage
+   calculé, sans être réécrites.
+3. **Peppol/UBL correct** : le PaymentID de la facture électronique lit cette
+   communication — il était vide jusqu'ici, il est maintenant renseigné.
 
-Le classique du projet : `Number(null) === 0`. Un réglage d'échéance absent
-serait devenu « 0 jour » (payable le jour même) au lieu du défaut de 30 jours.
-Neutralisé et verrouillé par sabotage.
+## Vérifié avec soin
 
-## Éprouvé par sabotage
+- La fonction OGM en base donne **exactement** le même résultat que le code
+  (vérifié sur 4 cas, dont le cas limite de la clé = 97).
+- Éprouvé par sabotage :
 
 | Sabotage | Rouges |
 |---|---|
-| le défaut prudent retombe à 0 jour | 1 |
+| la validation d'OGM accepte tout | 1 |
+| une clé de contrôle nulle laissée à 0 | 1 |
 
 ## À vérifier à l'œil
 
-1. Émets une nouvelle facture : le PDF porte une échéance, cohérente avec ton
-   réglage (ou 30 jours par défaut).
-2. Sur une facture émise non payée dont l'échéance est passée : « En retard
-   depuis X jours » en rouge sous le solde.
+1. Émets une facture : sa communication apparaît sur le PDF, et elle est
+   maintenant en base (plus seulement à l'écran).
+2. Si tu actives « communication structurée » dans les réglages, la prochaine
+   facture porte une vraie OGM +++…+++ ; sinon, son numéro.
 3. Les anciennes factures restent inchangées.
 
 ## Suite de la vague 1
 
-- **Lot B** — la communication structurée (OGM) stockée à l'émission. Même
-  défaut que l'échéance : l'OGM est calculé à l'affichage du PDF et jamais gardé,
-  donc aucun rapprochement bancaire possible. C'est le prochain.
-- **Lot C** — rapprocher les 23 paiements ↔ factures.
+- **Lot C** — rapprocher les 23 paiements ↔ factures par la communication.
+  Il peut désormais s'appuyer sur une communication stockée.
 - **Lot D** — relances, mention légale, préfixe de numérotation.
