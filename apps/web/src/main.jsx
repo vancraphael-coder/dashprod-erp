@@ -18,6 +18,7 @@ import NonInvite from "./ecrans/NonInvite.jsx";
 import Inscription from "./ecrans/Inscription.jsx";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide, obtenirAffaire } from "./lib/adaptateur.js";
+import { centreDeRattachement } from "@domaine/organisation/centres.js";
 import { comporte as comporteEtape } from "@domaine/commercial/natures.js";
 import Terrain from "./ecrans/Terrain.jsx";
 import TerrainProfil from "./ecrans/TerrainProfil.jsx";
@@ -164,7 +165,10 @@ function AppTerrain({ profil }) {
   function fermer() { setRoute(null); setEcran("chantiers"); }
 
   async function ouvrirNouveau() {
-    const id = await creerDossierVide();
+    // Le terrain crée dans SON centre (il ne bascule pas d'espace).
+    const centreId = centreDeRattachement(
+      undefined, { poste: profil?.poste, centre_id: profil?.centre_id }, []);
+    const id = await creerDossierVide("demenagement", null, centreId);
     setRoute({ mode: "edit", ecran: "dossier", affaireId: id });
   }
 
@@ -583,7 +587,11 @@ function App() {
   const navBrute = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
     nouvelle: async (nature, clientId) => {
-      const id = await creerDossierVide(nature, clientId);
+      // Option A : le dossier naît DANS l'espace de travail courant (le centre
+      // ouvert). Un centre neuf devient ainsi un vrai espace, pas une vue vide.
+      const centreId = centreDeRattachement(
+        centreChoisi, { poste: profil?.poste, centre_id: profil?.centre_id }, centresOrg);
+      const id = await creerDossierVide(nature, clientId, centreId);
       setRoute({ ecran: "dossier", affaireId: id });
     },
     dossier: (id) => setRoute({ ecran: "dossier", affaireId: id }),
