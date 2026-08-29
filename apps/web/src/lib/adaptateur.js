@@ -3228,6 +3228,62 @@ export async function ecrireDeroule(missionId, deroule) {
 }
 
 /** Le terrain déclare un écart : estimation de temps/volume, jamais un prix. */
+/**
+ * Ajoute une photo à un constat. Le fichier va dans le bucket privé
+ * `documents` (chemin org-scopé + empreinte, comme les pièces jointes), et le
+ * lien est enregistré dans constat_photos.
+ */
+export async function ajouterPhotoConstat(constatId, file) {
+  const org = await obtenirOrganisation();
+  if (!org?.id) throw new Error("Organisation inconnue : dépôt impossible.");
+  const buf = await file.arrayBuffer();
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  const empreinte = Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
+  const nomSain = (file.name || "photo").replace(/[^\w.\-]/g, "_").slice(-80);
+  // Chemin cloisonné par organisation : org/{org_id}/... — la policy Storage
+  // `doc_ecriture_org` compare (storage.foldername(name))[2] à jwt_org().
+  const chemin = `org/${org.id}/constats/${constatId}/${empreinte.slice(0, 16)}_${nomSain}`;
+
+  const { error: up } = await supabase.storage.from("documents")
+    .upload(chemin, file, { contentType: file.type, upsert: true });
+  if (up) throw new Error(up.message);
+
+  const { data, error } = await supabase
+    .from("constat_photos")
+    .insert({ constat_id: constatId, chemin, nom: file.name || "photo" })
+    .select("id, chemin, nom")
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Les photos d'un constat (métadonnées ; l'URL se demande à la lecture). */
+export async function photosConstat(constatId) {
+  const { data, error } = await supabase
+    .from("constat_photos")
+    .select("id, chemin, nom, ajoute_le")
+    .eq("constat_id", constatId)
+    .order("ajoute_le", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** URL signée (temporaire, 5 min) pour afficher une photo. */
+export async function urlPhotoConstat(chemin) {
+  const { data, error } = await supabase.storage.from("documents")
+    .createSignedUrl(chemin, 300);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
+}
+
+/** Retire une photo (lien + fichier). */
+export async function supprimerPhotoConstat(id, chemin) {
+  const { error } = await supabase.from("constat_photos").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  if (chemin) await supabase.storage.from("documents").remove([chemin]);
+}
+
 export async function declarerConstat(missionId, { nature, description,
                                                    minutes, volume } = {}) {
   const { data, error } = await supabase.rpc("cmd_constat_declarer", {
