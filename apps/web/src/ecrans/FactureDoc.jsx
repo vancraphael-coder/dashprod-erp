@@ -33,8 +33,12 @@ export default function FactureDoc({ facture, organisation, client, adresses }) 
   const paye = paiements.reduce((s, p) => s + (p.montant_centimes || 0), 0);
   const solde = (facture.tvac_centimes || 0) - paye;
 
+  // La communication est STOCKÉE à l'émission (lot B) : on l'affiche telle
+  // quelle. Repli sur un calcul pour les anciennes factures émises avant le lot
+  // (qui n'ont rien en base) — jamais réécrites, mais affichables.
   const num = decomposerNumero(facture.numero);
-  const ogm = num ? genererOGM(num.sequence, num.annee) : null;
+  const ogm = facture.communication
+    || (num ? genererOGM(num.sequence, num.annee) : null);
 
   return (
     <div className="contrat-imprimable" style={S.doc}>
@@ -121,7 +125,9 @@ export default function FactureDoc({ facture, organisation, client, adresses }) 
           </div>
           {ogm && (
             <div style={{ marginTop: 6 }}>
-              <span style={{ fontSize: 10, opacity: 0.7 }}>Communication structurée</span>
+              <span style={{ fontSize: 10, opacity: 0.7 }}>
+                {/^\+\+\+/.test(ogm) ? "Communication structurée" : "Communication"}
+              </span>
               <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: ".06em",
                             fontFamily: "ui-monospace, monospace" }}>
                 {ogm}
