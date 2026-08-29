@@ -3116,7 +3116,7 @@ export async function facturesCanoniquesPeriode({ debut, fin }) {
   const { data, error } = await supabase.from("factures")
     .select("id, affaire_id, numero, type, date_emission, echeance, communication, "
           + "devise, facture_lignes(libelle, quantite, unite, prix_unitaire_centimes, "
-          + "montant_htva_centimes, tva_pct), affaires(client_id, nature)")
+          + "montant_htva_centimes, tva_pct), affaires(client_id, nature, centre_id)")
     .eq("emise", true)
     .gte("date_emission", debut)
     .lte("date_emission", fin)
@@ -3140,7 +3140,7 @@ export async function facturesCanoniquesPeriode({ debut, fin }) {
 
   return data.map((f) => {
     const c = parId.get(f.affaires?.client_id) || {};
-    return factureCanonique({
+    const canon = factureCanonique({
       numero: f.numero,
       date_emission: f.date_emission,
       echeance: f.echeance,
@@ -3174,6 +3174,10 @@ export async function facturesCanoniquesPeriode({ debut, fin }) {
         tva_pct: l.tva_pct,
       })),
     });
+    // Le centre de l'affaire, pour la ventilation en comptabilité (Option A).
+    // Attaché à côté du canonique, sans polluer le modèle légal de la facture.
+    canon.centre_id = f.affaires?.centre_id || null;
+    return canon;
   });
 }
 
