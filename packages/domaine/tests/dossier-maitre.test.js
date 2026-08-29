@@ -25,7 +25,9 @@ test("le dossier maître est complet et se lit dans un ordre", () => {
   // quelqu'un qui arrive sans contexte.
   const attendus = ["00-DEMARRER-ICI.md", "10-DECISIONS-PRODUIT.md",
     "20-OUVERT.md", "25-PARAMETRES-ROADMAP.md", "26-GARDE-MEUBLES-ROADMAP.md",
-    "30-REGLES-IA-EXTERNE.md", "40-METHODE.md", "50-ARCHIVE.md"];
+    "30-REGLES-IA-EXTERNE.md", "40-METHODE.md", "50-ARCHIVE.md",
+    // La carte du territoire et l'ordre de marche (29/08/2026).
+    "60-CIRCUITS-QUATRE-COUCHES.md", "70-ROADMAP.md"];
   const presents = readdirSync(MAITRE).filter((f) => f.endsWith(".md")).sort();
   assert.deepEqual(presents, attendus.sort());
 });
@@ -192,4 +194,44 @@ test("la roadmap garde-meubles nomme la dépendance qui la bloque", () => {
   assert.match(r, /fausse barrière|sécurité de façade|garde-fou d'affichage/i,
     "le risque d'une sécurité de façade doit être écrit");
   assert.match(r, /faisable/i, "ce qui est faisable maintenant doit être distingué");
+});
+
+/* ── La carte des circuits et l'ordre de marche (29/08/2026) ─────────────── */
+
+test("les quatre couches sont nommées et ordonnées", () => {
+  // L'ordre n'est pas décoratif : une couche ne tient que si celle du dessus
+  // tient. Métier réel → paramétrage → facturation → comptabilité.
+  const c = lire("60-CIRCUITS-QUATRE-COUCHES.md");
+  const iMetier = c.indexOf("Métier réel");
+  const iParam = c.indexOf("Paramétrage");
+  const iFact = c.indexOf("Facturation");
+  const iCompta = c.indexOf("Comptabilité");
+  assert.ok(iMetier > 0 && iParam > iMetier && iFact > iParam && iCompta > iFact,
+    "les quatre couches doivent apparaître dans l'ordre");
+});
+
+test("la carte des circuits énonce les invariants inter-couches", () => {
+  // Le plus important : le surcoût interne ne franchit jamais 2→3. C'est une
+  // décision de Raphaël, pas une commodité technique.
+  const c = lire("60-CIRCUITS-QUATRE-COUCHES.md");
+  assert.match(c, /surcoût interne ne franchit jamais/i);
+  assert.match(c, /refuse plutôt que de deviner/i);
+  assert.match(c, /immuable/i);
+});
+
+test("la roadmap ordonne par vagues et dit ce qu'il ne faut PAS faire", () => {
+  // Une roadmap qui n'énonce que des envies laisse tout rouvrir.
+  const r = lire("70-ROADMAP.md");
+  assert.match(r, /VAGUE 0/);
+  assert.match(r, /VAGUE 1/);
+  assert.match(r, /ne faut PAS faire/i);
+});
+
+test("la roadmap place le juridique AVANT le code", () => {
+  // Les obligations RGPD naissent quand une société saisit des données réelles
+  // — c'est déjà le cas. Le code ne les fait pas attendre.
+  const r = lire("70-ROADMAP.md");
+  assert.ok(r.indexOf("VAGUE 0") < r.indexOf("VAGUE 1"),
+    "la vague juridique précède la première vague de code");
+  assert.match(r, /RGPD/);
 });
