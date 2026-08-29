@@ -176,3 +176,40 @@ export function filtrerParCentre(objets, centreChoisi) {
   const c = centreOuMaisonMere(centreChoisi);
   return (objets || []).filter((o) => centreOuMaisonMere(o.centre_id) === c);
 }
+
+// -----------------------------------------------------------------------------
+// L'ESPACE DE TRAVAIL (décision Option A du 28/08) — un centre n'est pas un
+// filtre sur une liste commune, c'est un ESPACE : on y entre, on y travaille,
+// ce qu'on y crée LUI appartient. La maison mère est un espace comme un autre.
+// -----------------------------------------------------------------------------
+
+/**
+ * Le centre où RATTACHER une création (dossier, mission) selon l'espace où
+ * l'acteur travaille. C'est ce qui rend un centre neuf réellement utilisable :
+ * un dossier créé dans son espace lui appartient.
+ *
+ * @param {string|null|undefined} espaceCourant  le centre ouvert (ou MAISON_MERE)
+ * @param {object} acteur  { poste, centre_id }
+ * @param {object[]} centres
+ * @returns {string|null}  centre_id à poser (null = maison mère)
+ */
+export function centreDeRattachement(espaceCourant, acteur = {}, centres = []) {
+  const p = porteeCentres(acteur, centres);
+  // Le responsable dépôt (pas de bascule) crée toujours dans SON centre — quel
+  // que soit l'espace demandé, il ne sort pas de chez lui.
+  if (!p.peutBasculer) return centreOuMaisonMere(p.centreParDefaut);
+  // Sinon, on rattache à l'espace explicitement ouvert ; à défaut, au centre par
+  // défaut de l'acteur.
+  return centreOuMaisonMere(
+    espaceCourant === undefined ? p.centreParDefaut : espaceCourant);
+}
+
+/**
+ * L'intitulé de l'espace courant, pour dire « vous êtes ici » à l'écran.
+ * @returns {string}
+ */
+export function nomEspace(espaceCourant, centres = []) {
+  const c = centreOuMaisonMere(espaceCourant);
+  if (c === MAISON_MERE) return "Maison mère";
+  return (centres || []).find((x) => x.id === c)?.nom || "Centre";
+}
