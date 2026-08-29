@@ -265,7 +265,7 @@ export async function sauverMission(affaireId, mission) {
  * branchement) ; en démo, écrit le magasin local.
  * @returns {Promise<string>} id de l'affaire créée
  */
-export async function creerAffaire({ clientId, clientNom, tel, email, nature }) {
+export async function creerAffaire({ clientId, clientNom, tel, email, nature, centreId }) {
   // La nature est validée par le DOMAINE, pas ici : une chaîne libre venue
   // d'un appelant distrait tomberait sinon dans l'enum et ferait échouer
   // l'insert avec un message Postgres illisible.
@@ -278,8 +278,11 @@ export async function creerAffaire({ clientId, clientNom, tel, email, nature }) 
       if (error) throw error;
       cid = data.id;
     }
+    // centre_id : l'espace de travail où l'on crée (Option A). null = maison mère.
+    const ligne = { client_id: cid, etat: "brouillon", nature: n };
+    if (centreId !== undefined) ligne.centre_id = centreId || null;
     const { data: aff, error: e2 } = await supabase.from("affaires")
-      .insert({ client_id: cid, etat: "brouillon", nature: n })
+      .insert(ligne)
       .select("id").single();
     if (e2) throw e2;
     return aff.id;
@@ -1532,10 +1535,10 @@ export async function sauverClientIdentite(affaireId, { civilite, nom, tel, emai
  * de créer « Nouveau client » : c'est tout l'intérêt du carnet pour un client
  * récurrent, et ça évite un doublon de fiche à chaque commande.
  */
-export async function creerDossierVide(nature = "demenagement", clientId = null) {
+export async function creerDossierVide(nature = "demenagement", clientId = null, centreId) {
   return clientId
-    ? creerAffaire({ clientId, nature })
-    : creerAffaire({ clientNom: "Nouveau client", nature });
+    ? creerAffaire({ clientId, nature, centreId })
+    : creerAffaire({ clientNom: "Nouveau client", nature, centreId });
 }
 
 // ── Équipe pressentie du dossier (symétrique aux camions) ─────────────────────
