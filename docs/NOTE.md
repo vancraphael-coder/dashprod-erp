@@ -1,47 +1,73 @@
-# Lot 53 — Option A complété : planning hérité + comptabilité ventilée
+# Lot 54 — la carte des circuits et l'ordre de marche
 
-**28/08/2026.** **1194 tests verts**, build vert. **Migration 0159** appliquée
-et vérifiée.
+**29/08/2026.** **1198 tests verts**, build vert. Deux documents neufs, tirés du
+code ET de la base — pas de mémoire.
 
-Ce lot complète les deux points qui manquaient à Option A.
+## `60-CIRCUITS-QUATRE-COUCHES.md` — la carte du territoire
 
-## 1. Le planning hérite du centre (migration 0159)
+**Dix circuits** recensés, chacun lu en quatre couches : métier réel,
+paramétrage, facturation, comptabilité.
 
-J'ai trouvé un trou : une mission ne reprenait PAS le centre de son dossier. Une
-mission d'un dossier d'Anvers n'apparaissait donc pas dans le planning d'Anvers.
-Corrigé : à la création, **la mission hérite du centre de son affaire**. Le
-planning d'un espace montre bien ses propres missions.
+1. Commercial · 2. Terrain · 3. Facturation · 4. Comptabilité · 5. RH/paie ·
+6. Boxe & zone · 7. Fournitures · 8. Abonnement · 9. Client · 10. Conformité.
 
-## 2. La comptabilité, ventilée par centre (ton point 2)
+Avec un tableau de synthèse qui montre d'un coup d'œil où ça tient et où ça
+casse, et les **quatre invariants inter-couches** (dont : le surcoût interne ne
+franchit jamais la frontière vers le facturé).
 
-Dans la comptabilité, une barre **« Ventilation »** :
-- **Tous les centres** (par défaut) : la maison mère voit **tout, consolidé** —
-  c'est la vue de la tête de réseau.
-- **Maison mère** : les factures rattachées à la maison mère seule.
-- **Chaque centre** : sa ventilation propre.
+**Ce que la carte révèle.** Le métier réel est solide presque partout — c'est
+l'acquis de ces cinquante lots. **Ce qui casse est en aval.** Des prestations
+justes produisent des factures incomplètes.
 
-Le filtre s'applique partout — le récapitulatif, le contrôle d'équilibre du
-journal, ET les trois exports (CSV comptable, journal, FEC). Tu peux donc sortir
-un fichier pour ton comptable soit consolidé, soit centre par centre.
+## Le défaut le plus net, vérifié des deux côtés
 
-## Option A est maintenant complet
+**16 factures émises : 16 sans échéance, 16 sans communication en base.**
 
-- Dossiers/Planning : espaces cloisonnés, un centre ne montre que ses affaires.
-- Création : un dossier créé dans un espace lui est rattaché (lot 52).
-- Missions : héritent du centre de leur dossier (ce lot).
-- Comptabilité : consolidée, ventilable par centre (ce lot).
+Et j'ai trouvé pourquoi : l'OGM est calculé **à l'affichage du PDF**
+(`FactureDoc.jsx` appelle `genererOGM`), jamais stocké. **Le client reçoit un
+document portant une communication que le système ne connaît pas.** Vérifié aux
+deux bouts : `cmd_emettre_facture` ne pose ni échéance ni communication, et le
+front ne fait que les lire.
 
-Une seule société au-dessus, la maison mère garde la vue d'ensemble — exactement
-ce que tu voulais.
+Conséquence concrète : Roovers ne peut ni savoir quelle facture est en retard,
+ni rapprocher un virement — alors que 23 paiements sont déjà enregistrés.
 
-## À vérifier à l'œil
+## `70-ROADMAP.md` — l'ordre de marche
 
-1. Crée un dossier dans l'espace d'un centre, confirme-le (crée une mission) :
-   la mission apparaît dans le planning de CE centre, pas ailleurs.
-2. Comptabilité : la barre « Ventilation ». « Tous » = tout ; un centre = ses
-   factures. Les exports suivent le filtre choisi.
+Huit vagues, chacune justifiée :
 
-## Reste (optionnel)
+- **Vague 0 — aujourd'hui, hors code.** RGPD (contrat de sous-traitance : les
+  obligations sont DÉJÀ nées avec Roovers) + deux questions au comptable qui
+  débloquent les vagues 2 et 3.
+- **Vague 1 — fermer la boucle de l'argent.** Échéance, communication en base,
+  rapprochement, relances. **La plus rentable : elle transforme 16 factures
+  muettes en 16 créances suivies.**
+- **Vague 2** — encaisser les fournitures. **Vague 3** — la comptabilité
+  complète. **Vague 4** — le garde-meubles (ses fondations sont désormais
+  posées). **Vague 5** — le modèle d'affaires. **Vague 6** — délimitation.
+  **Vague 7** — design.
 
-- Un écran d'accueil « choisir un espace » si tu le souhaites un jour. Non
-  nécessaire — la bascule d'espace suffit.
+Avec une section **« ce qu'il ne faut PAS faire »** et un tableau des questions
+ouvertes où je donne mon avis sans trancher à ta place.
+
+## Deux bonnes nouvelles au passage
+
+- **Le bloqueur P1 n'en est plus un** : les offres portent leurs prix
+  (180/360/720 HTVA mensuel, annuel remisé).
+- **Les fondations du garde-meubles sont là** (centre, rattachement, permissions,
+  maison mère) — boxe-2 est débloqué.
+
+## Éprouvé
+
+Le test du dossier maître a détecté mes ajouts (c'est son rôle) — les deux
+documents y sont intégrés, avec quatre tests neufs qui les protègent de la
+dérive : ordre des couches, invariants énoncés, vagues ordonnées, juridique
+avant le code. Sabotage vérifié.
+
+## Ce que je te recommande
+
+Commence par la **vague 0.1** (le juridique, aujourd'hui, sans code) et la
+**vague 1 lot A** (l'échéance — purement mécanique, aucune décision).
+
+Une seule question m'attend, un mot suffit : les 16 factures déjà émises sans
+échéance, **on ne les réécrit pas** (l'immuabilité prime) — tu confirmes ?
