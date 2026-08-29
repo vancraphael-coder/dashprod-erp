@@ -11,6 +11,7 @@ import {
   photosConstat, ajouterPhotoConstat, urlPhotoConstat, supprimerPhotoConstat,
 } from "../lib/adaptateur.js";
 import { trierPhotos, MAX_PHOTOS_CONSTAT } from "@domaine/operations/photos-constat.js";
+import { normaliserPhoto } from "../lib/image.js";
 
 export default function PhotosConstat({ constatId, peutAjouter = false, sombre = false }) {
   const [photos, setPhotos] = useState([]);
@@ -19,6 +20,7 @@ export default function PhotosConstat({ constatId, peutAjouter = false, sombre =
   const [enCours, setEnCours] = useState(false);
   const [apercu, setApercu] = useState(null); // URL en grand
   const [info, setInfo] = useState(null);     // confirmation d'envoi
+  const [echouees, setEchouees] = useState({}); // id → image non affichable ici
   const inputRef = useRef(null);              // l'input fichier, déclenché par le bouton
 
   async function charger() {
@@ -45,10 +47,29 @@ export default function PhotosConstat({ constatId, peutAjouter = false, sombre =
     if (!tri.retenues.length) return;
     setEnCours(true);
     try {
-      for (const f of tri.retenues) await ajouterPhotoConstat(constatId, f);
+      let envoyees = 0;
+      const echecs = [];
+      for (const f of tri.retenues) {
+        try {
+          // On normalise en JPEG affichable partout (règle le HEIC des iPhone
+          // et allège au passage). Si indécodable, on refuse ce fichier — mais
+          // on continue avec les autres.
+          const jpeg = await normaliserPhoto(f);
+          await ajouterPhotoConstat(constatId, jpeg);
+          envoyees += 1;
+        } catch (ex) {
+          echecs.push(ex.message === "HEIC_NON_DECODABLE"
+            ? `${f.name || "photo"} : format non pris en charge par ce navigateur `
+              + "(essayez depuis un iPhone ou réglez l'appareil sur « JPEG le plus compatible »)."
+            : `${f.name || "photo"} : ${ex.message}`);
+        }
+      }
       await charger();
-      setInfo(`${tri.retenues.length} photo(s) envoyée(s).`);
-      setTimeout(() => setInfo(null), 2500);
+      if (envoyees > 0) {
+        setInfo(`${envoyees} photo(s) envoyée(s).`);
+        setTimeout(() => setInfo(null), 2500);
+      }
+      if (echecs.length) setErr(echecs.join(" "));
     } catch (ex) { setErr(ex.message); }
     finally { setEnCours(false); }
   }
@@ -68,17 +89,31 @@ export default function PhotosConstat({ constatId, peutAjouter = false, sombre =
     <div style={{ marginTop: 8 }}>
       {photos.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {photos.map((p) => (
+          {photos.map((p) => {
+            const estHeic = /\.hei[cf]$/i.test(p.nom || "") || echouees[p.id];
+            return (
             <div key={p.id} style={{ position: "relative" }}>
-              {urls[p.id] ? (
+              {urls[p.id] && !estHeic ? (
                 <img src={urls[p.id]} alt={p.nom}
                   onClick={() => setApercu(urls[p.id])}
+                  onError={() => setEchouees((e) => ({ ...e, [p.id]: true }))}
                   style={{ width: 64, height: 64, objectFit: "cover",
                            borderRadius: 8, border: `1px solid ${bord}`,
                            cursor: "pointer" }} />
               ) : (
-                <div style={{ width: 64, height: 64, borderRadius: 8,
-                              border: `1px solid ${bord}`, background: "#0F172A" }} />
+                // La photo existe mais ce navigateur ne sait pas l'afficher
+                // (vieux HEIC). On la rend au moins OUVRABLE — jamais un carré
+                // blanc muet.
+                <a href={urls[p.id] || "#"} target="_blank" rel="noreferrer"
+                  title={`${p.nom} — ouvrir (format non affiché ici)`}
+                  style={{ width: 64, height: 64, borderRadius: 8, display: "flex",
+                    flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    gap: 2, border: `1px solid ${bord}`, background: "#0F172A",
+                    color: "#94A3B8", fontSize: 9, textAlign: "center",
+                    textDecoration: "none", padding: 3, boxSizing: "border-box" }}>
+                  <span style={{ fontSize: 18 }}>🖼️</span>
+                  <span>ouvrir</span>
+                </a>
               )}
               {peutAjouter && (
                 <button onClick={() => retirer(p)} title="Retirer"
@@ -88,7 +123,8 @@ export default function PhotosConstat({ constatId, peutAjouter = false, sombre =
                     lineHeight: "18px", padding: 0 }}>×</button>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
