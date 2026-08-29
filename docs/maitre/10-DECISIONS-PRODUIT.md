@@ -411,3 +411,16 @@ rattachée à l'espace, missions héritées, et compta consolidée ventilable.
 - Reste de la vague 1 : lot B (communication/OGM stocké à l'émission — même
   défaut, l'OGM est calculé au PDF et jamais gardé), lot C (rapprochement), lot D
   (relances/mention légale/préfixe).
+
+## Vague 1 lot B — la communication structurée (OGM) stockée (29/08/2026)
+
+- **Base** (0161 + 0162) : fonction SQL ogm_structuree (équivalence JS↔SQL
+  vérifiée), et cmd_emettre_facture pose `communication` à l'émission, figée avec
+  le numéro. Réglage communication_structuree=true → OGM belge ; sinon → numéro
+  de facture. Toujours STOCKÉE → rapprochement possible.
+- **PDF** : lit facture.communication (repli calcul pour les anciennes). Libellé
+  « Communication structurée » si +++…+++, « Communication » sinon.
+- **UBL/Peppol** : bénéfice automatique — le PaymentID lit f.communication, enfin
+  renseigné.
+- **On ne réécrit pas les 16 factures passées.** Lot C (rapprochement) peut
+  maintenant s'appuyer sur une communication stockée pour les factures à venir.
