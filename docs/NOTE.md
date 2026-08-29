@@ -1,49 +1,54 @@
-# Lot 51 — photos : le HEIC des iPhone, réglé pour de bon
+# Lot 52 — les centres deviennent des espaces de travail (Option A, socle)
 
-**29/08/2026.** **1191 tests verts**, build vert.
+**28/08/2026.** **1194 tests verts**, build vert.
 
-## Le diagnostic (fait sur tes données réelles, sans retour sur place)
+Suite à ta décision : un nouveau centre = un **espace de travail vierge**, comme
+une organisation à part, sous une seule société. Ce lot pose le socle — le
+mécanisme qui transforme le *tri* en *espace*.
 
-Sur le rapport du 31/07, j'ai comparé les deux photos en base :
-- `1000025472.jpg` → **image/jpeg** → s'affiche ✓
-- `1000024551.heic` → **image/heic** (8,5 Mo) → reste blanche ✗
+## Le vrai changement : ce qu'on crée dans un centre lui appartient
 
-Le coupable : le **HEIC**, le format natif des iPhone. Les navigateurs hors
-Safari **ne savent pas l'afficher** dans une image. Ce n'était donc ni l'upload
-ni les droits — le fichier était bien là — mais l'affichage d'un format que le
-navigateur refuse. Mon erreur : j'avais accepté le HEIC sans le convertir.
+Avant, le centre n'était qu'un filtre sur une liste commune. Maintenant :
 
-## La correction — pour TOUTES les futures photos
+- **Créer un dossier dans l'espace d'un centre le rattache à ce centre.** Tu
+  ouvres l'espace « Anvers », tu crées un dossier → il vit dans Anvers, invisible
+  ailleurs. Un centre neuf devient un vrai espace de travail, pas une vue vide.
+- **Le responsable dépôt crée toujours dans SON centre**, jamais ailleurs — même
+  s'il tentait autre chose. Verrouillé côté domaine.
+- **Le terrain** crée aussi dans son centre.
+- Les anciens dossiers (créés sans centre) restent en **maison mère** — rien ne
+  bouge pour l'existant.
 
-- **Conversion en JPEG à l'envoi.** Avant l'upload, chaque photo est redessinée
-  et ré-encodée en **JPEG** (lib/image.js). Résultat : elle s'affiche partout,
-  et au passage elle s'allège (ton HEIC de 8,5 Mo serait tombé à quelques
-  centaines de Ko). Fini les photos fantômes.
-- **Refus propre si indécodable.** Si un navigateur ne sait vraiment pas lire le
-  fichier, on ne stocke PAS une photo invisible : message clair, et les autres
-  photos du lot passent quand même.
-- Le domaine distingue maintenant les formats **affichables partout**
-  (JPEG/PNG/WebP) de ceux **à convertir** (HEIC/HEIF). Verrouillé par test +
-  sabotage.
+## Le sélecteur devient « Espace de travail »
 
-## Pour la photo HEIC DÉJÀ envoyée (celle du 31/07)
-
-Je ne peux pas la convertir à distance (pas de décodeur HEIC côté serveur).
-Mais tu n'es plus devant un carré blanc muet : la vignette devient un bouton
-**« 🖼️ ouvrir »** — un clic télécharge/ouvre le fichier, que ton système saura
-sans doute lire. Le plus simple reste de **la reprendre depuis le dossier** : la
-nouvelle sera convertie en JPEG et s'affichera normalement. (Ou supprime-la et
-renvoie-la — l'ancienne n'est pas récupérable en vignette, elle est en HEIC.)
-
-## À vérifier à l'œil
-
-1. Envoie une photo (même depuis un iPhone / un fichier HEIC) : elle doit
-   maintenant s'afficher en vignette, et le message « photo envoyée » apparaît.
-2. Sur le 31/07 : l'ancienne HEIC montre « ouvrir » au lieu du blanc. Renvoie-la
-   pour l'avoir en vignette.
+Plus « Centre » (qui sonnait comme un filtre) : « Espace de travail ». Choisir un
+espace, c'est y entrer — on voit ses dossiers, on crée dedans. La maison mère est
+un espace comme un autre, celui de la tête de réseau.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| le HEIC compté comme affichable | 2 |
+| le responsable dépôt peut créer ailleurs que chez lui | 1 |
+
+Plus le test « carnet » qui m'a rappelé à l'ordre : il garantit qu'un contact
+existant ne crée pas de doublon client — j'ai vérifié que je préserve bien ça.
+
+## À vérifier à l'œil
+
+1. Crée un centre (Paramètres → Centres), ouvre son espace dans les dossiers :
+   il est **vierge**.
+2. Crée un dossier depuis cet espace : il apparaît dans l'espace du centre, et
+   PAS dans la maison mère ni les autres centres.
+3. Reviens à la maison mère : tes anciens dossiers sont toujours là.
+
+## RESTE À FAIRE (prochain lot centres) — consigné dans 10-DECISIONS
+
+1. **Comptabilité** : y amener le tri/centres consolidé (maison mère voit tout,
+   ventilé par centre). L'écran Comptabilite.jsx existe déjà.
+2. **Planning** : vérifier que la création d'une mission hérite bien du centre
+   de son dossier (la mission porte déjà centre_id).
+3. Éventuel écran d'accueil « choisir un espace », si tu le souhaites.
+
+C'est un socle : la mécanique d'Option A est posée et testée. Les deux points
+ci-dessus la complètent — je te les propose au prochain tour.
