@@ -382,3 +382,17 @@ tri sur liste commune. Une seule société au-dessus (maison mère = vue d'ensem
 2. Planning : la création de mission doit aussi hériter du centre du dossier
    (à vérifier — la mission porte déjà centre_id, voir si l'héritage est auto).
 3. Éventuel écran d'accueil « choisir un espace » si Raphaël le souhaite.
+
+## Option A complété — planning + comptabilité (lot 53, 28/08/2026)
+
+- **Planning** : la mission HÉRITE du centre de son affaire (migration 0159,
+  cmd_creer_mission). Une mission d'un dossier d'Anvers vit dans le planning
+  d'Anvers. Comble le trou du lot 52.
+- **Comptabilité** (point 2 de la décision Raphaël) : ventilation par centre.
+  facturesCanoniquesPeriode expose centre_id (via l'affaire). L'écran
+  Comptabilite propose « Tous les centres » (consolidé, défaut), « Maison mère »,
+  et chaque centre. Le filtre s'applique au récap, au verdict d'équilibre ET aux
+  trois exports (CSV, journal, FEC).
+
+Option A est désormais complet : espaces cloisonnés (dossiers/planning), création
+rattachée à l'espace, missions héritées, et compta consolidée ventilable.
