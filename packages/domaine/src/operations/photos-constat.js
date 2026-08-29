@@ -7,10 +7,24 @@
 // téléverse rien lui-même. L'upload passe par l'adaptateur (bucket privé).
 // =============================================================================
 
-/** Formats d'image acceptés. On reste sur ce que tout téléphone produit. */
+/** Formats d'image acceptés en entrée. Le HEIC/HEIF est accepté MAIS devra être
+ *  converti en JPEG avant stockage (voir lib/image.js) : les navigateurs hors
+ *  Safari ne l'affichent pas. */
 export const TYPES_IMAGE = Object.freeze([
   "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif",
 ]);
+
+/** Les formats affichables PARTOUT (toute balise <img>, tout navigateur). */
+export const TYPES_AFFICHABLES = Object.freeze([
+  "image/jpeg", "image/png", "image/webp",
+]);
+
+/** Ce type doit-il être converti avant stockage pour être affichable partout ?
+ *  (HEIC/HEIF des iPhone : oui.) */
+export function typeAConvertir(type) {
+  const t = String(type || "").toLowerCase();
+  return TYPES_IMAGE.includes(t) && !TYPES_AFFICHABLES.includes(t);
+}
 
 /** Au plus 6 photos par constat — assez pour documenter, pas de déversoir. */
 export const MAX_PHOTOS_CONSTAT = 6;
