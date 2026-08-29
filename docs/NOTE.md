@@ -1,62 +1,49 @@
-# Lot 49 — photos sur les constats (dernier élément du circuit)
+# Lot 51 — photos : le HEIC des iPhone, réglé pour de bon
 
-**28/08/2026.** **1189 tests verts**, build vert. **Migration 0158** appliquée
-et vérifiée.
+**29/08/2026.** **1191 tests verts**, build vert.
 
-Le circuit terrain → bureau est maintenant complet : le terrain peut joindre la
-**preuve visuelle** à ses constats, et le bureau décide sur pièce.
+## Le diagnostic (fait sur tes données réelles, sans retour sur place)
 
-## Ce que ça fait
+Sur le rapport du 31/07, j'ai comparé les deux photos en base :
+- `1000025472.jpg` → **image/jpeg** → s'affiche ✓
+- `1000024551.heic` → **image/heic** (8,5 Mo) → reste blanche ✗
 
-- **Terrain** (rapport de chantier) : sous chaque constat, un bouton
-  **« + Ajouter une photo »**. Le chef d'équipe prend une photo (l'appareil
-  s'ouvre directement sur mobile), elle apparaît en vignette. Jusqu'à 6 par
-  constat.
-- **Bureau** (Rapports du dossier) : les photos s'affichent sous chaque constat
-  au moment de trancher. Le bureau (gérer le planning) peut en ajouter ou en
-  retirer. Clic sur une vignette → aperçu plein écran.
+Le coupable : le **HEIC**, le format natif des iPhone. Les navigateurs hors
+Safari **ne savent pas l'afficher** dans une image. Ce n'était donc ni l'upload
+ni les droits — le fichier était bien là — mais l'affichage d'un format que le
+navigateur refuse. Mon erreur : j'avais accepté le HEIC sans le convertir.
 
-## Sous le capot
+## La correction — pour TOUTES les futures photos
 
-- Les fichiers vont dans le **bucket privé** `documents`, jamais public.
-  Chaque affichage passe par une **URL signée courte** (5 min) — pas de lien
-  permanent qui fuiterait.
-- La validation est **pure et testée** : seules les images (JPEG/PNG/WebP),
-  12 Mo max, 6 photos max par constat. Ce qui déborde est écarté proprement,
-  avec un message.
+- **Conversion en JPEG à l'envoi.** Avant l'upload, chaque photo est redessinée
+  et ré-encodée en **JPEG** (lib/image.js). Résultat : elle s'affiche partout,
+  et au passage elle s'allège (ton HEIC de 8,5 Mo serait tombé à quelques
+  centaines de Ko). Fini les photos fantômes.
+- **Refus propre si indécodable.** Si un navigateur ne sait vraiment pas lire le
+  fichier, on ne stocke PAS une photo invisible : message clair, et les autres
+  photos du lot passent quand même.
+- Le domaine distingue maintenant les formats **affichables partout**
+  (JPEG/PNG/WebP) de ceux **à convertir** (HEIC/HEIF). Verrouillé par test +
+  sabotage.
 
-## Un piège attrapé (important)
+## Pour la photo HEIC DÉJÀ envoyée (celle du 31/07)
 
-La policy de sécurité du bucket exige que le chemin commence par
-`org/{votre_org}/…`. Mon premier chemin ne respectait pas ça — **l'upload aurait
-échoué en silence sur le terrain**. Corrigé : le chemin est cloisonné par
-organisation, comme les CGV. C'est le genre de détail qui ne casse pas le build
-mais casse l'usage réel.
+Je ne peux pas la convertir à distance (pas de décodeur HEIC côté serveur).
+Mais tu n'es plus devant un carré blanc muet : la vignette devient un bouton
+**« 🖼️ ouvrir »** — un clic télécharge/ouvre le fichier, que ton système saura
+sans doute lire. Le plus simple reste de **la reprendre depuis le dossier** : la
+nouvelle sera convertie en JPEG et s'affichera normalement. (Ou supprime-la et
+renvoie-la — l'ancienne n'est pas récupérable en vignette, elle est en HEIC.)
+
+## À vérifier à l'œil
+
+1. Envoie une photo (même depuis un iPhone / un fichier HEIC) : elle doit
+   maintenant s'afficher en vignette, et le message « photo envoyée » apparaît.
+2. Sur le 31/07 : l'ancienne HEIC montre « ouvrir » au lieu du blanc. Renvoie-la
+   pour l'avoir en vignette.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| accepter les PDF comme photos | 3 |
-| pas de limite de nombre | 2 |
-
-## À vérifier à l'œil
-
-1. **Terrain** : sur un constat, ajouter une photo depuis le téléphone — elle
-   apparaît, on peut la retirer.
-2. **Bureau** (Rapports du dossier) : la photo est visible sous le constat, clic
-   → plein écran.
-3. Une photo trop lourde ou un PDF est refusé avec un message clair.
-
-## Le circuit est bouclé
-
-Pointage individuel → main-d'œuvre réelle → surcoût interne → constats
-facturables/non → **photos**. La boucle terrain → bureau est complète.
-
-## Rappel pour un lot à venir (consigné dans 20-OUVERT.md)
-
-Les CENTRES : Raphaël veut qu'un nouveau centre ouvre des **écrans vierges**
-(comme une organisation à part sous une seule société), PAS le tri actuel sur
-liste partagée dans Dossiers/Planning. Le tri/centres, lui, ira dans la
-**COMPTABILITÉ**. À reprendre : transformer le cloisonnement Dossiers/Planning
-et amener le tri en compta.
+| le HEIC compté comme affichable | 2 |
