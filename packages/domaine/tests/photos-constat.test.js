@@ -56,3 +56,24 @@ test("trierPhotos borne à la place restante", () => {
   assert.equal(r.retenues.length, 2);
   assert.match(r.message, /maximum/);
 });
+
+/* ── Affichable partout vs à convertir (le bug HEIC du 29/08) ────────────── */
+
+import { typeAConvertir, TYPES_AFFICHABLES } from "../src/operations/photos-constat.js";
+
+test("le HEIC est reconnu comme À CONVERTIR, pas affichable tel quel", () => {
+  // LE bug réel : un HEIC stocké tel quel reste blanc sur Chrome/Android.
+  assert.equal(typeAConvertir("image/heic"), true);
+  assert.equal(typeAConvertir("image/heif"), true);
+  assert.equal(typeAConvertir("IMAGE/HEIC"), true, "tolère la casse");
+  // JPEG/PNG/WebP : affichables, rien à convertir.
+  assert.equal(typeAConvertir("image/jpeg"), false);
+  assert.equal(typeAConvertir("image/png"), false);
+  assert.equal(typeAConvertir("image/webp"), false);
+});
+
+test("les formats affichables partout sont bien JPEG/PNG/WebP", () => {
+  assert.deepEqual([...TYPES_AFFICHABLES], ["image/jpeg", "image/png", "image/webp"]);
+  // Le HEIC n'y est PAS — c'est tout l'enjeu.
+  assert.equal(TYPES_AFFICHABLES.includes("image/heic"), false);
+});
