@@ -359,3 +359,26 @@ Le domaine (pilotage/surcout-interne.js) est branché de bout en bout :
   d'équipe ajoute) et au BUREAU (RapportsDossier, gerer_planning ajoute/retire).
 - Le circuit terrain→bureau est complet : pointage individuel, main-d'œuvre
   réelle, surcoût interne, constats facturables/non, ET photos.
+
+## Centres = espaces de travail (Option A) — socle (lot 52, 28/08/2026)
+
+Décision de Raphaël : un nouveau centre = un ESPACE de travail vierge, pas un
+tri sur liste commune. Une seule société au-dessus (maison mère = vue d'ensemble
++ admin). Ce lot pose le socle :
+- **Domaine** (centres.js) : `centreDeRattachement(espaceCourant, acteur, centres)`
+  — le centre où RATTACHER une création selon l'espace ouvert. Le responsable
+  dépôt crée TOUJOURS dans son centre (jamais ailleurs). `nomEspace` pour dire
+  « vous êtes ici ». Éprouvé par sabotage.
+- **Création rattachée** : creerAffaire/creerDossierVide acceptent `centreId` et
+  le posent sur affaires.centre_id. nav.nouvelle (bureau) et ouvrirNouveau
+  (terrain) rattachent à l'espace courant. Un centre neuf devient un vrai espace.
+- **Sélecteur reframé** : « Espace de travail » (plus « Centre »/filtre). Le
+  filtrage des lots 43/44 reste — un espace ne montre que ses dossiers.
+
+**RESTE À FAIRE (prochain lot centres) :**
+1. **Comptabilité** : y amener le tri/centres consolidé (SelecteurCentre +
+   filtrerParCentre), maison mère voit tout ventilé par centre. Écran
+   Comptabilite.jsx existe.
+2. Planning : la création de mission doit aussi hériter du centre du dossier
+   (à vérifier — la mission porte déjà centre_id, voir si l'héritage est auto).
+3. Éventuel écran d'accueil « choisir un espace » si Raphaël le souhaite.
