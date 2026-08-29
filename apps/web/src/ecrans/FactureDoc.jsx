@@ -47,7 +47,10 @@ export default function FactureDoc({ facture, organisation, client, adresses }) 
           </div>
           <div style={S.enteteDroite}>
             N° <b style={{ color: "#93C5FD" }}>{facture.numero}</b><br />
-            {dateFR(facture.date_emission)}
+            Émise le {dateFR(facture.date_emission)}
+            {facture.echeance && (
+              <><br />Échéance : {dateFR(facture.echeance)}</>
+            )}
           </div>
         </div>
       </div>

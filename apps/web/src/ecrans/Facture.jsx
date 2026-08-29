@@ -16,9 +16,17 @@ import {
 import FactureDoc from "./FactureDoc.jsx";
 import FacturePeppol from "./FacturePeppol.jsx";
 import { composerTotal, etatPaiement } from "@domaine/facturation/facture.js";
+import { qualifierEcheance } from "@domaine/commun/echeances.js";
 import { libelleTva } from "@domaine/organisation/identite.js";
 import { categoriePourNature } from "@domaine/facturation/operations.js";
 import { C, S, euros, Confirmation } from "../lib/theme.jsx";
+
+// Date au format belge, tolérante au null. Locale au module (comme FactureDoc)
+// plutôt que de coupler deux écrans par un export utilitaire.
+function dateFR(iso) {
+  if (!iso) return "…";
+  try { return new Date(iso).toLocaleDateString("fr-BE"); } catch { return iso; }
+}
 
 const STATUTS_UI = {
   a_payer: { libelle: "À payer", couleur: C.ambre },
@@ -199,6 +207,25 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
             {euros(solde.solde_centimes)}
           </span>
         </div>
+
+        {/* L'échéance : rien à afficher si soldée. Sinon, où on en est par
+            rapport à la date d'échéance figée à l'émission (lot A). */}
+        {facture.emise && solde.solde_centimes > 0 && facture.echeance && (() => {
+          const q = qualifierEcheance(facture.echeance);
+          const libelle = q.etat === "expiree"
+            ? `En retard depuis ${Math.abs(q.jours)} jour${Math.abs(q.jours) > 1 ? "s" : ""}`
+            : q.etat === "proche"
+            ? `Échoit dans ${q.jours} jour${q.jours > 1 ? "s" : ""}`
+            : `Échéance le ${dateFR(facture.echeance)}`;
+          const couleur = q.etat === "expiree" ? C.rouge
+            : q.etat === "proche" ? C.ambre : C.muet;
+          return (
+            <div style={{ marginTop: 8, fontSize: 12.5, fontWeight: 700,
+                          color: couleur }}>
+              {libelle}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Historique des paiements */}
