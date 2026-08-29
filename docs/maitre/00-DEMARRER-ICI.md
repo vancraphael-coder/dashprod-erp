@@ -59,12 +59,20 @@ Ces points sont tranchés. Les rediscuter fait perdre du temps et dérive :
 ## L'ordre de lecture
 
 1. Ce fichier.
-2. `10-DECISIONS-PRODUIT.md` — ce qui est arrêté.
-3. `20-OUVERT.md` — ce qui attend une décision.
-4. `25-PARAMETRES-ROADMAP.md` — les réglages qui se saisissent SANS EFFET, et
-   ce dont chacun dépend pour être branché. À lire avant de toucher à la
-   facturation : trois champs y sont inertes en production.
-5. `PASSATION.md` (racine) — l'état technique détaillé et les pièges.
-6. `30-REGLES-IA-EXTERNE.md` — si vous confiez un travail à un autre outil.
+2. `60-CIRCUITS-QUATRE-COUCHES.md` — **la carte du territoire.** Les dix circuits
+   du produit, chacun lu en quatre couches (métier réel, paramétrage,
+   facturation, comptabilité), avec ce qui tient et ce qui casse. À lire avant
+   de décider quoi que ce soit : c'est le seul document qui montre l'ensemble.
+3. `70-ROADMAP.md` — **l'ordre de marche.** Les vagues, pourquoi celle-ci avant
+   celle-là, et ce qu'il ne faut pas faire.
+4. `10-DECISIONS-PRODUIT.md` — ce qui est arrêté.
+5. `20-OUVERT.md` — ce qui attend une décision.
+6. `25-PARAMETRES-ROADMAP.md` — le détail des réglages qui se saisissent SANS
+   EFFET. À lire avant de toucher à la facturation : trois champs sont inertes
+   en production.
+7. `26-GARDE-MEUBLES-ROADMAP.md` — le modèle boxe (ses fondations sont désormais
+   posées ; voir vague 4 de la roadmap).
+8. `PASSATION.md` (racine) — l'état technique détaillé et les pièges.
+9. `30-REGLES-IA-EXTERNE.md` — si vous confiez un travail à un autre outil.
 
 Le reste de `docs/` est de la matière de réflexion : utile, jamais normatif.
