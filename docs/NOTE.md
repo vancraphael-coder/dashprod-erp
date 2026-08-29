@@ -1,54 +1,47 @@
-# Lot 52 — les centres deviennent des espaces de travail (Option A, socle)
+# Lot 53 — Option A complété : planning hérité + comptabilité ventilée
 
-**28/08/2026.** **1194 tests verts**, build vert.
+**28/08/2026.** **1194 tests verts**, build vert. **Migration 0159** appliquée
+et vérifiée.
 
-Suite à ta décision : un nouveau centre = un **espace de travail vierge**, comme
-une organisation à part, sous une seule société. Ce lot pose le socle — le
-mécanisme qui transforme le *tri* en *espace*.
+Ce lot complète les deux points qui manquaient à Option A.
 
-## Le vrai changement : ce qu'on crée dans un centre lui appartient
+## 1. Le planning hérite du centre (migration 0159)
 
-Avant, le centre n'était qu'un filtre sur une liste commune. Maintenant :
+J'ai trouvé un trou : une mission ne reprenait PAS le centre de son dossier. Une
+mission d'un dossier d'Anvers n'apparaissait donc pas dans le planning d'Anvers.
+Corrigé : à la création, **la mission hérite du centre de son affaire**. Le
+planning d'un espace montre bien ses propres missions.
 
-- **Créer un dossier dans l'espace d'un centre le rattache à ce centre.** Tu
-  ouvres l'espace « Anvers », tu crées un dossier → il vit dans Anvers, invisible
-  ailleurs. Un centre neuf devient un vrai espace de travail, pas une vue vide.
-- **Le responsable dépôt crée toujours dans SON centre**, jamais ailleurs — même
-  s'il tentait autre chose. Verrouillé côté domaine.
-- **Le terrain** crée aussi dans son centre.
-- Les anciens dossiers (créés sans centre) restent en **maison mère** — rien ne
-  bouge pour l'existant.
+## 2. La comptabilité, ventilée par centre (ton point 2)
 
-## Le sélecteur devient « Espace de travail »
+Dans la comptabilité, une barre **« Ventilation »** :
+- **Tous les centres** (par défaut) : la maison mère voit **tout, consolidé** —
+  c'est la vue de la tête de réseau.
+- **Maison mère** : les factures rattachées à la maison mère seule.
+- **Chaque centre** : sa ventilation propre.
 
-Plus « Centre » (qui sonnait comme un filtre) : « Espace de travail ». Choisir un
-espace, c'est y entrer — on voit ses dossiers, on crée dedans. La maison mère est
-un espace comme un autre, celui de la tête de réseau.
+Le filtre s'applique partout — le récapitulatif, le contrôle d'équilibre du
+journal, ET les trois exports (CSV comptable, journal, FEC). Tu peux donc sortir
+un fichier pour ton comptable soit consolidé, soit centre par centre.
 
-## Éprouvé par sabotage
+## Option A est maintenant complet
 
-| Sabotage | Rouges |
-|---|---|
-| le responsable dépôt peut créer ailleurs que chez lui | 1 |
+- Dossiers/Planning : espaces cloisonnés, un centre ne montre que ses affaires.
+- Création : un dossier créé dans un espace lui est rattaché (lot 52).
+- Missions : héritent du centre de leur dossier (ce lot).
+- Comptabilité : consolidée, ventilable par centre (ce lot).
 
-Plus le test « carnet » qui m'a rappelé à l'ordre : il garantit qu'un contact
-existant ne crée pas de doublon client — j'ai vérifié que je préserve bien ça.
+Une seule société au-dessus, la maison mère garde la vue d'ensemble — exactement
+ce que tu voulais.
 
 ## À vérifier à l'œil
 
-1. Crée un centre (Paramètres → Centres), ouvre son espace dans les dossiers :
-   il est **vierge**.
-2. Crée un dossier depuis cet espace : il apparaît dans l'espace du centre, et
-   PAS dans la maison mère ni les autres centres.
-3. Reviens à la maison mère : tes anciens dossiers sont toujours là.
+1. Crée un dossier dans l'espace d'un centre, confirme-le (crée une mission) :
+   la mission apparaît dans le planning de CE centre, pas ailleurs.
+2. Comptabilité : la barre « Ventilation ». « Tous » = tout ; un centre = ses
+   factures. Les exports suivent le filtre choisi.
 
-## RESTE À FAIRE (prochain lot centres) — consigné dans 10-DECISIONS
+## Reste (optionnel)
 
-1. **Comptabilité** : y amener le tri/centres consolidé (maison mère voit tout,
-   ventilé par centre). L'écran Comptabilite.jsx existe déjà.
-2. **Planning** : vérifier que la création d'une mission hérite bien du centre
-   de son dossier (la mission porte déjà centre_id).
-3. Éventuel écran d'accueil « choisir un espace », si tu le souhaites.
-
-C'est un socle : la mécanique d'Option A est posée et testée. Les deux points
-ci-dessus la complètent — je te les propose au prochain tour.
+- Un écran d'accueil « choisir un espace » si tu le souhaites un jour. Non
+  nécessaire — la bascule d'espace suffit.
