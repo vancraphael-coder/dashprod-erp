@@ -15,7 +15,7 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from "react";
-import { facturesCanoniquesPeriode, obtenirOrganisation , achatsPeriode, paiementsPeriode, listerTiers } from "../lib/adaptateur.js";
+import { facturesCanoniquesPeriode, obtenirOrganisation , achatsPeriode, paiementsPeriode, listerTiers, depots } from "../lib/adaptateur.js";
 import {
   bornesPeriode, libellePeriode, trimestreCourant, recapitulatif, lotPret,
 } from "@domaine/facturation/periodes.js";
@@ -28,6 +28,17 @@ import { C, S, euros } from "../lib/theme.jsx";
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
               "août", "septembre", "octobre", "novembre", "décembre"];
 
+// Style d'une pastille de ventilation (active/inactive).
+function pastilleCentre(actif) {
+  return {
+    border: `1px solid ${actif ? C.encre : C.bord}`,
+    background: actif ? C.encre : "transparent",
+    color: actif ? "#fff" : C.muet,
+    borderRadius: 999, padding: "3px 10px", fontSize: 11.5,
+    fontWeight: actif ? 700 : 500, cursor: "pointer",
+  };
+}
+
 export default function Comptabilite({ retour }) {
   const [periode, setPeriode] = useState(() => trimestreCourant());
   const [factures, setFactures] = useState(null);
@@ -39,10 +50,17 @@ export default function Comptabilite({ retour }) {
   const [achats, setAchats] = useState([]);
   const [paiements, setPaiements] = useState([]);
   const [tiers, setTiers] = useState([]);
+  // Ventilation par centre (Option A, point 2) : la maison mère voit TOUT
+  // consolidé par défaut, et peut isoler un centre. `null` = tous les centres.
+  const [centres, setCentres] = useState([]);
+  const [centreFiltre, setCentreFiltre] = useState(null);   // null = tous
 
   const bornes = useMemo(() => bornesPeriode(periode), [periode]);
 
   useEffect(() => { obtenirOrganisation().then(setOrg).catch(() => setOrg(null)); }, []);
+  useEffect(() => {
+    depots(false).then((l) => setCentres(l || [])).catch(() => setCentres([]));
+  }, []);
 
   useEffect(() => {
     if (!bornes) return;
@@ -57,16 +75,26 @@ export default function Comptabilite({ retour }) {
     return () => { vivant = false; };
   }, [bornes?.debut, bornes?.fin]);
 
-  const recap = useMemo(() => recapitulatif(factures || []), [factures]);
-  const verdict = useMemo(() => lotPret(factures || []), [factures]);
+  // Les factures du centre choisi (ou toutes si null). La maison mère consolide
+  // par défaut ; on peut isoler un centre pour sa ventilation.
+  const facturesVues = useMemo(() => {
+    if (!factures) return factures;              // null tant que ça charge
+    if (centreFiltre === null) return factures;  // tous les centres
+    // "__mm__" = maison mère (centre_id null) ; sinon l'id du centre.
+    const cible = centreFiltre === "__mm__" ? null : centreFiltre;
+    return factures.filter((f) => (f.centre_id ?? null) === cible);
+  }, [factures, centreFiltre]);
+
+  const recap = useMemo(() => recapitulatif(facturesVues || []), [facturesVues]);
+  const verdict = useMemo(() => lotPret(facturesVues || []), [facturesVues]);
 
   /** Contrôle d'équilibre du journal : une écriture déséquilibrée est rejetée
    *  par tout cabinet. On le vérifie AVANT de proposer le fichier. */
   const journalEquilibre = useMemo(() => {
-    if (!factures || factures.length === 0) return true;
-    try { return equilibre(journalVentes(factures, COMPTES_DEFAUT)); }
+    if (!facturesVues || facturesVues.length === 0) return true;
+    try { return equilibre(journalVentes(facturesVues, COMPTES_DEFAUT)); }
     catch { return false; }
-  }, [factures]);
+  }, [facturesVues]);
 
   function telecharger(contenu, nom, type = "text/csv;charset=utf-8") {
     const blob = new Blob([contenu], { type });
@@ -138,6 +166,30 @@ export default function Comptabilite({ retour }) {
             Du {bornes.debut} au {bornes.fin} · factures émises uniquement
           </div>
         )}
+
+        {/* Ventilation par centre — la maison mère consolide TOUT par défaut,
+            et peut isoler un centre (Option A, point 2). */}
+        {centres.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6,
+                        flexWrap: "wrap", marginTop: 10 }}>
+            <span style={{ fontSize: 11.5, color: C.fantome, fontWeight: 600 }}>
+              Ventilation
+            </span>
+            <button onClick={() => setCentreFiltre(null)}
+              style={pastilleCentre(centreFiltre === null)}>
+              Tous les centres
+            </button>
+            <button onClick={() => setCentreFiltre("__mm__")}
+              style={pastilleCentre(centreFiltre === "__mm__")}
+              title="Les factures rattachées à la maison mère">
+              Maison mère
+            </button>
+            {centres.map((c) => (
+              <button key={c.id} onClick={() => setCentreFiltre(c.id)}
+                style={pastilleCentre(centreFiltre === c.id)}>{c.nom}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {erreur && (
@@ -205,7 +257,7 @@ export default function Comptabilite({ retour }) {
               <Export
                 titre="Relevé des factures (CSV)"
                 detail="Ouvrable dans Excel. Une ligne par facture, avec HTVA, TVA et TVAC."
-                onClick={() => telecharger(versCsv(factures),
+                onClick={() => telecharger(versCsv(facturesVues),
                   `factures-${suffixe}.csv`)} />
 
               <Export
@@ -213,14 +265,14 @@ export default function Comptabilite({ retour }) {
                 detail={"Écritures à double entrée aux comptes du PCMN belge : débit "
                       + "clients, crédit ventes et TVA par taux. C'est ce que le "
                       + "cabinet importe."}
-                onClick={() => telecharger(journalCsv(factures, COMPTES_DEFAUT),
+                onClick={() => telecharger(journalCsv(facturesVues, COMPTES_DEFAUT),
                   `journal-ventes-${suffixe}.csv`)} />
 
               <Export
                 titre="FEC (France)"
                 detail={"Fichier des Écritures Comptables, format légal français, "
                       + "18 colonnes tabulées. Uniquement si vous opérez en France."}
-                onClick={() => telecharger(versFec(factures, {
+                onClick={() => telecharger(versFec(facturesVues, {
                   journalCode: "VE", journalLib: "Journal des ventes",
                 }), `FEC-${suffixe}.txt`, "text/plain;charset=utf-8")} />
 
