@@ -344,3 +344,18 @@ Le domaine (pilotage/surcout-interne.js) est branché de bout en bout :
 - **Base** : table surcouts_internes (0156, org_id DEFAULT jwt_org()), 3 RPC
   (0157).
 - Piège heredoc EOF attrapé par le test qui exécute vraiment le fichier.
+
+## Photos sur les constats — dernier élément du circuit (lot 49, 28/08/2026)
+
+- **Domaine** (operations/photos-constat.js) : validation pure — type image,
+  12 Mo max, 6 photos max par constat, trierPhotos borne à la place restante.
+  Éprouvé par sabotage.
+- **Base** : table constat_photos (0158, org_id DEFAULT jwt_org()). Le FICHIER
+  va dans le bucket privé `documents`, chemin **org/{org_id}/constats/...** —
+  IMPÉRATIF pour passer la policy doc_ecriture_org (elle compare foldername[2]
+  à jwt_org()). Un chemin sans ce préfixe échouerait en silence.
+- **Écran** : composant réutilisable PhotosConstat.jsx (galerie + ajout + aperçu
+  plein écran, URL signée 300 s). Branché au TERRAIN (RapportChantier, le chef
+  d'équipe ajoute) et au BUREAU (RapportsDossier, gerer_planning ajoute/retire).
+- Le circuit terrain→bureau est complet : pointage individuel, main-d'œuvre
+  réelle, surcoût interne, constats facturables/non, ET photos.

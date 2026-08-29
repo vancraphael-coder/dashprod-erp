@@ -64,3 +64,30 @@ s'appelle à la demande. Volontaire : la table ne présume d'aucun cycle.
 **PWA et distribution multi-store.** Non instruit.
 
 **Connecteur MCP de pilotage.** Après le balisage des zones exploitables.
+
+## LOT À VENIR — Centres : écrans vierges, pas un tri (décision du 28/08/2026)
+
+**Correction de cap.** Les lots 43/44 ont posé un **tri par centre** (SelecteurCentre
++ filtrerParCentre) sur une liste partagée dans DOSSIERS et PLANNING. Ce n'est PAS
+ce que Raphaël veut pour ces écrans.
+
+**Ce qu'il veut vraiment :**
+- **Un nouveau centre = de nouveaux écrans VIERGES.** Chaque centre fonctionne
+  comme une organisation à part — ses propres dossiers, son propre planning,
+  repartant de zéro — le tout **sous le contrôle d'une seule société** (la maison
+  mère garde la vue d'ensemble et l'administration).
+- Ce n'est donc pas « filtrer une liste commune » mais « ouvrir un espace de
+  travail propre au centre ».
+
+**Où le tri/centres reste pertinent :** dans la **COMPTABILITÉ**. Là, on veut bien
+un tri par centre sur des données consolidées (la maison mère voit tout, ventilé
+par centre). Le SelecteurCentre + filtrerParCentre y ont leur place.
+
+**À faire, prochain lot centres :**
+1. Dossiers/Planning : passer du tri à un vrai cloisonnement par centre (espace de
+   travail propre, écrans vierges à la création d'un centre). Réutiliser la portée
+   (porteeCentres) pour choisir QUEL espace on ouvre, pas pour filtrer.
+2. Comptabilité : y amener le tri/centres (SelecteurCentre + filtrerParCentre),
+   consolidé maison mère.
+3. Le SelecteurCentre actuel dans Dossiers/Planning est à retirer ou à retransformer
+   en sélecteur d'ESPACE (pas de filtre).
