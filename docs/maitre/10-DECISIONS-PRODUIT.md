@@ -396,3 +396,18 @@ tri sur liste commune. Une seule société au-dessus (maison mère = vue d'ensem
 
 Option A est désormais complet : espaces cloisonnés (dossiers/planning), création
 rattachée à l'espace, missions héritées, et compta consolidée ventilable.
+
+## Vague 1 lot A — l'échéance de paiement (29/08/2026)
+
+- **Base** (0160) : cmd_emettre_facture pose echeance = date_emission +
+  echeance_jours (réglage société, défaut prudent 30 j). Figée à l'émission avec
+  le numéro. **On ne réécrit PAS les 16 factures déjà émises** — décision
+  confirmée par Raphaël : on n'écrit pas le passé, on applique aux suivantes.
+- **Domaine** : dateEcheance() pure et testée (doublon SQL). Piège Number(null)===0
+  neutralisé — un réglage absent vaut 30 j, jamais 0. Éprouvé par sabotage.
+- **Écran** : le PDF affiche « Émise le … / Échéance : … ». La fiche facture
+  qualifie l'échéance sous le solde (« En retard depuis X jours » rouge, « Échoit
+  dans X jours » ambre) — seulement si émise et non soldée.
+- Reste de la vague 1 : lot B (communication/OGM stocké à l'émission — même
+  défaut, l'OGM est calculé au PDF et jamais gardé), lot C (rapprochement), lot D
+  (relances/mention légale/préfixe).
