@@ -85,3 +85,30 @@ test("le sélecteur de dépôt du stockage ne montre que les centres visibles", 
     filtrer({ poste: "secretaire", centre_id: "anvers" }).map((d) => d.id),
     ["anvers", "gand", "liege"], "la secrétaire voit tous les dépôts");
 });
+
+/* ── L'espace de travail (Option A) : ce qu'on crée s'y rattache ──────────── */
+
+import { centreDeRattachement, nomEspace } from "../src/organisation/centres.js";
+
+test("un dossier créé dans un espace-centre lui est rattaché", () => {
+  const centres = [{ id: "anvers", nom: "Anvers" }, { id: "gand", nom: "Gand" }];
+  // Secrétaire dans l'espace Anvers → le dossier va à Anvers.
+  assert.equal(centreDeRattachement("anvers", { poste: "secretaire" }, centres), "anvers");
+  // Dans l'espace maison mère → null (rien à un centre).
+  assert.equal(centreDeRattachement(MAISON_MERE, { poste: "gerant" }, centres), MAISON_MERE);
+});
+
+test("le responsable dépôt crée TOUJOURS dans son centre, jamais ailleurs", () => {
+  // Même s'il tente d'ouvrir la maison mère ou un autre centre.
+  const centres = [{ id: "anvers", nom: "Anvers" }, { id: "gand", nom: "Gand" }];
+  const rd = { poste: "responsable_depot", centre_id: "anvers" };
+  assert.equal(centreDeRattachement(MAISON_MERE, rd, centres), "anvers");
+  assert.equal(centreDeRattachement("gand", rd, centres), "anvers");
+  assert.equal(centreDeRattachement("anvers", rd, centres), "anvers");
+});
+
+test("nomEspace nomme l'espace courant", () => {
+  const centres = [{ id: "anvers", nom: "Anvers" }];
+  assert.equal(nomEspace(MAISON_MERE, centres), "Maison mère");
+  assert.equal(nomEspace("anvers", centres), "Anvers");
+});

@@ -117,8 +117,8 @@ test("le carnet est bâti sur `clients`, sans table parallèle", () => {
 test("partir d'un contact ne crée PAS un doublon de client", () => {
   // C'est tout l'intérêt du carnet pour un récurrent : réutiliser la fiche.
   const ad = lire("lib/adaptateur.js");
-  assert.ok(/creerDossierVide\(nature = "demenagement", clientId = null\)/.test(ad));
-  assert.ok(ad.includes("? creerAffaire({ clientId, nature })"),
+  assert.ok(/creerDossierVide\(nature = "demenagement", clientId = null, centreId\)/.test(ad));
+  assert.ok(ad.includes("? creerAffaire({ clientId, nature, centreId })"),
     "avec un clientId, aucun client ne doit être inséré");
 });
 
