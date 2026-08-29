@@ -17,6 +17,7 @@ import React, { useEffect, useState } from "react";
 import { lireRapport, ecrireDeroule, declarerConstat, surcoutDeclarer }
   from "../lib/adaptateur.js";
 import { MOTIFS_INTERNES, surcoutValide } from "@domaine/pilotage/surcout-interne.js";
+import PhotosConstat from "../composants/PhotosConstat.jsx";
 import { NATURES, nature, constatValide, syntheseRapport }
   from "@domaine/operations/rapport-chantier.js";
 import { heureDe, secondesTravail, formaterDuree } from "@domaine/operations/pointage.js";
@@ -138,6 +139,9 @@ export default function RapportChantier({ mission, peutRediger }) {
               <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3,
                             fontStyle: "italic" }}>Bureau : {c.motif}</div>
             )}
+            {/* Les photos du constat : le terrain les ajoute, tout le monde les
+                voit. La preuve visuelle sur laquelle le bureau décide. */}
+            <PhotosConstat constatId={c.id} peutAjouter={peutRediger} sombre />
           </div>
         );
       })}

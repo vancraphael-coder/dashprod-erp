@@ -15,7 +15,8 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from "react";
-import { lireRapport, trancherConstat } from "../lib/adaptateur.js";
+import { lireRapport, trancherConstat, monProfil } from "../lib/adaptateur.js";
+import PhotosConstat from "../composants/PhotosConstat.jsx";
 import { nature, syntheseRapport } from "@domaine/operations/rapport-chantier.js";
 import { C, S } from "../lib/theme.jsx";
 
@@ -40,6 +41,13 @@ export default function RapportsDossier({ affaireId, retour }) {
   const [rapports, setRapports] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [ouvert, setOuvert] = useState(null);   // constat en cours d'arbitrage
+  const [peutGererPlanning, setPeutGererPlanning] = useState(false);
+
+  useEffect(() => {
+    monProfil()
+      .then((p) => setPeutGererPlanning((p?.capacites || []).includes("gerer_planning")))
+      .catch(() => setPeutGererPlanning(false));
+  }, []);
   const [motif, setMotif] = useState("");
   const [enCours, setEnCours] = useState(false);
 
@@ -208,6 +216,9 @@ export default function RapportsDossier({ affaireId, retour }) {
                         Motif : {c.motif}
                       </span>
                     )}
+                    {/* Les photos du constat — la preuve visuelle. Le bureau
+                        peut en ajouter/retirer s'il gère le planning. */}
+                    <PhotosConstat constatId={c.id} peutAjouter={peutGererPlanning} />
                   </span>
                   {c.etat !== "declare" && (
                     <span style={{ fontSize: 11, fontWeight: 700, color: teinte,
