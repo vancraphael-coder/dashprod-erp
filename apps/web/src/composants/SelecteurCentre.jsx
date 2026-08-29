@@ -35,13 +35,16 @@ export default function SelecteurCentre({ profil, centres, choisi, onChoisir }) 
     <div style={{ display: "flex", alignItems: "center", gap: 8,
                   padding: "0 16px 10px", flexWrap: "wrap" }}>
       <span style={{ fontSize: 11.5, color: C.fantome, fontWeight: 600 }}>
-        Centre
+        Espace de travail
       </span>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {options.map((o) => {
           const actif = (o.id ?? "mm") === (valeur ?? "mm");
           return (
             <button key={o.id ?? "mm"} onClick={() => onChoisir(o.id)}
+              title={o.id === MAISON_MERE
+                ? "L'espace de la maison mère"
+                : `Entrer dans l'espace de ${o.nom} — ses propres dossiers`}
               style={{
                 border: `1px solid ${actif ? C.encre : C.bord}`,
                 background: actif ? C.encre : "transparent",
