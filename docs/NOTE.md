@@ -1,59 +1,62 @@
-# Lot 48 — le surcoût interne, branché de bout en bout
+# Lot 49 — photos sur les constats (dernier élément du circuit)
 
-**28/08/2026.** **1184 tests verts**, build vert. **Migrations 0156, 0157**
-appliquées et vérifiées.
+**28/08/2026.** **1189 tests verts**, build vert. **Migration 0158** appliquée
+et vérifiée.
 
-C'est le circuit que tu voulais : marquer le temps qui déborde pour NOS aléas
-(panne au retour, retard, nettoyage) comme un coût interne — qui ronge la marge
-mais que **le client ne paie jamais**.
+Le circuit terrain → bureau est maintenant complet : le terrain peut joindre la
+**preuve visuelle** à ses constats, et le bureau décide sur pièce.
 
-## Le terrain déclare et fige
+## Ce que ça fait
 
-Sur le rapport de chantier, le chef d'équipe a un bouton **« Signaler un surcoût
-interne »**. Il choisit le motif (panne au retour, retard, nettoyage, matériel
-oublié, autre), saisit un **temps en heures** — **jamais de prix**, le terrain
-ne voit pas les euros — et **déclare + fige** d'un geste. Une fois figé, c'est
-au bureau.
+- **Terrain** (rapport de chantier) : sous chaque constat, un bouton
+  **« + Ajouter une photo »**. Le chef d'équipe prend une photo (l'appareil
+  s'ouvre directement sur mobile), elle apparaît en vignette. Jusqu'à 6 par
+  constat.
+- **Bureau** (Rapports du dossier) : les photos s'affichent sous chaque constat
+  au moment de trancher. Le bureau (gérer le planning) peut en ajouter ou en
+  retirer. Clic sur une vignette → aperçu plein écran.
 
-## Le bureau voit et corrige
+## Sous le capot
 
-Dans le **Calcul définitif** (là où sont les heures pointées), une carte
-**« Surcoût interne »** apparaît : le temps à notre charge, valorisé au coût
-interne moyen de l'équipe. Ce montant **s'ajoute au coût RÉEL** — et **jamais au
-facturé**. Le bureau (gerer_planning) peut **corriger** les heures ou
-**supprimer** une déclaration.
+- Les fichiers vont dans le **bucket privé** `documents`, jamais public.
+  Chaque affichage passe par une **URL signée courte** (5 min) — pas de lien
+  permanent qui fuiterait.
+- La validation est **pure et testée** : seules les images (JPEG/PNG/WebP),
+  12 Mo max, 6 photos max par constat. Ce qui déborde est écarté proprement,
+  avec un message.
 
-## Le principe, verrouillé par test
+## Un piège attrapé (important)
 
-`effetSurCalcul` renvoie `{ ajouteAuReel, ajouteAuFacture: 0 }`. Un test
-reproduit exactement l'usage du Calcul définitif : le réel absorbe le surcoût,
-le facturé ne bouge pas d'un centime. Le sabotage qui enverrait le surcoût sur
-la facture passe **rouge**.
+La policy de sécurité du bucket exige que le chemin commence par
+`org/{votre_org}/…`. Mon premier chemin ne respectait pas ça — **l'upload aurait
+échoué en silence sur le terrain**. Corrigé : le chemin est cloisonné par
+organisation, comme les CGV. C'est le genre de détail qui ne casse pas le build
+mais casse l'usage réel.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| le surcoût interne touche le facturé | 2 |
-| le terrain modifie même figé | 1 |
-| un motif inconnu compte quand même | 1 |
-| effetSurCalcul renvoie au facturé (intégration) | 2 |
-
-## Un piège attrapé au passage
-
-Un `EOF` de heredoc s'était glissé dans le fichier de test — c'est le test qui
-**exécute vraiment** le fichier qui l'a fait tomber (`ReferenceError: EOF`).
-Nettoyé. C'est exactement pourquoi on éprouve chaque fichier.
+| accepter les PDF comme photos | 3 |
+| pas de limite de nombre | 2 |
 
 ## À vérifier à l'œil
 
-1. **Terrain** (rapport de chantier) : le bouton « Signaler un surcoût interne »,
-   saisie en heures, sans prix, « Déclarer et figer ».
-2. **Bureau** (Calcul définitif d'un dossier avec un surcoût) : la carte
-   « Surcoût interne », le coût ajouté au Réel, le Facturé inchangé, le bouton
-   « Corriger ».
+1. **Terrain** : sur un constat, ajouter une photo depuis le téléphone — elle
+   apparaît, on peut la retirer.
+2. **Bureau** (Rapports du dossier) : la photo est visible sous le constat, clic
+   → plein écran.
+3. Une photo trop lourde ou un PDF est refusé avec un message clair.
 
-## Suite
+## Le circuit est bouclé
 
-Reste au circuit : les **photos** sur les constats (dernier élément du rapport
-de chantier).
+Pointage individuel → main-d'œuvre réelle → surcoût interne → constats
+facturables/non → **photos**. La boucle terrain → bureau est complète.
+
+## Rappel pour un lot à venir (consigné dans 20-OUVERT.md)
+
+Les CENTRES : Raphaël veut qu'un nouveau centre ouvre des **écrans vierges**
+(comme une organisation à part sous une seule société), PAS le tri actuel sur
+liste partagée dans Dossiers/Planning. Le tri/centres, lui, ira dans la
+**COMPTABILITÉ**. À reprendre : transformer le cloisonnement Dossiers/Planning
+et amener le tri en compta.
