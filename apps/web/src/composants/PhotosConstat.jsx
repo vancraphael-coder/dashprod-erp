@@ -6,7 +6,7 @@
 // privé : chaque photo s'ouvre via une URL signée courte.
 // =============================================================================
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   photosConstat, ajouterPhotoConstat, urlPhotoConstat, supprimerPhotoConstat,
 } from "../lib/adaptateur.js";
@@ -18,6 +18,8 @@ export default function PhotosConstat({ constatId, peutAjouter = false, sombre =
   const [err, setErr] = useState(null);
   const [enCours, setEnCours] = useState(false);
   const [apercu, setApercu] = useState(null); // URL en grand
+  const [info, setInfo] = useState(null);     // confirmation d'envoi
+  const inputRef = useRef(null);              // l'input fichier, déclenché par le bouton
 
   async function charger() {
     try {
@@ -45,6 +47,8 @@ export default function PhotosConstat({ constatId, peutAjouter = false, sombre =
     try {
       for (const f of tri.retenues) await ajouterPhotoConstat(constatId, f);
       await charger();
+      setInfo(`${tri.retenues.length} photo(s) envoyée(s).`);
+      setTimeout(() => setInfo(null), 2500);
     } catch (ex) { setErr(ex.message); }
     finally { setEnCours(false); }
   }
@@ -89,17 +93,35 @@ export default function PhotosConstat({ constatId, peutAjouter = false, sombre =
       )}
 
       {peutAjouter && photos.length < MAX_PHOTOS_CONSTAT && (
-        <label style={{ display: "inline-block", marginTop: photos.length ? 6 : 0,
-                        fontSize: 11.5, color: sombre ? "#38BDF8" : "#2563EB",
-                        cursor: "pointer", fontWeight: 600 }}>
-          {enCours ? "Envoi…" : "+ Ajouter une photo"}
-          <input type="file" accept="image/*" multiple capture="environment"
+        <div style={{ marginTop: photos.length ? 8 : 0 }}>
+          {/* Un VRAI bouton : il déclenche l'input par programme (inputRef.click).
+              Le montage « label + input display:none » ne s'ouvrait pas sur
+              certains navigateurs mobiles. */}
+          <button type="button" onClick={() => inputRef.current && inputRef.current.click()}
+            disabled={enCours}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              padding: "9px 14px", borderRadius: 9, cursor: enCours ? "default" : "pointer",
+              fontSize: 13, fontWeight: 700,
+              border: `1.5px solid ${sombre ? "#38BDF8" : "#2563EB"}`,
+              background: sombre ? "#0C4A6E" : "#EFF6FF",
+              color: sombre ? "#fff" : "#2563EB",
+              opacity: enCours ? 0.6 : 1,
+            }}>
+            <span style={{ fontSize: 15, lineHeight: 1 }}>📷</span>
+            {enCours ? "Envoi…" : "Ajouter une photo"}
+          </button>
+          {/* L'input reste hors flux mais PAS en display:none (certains
+              navigateurs refusent .click() sur un input display:none). */}
+          <input ref={inputRef} type="file" accept="image/*" multiple
             onChange={ajouter} disabled={enCours}
-            style={{ display: "none" }} />
-        </label>
+            style={{ position: "absolute", width: 1, height: 1, opacity: 0,
+                     overflow: "hidden", pointerEvents: "none" }} />
+        </div>
       )}
 
       {err && <div style={{ fontSize: 11, color: "#F87171", marginTop: 4 }}>{err}</div>}
+      {info && <div style={{ fontSize: 11, color: "#4ADE80", marginTop: 4 }}>{info}</div>}
 
       {/* Aperçu plein écran au clic. */}
       {apercu && (
