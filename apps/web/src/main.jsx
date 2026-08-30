@@ -18,7 +18,7 @@ import NonInvite from "./ecrans/NonInvite.jsx";
 import Inscription from "./ecrans/Inscription.jsx";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide, obtenirAffaire } from "./lib/adaptateur.js";
-import { centreDeRattachement } from "@domaine/organisation/centres.js";
+import { centreDeRattachement, espacesCreation } from "@domaine/organisation/centres.js";
 import { comporte as comporteEtape } from "@domaine/commercial/natures.js";
 import Terrain from "./ecrans/Terrain.jsx";
 import TerrainProfil from "./ecrans/TerrainProfil.jsx";
@@ -56,6 +56,7 @@ import Stockage from "./ecrans/Stockage.jsx";
 import Centres from "./ecrans/Centres.jsx";
 import RapportCentres from "./ecrans/RapportCentres.jsx";
 import SelecteurCentre from "./composants/SelecteurCentre.jsx";
+import ChoixEspace from "./composants/ChoixEspace.jsx";
 import DemandesReseau from "./ecrans/DemandesReseau.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
@@ -435,6 +436,8 @@ function App() {
   // (porteeCentres) place l'acteur sur son centre par défaut. Voir SelecteurCentre.
   const [centresOrg, setCentresOrg] = useState([]);
   const [centreChoisi, setCentreChoisi] = useState(undefined);
+  // R1 : dossier en attente de choix d'espace, quand plusieurs centres existent.
+  const [choixEspace, setChoixEspace] = useState(null);
 
   // Charger la liste des centres dès qu'on a un profil bureau : le sélecteur en
   // a besoin. Inutile pour le terrain (il n'a pas de bascule).
@@ -587,10 +590,15 @@ function App() {
   const navBrute = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
     nouvelle: async (nature, clientId) => {
-      // Option A : le dossier naît DANS l'espace de travail courant (le centre
-      // ouvert). Un centre neuf devient ainsi un vrai espace, pas une vue vide.
-      const centreId = centreDeRattachement(
-        centreChoisi, { poste: profil?.poste, centre_id: profil?.centre_id }, centresOrg);
+      // R1 : quand plusieurs centres existent, on DEMANDE l'espace avant de
+      // créer, au lieu de rattacher silencieusement à l'espace courant.
+      const acteur = { poste: profil?.poste, centre_id: profil?.centre_id };
+      const ec = espacesCreation(acteur, centresOrg);
+      if (ec.choixRequis) {
+        setChoixEspace({ nature, clientId, espaces: ec.espaces });
+        return;
+      }
+      const centreId = centreDeRattachement(centreChoisi, acteur, centresOrg);
       const id = await creerDossierVide(nature, clientId, centreId);
       setRoute({ ecran: "dossier", affaireId: id });
     },
@@ -731,6 +739,17 @@ function App() {
         <SousNavDossier actif={route.ecran} nature={natureDossier}
           aller={(cle) => naviguerAvecGarde(() =>
             setRoute({ ecran: cle, affaireId: route.affaireId }))} />
+      )}
+      {choixEspace && (
+        <ChoixEspace
+          espaces={choixEspace.espaces}
+          onChoisir={async (centreId) => {
+            const { nature, clientId } = choixEspace;
+            setChoixEspace(null);
+            const id = await creerDossierVide(nature, clientId, centreId);
+            setRoute({ ecran: "dossier", affaireId: id });
+          }}
+          onAnnuler={() => setChoixEspace(null)} />
       )}
       {gardeEnAttente && (
         <div style={{ position: "fixed", inset: 0, zIndex: 40,
