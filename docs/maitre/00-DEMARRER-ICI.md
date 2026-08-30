@@ -72,7 +72,9 @@ Ces points sont tranchés. Les rediscuter fait perdre du temps et dérive :
    en production.
 7. `26-GARDE-MEUBLES-ROADMAP.md` — le modèle boxe (ses fondations sont désormais
    posées ; voir vague 4 de la roadmap).
-8. `PASSATION.md` (racine) — l'état technique détaillé et les pièges.
-9. `30-REGLES-IA-EXTERNE.md` — si vous confiez un travail à un autre outil.
+8. `80-REMARQUES-ATELIER.md` — les remarques du petit « i » de l'app test,
+   classées en lots R1→R9 insérés dans la roadmap.
+9. `PASSATION.md` (racine) — l'état technique détaillé et les pièges.
+10. `30-REGLES-IA-EXTERNE.md` — si vous confiez un travail à un autre outil.
 
 Le reste de `docs/` est de la matière de réflexion : utile, jamais normatif.

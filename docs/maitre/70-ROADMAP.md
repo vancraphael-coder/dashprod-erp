@@ -250,6 +250,28 @@ Ne commence qu'une fois les vagues 1 à 4 stables.
 
 ---
 
+# Lots issus des remarques de l'atelier (le petit « i »)
+
+Douze remarques déposées dans l'organisation test ont été relevées et classées
+dans `80-REMARQUES-ATELIER.md`. Elles produisent neuf lots **R1 → R9** qui
+s'insèrent dans les vagues ci-dessus (ils ne les remplacent pas) :
+
+| Lot | Sujet | S'insère en |
+|---|---|---|
+| R1 | Le « + » demande le centre + hérite des ressources | Option A (complément) |
+| R2 | Ressources cloisonnées par centre | Option A (complément) |
+| R3 | Prix matériel répercuté en devis/facture/définitif | Vague 2 |
+| R4 | Matériel embarqué par véhicule | Vague 6 (ou plus tôt) |
+| R5 | Coûts internes : indépendants + frais pré-enregistrés | Vague 3 |
+| R6 | Coûts internes : mensualités (check-list → rapprochement) | Vague 1 lot C / 3 |
+| R7 | Pont API secrétariat social (Partena…) | Vague 7 |
+| R8 | Liste : barre / roulette au choix | Vague 7 |
+| R9 | Liste : couleur distincte Envoyé / Confirmé | Vague 6 (faisable tôt) |
+
+Deux remarques « tri par centre en comptabilité » étaient **déjà traitées** par
+le lot 53. Ordre conseillé : R9 (rapide), puis R1+R2 (achèvent Option A), puis
+R6 avec le lot C en cours.
+
 # L'ordre, en une ligne
 
 **0 (juridique, aujourd'hui) → 1 (l'argent) → 2 (les cartons) → 3 (les comptes)
