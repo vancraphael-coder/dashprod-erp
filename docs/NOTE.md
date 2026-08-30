@@ -1,56 +1,68 @@
-# Vague 1, lot B — la communication structurée (OGM), enfin stockée
+# Lot — les remarques de l'atelier, classées en roadmap
 
-**29/08/2026.** **1206 tests verts**, build vert. **Migrations 0161 + 0162**
-appliquées et vérifiées. Deuxième lot de la vague « fermer la boucle de
-l'argent ».
+**30/08/2026.** **1209 tests verts**, build vert. Documentation.
 
-## Le défaut corrigé
+## Ce que j'ai fait
 
-La communication (l'OGM, ce +++123/4567/89012+++ que le client recopie dans son
-virement) était **calculée à l'affichage du PDF et jamais gardée en base**. Le
-client recevait une communication que ton système ignorait — donc **impossible
-de rapprocher un virement de sa facture**.
+J'ai relevé les **12 remarques** du petit « i » déposées dans ton organisation
+**test** (« Déménagements Roovers », pluriel). Comme demandé, **le pilote client
+démarré la semaine dernière** (« Déménagement Roovers », singulier, créé le
+26/08) est **exclu** — je n'ai pris que l'org test.
 
-Désormais : à l'émission, la communication est **posée et figée** avec le numéro.
+Un point d'attention que tu confirmeras : tes deux organisations portent presque
+le même nom. J'ai identifié la test comme celle qui contient toutes tes
+remarques (12, semées du 19 au 30/08) et le pilote comme la toute récente (1
+note, créée la semaine dernière). Si je me trompe d'org, dis-le — mais les dates
+et le volume de notes sont sans ambiguïté.
 
-## Le réglage est respecté
+## Le résultat : `docs/maitre/80-REMARQUES-ATELIER.md`
 
-- Si tu actives « communication structurée » : une **OGM belge** (+++…+++),
-  celle que les banques rapprochent automatiquement.
-- Sinon : le **numéro de facture** comme communication libre.
-- Dans les deux cas elle est **stockée** — donc rapprochable. C'est ce qui
-  débloque le lot C (rapprochement des paiements).
+Chaque remarque est reprise **telle quelle**, classée, et transformée en lot
+**R1 → R9**. Ces lots **s'insèrent** dans les vagues existantes (`70-ROADMAP.md`),
+ils ne les remplacent pas.
 
-## Trois bénéfices d'un coup
+**Déjà traité (aucun lot) :** les deux remarques « tri par centre en
+comptabilité » — c'est le lot 53.
 
-1. **Rapprochement possible** : la communication existe enfin en base.
-2. **PDF juste** : il lit la valeur stockée (et affiche le bon libellé selon
-   qu'elle est structurée ou libre). Les anciennes factures gardent un affichage
-   calculé, sans être réécrites.
-3. **Peppol/UBL correct** : le PaymentID de la facture électronique lit cette
-   communication — il était vide jusqu'ici, il est maintenant renseigné.
+**Les neuf lots :**
+- **R1** — le « + » demande explicitement le centre et hérite de ses ressources
+  (complète Option A ; le lot 52 rattachait à l'espace, la remarque veut le
+  choix explicite + libellé + héritage ressources).
+- **R2** — les ressources cloisonnées par centre (pas d'équipe/véhicule d'un
+  centre sur un autre).
+- **R3** — le prix du matériel se répercute en devis, facture et calcul définitif.
+- **R4** — chaque véhicule porte son matériel embarqué.
+- **R5** — coûts internes : onglet indépendants + frais pré-enregistrés.
+- **R6** — coûts internes : section mensualités (check-list, puis rapprochement).
+- **R7** — pont API vers le secrétariat social (Partena…), à terme.
+- **R8** — liste : barre ou roulette au choix.
+- **R9** — liste : couleur distincte « Envoyé » / « Confirmé ».
 
-## Vérifié avec soin
+Plus une remarque de forme (alignement des cartes dans Conversations) notée à
+corriger au passage, sans en faire un lot.
 
-- La fonction OGM en base donne **exactement** le même résultat que le code
-  (vérifié sur 4 cas, dont le cas limite de la clé = 97).
-- Éprouvé par sabotage :
+## Ordre conseillé
 
-| Sabotage | Rouges |
-|---|---|
-| la validation d'OGM accepte tout | 1 |
-| une clé de contrôle nulle laissée à 0 | 1 |
+1. **R9** (rapide, valeur immédiate, zéro dépendance).
+2. **R1 + R2** (ils achèvent Option A, le sujet des centres en cours).
+3. **R6 check-list** (se marie avec le lot C du rapprochement).
+4. Le reste suit ses vagues.
 
-## À vérifier à l'œil
+## Ce que ces remarques disent de la vision
 
-1. Émets une facture : sa communication apparaît sur le PDF, et elle est
-   maintenant en base (plus seulement à l'écran).
-2. Si tu actives « communication structurée » dans les réglages, la prochaine
-   facture porte une vraie OGM +++…+++ ; sinon, son numéro.
-3. Les anciennes factures restent inchangées.
+Trois d'entre elles (R5, R6, R7) pointent le même horizon : les coûts internes
+doivent à terme se **rapprocher de la banque** et se **transmettre au secrétariat
+social**. Cohérent avec la vague 1 (la boucle de l'argent) et la vague 3
+(comptabilité). La vision tient : l'argent réel, tracé de bout en bout.
 
-## Suite de la vague 1
+## Éprouvé
 
-- **Lot C** — rapprocher les 23 paiements ↔ factures par la communication.
-  Il peut désormais s'appuyer sur une communication stockée.
-- **Lot D** — relances, mention légale, préfixe de numérotation.
+Le test du dossier maître intègre le nouveau document, avec trois tests neufs :
+les neuf lots existent, le pilote est bien exclu, les remarques déjà traitées ne
+réengendrent pas de lot.
+
+## Suite
+
+On peut reprendre le **lot C** (rapprochement des 23 paiements par la
+communication) — maintenant que la communication est stockée (lot B), il a le
+socle qu'il attendait.
