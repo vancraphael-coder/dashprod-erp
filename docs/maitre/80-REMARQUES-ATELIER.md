@@ -35,7 +35,7 @@ n'engendrent aucun lot.
 
 # Les lots issus des remarques
 
-## R1 — Le « + » demande le centre, et hérite de ses ressources
+## R1 — Le « + » demande le centre, et hérite de ses ressources ✅ FAIT (30/08)
 
 **Remarque** (*liste*, 23/08) :
 > S'il y a plusieurs centres, le « + » doit impérativement demander un premier
@@ -54,7 +54,7 @@ mère, et l'**héritage des ressources** (équipes, véhicules) du centre choisi
 
 ---
 
-## R2 — Les ressources sont cloisonnées par centre
+## R2 — Les ressources sont cloisonnées par centre ✅ FAIT (30/08)
 
 **Remarque** (*equipe*, 30/08) :
 > Les ressources ne sont pas utilisables d'un centre à l'autre.

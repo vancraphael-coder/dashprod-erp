@@ -438,3 +438,17 @@ rattachée à l'espace, missions héritées, et compta consolidée ventilable.
 - La vague 1 (fermer la boucle de l'argent) a désormais : échéance (A),
   communication stockée (B), rapprochement (C). Reste le lot D (relances,
   mention légale, préfixe).
+
+## Remarques R1 + R2 — centres : choix explicite et ressources cloisonnées (30/08/2026)
+
+- **R1** : à la création, quand plusieurs centres existent, on DEMANDE l'espace
+  (ChoixEspace) au lieu de rattacher silencieusement. Domaine espacesCreation
+  (choixRequis si peutBasculer + >1 espace + au moins un centre). En MAISON MÈRE,
+  la liste montre TOUS les dossiers avec le libellé de leur centre ; un centre ne
+  voit que les siens.
+- **R2** : ressourcesDuCentre(ressources, centreMission) — le planning ne propose
+  que les membres/véhicules du centre de la mission, la maison mère restant un
+  FONDS COMMUN mutualisé. Éprouvé par sabotage. Les ressources déjà affectées
+  restent affichables pour pouvoir les retirer.
+- Membres et véhicules portent centre_id ; missions héritent du centre (lot 53).
+  Option A est désormais complète de bout en bout.
