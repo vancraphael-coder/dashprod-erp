@@ -1,40 +1,61 @@
-# Lot R9 — « Envoyé » et « Confirmé » enfin distincts
+# Vague 1, lot C — le rapprochement des paiements
 
-**30/08/2026.** **1209 tests verts**, build vert. Premier lot issu de tes
-remarques d'atelier — rapide, à valeur immédiate.
+**30/08/2026.** **1213 tests verts**, build vert. Troisième lot de la vague
+« fermer la boucle de l'argent ».
 
-## Ta remarque (liste, 27/08)
+## Ce que ça fait
 
-> « Envoyé » a le même code couleur que « Confirmé » alors que ce sont deux
-> états distincts. « Confirmé » devrait avoir une autre couleur, et être atténué
-> tant que la confirmation n'a pas été prononcée par le code du client.
+Un virement arrive sur ton compte avec une communication. Jusqu'ici, retrouver
+la facture qu'il règle était un travail à l'œil. Maintenant, dans la
+**Comptabilité**, un outil « Rapprocher un virement » : tu colles la
+communication (l'OGM +++…+++ ou le numéro de facture), il retrouve **la facture
+qu'elle désigne**, parmi celles de la période.
 
-## Ce que j'ai fait
+C'est l'exact inverse de l'émission : à l'émission on va de la facture vers la
+communication ; ici on remonte de la communication vers la facture. Et comme la
+communication est déterministe, ce chemin est **sûr** — pas une devinette.
 
-- **« Envoyé » a maintenant sa propre couleur** (ambre par défaut = en attente),
-  distincte du bleu de « Confirmé ». Fini la confusion entre les deux.
-- **« Envoyé » s'affiche en contour** (fond transparent, texte coloré), pas en
-  pastille pleine : visuellement, il est « en suspens », pas acté. « Confirmé »,
-  lui, reste plein — c'est un état acquis.
-- La couleur d'« Envoyé » est **réglable** comme les autres, dans les apparences
-  (« Envoyé (en attente) ») — tu peux la changer à ta main.
+## Trois garde-fous
 
-## Une nuance que je te soumets
-
-Ta remarque dit « Confirmé atténué tant que le client n'a pas validé ». Dans
-l'app, l'état « Confirmé » signifie déjà que le client a validé — c'est
-« Envoyé » qui est le moment d'attente. J'ai donc atténué « Envoyé » (en
-attente), et gardé « Confirmé » plein (acté). Si tu voulais dire autre chose par
-« le code du client » (un mécanisme de validation à part), dis-le-moi et
-j'ajuste.
+- **Il rattrape les anciennes factures.** Même celles émises avant que la
+  communication soit stockée (lot B) : il reconstruit le numéro depuis l'OGM.
+- **Il ne devine jamais.** Si deux factures correspondent (ne devrait pas
+  arriver), il refuse plutôt que de rapprocher au hasard.
+- **Il rejette une communication corrompue.** Une OGM dont la clé de contrôle
+  est fausse n'est pas rapprochée — elle serait le signe d'une erreur de saisie
+  du client.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| « Envoyé » repointe vers la couleur de « Confirmé » | 1 |
+| rapprocher devine le premier en cas d'ambiguïté | 1 |
+| la décomposition d'OGM ne vérifie plus la clé | 1 |
 
 ## À vérifier à l'œil
 
-Dans la liste des dossiers : un dossier « Envoyé » apparaît en ambre, en contour ;
-un « Confirmé » en bleu plein. Les deux ne se confondent plus.
+1. Comptabilité → « Rapprocher un virement ». Colle la communication d'une de
+   tes factures émises : elle est retrouvée (numéro + montant).
+2. Colle une communication bidon : message clair « non reconnue ».
+3. Le rapprochement respecte le filtre par centre (il cherche dans la
+   ventilation affichée).
+
+## Où en est la vague 1
+
+- **Lot A** — échéance de paiement ✅
+- **Lot B** — communication stockée à l'émission ✅
+- **Lot C** — rapprochement ✅ (ce lot)
+- **Lot D** — relances, mention légale, préfixe de numérotation (reste à faire)
+
+La boucle de l'argent est presque fermée : les factures ont une échéance, une
+communication, et un virement se rattache à sa facture. Le lot D ajoutera le
+suivi des retards (relances) et les mentions légales.
+
+## Réserve d'honnêteté
+
+L'outil travaille sur les factures de la période chargée à l'écran : si un
+virement règle une facture hors période affichée, élargis la période avant de
+rapprocher. Le rapprochement ne modifie encore rien (il retrouve, il n'enregistre
+pas le paiement) — l'enregistrement reste manuel depuis la facture. Lier les deux
+gestes (rapprocher PUIS enregistrer en un clic) serait une suite naturelle si tu
+le souhaites.
