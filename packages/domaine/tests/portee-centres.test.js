@@ -112,3 +112,51 @@ test("nomEspace nomme l'espace courant", () => {
   assert.equal(nomEspace(MAISON_MERE, centres), "Maison mère");
   assert.equal(nomEspace("anvers", centres), "Anvers");
 });
+
+/* ── Choix d'espace à la création (remarque R1) ──────────────────────────── */
+
+import { espacesCreation } from "../src/organisation/centres.js";
+
+test("R1 : le choix d'espace est demandé quand il y a plusieurs centres", () => {
+  const centres = [{ id: "anvers", nom: "Anvers" }, { id: "gand", nom: "Gand" }];
+  const r = espacesCreation({ poste: "secretaire" }, centres);
+  assert.equal(r.choixRequis, true);
+  // Maison mère + les deux centres.
+  assert.deepEqual(r.espaces.map((e) => e.nom), ["Maison mère", "Anvers", "Gand"]);
+});
+
+test("R1 : pas de question pour le responsable dépôt (verrouillé sur son centre)", () => {
+  const centres = [{ id: "anvers", nom: "Anvers" }, { id: "gand", nom: "Gand" }];
+  const r = espacesCreation({ poste: "responsable_depot", centre_id: "anvers" }, centres);
+  assert.equal(r.choixRequis, false);
+  assert.equal(r.defaut, "anvers");
+});
+
+test("R1 : pas de question quand l'organisation n'a aucun centre", () => {
+  const r = espacesCreation({ poste: "gerant" }, []);
+  assert.equal(r.choixRequis, false);
+  assert.equal(r.defaut, null);   // maison mère
+});
+
+/* ── Ressources cloisonnées par centre (remarque R2) ─────────────────────── */
+
+import { ressourcesDuCentre } from "../src/organisation/centres.js";
+
+test("R2 : une mission ne voit que les ressources de son centre (+ maison mère)", () => {
+  const membres = [
+    { nom: "A", centre_id: "anvers" },
+    { nom: "B", centre_id: "gand" },
+    { nom: "C", centre_id: null },     // maison mère = fonds commun
+  ];
+  assert.deepEqual(ressourcesDuCentre(membres, "anvers").map((m) => m.nom), ["A", "C"]);
+  assert.deepEqual(ressourcesDuCentre(membres, "gand").map((m) => m.nom), ["B", "C"]);
+  // Une mission maison mère ne voit QUE le fonds commun, pas les centres.
+  assert.deepEqual(ressourcesDuCentre(membres, null).map((m) => m.nom), ["C"]);
+});
+
+test("R2 : la maison mère est mutualisée, jamais cloisonnée", () => {
+  const v = [{ id: 1, centre_id: null }];
+  // Un véhicule maison mère est disponible dans tout centre.
+  assert.equal(ressourcesDuCentre(v, "anvers").length, 1);
+  assert.equal(ressourcesDuCentre(v, "gand").length, 1);
+});
