@@ -24,6 +24,7 @@ import {
   journalAchatsCsv, paiementsCsv, tiersCsv,
 } from "@domaine/facturation/exports.js";
 import { C, S, euros } from "../lib/theme.jsx";
+import OutilRapprochement from "../composants/OutilRapprochement.jsx";
 
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
               "août", "septembre", "octobre", "novembre", "décembre"];
@@ -204,6 +205,10 @@ export default function Comptabilite({ retour }) {
 
       {factures && (
         <>
+          {/* Rapprocher un virement reçu à sa facture (lot C). Local : il
+              travaille sur les factures déjà chargées de la période. */}
+          <OutilRapprochement factures={facturesVues || []} />
+
           {/* Récapitulatif TVA — ce que le comptable regarde en premier. */}
           <div style={S.carte}>
             <label style={{ ...S.label, marginTop: 0 }}>
