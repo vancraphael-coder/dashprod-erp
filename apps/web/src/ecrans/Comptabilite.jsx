@@ -25,6 +25,7 @@ import {
 } from "@domaine/facturation/exports.js";
 import { C, S, euros } from "../lib/theme.jsx";
 import OutilRapprochement from "../composants/OutilRapprochement.jsx";
+import Relances from "../composants/Relances.jsx";
 
 const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
               "août", "septembre", "octobre", "novembre", "décembre"];
@@ -208,6 +209,10 @@ export default function Comptabilite({ retour }) {
           {/* Rapprocher un virement reçu à sa facture (lot C). Local : il
               travaille sur les factures déjà chargées de la période. */}
           <OutilRapprochement factures={facturesVues || []} />
+
+          {/* Les factures échues et non soldées, à relancer (lot D). On signale,
+              on n'envoie rien. */}
+          <Relances factures={facturesVues || []} paiements={paiements || []} />
 
           {/* Récapitulatif TVA — ce que le comptable regarde en premier. */}
           <div style={S.carte}>

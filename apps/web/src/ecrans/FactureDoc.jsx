@@ -23,6 +23,7 @@ function dateFR(iso) {
 }
 
 import { libelleTva } from "@domaine/organisation/identite.js";
+import { facturation } from "@domaine/organisation/identite.js";
 
 export default function FactureDoc({ facture, organisation, client, adresses }) {
   if (!facture) return null;
@@ -135,6 +136,18 @@ export default function FactureDoc({ facture, organisation, client, adresses }) 
             </div>
           )}
         </div>
+
+        {/* Mention légale de l'émetteur (lot D) : intérêts de retard, clause
+            de réserve de propriété, etc. Imprimée seulement si renseignée —
+            sans elle, pas de recouvrement des intérêts. */}
+        {facturation(o).mention_legale
+          && String(facturation(o).mention_legale).trim() && (
+          <div style={{ marginTop: 12, fontSize: 9.5, color: "#475569",
+                        lineHeight: 1.5, whiteSpace: "pre-wrap",
+                        borderTop: "1px solid #E2E8F0", paddingTop: 8 }}>
+            {facturation(o).mention_legale}
+          </div>
+        )}
 
         {/* Pied légal */}
         <div style={S.piedLegal}>
