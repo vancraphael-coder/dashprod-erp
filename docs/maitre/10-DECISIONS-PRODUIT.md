@@ -424,3 +424,17 @@ rattachée à l'espace, missions héritées, et compta consolidée ventilable.
   renseigné.
 - **On ne réécrit pas les 16 factures passées.** Lot C (rapprochement) peut
   maintenant s'appuyer sur une communication stockée pour les factures à venir.
+
+## Vague 1 lot C — le rapprochement des paiements (30/08/2026)
+
+- **Domaine** (facturation/rapprochement.js) : decomposerOGM (inverse exact de
+  genererOGM), cleDepuisCommunication (OGM OU numéro libre), rapprocherCommunication
+  qui retrouve la facture par communication stockée, avec repli sur le numéro
+  pour les anciennes factures. Refuse en cas d'ambiguïté ou de communication
+  corrompue — ne devine jamais. Éprouvé par sabotage (2).
+- **Écran** : OutilRapprochement dans la Comptabilité — coller la communication
+  d'un virement reçu retrouve la facture, parmi celles de la période (travail
+  local, aucune requête). Respecte le filtre par centre.
+- La vague 1 (fermer la boucle de l'argent) a désormais : échéance (A),
+  communication stockée (B), rapprochement (C). Reste le lot D (relances,
+  mention légale, préfixe).
