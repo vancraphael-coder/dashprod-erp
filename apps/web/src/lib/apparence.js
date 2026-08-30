@@ -74,6 +74,7 @@ export const UTILITES = Object.freeze([
     entrees: [
       { cle: "brouillon", nom: "Brouillon", defaut: "#94A3B8" },
       { cle: "devis", nom: "Devis", defaut: "#64748B" },
+      { cle: "envoye", nom: "Envoyé (en attente)", defaut: "#D97706" },
       { cle: "confirme", nom: "Confirmé", defaut: "#2563EB" },
       { cle: "planifie", nom: "Planifié", defaut: "#2563EB" },
       { cle: "en_cours", nom: "En cours", defaut: "#D97706" },

@@ -201,7 +201,7 @@ if (typeof document !== "undefined" && !document.getElementById("champs-dashprod
 export const ETATS_UI = {
   brouillon: { libelle: "Brouillon", couleur: couleurUtilite(APP, "etats", "brouillon") },
   devis:     { libelle: "Devis",     couleur: couleurUtilite(APP, "etats", "devis") },
-  envoye:    { libelle: "Envoyé",    couleur: couleurUtilite(APP, "etats", "confirme") },
+  envoye:    { libelle: "Envoyé",    couleur: couleurUtilite(APP, "etats", "envoye") },
   confirme:  { libelle: "Confirmé",  couleur: couleurUtilite(APP, "etats", "confirme") },
   planifie:  { libelle: "Planifié",  couleur: couleurUtilite(APP, "etats", "planifie") },
   en_cours:  { libelle: "En cours",  couleur: couleurUtilite(APP, "etats", "en_cours") },
@@ -262,10 +262,18 @@ export const ZONES_MARGE = {
 
 export function Badge({ etat }) {
   const e = ETATS_UI[etat] || { libelle: etat, couleur: C.fantome };
+  // « Envoyé » = offre partie, en attente de validation client : on le montre
+  // en CONTOUR (fond transparent), pas en plein, pour qu'il ne se confonde pas
+  // avec un état acté comme « Confirmé ». Distinct, et visiblement en suspens.
+  const enAttente = etat === "envoye";
   return (
     <span style={{
-      fontSize: 11, fontWeight: 700, color: "#fff", background: e.couleur,
-      borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap",
+      fontSize: 11, fontWeight: 700,
+      color: enAttente ? e.couleur : "#fff",
+      background: enAttente ? "transparent" : e.couleur,
+      border: `1.5px solid ${e.couleur}`,
+      borderRadius: 999, padding: enAttente ? "1.5px 7.5px" : "3px 9px",
+      whiteSpace: "nowrap",
     }}>{e.libelle}</span>
   );
 }
