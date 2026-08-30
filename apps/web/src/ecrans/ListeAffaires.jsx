@@ -56,11 +56,21 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarn
     () => porteeCentres({ poste: profil?.poste, centre_id: profil?.centre_id }, centres),
     [profil, centres]);
   const centreEffectif = centreChoisi === undefined ? portee.centreParDefaut : centreChoisi;
-  const affairesCentre = useMemo(
-    () => (portee.tousCentres || portee.peutBasculer || profil?.centre_id != null
-            ? filtrerParCentre(affaires, centreEffectif)
-            : affaires),
-    [affaires, centreEffectif, portee, profil]);
+  // R1 : la MAISON MÈRE voit TOUS les dossiers (avec le libellé de leur centre) ;
+  // un CENTRE ne voit que les siens. Ailleurs (pas de bascule), on ne filtre pas.
+  const enMaisonMere = centreEffectif === null || centreEffectif === undefined;
+  const affairesCentre = useMemo(() => {
+    const peutVentiler = portee.tousCentres || portee.peutBasculer || profil?.centre_id != null;
+    if (!peutVentiler) return affaires;
+    // En maison mère : tout. Dans un centre : seulement ses dossiers.
+    return enMaisonMere ? affaires : filtrerParCentre(affaires, centreEffectif);
+  }, [affaires, centreEffectif, enMaisonMere, portee, profil]);
+
+  // Le nom d'un centre, pour l'étiquette affichée en maison mère.
+  const nomCentre = useMemo(() => {
+    const parId = new Map((centres || []).map((c) => [c.id, c.nom]));
+    return (id) => (id ? parId.get(id) || "Centre" : null);
+  }, [centres]);
 
   const compteurs = useMemo(() => compteursVues(affairesCentre), [affairesCentre]);
   const urgences = useMemo(() => urgencesVues(affairesCentre), [affairesCentre]);
@@ -183,8 +193,18 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarn
           {g.dossiers.map((a) => (
         <div key={a.id} style={{ ...S.carte, cursor: "pointer" }} onClick={() => ouvrirAffaire(a.id)}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.encre,
+                          display: "flex", alignItems: "center", gap: 7 }}>
               {a.client?.nom || "Client inconnu"}
+              {/* R1 : en maison mère, chaque dossier porte le libellé de son
+                  centre — pour savoir d'où il vient sans changer d'espace. */}
+              {enMaisonMere && a.centre_id && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.bleu,
+                               background: `${C.bleu}14`, padding: "2px 7px",
+                               borderRadius: 999, whiteSpace: "nowrap" }}>
+                  {nomCentre(a.centre_id)}
+                </span>
+              )}
             </div>
             {a.etat === "brouillon" && (
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#6D28D9",

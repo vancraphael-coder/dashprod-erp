@@ -16,7 +16,7 @@ import { urlWhatsApp } from "@domaine/communication/brief.js";
 import { grilleMois, missionsDuJour, chargeDuJour, filtrerMissions }
   from "@domaine/operations/agenda.js";
 import { libelleTypeMission } from "@domaine/operations/missions.js";
-import { filtrerParCentre, porteeCentres } from "@domaine/organisation/centres.js";
+import { filtrerParCentre, porteeCentres, ressourcesDuCentre } from "@domaine/organisation/centres.js";
 import SelecteurCentre from "../composants/SelecteurCentre.jsx";
 import { disponibiliteRessource, verdictMission, lecteurDisponibilite }
   from "@domaine/operations/missions.js";
@@ -645,7 +645,11 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
                     const archivesAffectes = affectes
                       .filter((id) => !idsActifs.has(id))
                       .map((id) => tousMembres.find((x) => x.id === id) || { id, nom: "Membre archivé", actif: false });
-                    return [...membres, ...archivesAffectes];
+                    // R2 : on ne propose que les membres du centre de la mission
+                    // (+ maison mère, mutualisée). Un membre déjà affecté reste
+                    // affiché pour pouvoir le retirer, même hors centre.
+                    const duCentre = ressourcesDuCentre(membres, m.centre_id);
+                    return [...duCentre, ...archivesAffectes];
                   })().map((mem) => {
                     const estAffecte = affectes.includes(mem.id);
                     const estArchive = mem.actif === false;
@@ -683,7 +687,15 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
 
                 {/* Camions de la mission — même mécanique 2 clics. */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                  {flotte.map((v) => {
+                  {(() => {
+                    // R2 : véhicules du centre de la mission (+ maison mère).
+                    // On garde ceux déjà présents pour pouvoir les retirer.
+                    const duCentre = ressourcesDuCentre(flotte, m.centre_id);
+                    const idsCentre = new Set(duCentre.map((v) => v.id));
+                    const presentsHors = flotte.filter(
+                      (v) => (m.camions || []).includes(v.id) && !idsCentre.has(v.id));
+                    return [...duCentre, ...presentsHors];
+                  })().map((v) => {
                     const present = (m.camions || []).includes(v.id);
                     // Un camion ne peut pas être à deux chantiers à la fois :
                     // aucun contrôle n'existait auparavant.
