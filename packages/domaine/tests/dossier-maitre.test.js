@@ -27,7 +27,9 @@ test("le dossier maître est complet et se lit dans un ordre", () => {
     "20-OUVERT.md", "25-PARAMETRES-ROADMAP.md", "26-GARDE-MEUBLES-ROADMAP.md",
     "30-REGLES-IA-EXTERNE.md", "40-METHODE.md", "50-ARCHIVE.md",
     // La carte du territoire et l'ordre de marche (29/08/2026).
-    "60-CIRCUITS-QUATRE-COUCHES.md", "70-ROADMAP.md"];
+    "60-CIRCUITS-QUATRE-COUCHES.md", "70-ROADMAP.md",
+    // Les remarques de l'atelier classées en lots (30/08/2026).
+    "80-REMARQUES-ATELIER.md"];
   const presents = readdirSync(MAITRE).filter((f) => f.endsWith(".md")).sort();
   assert.deepEqual(presents, attendus.sort());
 });
@@ -234,4 +236,29 @@ test("la roadmap place le juridique AVANT le code", () => {
   assert.ok(r.indexOf("VAGUE 0") < r.indexOf("VAGUE 1"),
     "la vague juridique précède la première vague de code");
   assert.match(r, /RGPD/);
+});
+
+/* ── Les remarques de l'atelier classées en lots (30/08/2026) ────────────── */
+
+test("les remarques de l'atelier sont classées en lots R1→R9", () => {
+  const r = lire("80-REMARQUES-ATELIER.md");
+  // Les neuf lots doivent exister.
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+    assert.match(r, new RegExp(`R${n} —`), `le lot R${n} doit être décrit`);
+  }
+});
+
+test("le pilote Roovers récent est explicitement exclu des remarques", () => {
+  // Consigne de Raphaël : ne relever que l'org test, pas le pilote de la semaine.
+  const r = lire("80-REMARQUES-ATELIER.md");
+  assert.match(r, /pilote/i);
+  assert.match(r, /exclu/i);
+});
+
+test("les remarques déjà traitées ne réengendrent pas de lot", () => {
+  // Le tri par centre en comptabilité est fait (lot 53) : il doit être marqué
+  // clos, pas reprogrammé.
+  const r = lire("80-REMARQUES-ATELIER.md");
+  assert.match(r, /DÉJÀ traité|déjà traité/i);
+  assert.match(r, /Lot 53/);
 });
