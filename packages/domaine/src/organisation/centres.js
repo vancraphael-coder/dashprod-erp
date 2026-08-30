@@ -158,6 +158,50 @@ export function porteeCentres(acteur = {}, centres = []) {
 }
 
 /**
+ * Les espaces où l'acteur PEUT créer un dossier, et si un choix explicite doit
+ * lui être demandé (remarque R1). On demande dès qu'il y a plus d'un espace
+ * possible ET qu'au moins un centre existe — sinon on ne dérange pas.
+ *
+ * @param {object} acteur  { poste, centre_id }
+ * @param {object[]} centres  [{ id, nom }]
+ * @returns {{ choixRequis: boolean, espaces: {id: string|null, nom: string}[],
+ *            defaut: string|null }}
+ */
+export function espacesCreation(acteur = {}, centres = []) {
+  const p = porteeCentres(acteur, centres);
+  const libelle = (id) => id === MAISON_MERE
+    ? "Maison mère"
+    : (centres || []).find((c) => c.id === id)?.nom || "Centre";
+  const espaces = p.centresVisibles.map((id) => ({ id, nom: libelle(id) }));
+  return {
+    // On ne demande que si le choix a du sens : plusieurs espaces ET au moins
+    // un vrai centre (une org sans centre n'a rien à demander).
+    choixRequis: p.peutBasculer && espaces.length > 1 && (centres || []).length > 0,
+    espaces,
+    defaut: centreOuMaisonMere(p.centreParDefaut),
+  };
+}
+
+/**
+ * Filtre des RESSOURCES (membres, véhicules — tout objet portant `centre_id`)
+ * sur le centre d'une mission (remarque R2 : une ressource d'un centre n'est pas
+ * utilisable dans un autre). La maison mère est un FONDS COMMUN : ses ressources
+ * (centre_id null) restent disponibles partout, car la tête de réseau mutualise.
+ *
+ * @param {Array<{centre_id?: string|null}>} ressources
+ * @param {string|null} centreMission  le centre de la mission (null = maison mère)
+ * @returns {Array} les ressources affectables à cette mission
+ */
+export function ressourcesDuCentre(ressources = [], centreMission = MAISON_MERE) {
+  const cible = centreOuMaisonMere(centreMission);
+  return (ressources || []).filter((r) => {
+    const c = centreOuMaisonMere(r.centre_id);
+    // La maison mère est mutualisée : toujours dispo. Sinon, même centre.
+    return c === MAISON_MERE || c === cible;
+  });
+}
+
+/**
  * Un acteur peut-il OUVRIR les écrans du centre `cible` ?
  * La règle « sans interférer » se réduit à : la cible est-elle dans sa portée ?
  */
