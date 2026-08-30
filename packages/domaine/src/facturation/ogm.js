@@ -44,12 +44,15 @@ export function ogmValide(ogm) {
 
 /**
  * Extrait le numéro de séquence d'une facture depuis son numéro légal
- * « AAAA-NNNNNN » (format de cmd_emettre_facture).
+ * « AAAA-NNNNNN », avec un préfixe de série optionnel (« GG2026-000007 »).
+ * Le préfixe est une étiquette de série ; il n'entre pas dans la clé année+
+ * séquence, qui reste ce qui identifie la facture.
  * @param {string} numero
  * @returns {{annee: number, sequence: number}|null}
  */
 export function decomposerNumero(numero) {
-  const m = String(numero || "").match(/^(\d{4})-(\d{1,6})$/);
+  // Préfixe optionnel : tout ce qui précède les 4 chiffres d'année. On l'ignore.
+  const m = String(numero || "").match(/(\d{4})-(\d{1,6})$/);
   if (!m) return null;
   return { annee: Number(m[1]), sequence: Number(m[2]) };
 }
