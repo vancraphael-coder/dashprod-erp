@@ -452,3 +452,18 @@ rattachée à l'espace, missions héritées, et compta consolidée ventilable.
   restent affichables pour pouvoir les retirer.
 - Membres et véhicules portent centre_id ; missions héritent du centre (lot 53).
   Option A est désormais complète de bout en bout.
+
+## Vague 1 lot D — relances, mention légale, préfixe (30/08/2026)
+
+VAGUE 1 (boucle de l'argent) COMPLÈTE : A échéance, B communication, C
+rapprochement, D ce lot.
+- **Préfixe** (0163) : prefixe_numero prépendu au numéro à l'émission
+  (« GG2026-000018 »). N'affecte PAS l'OGM (année+séquence). Ne touche jamais les
+  numéros émis. decomposerNumero rendu tolérant au préfixe. ATTENTION : appliquer
+  un préfixe en cours d'année mélange les formats → décision comptable.
+- **Mention légale** : facturation(org).mention_legale imprimée sur le PDF si
+  renseignée (au-dessus du pied). Sans elle, pas de recouvrement des intérêts.
+- **Relances** (domaine relances.js : facturesARelancer/soldeFacture, purs et
+  sabotés) : liste des factures échues non soldées dans la Comptabilité, triées
+  par retard décroissant. On SIGNALE, rien n'est envoyé. Respecte le filtre par
+  centre.
