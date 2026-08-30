@@ -1,68 +1,40 @@
-# Lot — les remarques de l'atelier, classées en roadmap
+# Lot R9 — « Envoyé » et « Confirmé » enfin distincts
 
-**30/08/2026.** **1209 tests verts**, build vert. Documentation.
+**30/08/2026.** **1209 tests verts**, build vert. Premier lot issu de tes
+remarques d'atelier — rapide, à valeur immédiate.
+
+## Ta remarque (liste, 27/08)
+
+> « Envoyé » a le même code couleur que « Confirmé » alors que ce sont deux
+> états distincts. « Confirmé » devrait avoir une autre couleur, et être atténué
+> tant que la confirmation n'a pas été prononcée par le code du client.
 
 ## Ce que j'ai fait
 
-J'ai relevé les **12 remarques** du petit « i » déposées dans ton organisation
-**test** (« Déménagements Roovers », pluriel). Comme demandé, **le pilote client
-démarré la semaine dernière** (« Déménagement Roovers », singulier, créé le
-26/08) est **exclu** — je n'ai pris que l'org test.
+- **« Envoyé » a maintenant sa propre couleur** (ambre par défaut = en attente),
+  distincte du bleu de « Confirmé ». Fini la confusion entre les deux.
+- **« Envoyé » s'affiche en contour** (fond transparent, texte coloré), pas en
+  pastille pleine : visuellement, il est « en suspens », pas acté. « Confirmé »,
+  lui, reste plein — c'est un état acquis.
+- La couleur d'« Envoyé » est **réglable** comme les autres, dans les apparences
+  (« Envoyé (en attente) ») — tu peux la changer à ta main.
 
-Un point d'attention que tu confirmeras : tes deux organisations portent presque
-le même nom. J'ai identifié la test comme celle qui contient toutes tes
-remarques (12, semées du 19 au 30/08) et le pilote comme la toute récente (1
-note, créée la semaine dernière). Si je me trompe d'org, dis-le — mais les dates
-et le volume de notes sont sans ambiguïté.
+## Une nuance que je te soumets
 
-## Le résultat : `docs/maitre/80-REMARQUES-ATELIER.md`
+Ta remarque dit « Confirmé atténué tant que le client n'a pas validé ». Dans
+l'app, l'état « Confirmé » signifie déjà que le client a validé — c'est
+« Envoyé » qui est le moment d'attente. J'ai donc atténué « Envoyé » (en
+attente), et gardé « Confirmé » plein (acté). Si tu voulais dire autre chose par
+« le code du client » (un mécanisme de validation à part), dis-le-moi et
+j'ajuste.
 
-Chaque remarque est reprise **telle quelle**, classée, et transformée en lot
-**R1 → R9**. Ces lots **s'insèrent** dans les vagues existantes (`70-ROADMAP.md`),
-ils ne les remplacent pas.
+## Éprouvé par sabotage
 
-**Déjà traité (aucun lot) :** les deux remarques « tri par centre en
-comptabilité » — c'est le lot 53.
+| Sabotage | Rouges |
+|---|---|
+| « Envoyé » repointe vers la couleur de « Confirmé » | 1 |
 
-**Les neuf lots :**
-- **R1** — le « + » demande explicitement le centre et hérite de ses ressources
-  (complète Option A ; le lot 52 rattachait à l'espace, la remarque veut le
-  choix explicite + libellé + héritage ressources).
-- **R2** — les ressources cloisonnées par centre (pas d'équipe/véhicule d'un
-  centre sur un autre).
-- **R3** — le prix du matériel se répercute en devis, facture et calcul définitif.
-- **R4** — chaque véhicule porte son matériel embarqué.
-- **R5** — coûts internes : onglet indépendants + frais pré-enregistrés.
-- **R6** — coûts internes : section mensualités (check-list, puis rapprochement).
-- **R7** — pont API vers le secrétariat social (Partena…), à terme.
-- **R8** — liste : barre ou roulette au choix.
-- **R9** — liste : couleur distincte « Envoyé » / « Confirmé ».
+## À vérifier à l'œil
 
-Plus une remarque de forme (alignement des cartes dans Conversations) notée à
-corriger au passage, sans en faire un lot.
-
-## Ordre conseillé
-
-1. **R9** (rapide, valeur immédiate, zéro dépendance).
-2. **R1 + R2** (ils achèvent Option A, le sujet des centres en cours).
-3. **R6 check-list** (se marie avec le lot C du rapprochement).
-4. Le reste suit ses vagues.
-
-## Ce que ces remarques disent de la vision
-
-Trois d'entre elles (R5, R6, R7) pointent le même horizon : les coûts internes
-doivent à terme se **rapprocher de la banque** et se **transmettre au secrétariat
-social**. Cohérent avec la vague 1 (la boucle de l'argent) et la vague 3
-(comptabilité). La vision tient : l'argent réel, tracé de bout en bout.
-
-## Éprouvé
-
-Le test du dossier maître intègre le nouveau document, avec trois tests neufs :
-les neuf lots existent, le pilote est bien exclu, les remarques déjà traitées ne
-réengendrent pas de lot.
-
-## Suite
-
-On peut reprendre le **lot C** (rapprochement des 23 paiements par la
-communication) — maintenant que la communication est stockée (lot B), il a le
-socle qu'il attendait.
+Dans la liste des dossiers : un dossier « Envoyé » apparaît en ambre, en contour ;
+un « Confirmé » en bleu plein. Les deux ne se confondent plus.
