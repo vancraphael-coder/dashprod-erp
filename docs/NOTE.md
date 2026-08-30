@@ -1,63 +1,65 @@
-# Lots R1 + R2 — les centres : choix explicite et ressources cloisonnées
+# Vague 1, lot D — relances, mention légale, préfixe
 
-**30/08/2026.** **1224 tests verts**, build vert. Deux remarques d'atelier qui
-achèvent Option A.
+**30/08/2026.** **1228 tests verts**, build vert. **Migration 0163** appliquée et
+vérifiée. **La vague 1 — fermer la boucle de l'argent — est complète.**
 
-## R1 — Le « + » demande le centre, et la maison mère voit tout
+## Trois branchements
 
-**Ta remarque** (liste, 23/08) : quand il y a plusieurs centres, le « + » doit
-demander dans quel espace créer ; le dossier apparaît en maison mère avec le
-libellé de son centre ; les ressources sont reprises du bon centre.
+### 1. La mention légale s'imprime enfin
+Ta mention légale (intérêts de retard, réserve de propriété…) saisie dans les
+réglages s'imprime maintenant sur le PDF de facture, juste au-dessus du pied.
+Sans elle, pas de recouvrement des intérêts de retard. Le canal existe — reste à
+saisir le texte (il est vide aujourd'hui).
 
-**Ce que ça donne :**
-- **À la création**, si tu as plusieurs centres, une question apparaît : « Dans
-  quel espace créer ce dossier ? » — maison mère ou centre X. Plus de
-  rattachement silencieux. (Un responsable de dépôt, lui, n'est pas dérangé : il
-  crée toujours chez lui.)
-- **En maison mère, tu vois maintenant TOUS les dossiers**, chacun avec une
-  petite étiquette bleue du centre dont il vient. Tu gardes la vue d'ensemble
-  sans changer d'espace.
-- **Dans un centre**, tu ne vois que ses dossiers — le cloisonnement tient.
+### 2. Le préfixe de numérotation est branché
+Ton préfixe (« GG ») se prépend au numéro à l'émission : « GG2026-000018 ». Il
+n'affecte PAS la communication structurée (l'OGM reste calculée sur
+année+séquence), donc le rapprochement bancaire continue de marcher.
 
-## R2 — Les ressources ne débordent plus d'un centre à l'autre
+**⚠️ Point important — à valider avec ton comptable.** Le préfixe ne touche
+jamais tes 17 factures déjà émises (immuabilité). Mais l'appliquer maintenant, en
+cours d'année, donnerait une série mélangée : « 2026-000017 » puis
+« GG2026-000018 ». Un contrôleur pourrait s'en étonner. Le plus propre est de
+poser un préfixe **au début d'un exercice** ou comme **nouvelle série assumée**.
+Comme ton préfixe est vide aujourd'hui, rien ne bouge tant que tu ne le mets pas —
+le canal est prêt, la décision t'appartient.
 
-**Ta remarque** (equipe, 30/08) : les ressources ne sont pas utilisables d'un
-centre à l'autre.
+### 3. La liste des relances
+Dans la Comptabilité, une section « À relancer » : les factures **échues et non
+soldées**, triées de la plus en retard à la moins en retard, avec le solde dû et
+un total. Elle n'apparaît que s'il y a des retards.
 
-**Ce que ça donne :** au planning, quand tu affectes une mission, on ne te
-propose que **les membres et véhicules de son centre** — plus ceux de la maison
-mère, qui restent un **fonds commun** partagé (la tête de réseau mutualise). Une
-équipe d'Anvers ne s'affiche plus sur un chantier de Gand.
-
-Nuance utile : une ressource déjà affectée reste visible même hors de son centre,
-pour que tu puisses toujours la retirer.
+**On signale, on n'envoie rien.** C'est une liste de travail pour décider quand
+et comment relancer — jamais un automate qui écrirait à tes clients dans ton dos.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| on demande l'espace même sans aucun centre | 2 |
-| la maison mère n'est plus mutualisée | 2 |
+| relancer aussi les factures payées | 1 |
+| relancer aussi les non échues | 1 |
+
+## La vague 1 est bouclée
+
+- **A** — échéance de paiement ✅
+- **B** — communication stockée ✅
+- **C** — rapprochement des virements ✅
+- **D** — relances + mention légale + préfixe ✅
+
+Tes factures ont maintenant une échéance, une communication rapprochable, un
+suivi des retards, un canal de mention légale et un préfixe de série. La boucle
+de l'argent est fermée : de l'émission au suivi de l'encaissement.
 
 ## À vérifier à l'œil
 
-1. Avec au moins deux centres : clique « + », choisis un métier → la question
-   d'espace apparaît. Choisis un centre → le dossier s'y crée.
-2. Passe en maison mère : tous les dossiers sont là, chacun étiqueté de son
-   centre.
-3. Au planning, sur une mission d'un centre : seuls ses membres/véhicules (et
-   ceux de la maison mère) sont proposés.
+1. Saisis une mention légale dans les réglages → elle apparaît sur le PDF.
+2. La Comptabilité montre « À relancer » si des factures sont échues et impayées.
+3. (Optionnel, avec précaution) un préfixe donne « GG2026-… » sur la PROCHAINE
+   facture émise — les anciennes ne bougent pas.
 
-## Option A est complète
+## Suite proposée
 
-Espaces cloisonnés, création avec choix explicite, missions héritées, ressources
-cloisonnées, maison mère qui voit tout ventilé, comptabilité ventilée. Le sujet
-des centres est bouclé de bout en bout.
-
-## Réserve d'honnêteté
-
-Le cloisonnement des ressources s'applique à l'affichage d'affectation ; il ne
-pose pas (encore) de barrière en base — un appel direct pourrait théoriquement
-affecter hors centre. Pour un vrai verrou dur (comme pour l'établissement des
-contrats boxe), il faudrait une garde côté fonction SQL. À faire si tu veux
-transformer la règle d'usage en interdiction stricte.
+La vague 1 étant close, la suite naturelle est la **vague 2 (encaisser les
+fournitures)** : d'abord le lot E (TVA sur les articles, mission nullable), qui
+débloque la vente de cartons. Ou, si tu préfères du visible, R4 (matériel par
+véhicule). Je te laisse le choix — à défaut, je pars sur la vague 2.
