@@ -78,6 +78,19 @@ export const NATURES = Object.freeze([
               planning: false, recurrent: true },
     chiffrage: "forfait",
   },
+  {
+    // La VENTE de fournitures : pas un dossier de déménagement, une vente sèche
+    // (comptoir ou livraison). Aucune étape de parcours — on facture, point.
+    // Hors ORDRE_MENU : le « + » l'expose via une entrée « Vente rapide »
+    // dédiée, pas comme un métier.
+    cle: "vente",
+    titre: "Vente",
+    resume: "Vente de fournitures — cartons, emballage. Au comptoir ou livrée.",
+    pourEntreprise: false,
+    etapes: { releve: false, materiel: false, emballage: false,
+              planning: false, recurrent: false },
+    chiffrage: "libre",
+  },
 ]);
 
 /** L'ordre du menu « + » : le quotidien d'abord, le récurrent ensuite. */
