@@ -1,63 +1,53 @@
-# Vague 2, lot F — la vente rapide de fournitures
+# Lot G — R12 : fournitures jointes à la facture déménagement
 
-**31/08/2026.** **1238 tests verts**, build vert. **Migration 0165** appliquée et
-vérifiée. Les cartons se facturent enfin.
+**31/08/2026.** **1239 tests verts**, build vert. Complète R12 : le matériel peut
+être facturé **avec** le déménagement, ou **séparément**.
 
 ## Ce que ça donne
 
-Dans le « + », une nouvelle entrée en tête : **🧾 Vente rapide**. Elle ouvre un
-écran court, pensé pour aller vite :
+Sur la facture d'un dossier, avant émission, un bouton :
+**« + Joindre des fournitures à cette facture ».**
 
-- **Client** : un nom (ou rien → « comptoir »).
-- **Comptoir ou livraison** : un interrupteur. Si livraison, une adresse et une
-  date apparaissent (sinon, rien ne t'encombre).
-- **Articles** : des lignes libres — nom, prix HTVA, taux de TVA, quantité —
-  avec un pas +/−. Si tu as un catalogue d'articles, tu peux en reprendre un d'un
-  menu ; sinon, tu tapes directement. Le **total (HTVA / TVA / TVAC) s'affiche en
-  direct**.
-- **Créer la vente et facturer** : la facture est émise immédiatement, avec son
-  numéro légal, son échéance et sa communication (tout le travail de la vague 1).
+Il ouvre une petite section où tu ajoutes des fournitures — nom, prix, TVA,
+quantité — reprises de ton catalogue si tu en as un, ou saisies à la main. Elles
+s'ajoutent aux lignes du déménagement, le total se met à jour, et **une seule
+facture** part avec la prestation ET les cartons.
 
-Tu arrives directement sur la facture émise.
+L'autre choix — **une facture séparée** — existe déjà : c'est la vente rapide
+depuis le « + » (lot F). Tu as donc les deux options de ta remarque R12.
 
-## Sous le capot — ce qui rend ça propre
+## Un point de fond, assumé
 
-- La vente réutilise **tout le flux de facturation existant** : même émission,
-  même numérotation, même échéance, même communication rapprochable. Une vente
-  est une facture comme les autres pour la comptabilité.
-- Une **nature « vente »** distincte a été créée : une vente n'est pas un dossier
-  de déménagement, elle n'apparaît pas comme un métier, elle n'a aucune étape de
-  parcours. Verrouillé par sabotage.
-- **Correction utile trouvée en chemin** : jusqu'ici, l'émission d'une facture ne
-  stockait PAS le taux de TVA par ligne — une vente à 6 % aurait été taxée à
-  21 %. C'est corrigé : le taux (et la quantité, le prix unitaire) suivent
-  maintenant chaque ligne. Bénéfice aussi pour les factures de déménagement.
+Le code disait explicitement que les fournitures étaient **strictement
+séparées** de la facture déménagement — c'était une décision que tu avais prise
+et « redite ». R12 la fait **évoluer** en un choix. Je l'ai donc appliquée comme
+une évolution volontaire, pas comme une correction — ta décision d'hier n'était
+pas une erreur, ton besoin a mûri.
 
-## Ce que ça couvre de tes remarques
+## Le nœud du « prix client », résolu
 
-- **R12** (facture matériel jointe ou séparée) : la vente **séparée** existe
-  maintenant. La vente **jointe** (ajouter des fournitures à la facture d'un
-  dossier de déménagement) reste à poser — c'est le complément naturel.
+Le catalogue d'emballage interne ne connaît que le **coût** (ce que l'article te
+coûte), jamais le prix de vente — c'était le blocage historique pour facturer les
+fournitures. Ici, tu factures au **prix client** que tu saisis (ou qui vient du
+catalogue de vente du lot E). Jamais au coût. C'est aussi ce que demandait ta
+remarque R3.
 
-## Un point à valider avec ton comptable (P2)
+## Éprouvé
 
-La facture de vente utilise la **même série de numérotation** que les
-déménagements (une seule séquence légale continue). C'est le choix le plus simple
-et le plus courant pour une PME, mais si tu veux une série distincte pour la
-boutique, c'est une décision à prendre (et à valider) — dis-le-moi.
+La fusion prestation + fournitures est testée : chaque fourniture garde son
+propre taux de TVA (une bulle à 6 % ne devient pas 21 %), et le total additionne
+bien tout.
 
 ## À vérifier à l'œil
 
-1. « + » → 🧾 Vente rapide. Ajoute deux articles (nom + prix), vois le total.
-2. Bascule « Avec livraison » → adresse + date apparaissent.
-3. « Créer la vente et facturer » → tu arrives sur une facture émise, avec numéro,
-   échéance et communication.
+1. Ouvre la facture d'un dossier déménagement (avant émission).
+2. « + Joindre des fournitures » → ajoute deux cartons avec leur prix.
+3. Le total inclut la prestation ET les fournitures ; émets → une seule facture.
 
 ## Réserve d'honnêteté
 
-Le catalogue d'articles est vide aujourd'hui : l'écran fonctionne en saisie
-libre, ce qui le rend utilisable tout de suite. Un vrai écran de gestion du
-catalogue (créer/éditer des articles réutilisables, avec leur stock) serait la
-suite logique — je ne l'ai pas fait ici pour garder le lot centré sur la vente.
-Et le parcours réel (émettre une vente, voir sa facture) reste à constater à
-l'écran connecté.
+Les fournitures jointes se saisissent au moment de facturer ; elles ne se
+reprennent pas (encore) automatiquement des quantités réellement utilisées sur le
+chantier (l'écran Matériel du dossier). Relier « ce qui a été consommé » à « ce
+qu'on facture » d'un clic serait la suite — mais ça suppose de fixer un prix
+client sur chaque article du catalogue d'emballage, un chantier à part.
