@@ -1,48 +1,63 @@
-# Deuxième relevé des remarques d'atelier (31/08)
+# Vague 2, lot F — la vente rapide de fournitures
 
-**31/08/2026.** **1230 tests verts**, build vert. Documentation.
+**31/08/2026.** **1238 tests verts**, build vert. **Migration 0165** appliquée et
+vérifiée. Les cartons se facturent enfin.
 
-## Onze nouvelles remarques, classées en lots R10 → R16
+## Ce que ça donne
 
-Depuis le premier relevé, tu as déposé onze remarques (30 et 31/08), plusieurs au
-cœur de la facturation. Elles sont analysées et rattachées aux vagues dans
-`80-REMARQUES-ATELIER.md`.
+Dans le « + », une nouvelle entrée en tête : **🧾 Vente rapide**. Elle ouvre un
+écran court, pensé pour aller vite :
 
-**Bonne nouvelle d'abord :** R10 **confirme** le travail des lots A–D. Tu écris
-que la facture se fige à l'émission (jamais avant, jamais à cause du client) —
-c'est exactement ce que j'ai construit. On était sur la bonne voie.
+- **Client** : un nom (ou rien → « comptoir »).
+- **Comptoir ou livraison** : un interrupteur. Si livraison, une adresse et une
+  date apparaissent (sinon, rien ne t'encombre).
+- **Articles** : des lignes libres — nom, prix HTVA, taux de TVA, quantité —
+  avec un pas +/−. Si tu as un catalogue d'articles, tu peux en reprendre un d'un
+  menu ; sinon, tu tapes directement. Le **total (HTVA / TVA / TVAC) s'affiche en
+  direct**.
+- **Créer la vente et facturer** : la facture est émise immédiatement, avec son
+  numéro légal, son échéance et sa communication (tout le travail de la vague 1).
 
-**Les sept lots :**
-- **R10** — le cycle de vie de la facture : ouverte avant émission, figée à
-  l'émission **avec une confirmation « êtes-vous sûr ? »** (qui manque
-  aujourd'hui), règles distinctes devis tarifaire / forfait, jamais figée par le
-  code client. → complète la vague 1.
-- **R11** — l'estimation en **temps par adresse** (fini les km dépôt-dépôt), un
-  compteur unique, et les heures réelles du calcul définitif qui font seules foi.
-  → structurant, vague 6.
-- **R12** — la facture matériel **jointe ou séparée** de celle du déménagement.
-  → vague 2 (fournitures), avec le lot E/F.
-- **R13** — les **onglets de la liste** réorganisés (envoyé, planifié, à
-  clôturer avec ses sous-états, clos). → vague 6.
-- **R14** — **audit** de la boucle brouillon→clos. → avec R13.
-- **R15** — les **centres dans l'équipe** (tri + vue consolidée, déplacer un
-  membre). → complète Option A.
-- **R16** — **bulles de conversation illisibles en mode sombre** (blanc sur
-  blanc). → correctif rapide, à faire tôt.
+Tu arrives directement sur la facture émise.
 
-## Ordre conseillé
+## Sous le capot — ce qui rend ça propre
 
-R16 (correctif visible) → R10 (facturation, contexte chaud) → R12 (avec la vague
-2) → R15 (centres) → R13+R14 puis R11 (délimitation).
+- La vente réutilise **tout le flux de facturation existant** : même émission,
+  même numérotation, même échéance, même communication rapprochable. Une vente
+  est une facture comme les autres pour la comptabilité.
+- Une **nature « vente »** distincte a été créée : une vente n'est pas un dossier
+  de déménagement, elle n'apparaît pas comme un métier, elle n'a aucune étape de
+  parcours. Verrouillé par sabotage.
+- **Correction utile trouvée en chemin** : jusqu'ici, l'émission d'une facture ne
+  stockait PAS le taux de TVA par ligne — une vente à 6 % aurait été taxée à
+  21 %. C'est corrigé : le taux (et la quantité, le prix unitaire) suivent
+  maintenant chaque ligne. Bénéfice aussi pour les factures de déménagement.
 
-## Ce que ça dit de la vision
+## Ce que ça couvre de tes remarques
 
-R10 et R11 disent la même chose : **la vérité, c'est le réel, pas l'estimation.**
-L'estimation propose, le calcul définitif (heures réelles) fait foi, la facture
-reste ouverte jusqu'au bout. C'est l'esprit du circuit terrain→facturation déjà
-en place. La vision tient.
+- **R12** (facture matériel jointe ou séparée) : la vente **séparée** existe
+  maintenant. La vente **jointe** (ajouter des fournitures à la facture d'un
+  dossier de déménagement) reste à poser — c'est le complément naturel.
 
-## Suite immédiate
+## Un point à valider avec ton comptable (P2)
 
-J'enchaîne comme convenu sur le **lot E** (vague 2 : TVA sur les articles,
-mission nullable) — les fondations pour encaisser les fournitures.
+La facture de vente utilise la **même série de numérotation** que les
+déménagements (une seule séquence légale continue). C'est le choix le plus simple
+et le plus courant pour une PME, mais si tu veux une série distincte pour la
+boutique, c'est une décision à prendre (et à valider) — dis-le-moi.
+
+## À vérifier à l'œil
+
+1. « + » → 🧾 Vente rapide. Ajoute deux articles (nom + prix), vois le total.
+2. Bascule « Avec livraison » → adresse + date apparaissent.
+3. « Créer la vente et facturer » → tu arrives sur une facture émise, avec numéro,
+   échéance et communication.
+
+## Réserve d'honnêteté
+
+Le catalogue d'articles est vide aujourd'hui : l'écran fonctionne en saisie
+libre, ce qui le rend utilisable tout de suite. Un vrai écran de gestion du
+catalogue (créer/éditer des articles réutilisables, avec leur stock) serait la
+suite logique — je ne l'ai pas fait ici pour garder le lot centré sur la vente.
+Et le parcours réel (émettre une vente, voir sa facture) reste à constater à
+l'écran connecté.
