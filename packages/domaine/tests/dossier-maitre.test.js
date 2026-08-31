@@ -262,3 +262,20 @@ test("les remarques déjà traitées ne réengendrent pas de lot", () => {
   assert.match(r, /DÉJÀ traité|déjà traité/i);
   assert.match(r, /Lot 53/);
 });
+
+/* ── Deuxième relevé des remarques (31/08/2026) ──────────────────────────── */
+
+test("le deuxième relevé classe les lots R10 à R16", () => {
+  const r = lire("80-REMARQUES-ATELIER.md");
+  for (const n of [10, 11, 12, 13, 14, 15, 16]) {
+    assert.match(r, new RegExp(`R${n} —`), `le lot R${n} doit être décrit`);
+  }
+  assert.match(r, /Deuxième relevé/i);
+});
+
+test("le relevé note que R10 confirme l'approche des lots A–D", () => {
+  // La facture se fige à l'émission, jamais avant : la remarque le confirme.
+  const r = lire("80-REMARQUES-ATELIER.md");
+  assert.match(r, /confirme/i);
+  assert.match(r, /fige à l'émission|figer à l'émission|gel à l'émission/i);
+});
