@@ -123,3 +123,23 @@ test("le taux horaire effectif révèle ce que la remise a coûté", () => {
 // Le chiffrage du lift a son propre fichier : `lift-chiffrage.test.js`.
 // Le modèle a changé (couronne + temps inclus + homme supplémentaire à
 // supplément propre) et méritait une suite dédiée plutôt qu'un appendice ici.
+
+/* ── La vente rapide (lot F) : une nature valide, hors menu ───────────────── */
+
+import { natureValide as _nv, naturesDuMenu as _ndm, nature as _nat }
+  from "../src/commercial/natures.js";
+
+test("« vente » est une nature valide mais N'APPARAÎT PAS comme un métier du menu", () => {
+  // La vente rapide a son entrée dédiée dans le « + » ; elle ne doit pas
+  // doublonner comme une nature de dossier.
+  assert.equal(_nv("vente"), true);
+  assert.equal(_ndm().some((n) => n.cle === "vente"), false);
+});
+
+test("la nature « vente » ne comporte aucune étape de parcours", () => {
+  // Pas de relevé, pas de planning : on facture, point.
+  const v = _nat("vente");
+  assert.ok(v);
+  assert.deepEqual(v.etapes,
+    { releve: false, materiel: false, emballage: false, planning: false, recurrent: false });
+});
