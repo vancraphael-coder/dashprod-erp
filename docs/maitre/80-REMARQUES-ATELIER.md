@@ -224,3 +224,176 @@ coûts internes ne sont pas qu'un chiffre de marge, ils doivent à terme se
 **rapprocher de la banque** et se **transmettre au secrétariat social**. C'est
 cohérent avec la vague 1 (la boucle de l'argent) et la vague 3 (comptabilité) —
 la vision tient : *l'argent réel, tracé de bout en bout.*
+
+---
+
+# Deuxième relevé — 31/08/2026
+
+Onze remarques nouvelles depuis le premier relevé, déposées les 30 et 31/08.
+Plusieurs touchent le **cœur de la facturation** (le sujet de la vague 1) et
+sont, comme Raphaël l'a dit, importantes et d'actualité. Elles deviennent les
+lots **R10 → R16**.
+
+**Un signal positif d'abord :** R10 (ci-dessous) *confirme* l'approche des lots A
+à D — la facture se fige à l'émission, jamais avant, jamais à cause du client.
+On était sur la bonne voie ; il reste à compléter.
+
+---
+
+## R10 — Le cycle de vie de la facture, selon le type de devis
+
+**Remarques** (*facture*, 30/08, deux notes) :
+> La facture avant émission → constamment modifiée par « calcul définitif ».
+> Figée par « émettre la facture » → avec confirmation (êtes-vous sûr ? oui/non).
+>
+> Pour un devis tarifaire : la facture ne se met pas à jour sans « calcul
+> définitif ». Pour un devis forfait : la facture se met à jour avec l'estimation
+> uniquement. La facture ne doit JAMAIS se figer à cause de la confirmation du
+> client avec son code. Une facture est toujours indécise jusqu'à la fin → sauf
+> devis forfait.
+
+**Ce que ça donne.** Une spec claire du comportement de la facture :
+- **Avant émission** : ouverte, recalculée en continu.
+- **À l'émission** : figée — et il manque la **confirmation « êtes-vous sûr ? »**
+  (aujourd'hui un simple clic émet, vérifié). À ajouter.
+- **Devis tarifaire** (au temps) : ne bouge qu'avec le calcul définitif.
+- **Devis forfait** : suit l'estimation, et c'est le seul cas qui peut se figer
+  tôt.
+- **Jamais** figée par le code de confirmation client — le code client valide la
+  prestation, il ne clôt pas la facture.
+
+**Déjà fait :** le gel à l'émission (lots A–D) est correct et confirmé par cette
+remarque. **Reste :** la confirmation « êtes-vous sûr ? », et la distinction
+tarifaire/forfait dans la mise à jour.
+
+**Rattachement :** vague 1 (complément facturation). Mécanique. À faire tôt.
+
+---
+
+## R11 — L'estimation en temps par adresse (fini les km dépôt-dépôt)
+
+**Remarques** (*devis*, 30/08, deux notes) :
+> Dans dossier/devis/estimation : supprime le nombre de km (dépôt-dépôt) ; à la
+> place « temps estimé » — chargement(s) / déchargement(s), une case par adresse.
+> Toutes les cases de temps + trajets se regroupent en un seul compteur repris
+> pour l'estimation. Les heures réelles corrigées ou acceptées du calcul
+> définitif sont les seules valides pour les heures (hors suppléments et
+> fournitures d'emballage).
+
+**Ce que ça donne.** Le modèle d'estimation passe du kilométrage au **temps par
+adresse** : une case de temps par point de chargement/déchargement, agrégées en
+un compteur unique. Et une règle nette : l'estimation sert d'abord, mais **seules
+les heures réelles du calcul définitif font foi** au bout du compte.
+
+**Rattachement :** cœur métier (circuit 1, estimation). Substantiel — modèle +
+écran. Vague 6 (délimitation) ou lot dédié. Dépend de rien mais touche beaucoup.
+
+---
+
+## R12 — Facture matériel : jointe ou séparée
+
+**Remarque** (*materiel*, 30/08) :
+> La facture du matériel peut être soit envoyée avec la facture du déménagement,
+> soit envoyée séparément (deux factures distinctes pour un même dossier).
+
+**Ce que ça donne.** Le matériel (fournitures d'emballage) peut donner lieu à
+**sa propre facture**, ou être **fondu** dans celle du déménagement. Un dossier
+peut donc porter deux factures distinctes.
+
+**Rattachement :** **vague 2** (encaisser les fournitures). Directement lié au
+lot E/F et à R3 (prix matériel répercuté). C'est le pendant « document » de R3.
+
+---
+
+## R13 — Les onglets de la liste des dossiers
+
+**Remarques** (*liste*, 30/08, deux notes) :
+> Ajouter un onglet « clos ». Ajouter un onglet « envoyé » à la place d'« À
+> planifier », et « planifié » (attente du jour J). « À clôturer » avec un tri
+> pour : litiges, attente de confirmation des heures, à facturer, facturé mais
+> impayé.
+
+**Ce que ça donne.** La liste des dossiers se réorganise autour du cycle réel :
+envoyé → planifié → à clôturer (avec ses sous-états) → clos. Chaque sous-état d'« À
+clôturer » (litige, heures à confirmer, à facturer, impayé) devient repérable.
+
+**Rattachement :** **vague 6** (délimitation / structure des écrans). À faire avec
+R14. Croise le travail de suivi de la vague 1 (facturé/impayé s'appuie sur
+l'échéance et le rapprochement déjà posés).
+
+---
+
+## R14 — Vérifier la boucle « brouillon → clos »
+
+**Remarque** (*liste*, 30/08) :
+> Vérifie la boucle « brouillon → clos ».
+
+**Ce que ça donne.** Un audit de la machine à états des dossiers : chaque
+transition existe, aucune impasse, aucun état orphelin. Tâche de vérification,
+pas de construction.
+
+**Rattachement :** transverse, à faire **avec R13** (les onglets reflètent les
+états — autant vérifier les états en les réorganisant).
+
+---
+
+## R15 — Les centres dans l'équipe
+
+**Remarques** (*equipe*, 30/08, deux notes) :
+> Place un tri par centre et une vue tous centres confondus. Sur les cartes
+> membre, sous « Choisir un autre poste », je veux « Choisir un autre centre ».
+
+**Ce que ça donne.** L'écran Équipe gagne, comme la comptabilité, un **tri par
+centre** + une **vue consolidée**. Et on peut **déplacer un membre** d'un centre à
+l'autre depuis sa carte (comme on change son poste).
+
+**Rattachement :** complète **Option A** (les centres). Cohérent avec R1/R2 déjà
+faits. Le déplacement de membre demande une petite commande (comme cmd_definir_poste).
+
+---
+
+## R16 — Bulles de conversation illisibles en mode sombre
+
+**Remarque** (*conversations*, 31/08) :
+> Les bulles de dialogue de l'interlocuteur sont blanc sur blanc quand on bascule
+> en mode sombre.
+
+**Ce que ça donne.** Bug d'affichage : en mode sombre, le texte des bulles reçues
+disparaît (blanc sur blanc). Correction rapide de contraste.
+
+**Rattachement :** correctif, **à faire tôt** (une régression visible gêne
+l'usage réel). Rejoint la remarque de forme du premier relevé (alignement des
+cartes dans Conversations) — autant traiter les deux d'un coup.
+
+---
+
+# Insertion des nouveaux lots dans les vagues
+
+| Lot | Sujet | Vague d'accueil | Priorité |
+|---|---|---|---|
+| **R16** | Bulles conversation mode sombre (+ alignement) | correctif | haute (visible) |
+| **R10** | Cycle de vie facture + confirmation émission | 1 (complément) | haute |
+| **R15** | Centres dans l'équipe + déplacer un membre | Option A (complément) | moyenne |
+| **R12** | Facture matériel jointe/séparée | 2 | avec E/F |
+| **R13+R14** | Onglets liste + audit brouillon→clos | 6 | moyenne |
+| **R11** | Estimation en temps par adresse | 6 (ou dédié) | structurant |
+
+**Ordre conseillé, en cohérence avec la vague 2 qui commence :**
+
+1. **R16** — correctif rapide, une régression visible.
+2. **R10** — complète la facturation (confirmation d'émission + règles
+   tarifaire/forfait), pendant que le contexte facturation est chaud.
+3. **R12** — se fait naturellement avec le lot E/F de la vague 2 (fournitures).
+4. **R15** — quand on rouvrira les centres.
+5. **R13+R14**, puis **R11** — en délimitation (vague 6).
+
+---
+
+# Ce que ce deuxième relevé dit de la vision
+
+Les remarques facture (R10) et estimation (R11) disent la même exigence : **la
+vérité, c'est le réel, pas l'estimation.** L'estimation sert à proposer ; le
+calcul définitif (heures réelles) fait foi ; la facture reste ouverte jusqu'au
+bout. C'est exactement l'esprit du circuit terrain → facturation déjà construit
+(pointage réel, surcoût interne). La vision reste cohérente : *ce qui s'est
+vraiment passé prime sur ce qu'on avait prévu.*

@@ -467,3 +467,14 @@ rapprochement, D ce lot.
   sabotés) : liste des factures échues non soldées dans la Comptabilité, triées
   par retard décroissant. On SIGNALE, rien n'est envoyé. Respecte le filtre par
   centre.
+
+## Vague 2 lot E — fondations des fournitures (31/08/2026)
+
+- **Base** (0164) : stock_articles.tva_pct (défaut 21, check 0–100) — sans taux,
+  le moteur TVA refuse ; stock_mouvements.mission_id rendu nullable — vente au
+  comptoir sans chantier. Tables vides, sans risque.
+- **Domaine** (stocks/vente-fournitures.js) : articleVendable (refuse un taux
+  ABSENT, jamais 0 % en douce — piège Number(null)), ligneVente (article →
+  ligne de facture en centimes), composerVente. Purs, éprouvés par sabotage.
+- Lot E = socle. Le lot F posera la vente effective + R12 (facture matériel
+  jointe au déménagement OU séparée, deux factures pour un dossier).

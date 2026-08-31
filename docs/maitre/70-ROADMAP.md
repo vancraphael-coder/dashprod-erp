@@ -268,7 +268,16 @@ s'insèrent dans les vagues ci-dessus (ils ne les remplacent pas) :
 | R8 | Liste : barre / roulette au choix | Vague 7 |
 | R9 | Liste : couleur distincte Envoyé / Confirmé | Vague 6 (faisable tôt) |
 
-Deux remarques « tri par centre en comptabilité » étaient **déjà traitées** par
+| R10 | Cycle de vie facture + confirmation d'émission | Vague 1 (complément) |
+| R11 | Estimation en temps par adresse (fini les km) | Vague 6 (ou dédié) |
+| R12 | Facture matériel jointe ou séparée | Vague 2 |
+| R13 | Onglets de la liste des dossiers | Vague 6 |
+| R14 | Audit de la boucle brouillon→clos | Vague 6 (avec R13) |
+| R15 | Centres dans l'équipe + déplacer un membre | Option A (complément) |
+| R16 | Bulles conversation mode sombre (correctif) | correctif, tôt |
+
+Deux relevés des remarques d'atelier (30/08 et 31/08) sont classés dans
+`80-REMARQUES-ATELIER.md`. Deux remarques « tri par centre en comptabilité » étaient **déjà traitées** par
 le lot 53. Ordre conseillé : R9 (rapide), puis R1+R2 (achèvent Option A), puis
 R6 avec le lot C en cours.
 
