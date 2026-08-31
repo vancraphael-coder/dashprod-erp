@@ -290,7 +290,7 @@ les heures réelles du calcul définitif font foi** au bout du compte.
 
 ---
 
-## R12 — Facture matériel : jointe ou séparée
+## R12 — Facture matériel : jointe ou séparée ⏳ VENTE EFFECTIVE POSÉE (lot F, 31/08)
 
 **Remarque** (*materiel*, 30/08) :
 > La facture du matériel peut être soit envoyée avec la facture du déménagement,

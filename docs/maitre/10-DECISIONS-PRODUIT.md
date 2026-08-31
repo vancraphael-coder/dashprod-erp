@@ -478,3 +478,23 @@ rapprochement, D ce lot.
   ligne de facture en centimes), composerVente. Purs, éprouvés par sabotage.
 - Lot E = socle. Le lot F posera la vente effective + R12 (facture matériel
   jointe au déménagement OU séparée, deux factures pour un dossier).
+
+## Vague 2 lot F — la vente rapide de fournitures (31/08/2026)
+
+- **Base** (0165) : nature d'affaire « vente » (enum). L'affaire de vente est
+  insérée directement en état « effectue » (facturable) — le garde d'état ne
+  vise que les UPDATE.
+- **Domaine** : nature « vente » dans NATURES, HORS ORDRE_MENU (entrée dédiée au
+  menu). Aucune étape de parcours. Sabotée.
+- **Adapters** : catalogueArticles (lecture stock_articles), venteRapide (crée
+  l'affaire vente + émet la facture par le flux normal — numéro/échéance/
+  communication de la vague 1). emettreFacture ÉTENDU : stocke désormais
+  tva_pct/quantite/unite/prix_unitaire_centimes par ligne (une vente multi-taux
+  garde son taux ; rétrocompatible pour le déménagement).
+- **Écran** VenteRapide : lignes libres (nom, prix, TVA, quantité) pré-remplies
+  du catalogue si présent, total en direct, interrupteur comptoir/livraison
+  (adresse+date → ligne de note à 0 €). Entrée « Vente rapide » en tête du « + ».
+- Couvre en partie R12 : la vente séparée existe ; la vente JOINTE à un
+  déménagement (ajouter des fournitures à une facture de dossier) reste à poser.
+- Ouvre P2 : la facture de vente consomme la MÊME séquence légale que les
+  déménagements (choix assumé — une seule série ; à confirmer au comptable).
