@@ -57,3 +57,21 @@ test("composerVente additionne le vendable et compte les rejets", () => {
   assert.equal(r.total_htva_centimes, 2000);
   assert.equal(r.rejets, 1);
 });
+
+/* ── R12 « jointe » : prestation + fournitures sur une même facture ───────── */
+
+test("des fournitures jointes s'additionnent aux lignes de prestation", () => {
+  // La facture d'un déménagement peut porter la prestation ET des fournitures
+  // (au prix client), chacune avec son taux. Le socle est composerVente.
+  const prestation = { type: "prestation", libelle: "Déménagement", montant_htva_centimes: 50000 };
+  const { lignes } = composerVente([
+    { article: { nom: "Carton", prix_unitaire: 2.5, tva_pct: 21 }, quantite: 10 },
+    { article: { nom: "Bulle", prix_unitaire: 12, tva_pct: 6 }, quantite: 1 },
+  ]);
+  const completes = [prestation, ...lignes];
+  assert.equal(completes.length, 3);
+  const htva = completes.reduce((s, l) => s + l.montant_htva_centimes, 0);
+  assert.equal(htva, 50000 + 2500 + 1200);
+  // Chaque fourniture garde SON taux (pas le défaut de l'organisation).
+  assert.equal(lignes.find((l) => l.libelle === "Bulle").tva_pct, 6);
+});
