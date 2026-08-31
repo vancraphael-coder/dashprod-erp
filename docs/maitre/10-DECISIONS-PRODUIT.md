@@ -498,3 +498,17 @@ rapprochement, D ce lot.
   déménagement (ajouter des fournitures à une facture de dossier) reste à poser.
 - Ouvre P2 : la facture de vente consomme la MÊME séquence légale que les
   déménagements (choix assumé — une seule série ; à confirmer au comptable).
+
+## R12 complété — fournitures JOINTES à la facture déménagement (lot G, 31/08/2026)
+
+Évolution assumée d'une décision : les fournitures étaient strictement séparées
+(commentaire dans lignesFacturePour). R12 en fait un CHOIX :
+- **Séparée** : vente rapide depuis le « + » (lot F).
+- **Jointe** (ce lot) : sur la facture d'un dossier, composant AjoutFournitures
+  — « + Joindre des fournitures à cette facture ». Lignes au PRIX CLIENT (saisie
+  libre ou catalogue stock_articles), chacune avec son taux de TVA, ajoutées aux
+  lignes de prestation avant émission. Réutilise composerVente (lot E).
+- Résout aussi le nœud « prix client » (le CATALOGUE_EMBALLAGE n'a que le coût) :
+  on facture au prix client saisi, jamais au coût. Croise R3.
+- lignesFacturePour reste inchangé (il exclut toujours les fournitures « auto ») ;
+  l'ajout est explicite et volontaire côté écran.
