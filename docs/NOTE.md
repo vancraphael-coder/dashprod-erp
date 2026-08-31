@@ -1,47 +1,48 @@
-# Vague 2, lot E — les fondations pour encaisser les fournitures
+# Deuxième relevé des remarques d'atelier (31/08)
 
-**31/08/2026.** **1236 tests verts**, build vert. **Migration 0164** appliquée et
-vérifiée. Premier lot de la vague 2 (les cartons qui, aujourd'hui, se livrent
-sans se facturer).
+**31/08/2026.** **1230 tests verts**, build vert. Documentation.
 
-## Les deux trous comblés
+## Onze nouvelles remarques, classées en lots R10 → R16
 
-Vendre une fourniture était impossible pour deux raisons, maintenant réglées :
+Depuis le premier relevé, tu as déposé onze remarques (30 et 31/08), plusieurs au
+cœur de la facturation. Elles sont analysées et rattachées aux vagues dans
+`80-REMARQUES-ATELIER.md`.
 
-1. **Un article n'avait pas de taux de TVA.** Sans lui, le moteur de facturation
-   refuse (à raison — il ne devine jamais un taux). Chaque article porte
-   désormais un **taux de TVA** (21 % par défaut, ajustable, borné 0–100 %).
-2. **Une vente exigeait un chantier.** On ne pouvait pas vendre trois cartons au
-   comptoir sans les rattacher à un déménagement. C'est corrigé : **une vente
-   peut exister sans chantier**.
+**Bonne nouvelle d'abord :** R10 **confirme** le travail des lots A–D. Tu écris
+que la facture se fige à l'émission (jamais avant, jamais à cause du client) —
+c'est exactement ce que j'ai construit. On était sur la bonne voie.
 
-Les tables étaient vides : ces changements ne touchent rien d'existant.
+**Les sept lots :**
+- **R10** — le cycle de vie de la facture : ouverte avant émission, figée à
+  l'émission **avec une confirmation « êtes-vous sûr ? »** (qui manque
+  aujourd'hui), règles distinctes devis tarifaire / forfait, jamais figée par le
+  code client. → complète la vague 1.
+- **R11** — l'estimation en **temps par adresse** (fini les km dépôt-dépôt), un
+  compteur unique, et les heures réelles du calcul définitif qui font seules foi.
+  → structurant, vague 6.
+- **R12** — la facture matériel **jointe ou séparée** de celle du déménagement.
+  → vague 2 (fournitures), avec le lot E/F.
+- **R13** — les **onglets de la liste** réorganisés (envoyé, planifié, à
+  clôturer avec ses sous-états, clos). → vague 6.
+- **R14** — **audit** de la boucle brouillon→clos. → avec R13.
+- **R15** — les **centres dans l'équipe** (tri + vue consolidée, déplacer un
+  membre). → complète Option A.
+- **R16** — **bulles de conversation illisibles en mode sombre** (blanc sur
+  blanc). → correctif rapide, à faire tôt.
 
-## Le domaine, pur et testé
+## Ordre conseillé
 
-Une brique de calcul qui transforme un article de stock en ligne de facture :
-- **articleVendable** : un article se vend s'il a un nom, un prix et un taux de
-  TVA. Un taux **absent est refusé** — jamais transformé en 0 % en douce (le
-  piège classique). Un 0 % explicite, lui, est accepté.
-- **ligneVente** : article + quantité → une ligne de facture propre (prix en
-  centimes, TVA), ou rien si l'article n'est pas vendable.
-- **composerVente** : additionne un panier, ignore l'invalide sans le facturer.
+R16 (correctif visible) → R10 (facturation, contexte chaud) → R12 (avec la vague
+2) → R15 (centres) → R13+R14 puis R11 (délimitation).
 
-## Éprouvé par sabotage
+## Ce que ça dit de la vision
 
-| Sabotage | Rouges |
-|---|---|
-| un taux de TVA absent devient 0 % | 3 |
-| la vente ne valide plus l'article | 2 |
+R10 et R11 disent la même chose : **la vérité, c'est le réel, pas l'estimation.**
+L'estimation propose, le calcul définitif (heures réelles) fait foi, la facture
+reste ouverte jusqu'au bout. C'est l'esprit du circuit terrain→facturation déjà
+en place. La vision tient.
 
-## Ce que c'est, et ce que ce n'est pas encore
+## Suite immédiate
 
-C'est le **socle** : la base sait stocker un prix TVA, le domaine sait composer
-une vente juste. Ce n'est pas encore l'écran de vente ni la facture.
-
-## Suite : le lot F
-
-Le lot F posera la **vente effective** et, avec elle, ta remarque **R12** : la
-facture du matériel pourra être **jointe** à celle du déménagement, ou **séparée**
-(deux factures distinctes pour un même dossier). Le socle d'aujourd'hui est ce
-qui le rend possible.
+J'enchaîne comme convenu sur le **lot E** (vague 2 : TVA sur les articles,
+mission nullable) — les fondations pour encaisser les fournitures.
