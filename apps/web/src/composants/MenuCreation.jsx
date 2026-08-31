@@ -79,6 +79,35 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
           width: "min(344px, calc(100vw - 36px))",
           display: "flex", flexDirection: "column", gap: 9,
         }}>
+          {/* Vente rapide : une ACTION, pas un métier. En tête, style distinct
+              (fournitures au comptoir ou livrées). */}
+          <button role="menuitem"
+            onClick={() => { basculer(false); choisir("vente"); }}
+            data-champ="" className="option-verre"
+            style={{
+              display: "flex", alignItems: "center", gap: 11,
+              textAlign: "left", padding: "13px 15px", borderRadius: 16,
+              cursor: "pointer", border: "1px solid rgba(255,255,255,.55)",
+              background: `linear-gradient(135deg,
+                rgba(226,242,255,.92) 0%, rgba(214,235,255,.78) 100%)`,
+              backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+              boxShadow: `0 10px 26px -14px rgba(8,12,26,.45),
+                          inset 0 1px 0 rgba(255,255,255,.9)`,
+              ...matiereSurface(false),
+            }}>
+            <span style={{ fontSize: 22, marginTop: 1 }}>🧾</span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 14.5, fontWeight: 800, color: C.encre }}>
+                Vente rapide
+              </span>
+              <span style={{ display: "block", fontSize: 11.5, color: C.muet,
+                             marginTop: 4, lineHeight: 1.45 }}>
+                Fournitures — cartons, emballage. Au comptoir ou livrée, facturée
+                en quelques gestes.
+              </span>
+            </span>
+          </button>
+
           {natures.map((n, i) => {
             const t = ETIQ[n.cle] || ETIQ.demenagement;
             return (
