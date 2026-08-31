@@ -265,6 +265,75 @@ export async function sauverMission(affaireId, mission) {
  * branchement) ; en démo, écrit le magasin local.
  * @returns {Promise<string>} id de l'affaire créée
  */
+/**
+ * Le catalogue des articles de fournitures vendables (cartons, emballage).
+ * Prix en euros (numeric), avec leur taux de TVA (lot E).
+ */
+export async function catalogueArticles() {
+  if (modeDonnees() !== "reel") return [];
+  const { data, error } = await supabase.from("stock_articles")
+    .select("id, nom, categorie, prix_unitaire, tva_pct, actif")
+    .eq("actif", true).order("nom");
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * VENTE RAPIDE de fournitures. Crée une affaire de nature « vente » déjà
+ * facturable (le garde d'état ne s'applique qu'aux UPDATE, pas à l'insert), y
+ * attache les lignes de fournitures, et émet la facture par le flux normal
+ * (numéro, échéance, communication — vague 1). Rapide : un seul appel.
+ *
+ * @param {object} p
+ * @param {string} [p.clientId]   client existant, sinon on le crée
+ * @param {string} [p.clientNom]  nom si nouveau client
+ * @param {object[]} p.lignes     lignes de facture prêtes (via domaine ligneVente)
+ * @param {string|null} [p.centreId]
+ * @param {{adresse?:string, date?:string}|null} [p.livraison]  si livraison
+ * @returns {{affaireId, id, numero}}
+ */
+export async function venteRapide({ clientId, clientNom, lignes, centreId, livraison }) {
+  if (!lignes || lignes.length === 0) throw new Error("Vente sans article.");
+  if (modeDonnees() !== "reel") {
+    // Démo : on réutilise le flux affaire + facture.
+    const aff = await creerAffaire({ clientId, clientNom, nature: "vente", centreId });
+    return { affaireId: aff, ...(await emettreFacture(aff, lignes)) };
+  }
+
+  // Client (créé si besoin).
+  let cid = clientId;
+  if (!cid) {
+    const { data, error } = await supabase.from("clients")
+      .insert({ nom: clientNom || "Client comptoir" }).select("id").single();
+    if (error) throw error;
+    cid = data.id;
+  }
+
+  // Affaire de vente, insérée directement en état facturable « effectue » (la
+  // vente a eu lieu). L'insert n'est pas soumis au garde de transition d'état.
+  const ligneAff = { client_id: cid, etat: "effectue", nature: "vente" };
+  if (centreId !== undefined) ligneAff.centre_id = centreId || null;
+  const { data: aff, error: e2 } = await supabase.from("affaires")
+    .insert(ligneAff).select("id").single();
+  if (e2) throw e2;
+
+  // La livraison, si demandée, devient une ligne de facture à 0 € : elle trace
+  // l'adresse/date sur le document sans changer le total. Trace légère, visible.
+  const lignesFinales = [...lignes];
+  if (livraison && (livraison.adresse || livraison.date)) {
+    lignesFinales.push({
+      type: "note",
+      libelle: `Livraison${livraison.date ? ` le ${livraison.date}` : ""}`
+             + `${livraison.adresse ? ` — ${livraison.adresse}` : ""}`,
+      montant_htva_centimes: 0,
+    });
+  }
+
+  // Émission par le flux normal : numéro, échéance, communication.
+  const res = await emettreFacture(aff.id, lignesFinales);
+  return { affaireId: aff.id, ...res };
+}
+
 export async function creerAffaire({ clientId, clientNom, tel, email, nature, centreId }) {
   // La nature est validée par le DOMAINE, pas ici : une chaîne libre venue
   // d'un appelant distrait tomberait sinon dans l'enum et ferait échouer
@@ -851,6 +920,13 @@ export async function emettreFacture(affaireId, lignes, tauxTva = 21) {
       await supabase.from("facture_lignes").insert({
         facture_id: fid.id, type: l.type, libelle: l.libelle,
         montant_htva_centimes: l.montant_htva_centimes, ordre: i + 1,
+        // Détail par ligne quand il est fourni (vente de fournitures : le taux
+        // de TVA doit suivre la ligne, pas le défaut de l'organisation).
+        // Rétrocompatible : null si absent (lignes de déménagement sans détail).
+        tva_pct: l.tva_pct ?? null,
+        quantite: l.quantite ?? null,
+        unite: l.unite ?? null,
+        prix_unitaire_centimes: l.prix_unitaire_centimes ?? null,
       });
     }
     const { data: numero, error: e2 } = await supabase.rpc("cmd_emettre_facture", { p_facture: fid.id });
