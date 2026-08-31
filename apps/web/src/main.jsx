@@ -46,6 +46,7 @@ import Facture from "./ecrans/Facture.jsx";
 import Mail from "./ecrans/Mail.jsx";
 import Journal from "./ecrans/Journal.jsx";
 import RapportsDossier from "./ecrans/RapportsDossier.jsx";
+import VenteRapide from "./ecrans/VenteRapide.jsx";
 import Materiel from "./ecrans/Materiel.jsx";
 import Planning from "./ecrans/Planning.jsx";
 import Conversations from "./ecrans/Conversations.jsx";
@@ -590,6 +591,8 @@ function App() {
   const navBrute = {
     liste: () => setRoute({ ecran: "liste", affaireId: null }),
     nouvelle: async (nature, clientId) => {
+      // La vente rapide n'est pas un dossier : elle a son propre écran.
+      if (nature === "vente") { setRoute({ ecran: "vente_rapide" }); return; }
       // R1 : quand plusieurs centres existent, on DEMANDE l'espace avant de
       // créer, au lieu de rattacher silencieusement à l'espace courant.
       const acteur = { poste: profil?.poste, centre_id: profil?.centre_id };
@@ -654,6 +657,8 @@ function App() {
       versCentres={(acces?.modules || []).includes("multi_depots") ? nav.centres : null}
       versRapport={(acces?.modules || []).includes("multi_depots") ? nav.rapport : null}
       peutConfigurer={peutGererEquipe} />;
+  } else if (route.ecran === "vente_rapide") {
+    ecran = <VenteRapide retour={nav.liste} versFacture={nav.facture} />;
   } else if (route.ecran === "demandes") {
     ecran = <DemandesReseau />;
   } else if (route.ecran === "equipe") {
