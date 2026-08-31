@@ -14,6 +14,7 @@ import {
   obtenirClientFacturation,
 } from "../lib/adaptateur.js";
 import FactureDoc from "./FactureDoc.jsx";
+import AjoutFournitures from "../composants/AjoutFournitures.jsx";
 import FacturePeppol from "./FacturePeppol.jsx";
 import { composerTotal, etatPaiement } from "@domaine/facturation/facture.js";
 import { qualifierEcheance } from "@domaine/commun/echeances.js";
@@ -40,6 +41,8 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
   const [clos, setClos] = useState(false);
   const [facture, setFacture] = useState(null);
   const [lignes, setLignes] = useState([]);
+  // R12 : des fournitures peuvent être JOINTES à cette facture (prix client).
+  const [fournitures, setFournitures] = useState([]);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
   // Saisie de paiement
@@ -74,7 +77,8 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
   }
   useEffect(() => { recharger(); }, [affaireId, factureExistanteId]);
 
-  const totalPropose = useMemo(() => composerTotal(lignes), [lignes]);
+  const lignesCompletes = useMemo(() => [...lignes, ...fournitures], [lignes, fournitures]);
+  const totalPropose = useMemo(() => composerTotal(lignesCompletes), [lignesCompletes]);
 
   const solde = useMemo(() => {
     if (!facture) return null;
@@ -84,7 +88,7 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
   async function emettre() {
     setErreur(null); setEnCours(true);
     try {
-      const { id } = await emettreFacture(affaireId, lignes);
+      const { id } = await emettreFacture(affaireId, lignesCompletes);
       setFacture(await obtenirFacture(id));
     } catch (e) { setErreur(e.message); }
     finally { setEnCours(false); }
@@ -117,9 +121,10 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
           <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 8 }}>
             Lignes de la facture
           </div>
-          {lignes.length === 0 && (
+          {lignes.length === 0 && fournitures.length === 0 && (
             <div style={{ fontSize: 13, color: C.muet }}>
-              Cette affaire n'a pas encore de chiffrage — établissez le devis d'abord.
+              Cette affaire n'a pas encore de chiffrage — établissez le devis, ou
+              joignez directement des fournitures ci-dessous.
             </div>
           )}
           {lignes.map((l, i) => (
@@ -128,7 +133,21 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
               <span style={{ fontSize: 13, fontWeight: 600 }}>{euros(l.montant_htva_centimes)}</span>
             </div>
           ))}
-          {lignes.length > 0 && (
+          {/* Les fournitures jointes (R12), listées avec les autres lignes. */}
+          {fournitures.map((l, i) => (
+            <div key={`f${i}`} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+              <span style={{ fontSize: 13, color: C.encre }}>
+                {l.libelle}{l.quantite > 1 ? ` ×${l.quantite}` : ""}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{euros(l.montant_htva_centimes)}</span>
+            </div>
+          ))}
+
+          {/* R12 — joindre des fournitures à CETTE facture (sinon : vente rapide
+              séparée depuis le « + »). */}
+          <AjoutFournitures onLignes={setFournitures} />
+
+          {lignesCompletes.length > 0 && (
             <div style={{ borderTop: `1px solid ${C.bord}`, marginTop: 8, paddingTop: 8 }}>
               <Ligne l="Total HTVA" v={euros(totalPropose.htva_centimes)} />
               <Ligne l={libelleTva(org)} v={euros(totalPropose.tva_centimes)} />
@@ -139,8 +158,8 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
 
         {erreur && <div style={{ margin: "0 16px 10px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
         <div style={{ margin: "0 16px" }}>
-          <button style={{ ...S.boutonPlein, opacity: lignes.length ? 1 : 0.5 }}
-                  disabled={!lignes.length || enCours} onClick={emettre}>
+          <button style={{ ...S.boutonPlein, opacity: lignesCompletes.length ? 1 : 0.5 }}
+                  disabled={!lignesCompletes.length || enCours} onClick={emettre}>
             {enCours ? "Émission…" : "Émettre la facture (numéro légal)"}
           </button>
           <div style={{ fontSize: 11.5, color: C.muet, marginTop: 8, textAlign: "center" }}>
