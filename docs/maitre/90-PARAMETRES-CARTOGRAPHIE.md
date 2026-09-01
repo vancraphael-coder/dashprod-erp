@@ -176,3 +176,49 @@ C'est ta vision, avec une fondation qui ne se contredira pas. Si tu valides ce
 cap, le prochain lot est la **consolidation de l'emballage** — je le poserai
 comme le premier paramètre à source unique, et il servira de patron à tous les
 autres.
+
+---
+
+## 8. L'interconnexion des fournitures (31/08/2026)
+
+La demande suivante : faire circuler la fourniture sur toute la chaîne
+`Fourniture → Matériel → Devis/Estimation → Calcul définitif → Facture`.
+
+### Le modèle d'orchestration (pensée design)
+
+Une fourniture est UN objet vu sous des lentilles de **certitude croissante** :
+
+| Lentille | Ce qu'elle montre | Certitude |
+|---|---|---|
+| **Catalogue** | le modèle : coût, prix client, TVA | définition |
+| **Matériel** | l'instance : combien CE chantier a consommé (E/U/R) | mesuré |
+| **Estimation** | la prévision : quantité estimée × prix client | supposé |
+| **Calcul définitif** | la vérité : quantité réelle × prix client | acté |
+| **Facture** | la facturation : la vérité en lignes | émis |
+
+**Principe suralimenté :** la donnée saisie UNE fois (la conso, dans Matériel)
+remonte toute seule jusqu'à la facture, valorisée au prix client du catalogue.
+L'utilisateur **confirme**, il ne ressaisit jamais. Le point de bascule est le
+calcul définitif : c'est le réel qui alimente la facture.
+
+### Ce qui est construit (ce lot)
+
+- **Domaine** : `fournituresAFacturer(emballage, catalogue)` — la conso E/U/R
+  devient des lignes de facture au PRIX CLIENT. Éprouvé par sabotage.
+- **Matériel → Facture** : sur la Facture, une section « Fournitures consommées
+  sur le chantier » propose automatiquement les fournitures utilisées, au prix
+  client, ajoutées d'un geste (sans ressaisie). Séparées des fournitures
+  manuelles (R12) pour ne pas s'écraser.
+- **Repère de flux** : Matériel affiche « ↪ proposées à la facturation », pour
+  raconter le chemin vers l'avant.
+
+### Ce qui reste (prochaines marches)
+
+- **Estimation** : porter la prévision de fournitures (quantité estimée × prix
+  client) comme une ligne prévisionnelle, à côté des heures/volume.
+- **Calcul définitif** : afficher explicitement le montant fournitures (réel ×
+  prix client) dans la vue Prévu/Réel/Facturé, pour boucler la visibilité de
+  bout en bout.
+
+Ces deux marches complètent la chaîne ; la connexion qui RAPPORTE (conso →
+facture) est posée.

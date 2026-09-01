@@ -525,3 +525,14 @@ rapprochement, D ce lot.
 - **Migration 0166** : garnit l'existant (prix client = coût×1,6, TVA 21),
   idempotente, sans écraser.
 - R3 et R12 reposent désormais sur une seule vérité.
+
+## Interconnexion des fournitures — Matériel → Facture (31/08/2026)
+
+- **Domaine** : fournituresAFacturer(emballage, catalogue) → lignes de facture au
+  prix client depuis la conso E/U/R. Sabotée.
+- **Facture** : section « Fournitures consommées sur le chantier » — proposition
+  auto au prix client, ajout d'un geste. État séparé (consommeesAjoutees) des
+  fournitures manuelles R12 (fournituresManuelles) pour éviter l'écrasement.
+- **Matériel** : repère « ↪ proposées à la facturation ».
+- Reste (documenté 90) : porter la prévision dans l'Estimation, et le montant
+  fournitures réel dans le Calcul définitif (visibilité de bout en bout).
