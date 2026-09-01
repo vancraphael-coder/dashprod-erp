@@ -1,65 +1,75 @@
-# Audit des paramètres + cap (registre avant map/connecteur)
+# Emballage — la question réglée entièrement (source unique)
 
-**31/08/2026.** **1241 tests verts**. Analyse de fond, comme demandé : vérifier
-les paramètres avant tout.
+**31/08/2026.** **1243 tests verts**, build vert. **Migration 0166** appliquée et
+vérifiée. C'est l'étape 1 du registre : l'emballage devient une source unique.
 
-## Le constat, prouvé sur ta base
+## Ce qui change
 
-Le carton standard est défini **quatre fois**, à des valeurs qui **se
-contredisent** :
-- coût **1,50 €** dans les Catalogues (et dans le code)
-- coût **1 €** dans le Barème
-- prix client **1 €** dans le Barème
-- (bientôt) prix dans stock_articles
+Fini les quatre définitions contradictoires du carton. Désormais **un seul
+endroit** décrit chaque fourniture, avec **tout** :
 
-Personne ne peut dire quel coût fait foi. C'est exactement ta douleur : « 3
-paramètres dans 3 pages ou plus », un prix client qu'on n'arrive pas à faire
-circuler simplement. **Le code n'est pas faux — il manque une source unique.**
+- **Paramètres → Catalogues → Fournitures d'emballage** : chaque article porte
+  son **coût** (ce qu'il te coûte), son **prix client** (ce que tu factures) et
+  son **taux de TVA**. Une seule saisie.
 
-## Ce que j'ai cartographié
+Et chaque page lit la bonne valeur, exactement comme tu l'as demandé :
 
-Quatre coffres de paramètres, écrits par des écrans différents, lus par d'autres,
-avec trois défauts de structure : un concept éclaté sur deux coffres, un écran
-qui écrit dans deux coffres, et le prix client des fournitures sans vraie place.
-Tout est dans `docs/maitre/90-PARAMETRES-CARTOGRAPHIE.md`.
+- **Matériel** : le **coût total** pour l'organisation — plus, en prime, le prix
+  client et la marge, pour que tu voies les trois d'un coup d'œil.
+- **Devis / Calcul définitif** : le **prix client** (via la même source).
+- **Vente rapide et fournitures jointes** : lisent maintenant ce catalogue-là (et
+  non plus une table séparée) — donc quand tu vends un carton, c'est le prix
+  client du catalogue qui arrive, avec sa TVA.
 
-## Mon avis franc sur la map + le connecteur
+## Le ménage fait
 
-**Tu ne t'égares pas** : « les métiers sont un regroupement de paramètres » est
-juste, et c'est le vrai avantage du produit. Un seul point de méthode à
-infléchir :
+- La section « Matériel facturé » du **Barème** — une liste figée de 5 cartons
+  que **personne ne lisait** — est retirée, remplacée par un renvoi vers les
+  Catalogues. Plus de double saisie, plus de contradiction.
+- Les vieilles valeurs orphelines (le carton à 1 € dans le Barème) ne sont plus
+  lues. La seule vérité est le catalogue.
 
-**Ne construis pas d'abord une map. Construis d'abord une source unique.**
+## Tes fournitures ont été garnies
 
-- Cartographier maintenant, ce serait dessiner la carte d'une contradiction.
-- Une map en document se périme au premier changement de code.
-- Ce que tu veux vraiment, c'est un **registre des paramètres** : chaque
-  paramètre déclaré UNE fois (clé, libellé, unité, type, défaut, métiers). L'UI
-  se dessine à partir du registre. **Le registre EST la map — mais exécutable,
-  donc elle ne ment jamais.**
-- Le connecteur tombe alors tout seul : il lit le même registre. Ta « map
-  connecteur » existe déjà — c'est le registre vu de l'extérieur.
+Tes 9 fournitures n'avaient qu'un coût. La migration leur a donné un **prix
+client par défaut** (coût × 1,6, arrondi) et une **TVA à 21 %**, sans rien
+écraser. Exemple : carton standard, coût 1,50 € → prix client 2,40 €. **À toi
+d'ajuster ces prix** dans les Catalogues — ce sont des points de départ, pas des
+vérités.
 
-*Registre unique → l'UI le lit → le connecteur le lit.* Ta vision, sur une
-fondation qui ne se contredit pas.
+## Éprouvé par sabotage
 
-## Le plan proposé
+| Sabotage | Rouges |
+|---|---|
+| la valorisation « prix client » utilise le coût | 2 |
 
-1. **Consolider l'emballage** (pilote) : un catalogue, chaque article portant
-   coût + prix client + TVA, édité à un seul endroit. Matériel lit le coût ;
-   Devis/Estimation et Calcul définitif lisent le prix client. **R3 et R12 se
-   referment pour de bon**, et l'emballage devient le patron.
-2. **Généraliser en registre**, domaine par domaine.
-3. **Exposer au connecteur** quand le registre est stable.
+## À vérifier à l'œil
 
-## Ce qui manque (paramètres indispensables absents)
+1. Paramètres → Catalogues → Fournitures : chaque article montre coût + prix
+   client + TVA, éditables.
+2. Matériel d'un dossier : total coût, prix client, marge.
+3. Vente rapide → reprendre un article du catalogue : le prix client et la TVA
+   arrivent tout seuls.
 
-Prix client par article de fourniture (le plus urgent), TVA au catalogue
-d'emballage, prix client du matériel terrain refacturable, plan comptable par
-société, séquences de numérotation.
+## Où on en est du cap
 
-## Ma recommandation
+C'est la **preuve du registre** : un paramètre (l'emballage) désormais à source
+unique, lu partout, édité une fois. R3 (prix client répercuté) et R12
+(facturation des fournitures) reposent enfin sur une seule vérité. Les autres
+paramètres (matériel terrain, tarifs, suppléments…) pourront suivre le même
+patron — c'est l'étape 2 du plan.
 
-Valide le cap, et le prochain lot est la **consolidation de l'emballage** — un
-coût, un prix client, une seule saisie qui alimente tout. C'est ta demande
-d'aujourd'hui, résolue proprement, et la première pierre du registre.
+## Note de dépôt
+
+Ce lot embarque `90-PARAMETRES-CARTOGRAPHIE.md` (le doc de cap du tour
+précédent), pour être autonome. Dépose-le après — ou à la place de — l'audit :
+la version ici est la plus à jour.
+
+## Réserve d'honnêteté
+
+Le prix client circule maintenant dans Matériel et alimente la vente. Le report
+AUTOMATIQUE des fournitures consommées vers le devis/la facture (au prix client,
+d'un clic) reste à faire : aujourd'hui tu ajoutes les fournitures à la facture
+via « Joindre des fournitures » (R12), qui lit ce même catalogue. Relier « ce qui
+a été consommé sur le chantier » à « ce qu'on facture » automatiquement serait la
+dernière marche — je te la propose quand tu veux.
