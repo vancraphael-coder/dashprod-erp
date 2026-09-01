@@ -25,15 +25,15 @@ export const PIECES_DEFAUT = Object.freeze([
  * l'entreprise, consommable = déduit du stock à chaque chantier.
  */
 export const FOURNITURES_DEFAUT = Object.freeze([
-  { cle: "carton_standard", nom: "Carton standard", unite: "pièce", cout_centimes: 150, consommable: true },
-  { cle: "carton_livre", nom: "Carton livres", unite: "pièce", cout_centimes: 180, consommable: true },
-  { cle: "carton_penderie", nom: "Carton penderie", unite: "pièce", cout_centimes: 900, consommable: true },
-  { cle: "papier_bulle", nom: "Papier bulle (rouleau)", unite: "rouleau", cout_centimes: 1200, consommable: true },
-  { cle: "papier_soie", nom: "Papier de soie (paquet)", unite: "paquet", cout_centimes: 800, consommable: true },
-  { cle: "adhesif", nom: "Rouleau adhésif", unite: "rouleau", cout_centimes: 200, consommable: true },
-  { cle: "housse_matelas", nom: "Housse matelas", unite: "pièce", cout_centimes: 400, consommable: true },
-  { cle: "housse_canape", nom: "Housse canapé", unite: "pièce", cout_centimes: 600, consommable: true },
-  { cle: "film_etirable", nom: "Film étirable", unite: "rouleau", cout_centimes: 1000, consommable: true },
+  { cle: "carton_standard", nom: "Carton standard", unite: "pièce", cout_centimes: 150, prix_client_centimes: 250, tva_pct: 21, consommable: true },
+  { cle: "carton_livre", nom: "Carton livres", unite: "pièce", cout_centimes: 180, prix_client_centimes: 300, tva_pct: 21, consommable: true },
+  { cle: "carton_penderie", nom: "Carton penderie", unite: "pièce", cout_centimes: 900, prix_client_centimes: 1400, tva_pct: 21, consommable: true },
+  { cle: "papier_bulle", nom: "Papier bulle (rouleau)", unite: "rouleau", cout_centimes: 1200, prix_client_centimes: 1900, tva_pct: 21, consommable: true },
+  { cle: "papier_soie", nom: "Papier de soie (paquet)", unite: "paquet", cout_centimes: 800, prix_client_centimes: 1300, tva_pct: 21, consommable: true },
+  { cle: "adhesif", nom: "Rouleau adhésif", unite: "rouleau", cout_centimes: 200, prix_client_centimes: 350, tva_pct: 21, consommable: true },
+  { cle: "housse_matelas", nom: "Housse matelas", unite: "pièce", cout_centimes: 400, prix_client_centimes: 650, tva_pct: 21, consommable: true },
+  { cle: "housse_canape", nom: "Housse canapé", unite: "pièce", cout_centimes: 600, prix_client_centimes: 950, tva_pct: 21, consommable: true },
+  { cle: "film_etirable", nom: "Film étirable", unite: "rouleau", cout_centimes: 1000, prix_client_centimes: 1600, tva_pct: 21, consommable: true },
 ]);
 
 /**
@@ -104,11 +104,17 @@ export function normaliserArticle(brut, simple = false) {
     || nom.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
           .replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
   const cout = Number(brut?.cout_centimes);
+  const prixC = Number(brut?.prix_client_centimes);
+  const tva = Number(brut?.tva_pct);
   return {
     cle,
     nom,
     unite: String(brut?.unite ?? "pièce").trim() || "pièce",
     cout_centimes: Number.isFinite(cout) && cout >= 0 ? Math.round(cout) : 0,
+    // Prix CLIENT (ce qu'on facture) — distinct du coût. Absent → 0 (à saisir).
+    prix_client_centimes: Number.isFinite(prixC) && prixC >= 0 ? Math.round(prixC) : 0,
+    // Taux de TVA de l'article. Défaut 21 (standard belge), borné 0–100.
+    tva_pct: Number.isFinite(tva) && tva >= 0 && tva <= 100 ? tva : 21,
     consommable: brut?.consommable !== false,
   };
 }

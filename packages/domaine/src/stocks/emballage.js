@@ -114,3 +114,33 @@ export function valoriserEmballage(emballage, fournitures) {
   lignes.sort((a, b) => b.montant_centimes - a.montant_centimes);
   return { lignes, total_centimes: lignes.reduce((t, l) => t + l.montant_centimes, 0) };
 }
+
+/**
+ * Valorise le matériel d'emballage consommé au PRIX CLIENT (ce qu'on facture),
+ * distinct de valoriserEmballage qui rend le COÛT. Même quantités (E/U/R), même
+ * articles ; seul le prix change. C'est ce que lisent Devis/Estimation et Calcul
+ * définitif. Source unique : le catalogue « fournitures » (prix_client_centimes).
+ *
+ * @param {Object} emballage  état E/U/R par clé d'article
+ * @param {{cle,nom,unite,prix_client_centimes,tva_pct}[]} fournitures
+ * @returns {{lignes: object[], total_centimes: number}}
+ */
+export function valoriserVenteEmballage(emballage, fournitures) {
+  const src = emballage || {};
+  const prix = new Map((fournitures || []).map((f) => [f.cle, f]));
+  const lignes = [];
+  for (const [cle, v] of Object.entries(src)) {
+    const u = utiliseCalcule(Number(v?.e) || 0, Number(v?.r) || 0);
+    if (u <= 0) continue;
+    const f = prix.get(cle);
+    const pu = Number(f?.prix_client_centimes) || 0;
+    lignes.push({
+      cle, nom: f?.nom || cle, unite: f?.unite || "pièce",
+      quantite: u, prix_unitaire_centimes: pu,
+      tva_pct: Number.isFinite(Number(f?.tva_pct)) ? Number(f.tva_pct) : 21,
+      montant_centimes: Math.round(u * pu),
+    });
+  }
+  lignes.sort((a, b) => b.montant_centimes - a.montant_centimes);
+  return { lignes, total_centimes: lignes.reduce((t, l) => t + l.montant_centimes, 0) };
+}
