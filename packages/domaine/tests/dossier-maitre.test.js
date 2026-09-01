@@ -29,7 +29,9 @@ test("le dossier maître est complet et se lit dans un ordre", () => {
     // La carte du territoire et l'ordre de marche (29/08/2026).
     "60-CIRCUITS-QUATRE-COUCHES.md", "70-ROADMAP.md",
     // Les remarques de l'atelier classées en lots (30/08/2026).
-    "80-REMARQUES-ATELIER.md"];
+    "80-REMARQUES-ATELIER.md",
+    // La cartographie des paramètres et le cap registre (31/08/2026).
+    "90-PARAMETRES-CARTOGRAPHIE.md"];
   const presents = readdirSync(MAITRE).filter((f) => f.endsWith(".md")).sort();
   assert.deepEqual(presents, attendus.sort());
 });
@@ -278,4 +280,25 @@ test("le relevé note que R10 confirme l'approche des lots A–D", () => {
   const r = lire("80-REMARQUES-ATELIER.md");
   assert.match(r, /confirme/i);
   assert.match(r, /fige à l'émission|figer à l'émission|gel à l'émission/i);
+});
+
+/* ── Cartographie des paramètres et cap registre (31/08/2026) ────────────── */
+
+test("la cartographie des paramètres nomme les quatre coffres et le carton", () => {
+  const c = lire("90-PARAMETRES-CARTOGRAPHIE.md");
+  for (const coffre of ["parametres_prix", "parametres_catalogues",
+                        "parametres_facturation", "parametres_textes"]) {
+    assert.match(c, new RegExp(coffre), `${coffre} doit être cartographié`);
+  }
+  // Le constat du carton défini plusieurs fois à des valeurs contradictoires.
+  assert.match(c, /carton/i);
+});
+
+test("le cap est : registre unique AVANT map et connecteur", () => {
+  // Le point de méthode : consolider une source unique avant de cartographier.
+  const c = lire("90-PARAMETRES-CARTOGRAPHIE.md");
+  assert.match(c, /registre/i);
+  assert.match(c, /consolider/i);
+  // Et l'emballage comme pilote.
+  assert.match(c, /pilote|emballage/i);
 });
