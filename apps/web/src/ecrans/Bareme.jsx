@@ -121,16 +121,12 @@ export default function Bareme({ retour }) {
       </Section>
 
       <Section titre="Matériel facturé (cartons & fournitures)">
-        <Champ label="Carton standard" suffixe="€"
-               value={t.carton_standard} onChange={(v) => majTarif("carton_standard", v)} />
-        <Champ label="Carton penderie" suffixe="€"
-               value={t.carton_penderie} onChange={(v) => majTarif("carton_penderie", v)} />
-        <Champ label="Carton livres" suffixe="€"
-               value={t.carton_livres} onChange={(v) => majTarif("carton_livres", v)} />
-        <Champ label="Papier bulle (rouleau)" suffixe="€"
-               value={t.papier_bulle} onChange={(v) => majTarif("papier_bulle", v)} />
-        <Champ label="Ruban adhésif" suffixe="€"
-               value={t.ruban} onChange={(v) => majTarif("ruban", v)} />
+        <div style={{ fontSize: 12, color: C.muet, lineHeight: 1.6 }}>
+          Le prix client des fournitures se règle désormais <b>avec leur coût</b>,
+          dans <b>Paramètres → Catalogues → Fournitures d'emballage</b> : une seule
+          saisie par article (coût, prix client, TVA). Le Matériel affiche le coût,
+          le devis et le calcul définitif lisent le prix client.
+        </div>
       </Section>
 
       <Section titre="Suppléments (HTVA)">

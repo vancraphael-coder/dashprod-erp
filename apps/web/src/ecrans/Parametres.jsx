@@ -214,8 +214,12 @@ export default function Parametres({
 
 function EditeurListe({ liste, cats, onCats, retour }) {
   const simple = !!liste.texteSimple;
+  // Les fournitures portent un PRIX CLIENT et une TVA (source unique — voir
+  // 90-PARAMETRES-CARTOGRAPHIE). Le matériel terrain n'a qu'un coût.
+  const avecPrixClient = liste.cle === "fournitures";
   const [items, setItems] = useState(() => [...catalogue(cats, liste.cle)]);
-  const [nouveau, setNouveau] = useState(simple ? "" : { nom: "", unite: "pièce", cout: "" });
+  const [nouveau, setNouveau] = useState(simple
+    ? "" : { nom: "", unite: "pièce", cout: "", prixClient: "", tva: 21 });
   const [sauve, setSauve] = useState(false);
   const [erreur, setErreur] = useState(null);
   const [pieceOuverte, setPieceOuverte] = useState(null);
@@ -230,6 +234,9 @@ function EditeurListe({ liste, cats, onCats, retour }) {
       : normaliserArticle({
           nom: nouveau.nom, unite: nouveau.unite,
           cout_centimes: nouveau.cout === "" ? 0 : Math.round(Number(nouveau.cout) * 100),
+          prix_client_centimes: nouveau.prixClient === "" || nouveau.prixClient === undefined
+            ? 0 : Math.round(Number(nouveau.prixClient) * 100),
+          tva_pct: nouveau.tva === undefined ? 21 : Number(nouveau.tva),
         });
     if (!article) return;
     const doublon = simple
@@ -238,7 +245,7 @@ function EditeurListe({ liste, cats, onCats, retour }) {
     if (doublon) { setErreur("Cet article existe déjà dans la liste."); return; }
     setErreur(null);
     setItems((v) => [...v, article]);
-    setNouveau(simple ? "" : { nom: "", unite: "pièce", cout: "" });
+    setNouveau(simple ? "" : { nom: "", unite: "pièce", cout: "", prixClient: "", tva: 21 });
     setSauve(false);
   }
 
@@ -302,11 +309,30 @@ function EditeurListe({ liste, cats, onCats, retour }) {
               <input style={{ ...S.input, flex: 1 }} type="number" step="0.01" min="0"
                      value={nouveau.cout} placeholder="Coût € HTVA"
                      onChange={(e) => setNouveau((n) => ({ ...n, cout: e.target.value }))} />
-              <button style={boutonAjout} onClick={ajouter}>Ajouter</button>
+              {!avecPrixClient && (
+                <button style={boutonAjout} onClick={ajouter}>Ajouter</button>
+              )}
             </div>
+            {avecPrixClient && (
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <input style={{ ...S.input, flex: 1 }} type="number" step="0.01" min="0"
+                       value={nouveau.prixClient} placeholder="Prix client € HTVA"
+                       onChange={(e) => setNouveau((n) => ({ ...n, prixClient: e.target.value }))} />
+                <select style={{ ...S.input, width: 90 }} value={nouveau.tva}
+                        onChange={(e) => setNouveau((n) => ({ ...n, tva: Number(e.target.value) }))}>
+                  <option value={21}>TVA 21%</option><option value={12}>12%</option>
+                  <option value={6}>6%</option><option value={0}>0%</option>
+                </select>
+                <button style={boutonAjout} onClick={ajouter}>Ajouter</button>
+              </div>
+            )}
             <div style={{ fontSize: 11, color: C.fantome, marginTop: 6, lineHeight: 1.5 }}>
-              Le coût est ce que l'article vous coûte, pas le prix client. Il
-              alimente automatiquement les coûts internes.
+              {avecPrixClient
+                ? "Le COÛT est ce que l'article vous coûte ; le PRIX CLIENT est ce "
+                  + "que vous facturez. Les deux ici, une seule fois — Matériel lit "
+                  + "le coût, Devis et Calcul définitif lisent le prix client."
+                : "Le coût est ce que l'article vous coûte, pas le prix client. Il "
+                  + "alimente automatiquement les coûts internes."}
             </div>
           </>
         )}
@@ -337,6 +363,12 @@ function EditeurListe({ liste, cats, onCats, retour }) {
               {!simple && (
                 <span style={{ display: "block", fontSize: 11, color: C.fantome, marginTop: 2 }}>
                   {euros(a.cout_centimes)} / {a.unite}
+                  {avecPrixClient && (
+                    <span style={{ color: C.bleu, fontWeight: 700 }}>
+                      {" · client "}{euros(a.prix_client_centimes || 0)}
+                      {" (TVA "}{a.tva_pct ?? 21}{"%)"}
+                    </span>
+                  )}
                   {a.consommable === false ? " · non consommable" : " · consommable"}
                 </span>
               )}

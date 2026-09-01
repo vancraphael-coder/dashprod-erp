@@ -13,7 +13,7 @@ import React, { useEffect, useMemo, useState, useRef} from "react";
 import { obtenirAffaire, obtenirEmballage, sauverEmballage } from "../lib/adaptateur.js";
 import { comporte } from "@domaine/commercial/natures.js";
 import {
-  resumeEmballage, fournituresOffre, valoriserEmballage,
+  resumeEmballage, fournituresOffre, valoriserEmballage, valoriserVenteEmballage,
 } from "@domaine/stocks/emballage.js";
 import { obtenirCatalogues } from "../lib/adaptateur.js";
 import { catalogue } from "@domaine/stocks/catalogues.js";
@@ -57,6 +57,9 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
     [emballage, fournituresCatalogue]);
   const valorisation = useMemo(
     () => valoriserEmballage(emballage, fournituresCatalogue),
+    [emballage, fournituresCatalogue]);
+  const valorisationVente = useMemo(
+    () => valoriserVenteEmballage(emballage, fournituresCatalogue),
     [emballage, fournituresCatalogue]);
   const fournitures = useMemo(
     () => fournituresOffre(emballage, fournituresCatalogue),
@@ -250,11 +253,27 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
           <div style={{ display: "flex", justifyContent: "space-between",
                         marginTop: 8, paddingTop: 8,
                         borderTop: `2px solid ${C.bord}` }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>Total</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: C.encre }}>Total coût</span>
             <span style={{ fontSize: 15, fontWeight: 800, color: C.encre }}>
               {eur(valorisation.total_centimes)}
             </span>
           </div>
+          {/* Le prix client (ce qu'on facture) et la marge — même source, lue
+              en prix client. Le devis et le calcul définitif liront la même chose. */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+            <span style={{ fontSize: 12, color: C.bleu, fontWeight: 700 }}>Prix client</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: C.bleu }}>
+              {eur(valorisationVente.total_centimes)}
+            </span>
+          </div>
+          {valorisationVente.total_centimes > valorisation.total_centimes && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+              <span style={{ fontSize: 11, color: C.fantome }}>Marge</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: C.vert }}>
+                {eur(valorisationVente.total_centimes - valorisation.total_centimes)}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
