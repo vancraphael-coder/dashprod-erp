@@ -536,3 +536,11 @@ rapprochement, D ce lot.
 - **Matériel** : repère « ↪ proposées à la facturation ».
 - Reste (documenté 90) : porter la prévision dans l'Estimation, et le montant
   fournitures réel dans le Calcul définitif (visibilité de bout en bout).
+
+## Fournitures : concordance Matériel → Estimation → Calcul définitif → Facture (31/08)
+
+Tout part de Matériel. Estimation (ligne sous le total) et Calcul définitif
+(ligne sous Prévu/Réel/Facturé) affichent le montant fournitures au prix client,
+lu depuis la MÊME source (valoriserVenteEmballage(affaire.emballage, catalogue))
+que la proposition de la Facture. Test de concordance : montant affiché ===
+montant facturé. Réservé à qui voit les prix (peutVoirPrix).

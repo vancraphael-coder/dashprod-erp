@@ -212,13 +212,14 @@ calcul définitif : c'est le réel qui alimente la facture.
 - **Repère de flux** : Matériel affiche « ↪ proposées à la facturation », pour
   raconter le chemin vers l'avant.
 
-### Ce qui reste (prochaines marches)
+### Chaîne complétée (31/08 — les deux marches faites)
 
-- **Estimation** : porter la prévision de fournitures (quantité estimée × prix
-  client) comme une ligne prévisionnelle, à côté des heures/volume.
-- **Calcul définitif** : afficher explicitement le montant fournitures (réel ×
-  prix client) dans la vue Prévu/Réel/Facturé, pour boucler la visibilité de
-  bout en bout.
+- **Estimation** ✅ : une ligne « Fournitures (matériel) » sous le total,
+  au prix client, depuis la source unique.
+- **Calcul définitif** ✅ : une ligne « Fournitures (matériel) · à facturer »
+  sous les colonnes Prévu/Réel/Facturé.
 
-Ces deux marches complètent la chaîne ; la connexion qui RAPPORTE (conso →
-facture) est posée.
+**Concordance garantie** : Estimation, Calcul définitif et Facture lisent tous
+`valoriserVenteEmballage(affaire.emballage, catalogue)`. Le montant affiché aux
+deux étapes du devis est, par construction, celui que facture la Facture — test
+de concordance à l'appui. Tout part de Matériel, tout concorde.
