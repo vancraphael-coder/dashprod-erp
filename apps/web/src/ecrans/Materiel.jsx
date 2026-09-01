@@ -274,6 +274,13 @@ export default function Materiel({ affaireId, retour, modeTerrain }) {
               </span>
             </div>
           )}
+          {valorisationVente.total_centimes > 0 && (
+            <div style={{ marginTop: 8, fontSize: 10.5, color: C.bleu,
+                          display: "flex", alignItems: "center", gap: 5 }}>
+              <span>↪</span>
+              <span>Proposées automatiquement à la facturation, au prix client.</span>
+            </div>
+          )}
         </div>
       )}
 

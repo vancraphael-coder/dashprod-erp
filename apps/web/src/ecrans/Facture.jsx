@@ -11,8 +11,11 @@ import {
   obtenirAffaire, lignesFacturePour, emettreFacture, obtenirFacture, enregistrerPaiement,
   cloturerDossier,
   obtenirOrganisation, obtenirContact, obtenirFacturePourAffaire,
-  obtenirClientFacturation,
+  obtenirClientFacturation, obtenirCatalogues,
 } from "../lib/adaptateur.js";
+import { fournituresAFacturer } from "@domaine/stocks/emballage.js";
+import { catalogue as catalogueDom } from "@domaine/stocks/catalogues.js";
+const catalogueFournitures = (cats) => catalogueDom(cats, "fournitures");
 import FactureDoc from "./FactureDoc.jsx";
 import AjoutFournitures from "../composants/AjoutFournitures.jsx";
 import FacturePeppol from "./FacturePeppol.jsx";
@@ -41,8 +44,16 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
   const [clos, setClos] = useState(false);
   const [facture, setFacture] = useState(null);
   const [lignes, setLignes] = useState([]);
-  // R12 : des fournitures peuvent être JOINTES à cette facture (prix client).
-  const [fournitures, setFournitures] = useState([]);
+  // R12 : fournitures ajoutées à la main (AjoutFournitures les REMPLACE).
+  const [fournituresManuelles, setFournituresManuelles] = useState([]);
+  // Interconnexion : les fournitures CONSOMMÉES sur le chantier (Matériel),
+  // proposées au prix client. Séparées des manuelles pour ne pas s'écraser.
+  const [consommees, setConsommees] = useState([]);
+  const [consommeesAjoutees, setConsommeesAjoutees] = useState([]);
+  const consoAjoutees = consommeesAjoutees.length > 0;
+  const fournitures = useMemo(
+    () => [...consommeesAjoutees, ...fournituresManuelles],
+    [consommeesAjoutees, fournituresManuelles]);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState(null);
   // Saisie de paiement
@@ -59,6 +70,13 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
       const a = await obtenirAffaire(affaireId);
       setAffaire(a);
       setLignes(await lignesFacturePour(affaireId));
+      // Les fournitures consommées sur le chantier, valorisées au prix client
+      // du catalogue (source unique). C'est le maillon Matériel → Facture.
+      try {
+        const cats = await obtenirCatalogues();
+        const four = catalogueFournitures(cats);
+        setConsommees(fournituresAFacturer(a?.emballage || {}, four));
+      } catch { setConsommees([]); }
       const c = await obtenirContact(affaireId).catch(() => null);
       if (c) setAdresses({
         date: c.date,
@@ -143,9 +161,40 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
             </div>
           ))}
 
-          {/* R12 — joindre des fournitures à CETTE facture (sinon : vente rapide
-              séparée depuis le « + »). */}
-          <AjoutFournitures onLignes={setFournitures} />
+          {/* Interconnexion Matériel → Facture : les fournitures consommées sur
+              le chantier, proposées au prix client, ajoutées d'un geste. */}
+          {consommees.length > 0 && !consoAjoutees && (
+            <div style={{ marginTop: 10, padding: 12, borderRadius: 10,
+                          background: `${C.bleu}0D`, border: `1px solid ${C.bleu}33` }}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: C.encre }}>
+                Fournitures consommées sur le chantier
+              </div>
+              <div style={{ fontSize: 11.5, color: C.muet, margin: "3px 0 8px" }}>
+                Reprises du Matériel, au prix client du catalogue. À inclure sans
+                les ressaisir.
+              </div>
+              {consommees.map((l, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between",
+                                      fontSize: 12.5, padding: "3px 0" }}>
+                  <span style={{ color: C.encre }}>{l.quantite} × {l.libelle}</span>
+                  <span style={{ fontWeight: 700 }}>{euros(l.montant_htva_centimes)}</span>
+                </div>
+              ))}
+              <button onClick={() => setConsommeesAjoutees(consommees)}
+                style={{ ...S.boutonPlein, marginTop: 8, padding: "10px",
+                         fontSize: 13 }}>
+                Ajouter ces fournitures à la facture
+              </button>
+            </div>
+          )}
+          {consoAjoutees && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: C.vert, fontWeight: 700 }}>
+              ✓ Fournitures du chantier ajoutées.
+            </div>
+          )}
+
+          {/* R12 — joindre d'AUTRES fournitures à la main. */}
+          <AjoutFournitures onLignes={setFournituresManuelles} />
 
           {lignesCompletes.length > 0 && (
             <div style={{ borderTop: `1px solid ${C.bord}`, marginTop: 8, paddingTop: 8 }}>
