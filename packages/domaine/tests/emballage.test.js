@@ -135,3 +135,41 @@ test("lignesFournitures reste disponible, et dit qu'elle valorise au COÛT", () 
   assert.match(src, /COÛT/,
     "le défaut de valorisation doit être écrit, pas seulement connu");
 });
+
+/* ── Source unique : coût ET prix client sur le même article (31/08/2026) ─── */
+
+import { valoriserVenteEmballage } from "../src/stocks/emballage.js";
+import { normaliserArticle } from "../src/stocks/catalogues.js";
+
+test("un article de fourniture porte coût, prix client ET TVA", () => {
+  const a = normaliserArticle({ nom: "Carton", cout_centimes: 150,
+    prix_client_centimes: 250, tva_pct: 6 });
+  assert.equal(a.cout_centimes, 150);
+  assert.equal(a.prix_client_centimes, 250);
+  assert.equal(a.tva_pct, 6);
+});
+
+test("prix client absent → 0 (à saisir), TVA absente → 21 par défaut", () => {
+  const a = normaliserArticle({ nom: "X", cout_centimes: 100 });
+  assert.equal(a.prix_client_centimes, 0);
+  assert.equal(a.tva_pct, 21);
+});
+
+test("coût et prix client valorisent les MÊMES quantités, différemment", () => {
+  const four = [{ cle: "carton", nom: "Carton", unite: "pièce",
+    cout_centimes: 150, prix_client_centimes: 250, tva_pct: 21 }];
+  const emb = { carton: { e: 10, r: 2 } };          // 8 utilisés
+  const cout = valoriserEmballage(emb, four).total_centimes;
+  const vente = valoriserVenteEmballage(emb, four).total_centimes;
+  assert.equal(cout, 1200);      // 8 × 150 (coût org)
+  assert.equal(vente, 2000);     // 8 × 250 (prix client)
+  // La marge est la différence — jamais mélangée.
+  assert.equal(vente - cout, 800);
+});
+
+test("la valorisation client porte le taux de TVA de chaque article", () => {
+  const four = [{ cle: "c", nom: "C", prix_client_centimes: 250, tva_pct: 6 }];
+  const l = valoriserVenteEmballage({ c: { e: 4, r: 0 } }, four).lignes[0];
+  assert.equal(l.tva_pct, 6);
+  assert.equal(l.prix_unitaire_centimes, 250);
+});
