@@ -73,7 +73,10 @@ Ces points sont tranchés. Les rediscuter fait perdre du temps et dérive :
 7. `26-GARDE-MEUBLES-ROADMAP.md` — le modèle boxe (ses fondations sont désormais
    posées ; voir vague 4 de la roadmap).
 8. `80-REMARQUES-ATELIER.md` — les remarques du petit « i » de l'app test,
-   classées en lots R1→R9 insérés dans la roadmap.
+   classées en lots insérés dans la roadmap.
+9. `90-PARAMETRES-CARTOGRAPHIE.md` — l'audit des paramètres et le cap
+   (registre unique avant map/connecteur). À lire avant tout chantier de
+   paramétrage.
 9. `PASSATION.md` (racine) — l'état technique détaillé et les pièges.
 10. `30-REGLES-IA-EXTERNE.md` — si vous confiez un travail à un autre outil.
 
