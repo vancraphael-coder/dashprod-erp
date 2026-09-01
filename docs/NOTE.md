@@ -1,53 +1,65 @@
-# Lot G — R12 : fournitures jointes à la facture déménagement
+# Audit des paramètres + cap (registre avant map/connecteur)
 
-**31/08/2026.** **1239 tests verts**, build vert. Complète R12 : le matériel peut
-être facturé **avec** le déménagement, ou **séparément**.
+**31/08/2026.** **1241 tests verts**. Analyse de fond, comme demandé : vérifier
+les paramètres avant tout.
 
-## Ce que ça donne
+## Le constat, prouvé sur ta base
 
-Sur la facture d'un dossier, avant émission, un bouton :
-**« + Joindre des fournitures à cette facture ».**
+Le carton standard est défini **quatre fois**, à des valeurs qui **se
+contredisent** :
+- coût **1,50 €** dans les Catalogues (et dans le code)
+- coût **1 €** dans le Barème
+- prix client **1 €** dans le Barème
+- (bientôt) prix dans stock_articles
 
-Il ouvre une petite section où tu ajoutes des fournitures — nom, prix, TVA,
-quantité — reprises de ton catalogue si tu en as un, ou saisies à la main. Elles
-s'ajoutent aux lignes du déménagement, le total se met à jour, et **une seule
-facture** part avec la prestation ET les cartons.
+Personne ne peut dire quel coût fait foi. C'est exactement ta douleur : « 3
+paramètres dans 3 pages ou plus », un prix client qu'on n'arrive pas à faire
+circuler simplement. **Le code n'est pas faux — il manque une source unique.**
 
-L'autre choix — **une facture séparée** — existe déjà : c'est la vente rapide
-depuis le « + » (lot F). Tu as donc les deux options de ta remarque R12.
+## Ce que j'ai cartographié
 
-## Un point de fond, assumé
+Quatre coffres de paramètres, écrits par des écrans différents, lus par d'autres,
+avec trois défauts de structure : un concept éclaté sur deux coffres, un écran
+qui écrit dans deux coffres, et le prix client des fournitures sans vraie place.
+Tout est dans `docs/maitre/90-PARAMETRES-CARTOGRAPHIE.md`.
 
-Le code disait explicitement que les fournitures étaient **strictement
-séparées** de la facture déménagement — c'était une décision que tu avais prise
-et « redite ». R12 la fait **évoluer** en un choix. Je l'ai donc appliquée comme
-une évolution volontaire, pas comme une correction — ta décision d'hier n'était
-pas une erreur, ton besoin a mûri.
+## Mon avis franc sur la map + le connecteur
 
-## Le nœud du « prix client », résolu
+**Tu ne t'égares pas** : « les métiers sont un regroupement de paramètres » est
+juste, et c'est le vrai avantage du produit. Un seul point de méthode à
+infléchir :
 
-Le catalogue d'emballage interne ne connaît que le **coût** (ce que l'article te
-coûte), jamais le prix de vente — c'était le blocage historique pour facturer les
-fournitures. Ici, tu factures au **prix client** que tu saisis (ou qui vient du
-catalogue de vente du lot E). Jamais au coût. C'est aussi ce que demandait ta
-remarque R3.
+**Ne construis pas d'abord une map. Construis d'abord une source unique.**
 
-## Éprouvé
+- Cartographier maintenant, ce serait dessiner la carte d'une contradiction.
+- Une map en document se périme au premier changement de code.
+- Ce que tu veux vraiment, c'est un **registre des paramètres** : chaque
+  paramètre déclaré UNE fois (clé, libellé, unité, type, défaut, métiers). L'UI
+  se dessine à partir du registre. **Le registre EST la map — mais exécutable,
+  donc elle ne ment jamais.**
+- Le connecteur tombe alors tout seul : il lit le même registre. Ta « map
+  connecteur » existe déjà — c'est le registre vu de l'extérieur.
 
-La fusion prestation + fournitures est testée : chaque fourniture garde son
-propre taux de TVA (une bulle à 6 % ne devient pas 21 %), et le total additionne
-bien tout.
+*Registre unique → l'UI le lit → le connecteur le lit.* Ta vision, sur une
+fondation qui ne se contredit pas.
 
-## À vérifier à l'œil
+## Le plan proposé
 
-1. Ouvre la facture d'un dossier déménagement (avant émission).
-2. « + Joindre des fournitures » → ajoute deux cartons avec leur prix.
-3. Le total inclut la prestation ET les fournitures ; émets → une seule facture.
+1. **Consolider l'emballage** (pilote) : un catalogue, chaque article portant
+   coût + prix client + TVA, édité à un seul endroit. Matériel lit le coût ;
+   Devis/Estimation et Calcul définitif lisent le prix client. **R3 et R12 se
+   referment pour de bon**, et l'emballage devient le patron.
+2. **Généraliser en registre**, domaine par domaine.
+3. **Exposer au connecteur** quand le registre est stable.
 
-## Réserve d'honnêteté
+## Ce qui manque (paramètres indispensables absents)
 
-Les fournitures jointes se saisissent au moment de facturer ; elles ne se
-reprennent pas (encore) automatiquement des quantités réellement utilisées sur le
-chantier (l'écran Matériel du dossier). Relier « ce qui a été consommé » à « ce
-qu'on facture » d'un clic serait la suite — mais ça suppose de fixer un prix
-client sur chaque article du catalogue d'emballage, un chantier à part.
+Prix client par article de fourniture (le plus urgent), TVA au catalogue
+d'emballage, prix client du matériel terrain refacturable, plan comptable par
+société, séquences de numérotation.
+
+## Ma recommandation
+
+Valide le cap, et le prochain lot est la **consolidation de l'emballage** — un
+coût, un prix client, une seule saisie qui alimente tout. C'est ta demande
+d'aujourd'hui, résolue proprement, et la première pierre du registre.
