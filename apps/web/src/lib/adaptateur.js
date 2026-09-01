@@ -269,13 +269,28 @@ export async function sauverMission(affaireId, mission) {
  * Le catalogue des articles de fournitures vendables (cartons, emballage).
  * Prix en euros (numeric), avec leur taux de TVA (lot E).
  */
+/**
+ * Le catalogue des fournitures vendables, avec leur PRIX CLIENT et leur TVA.
+ * SOURCE UNIQUE : parametres_catalogues.fournitures (voir 90-PARAMETRES-
+ * CARTOGRAPHIE). On expose prix_unitaire (en euros) et tva_pct pour la vente
+ * rapide et les fournitures jointes — plus de catalogue séparé.
+ */
 export async function catalogueArticles() {
-  if (modeDonnees() !== "reel") return [];
-  const { data, error } = await supabase.from("stock_articles")
-    .select("id, nom, categorie, prix_unitaire, tva_pct, actif")
-    .eq("actif", true).order("nom");
-  if (error) throw error;
-  return data || [];
+  const { catalogue } = await import("@domaine/stocks/catalogues.js");
+  let cats = {};
+  try { cats = await obtenirCatalogues(); } catch { cats = {}; }
+  const fournitures = catalogue(cats, "fournitures"); // applique les défauts
+  return fournitures
+    .filter((a) => a && a.nom)
+    .map((a) => ({
+      id: a.cle,
+      nom: a.nom,
+      unite: a.unite || "pièce",
+      // Prix client en euros (l'écran de vente attend des euros).
+      prix_unitaire: (Number(a.prix_client_centimes) || 0) / 100,
+      tva_pct: Number.isFinite(Number(a.tva_pct)) ? Number(a.tva_pct) : 21,
+      actif: true,
+    }));
 }
 
 /**
