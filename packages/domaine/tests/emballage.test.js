@@ -200,3 +200,24 @@ test("rien de consommé → aucune ligne (on ne facture pas du vide)", () => {
   assert.equal(fournituresAFacturer({}, four).length, 0);
   assert.equal(fournituresAFacturer({ carton: { e: 5, r: 5 } }, four).length, 0); // tout rendu
 });
+
+/* ── Concordance : Matériel, Estimation, Calcul définitif, Facture ────────── */
+
+test("les quatre stades lisent la MÊME valeur de fournitures (concordance)", () => {
+  // Une seule source : valoriserVenteEmballage(emballage, catalogue). Estimation
+  // et Calcul définitif affichent son total ; la Facture facture ses lignes.
+  const four = [
+    { cle: "carton", nom: "Carton", unite: "pièce", cout_centimes: 150, prix_client_centimes: 250, tva_pct: 21 },
+    { cle: "bulle", nom: "Bulle", unite: "rouleau", cout_centimes: 1200, prix_client_centimes: 1900, tva_pct: 21 },
+  ];
+  const emb = { carton: { e: 10, r: 2 }, bulle: { e: 1, r: 0 } };  // 8 cartons + 1 bulle
+
+  // Ce que voient Estimation et Calcul définitif :
+  const montantAffiche = valoriserVenteEmballage(emb, four).total_centimes;
+  // Ce que facture la Facture (somme des lignes) :
+  const montantFacture = fournituresAFacturer(emb, four)
+    .reduce((s, l) => s + l.montant_htva_centimes, 0);
+
+  assert.equal(montantAffiche, 2000 + 1900);       // 8×250 + 1×1900
+  assert.equal(montantFacture, montantAffiche);     // ils CONCORDENT
+});
