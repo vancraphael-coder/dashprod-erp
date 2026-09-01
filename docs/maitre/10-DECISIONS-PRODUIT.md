@@ -512,3 +512,16 @@ rapprochement, D ce lot.
   on facture au prix client saisi, jamais au coût. Croise R3.
 - lignesFacturePour reste inchangé (il exclut toujours les fournitures « auto ») ;
   l'ajout est explicite et volontaire côté écran.
+
+## Emballage : source unique coût + prix client + TVA (31/08/2026)
+
+Étape 1 du registre (90-PARAMETRES) : le catalogue « fournitures » est LA source.
+- **Domaine** : normaliserArticle porte prix_client_centimes + tva_pct (défaut
+  21) ; valoriserVenteEmballage (prix client) à côté de valoriserEmballage (coût).
+- **Édition à UN endroit** : Catalogues → Fournitures (coût + prix client + TVA).
+  Section orpheline du Barème retirée.
+- **Lecteurs** : Matériel affiche coût + prix client + marge ; catalogueArticles
+  (vente rapide, fournitures jointes) lit la source unique, plus stock_articles.
+- **Migration 0166** : garnit l'existant (prix client = coût×1,6, TVA 21),
+  idempotente, sans écraser.
+- R3 et R12 reposent désormais sur une seule vérité.

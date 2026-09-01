@@ -110,7 +110,7 @@ jamais.
 
 ## 5. Le plan que je propose
 
-### Étape 1 — Consolider l'emballage (le pilote, la preuve)
+### Étape 1 — Consolider l'emballage (le pilote, la preuve) ✅ FAIT (31/08)
 
 Un seul catalogue d'articles, chaque article portant **tout** :
 
