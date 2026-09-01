@@ -144,3 +144,26 @@ export function valoriserVenteEmballage(emballage, fournitures) {
   lignes.sort((a, b) => b.montant_centimes - a.montant_centimes);
   return { lignes, total_centimes: lignes.reduce((t, l) => t + l.montant_centimes, 0) };
 }
+
+/**
+ * Les fournitures consommées sur un chantier, prêtes à FACTURER : chaque article
+ * utilisé (E/U/R) devient une ligne de facture au PRIX CLIENT du catalogue.
+ * C'est le maillon Matériel → Facture : la donnée saisie une fois (la conso)
+ * remonte toute seule, valorisée au prix client, sans ressaisie.
+ *
+ * @param {Object} emballage  état E/U/R par clé d'article (affaire.emballage)
+ * @param {object[]} fournitures  catalogue (prix_client_centimes, tva_pct)
+ * @returns {object[]} lignes de facture ({type, libelle, quantite, unite,
+ *   prix_unitaire_centimes, tva_pct, montant_htva_centimes})
+ */
+export function fournituresAFacturer(emballage, fournitures) {
+  return valoriserVenteEmballage(emballage, fournitures).lignes.map((l) => ({
+    type: "fourniture",
+    libelle: l.nom,
+    quantite: l.quantite,
+    unite: l.unite,
+    prix_unitaire_centimes: l.prix_unitaire_centimes,
+    tva_pct: l.tva_pct,
+    montant_htva_centimes: l.montant_centimes,
+  }));
+}
