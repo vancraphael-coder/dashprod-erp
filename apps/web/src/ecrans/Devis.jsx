@@ -13,7 +13,7 @@ import {
   obtenirOrganisation, contexteMainOeuvre,
   litigesAffaire, ouvrirLitige, avancerLitige, resoudreLitige, scenarioRetenu,
   etatFacturation, heuresAffaire, validerHeures, heuresMembresAffaire,
-  surcoutsAffaire, surcoutCorriger, monProfil,
+  surcoutsAffaire, surcoutCorriger, monProfil, obtenirCatalogues,
 } from "../lib/adaptateur.js";
 import { chiffrerAffaire, manqueAuChiffrage }
   from "@domaine/chiffrage/scenario-nature.js";
@@ -24,6 +24,8 @@ import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
 import { lignesMainOeuvre, coutMainOeuvre, mentionLignesRetirees, TON_HISTORIQUE }
   from "@domaine/rh/main-oeuvre.js";
 import { calculDefinitif, euroCentimes } from "@domaine/pilotage/calcul-definitif.js";
+import { valoriserVenteEmballage } from "@domaine/stocks/emballage.js";
+import { catalogue as catalogueDom } from "@domaine/stocks/catalogues.js";
 import { coutInterne, effetSurCalcul, MOTIFS_INTERNES }
   from "@domaine/pilotage/surcout-interne.js";
 import { mainOeuvreReelle, pointagesParMembre, ecartHeures }
@@ -40,6 +42,7 @@ const FORMULES = [
 
 export default function Devis({ affaireId, retour, versOffre, versReleve, versFacture, peutVoirPrix = true }) {
   const [affaire, setAffaire] = useState(null);
+  const [catalogues, setCatalogues] = useState({});
   const [onglet, setOnglet] = useState("estimation");
   const [org, setOrg] = useState(null);
   const [faits, setFaits] = useState({
@@ -68,6 +71,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
 
   useEffect(() => {
     obtenirOrganisation().then(setOrg).catch(() => {});
+    obtenirCatalogues().then((c) => setCatalogues(c || {})).catch(() => setCatalogues({}));
     obtenirAffaire(affaireId).then((a) => {
       setAffaire(a);
       if (a?.faits) {
@@ -119,6 +123,13 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
   // Coût main-d'œuvre PRÉVISIONNEL : somme des taux de l'équipe × heures prévues.
   // (Le coût réel avec le chrono se calcule sur le dossier confirmé.)
   const heuresMO = faits.formule === "emballage" ? (faits.heuresEmballage || 0) : (faits.heures || 0);
+  // Le montant des FOURNITURES consommées (Matériel), au prix client du
+  // catalogue — la MÊME source qu'à la facture. Tout concorde à partir de
+  // Matériel : Estimation, Calcul définitif et Facture lisent ceci.
+  const fournituresClientCentimes = useMemo(() => {
+    const four = catalogueDom(catalogues, "fournitures");
+    return valoriserVenteEmballage(affaire?.emballage || {}, four).total_centimes;
+  }, [affaire, catalogues]);
   const coutMoAuto = useMemo(() => coutMainOeuvre(equipe, heuresMO), [equipe, heuresMO]);
 
   // Injecte le coût MO calculé dans les coûts passés au moteur.
@@ -221,6 +232,7 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
       {onglet === "definitif" ? (
         <CalculDefinitif affaireId={affaireId} affaire={affaire}
           coutsReels={couts} equipe={equipe} heuresMO={heuresMO}
+          fournituresClientCentimes={fournituresClientCentimes}
           peutVoirPrix={peutVoirPrix} versFacture={versFacture} />
       ) : (
       <>
@@ -516,6 +528,20 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
           <Ligne l="Total HTVA" v={euros(scenario.htva_centimes)} />
           <Ligne l={libelleTva(org)} v={euros(scenario.tva_centimes)} />
           <Ligne l="Total TVAC" v={euros(scenario.tvac_centimes)} gras />
+          {/* Les fournitures consommées (Matériel), au prix client — même source
+              qu'au Calcul définitif et à la Facture. Séparées de la prestation :
+              on les voit, elles concordent, elles ne se noient pas dans le total. */}
+          {peutVoirPrix && fournituresClientCentimes > 0 && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${C.bord}`,
+                          display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: C.bleu, fontWeight: 700 }}>
+                Fournitures (matériel)
+              </span>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: C.bleu }}>
+                {euros(fournituresClientCentimes)} HTVA
+              </span>
+            </div>
+          )}
           {peutVoirPrix && (
             <>
               <div style={{
@@ -563,7 +589,7 @@ const BTN_PETIT = { padding: "6px 11px", borderRadius: 8, border: "none",
 // Vue de bilan : lit, compare, alerte. La saisie des coûts réels reste dans
 // l'onglet Estimation ; ici on regarde le résultat une fois le chantier fait.
 // =============================================================================
-function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peutVoirPrix, versFacture }) {
+function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, fournituresClientCentimes = 0, peutVoirPrix, versFacture }) {
   const [prevu, setPrevu] = useState(null);
   const [facturation, setFacturation] = useState(null);
   // Les heures RÉELLEMENT POINTÉES, par membre (pointage individuel 0147/0148).
@@ -671,6 +697,23 @@ function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, peu
           <Colonne titre="Facturé" sousTitre={ETATS_FACT_LIB[col.facture.etat] || ""}
             valeur={euroCentimes(col.facture.du)} connu={col.facture.connu} accent={C.bleu} />
         </div>
+
+        {/* Les fournitures consommées (Matériel), au prix client — MÊME source
+            qu'à l'Estimation et à la Facture. Tout concorde à partir de Matériel. */}
+        {peutVoirPrix && fournituresClientCentimes > 0 && (
+          <div style={{ marginTop: 12, borderTop: `1px solid ${C.bord}`, paddingTop: 10,
+                        display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: C.encre }}>
+              Fournitures (matériel)
+              <span style={{ fontWeight: 400, color: C.muet }}>
+                {" "}· au prix client, à facturer
+              </span>
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: C.bleu }}>
+              {euroCentimes(fournituresClientCentimes)}
+            </span>
+          </div>
+        )}
 
         {/* CARTE INFO « HEURES POINTÉES » (circuit terrain → calcul définitif).
             Dès que le terrain a pointé, ses heures RÉELLES par membre
