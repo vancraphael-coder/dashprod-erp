@@ -173,3 +173,30 @@ test("la valorisation client porte le taux de TVA de chaque article", () => {
   assert.equal(l.tva_pct, 6);
   assert.equal(l.prix_unitaire_centimes, 250);
 });
+
+/* ── Le maillon Matériel → Facture : conso → lignes de facture ───────────── */
+
+import { fournituresAFacturer } from "../src/stocks/emballage.js";
+
+test("les fournitures consommées deviennent des lignes de facture au prix client", () => {
+  const four = [
+    { cle: "carton", nom: "Carton standard", unite: "pièce", cout_centimes: 150, prix_client_centimes: 250, tva_pct: 21 },
+    { cle: "bulle", nom: "Papier bulle", unite: "rouleau", cout_centimes: 1200, prix_client_centimes: 1900, tva_pct: 6 },
+  ];
+  const emb = { carton: { e: 10, r: 2 }, bulle: { e: 1, r: 0 } };  // 8 cartons, 1 bulle
+  const lignes = fournituresAFacturer(emb, four);
+  assert.equal(lignes.length, 2);
+  const carton = lignes.find((l) => l.libelle === "Carton standard");
+  assert.equal(carton.type, "fourniture");
+  assert.equal(carton.quantite, 8);
+  assert.equal(carton.prix_unitaire_centimes, 250);        // PRIX CLIENT, pas coût
+  assert.equal(carton.montant_htva_centimes, 2000);
+  // Chaque ligne garde son taux (la bulle à 6 %).
+  assert.equal(lignes.find((l) => l.libelle === "Papier bulle").tva_pct, 6);
+});
+
+test("rien de consommé → aucune ligne (on ne facture pas du vide)", () => {
+  const four = [{ cle: "carton", nom: "Carton", prix_client_centimes: 250, tva_pct: 21 }];
+  assert.equal(fournituresAFacturer({}, four).length, 0);
+  assert.equal(fournituresAFacturer({ carton: { e: 5, r: 5 } }, four).length, 0); // tout rendu
+});
