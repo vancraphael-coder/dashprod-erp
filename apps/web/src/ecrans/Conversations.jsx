@@ -65,9 +65,9 @@ export default function Conversations({ ouvrirDossier, ouvrirPlanning }) {
 
       {(liste || []).map((c) => (
         <button key={c.affaire_id} onClick={() => setOuvert(c)}
-          style={{ ...S.carte, width: "100%", textAlign: "left", cursor: "pointer",
+          style={{ ...S.carte, textAlign: "left", cursor: "pointer",
                    border: `1px solid ${c.non_lus > 0 ? C.bleu : C.bord}`,
-                   display: "block" }}>
+                   display: "block", boxSizing: "border-box" }}>
           <div style={{ display: "flex", justifyContent: "space-between",
                         alignItems: "baseline", gap: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 800, color: C.encre }}>

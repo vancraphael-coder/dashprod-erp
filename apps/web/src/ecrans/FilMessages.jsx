@@ -3,7 +3,7 @@ import {
   messagesFil, messageBureau, messageClient,
   televerserPieceMessage, urlPieceMessage,
 } from "../lib/adaptateur.js";
-import { C as C0, S as S0 } from "../lib/theme.jsx";
+import { C as C0, S as S0, APP } from "../lib/theme.jsx";
 
 /**
  * MAILPROD — fil de messages probant, partagé entre le bureau et l'espace
@@ -18,6 +18,9 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme, p
   // (thème de nuit). On accepte donc un thème injecté plutôt que d'en figer un.
   const C = theme?.C || C0;
   const S = theme?.S || S0;
+  // Nuit effective : la prop `theme` (portail client, sombre) ou le mode réel
+  // de l'app. Sert aux surfaces qui ne suivent pas C (bulles, puces). R16.
+  const nuit = theme ? true : (APP.mode === "nuit");
   const [messages, setMessages] = useState(null);
   const [texte, setTexte] = useState("");
   const [envoi, setEnvoi] = useState(false);
@@ -89,14 +92,14 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme, p
         )}
         {(messages || []).map((m) => {
           const aMoi = mien(m);
-          const surfaceRecue = theme ? "#22304A" : "#F1F5F9";  // nuit : ardoise claire
+          const surfaceRecue = nuit ? "#22304A" : "#F1F5F9";
           return (
             <div key={m.id} style={{ alignSelf: aMoi ? "flex-end" : "flex-start",
                                      maxWidth: "82%" }}>
               <div style={{ padding: "9px 12px", borderRadius: 12,
                 background: aMoi ? C.bleu : surfaceRecue,
-                color: aMoi ? (theme ? "#12151F" : "#fff")
-                            : (theme ? "#EEF2F8" : C.encre),
+                color: aMoi ? "#fff"
+                            : (nuit ? "#EEF2F8" : C.encre),
                 border: aMoi ? "none" : `1px solid ${C.bord}`,
                 borderBottomRightRadius: aMoi ? 4 : 12,
                 borderBottomLeftRadius: aMoi ? 12 : 4,
@@ -152,8 +155,8 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme, p
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
           {pieces.map((p, i) => (
             <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 11.5, background: theme ? "#22304A" : "#EEF2F8", borderRadius: 8, padding: "4px 8px",
-              color: C.encre }}>
+              fontSize: 11.5, background: nuit ? "#22304A" : "#EEF2F8", borderRadius: 8, padding: "4px 8px",
+              color: nuit ? "#EEF2F8" : C.encre }}>
               {p.type === "application/pdf" ? "📄" : "🖼️"} {raccourciNom(p.nom)}
               <button onClick={() => setPieces((l) => l.filter((_, j) => j !== i))}
                 style={{ border: "none", background: "none", cursor: "pointer",
