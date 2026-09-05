@@ -55,6 +55,8 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
     () => [...consommeesAjoutees, ...fournituresManuelles],
     [consommeesAjoutees, fournituresManuelles]);
   const [enCours, setEnCours] = useState(false);
+  // R10 : émettre une facture est irréversible → confirmation « êtes-vous sûr ? »
+  const [confirmerEmission, setConfirmerEmission] = useState(false);
   const [erreur, setErreur] = useState(null);
   // Saisie de paiement
   const [montant, setMontant] = useState("");
@@ -108,7 +110,8 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
     try {
       const { id } = await emettreFacture(affaireId, lignesCompletes);
       setFacture(await obtenirFacture(id));
-    } catch (e) { setErreur(e.message); }
+      setConfirmerEmission(false);
+    } catch (e) { setErreur(e.message); setConfirmerEmission(false); }
     finally { setEnCours(false); }
   }
 
@@ -207,10 +210,22 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
 
         {erreur && <div style={{ margin: "0 16px 10px", fontSize: 12.5, color: C.rouge }}>{erreur}</div>}
         <div style={{ margin: "0 16px" }}>
-          <button style={{ ...S.boutonPlein, opacity: lignesCompletes.length ? 1 : 0.5 }}
-                  disabled={!lignesCompletes.length || enCours} onClick={emettre}>
-            {enCours ? "Émission…" : "Émettre la facture (numéro légal)"}
-          </button>
+          {!confirmerEmission ? (
+            <button style={{ ...S.boutonPlein, opacity: lignesCompletes.length ? 1 : 0.5 }}
+                    disabled={!lignesCompletes.length || enCours}
+                    onClick={() => setConfirmerEmission(true)}>
+              Émettre la facture (numéro légal)
+            </button>
+          ) : (
+            <Confirmation
+              question={`Émettre cette facture pour ${euros(totalPropose.tvac_centimes)} TVAC ? `
+                + "Elle reçoit un numéro légal, une échéance et une communication, "
+                + "et devient IMMUABLE : plus aucune modification, seul un avoir peut la corriger."}
+              action={enCours ? "Émission…" : "Émettre définitivement"}
+              couleur={C.encre}
+              onConfirmer={emettre}
+              onAnnuler={() => setConfirmerEmission(false)} />
+          )}
           <div style={{ fontSize: 11.5, color: C.muet, marginTop: 8, textAlign: "center" }}>
             Une fois émise, la facture est immuable. Une correction se fait par note de crédit.
           </div>
