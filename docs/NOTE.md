@@ -1,50 +1,56 @@
-# Fournitures : la chaîne concorde, de Matériel à la Facture
+# Nouvelle barre de navigation + corrections Messages
 
-**31/08/2026.** **1246 tests verts**, build vert. Les deux étapes du devis qui
-manquaient sont branchées. Tout part de Matériel, tout concorde.
+**01/09/2026.** **1250 tests verts**, build vert. Trois choses d'un coup.
 
-## Ce qui manquait, maintenant en place
+## 1. La nouvelle barre de navigation
 
-Le montant des fournitures traverse désormais **les deux onglets du devis** :
+Ta maquette, portée en React et branchée sur la vraie app :
 
-- **Estimation** : sous le total, une ligne **« Fournitures (matériel) »** au
-  prix client.
-- **Calcul définitif** : sous les colonnes Prévu / Réel / Facturé, une ligne
-  **« Fournitures (matériel) · à facturer »**.
+- **L'animation « feutre »** : à l'activation, l'icône et le libellé se
+  **tracent** (le trait se dessine), comme au feutre.
+- **Chaque icône a son geste** : Dossiers fait un petit bond, Planning tourne
+  comme une page, Stockage flotte, Messages sonne comme une cloche, Ressources
+  respire, Compte salue de la main.
+- Le coin supérieur arrondi et l'ombre douce, comme demandé.
 
-Et à la Facture, ces mêmes fournitures sont proposées à l'ajout (lot précédent).
+**Une adaptation que j'ai faite exprès** : ta maquette avait des couleurs claires
+figées (fond blanc, bleu en dur). Je les ai **liées à ton thème** — l'onglet
+actif prend ta couleur d'accent (réglable), les autres un gris doux, le fond suit
+la surface. Résultat : **la barre marche en mode sombre** (sinon elle serait
+restée blanche sur une app noire) et suit l'accent que tu choisis. Le routage et
+le filtrage par abonnement (Stockage/Ressources qui n'apparaissent que si
+l'offre les ouvre) sont inchangés, et le sélecteur rotatif est conservé.
 
-## La garantie : une seule source
+J'ai aussi ajouté le respect de « mouvement réduit » : sur un appareil réglé pour
+limiter les animations, la barre reste sobre.
 
-Les quatre stades — Matériel, Estimation, Calcul définitif, Facture — lisent
-**exactement la même chose** : les fournitures consommées (E/U/R de Matériel)
-valorisées au prix client du catalogue. Ce n'est pas « la même formule recopiée
-quatre fois », c'est **la même fonction**, appelée partout
-(`valoriserVenteEmballage`). Donc le montant que tu vois à l'Estimation est, au
-centime près, celui du Calcul définitif et celui que facture la Facture.
+## 2. Alignement des conversations (R16)
 
-Un **test de concordance** le verrouille : montant affiché === montant facturé.
-Si un jour quelqu'un casse la concordance, un test rougit.
+La carte de conversation avait une **largeur 100 % EN PLUS** de la marge latérale
+de la carte standard → elle débordait de 32 px à droite, d'où le décalage. Retiré :
+elle s'aligne maintenant comme les autres cartes.
 
-## Réservé aux prix
+## 3. Bulles blanc sur blanc en mode sombre (R16)
 
-Ces montants n'apparaissent que pour qui voit les prix (`peutVoirPrix`) — le
-terrain ne voit pas les valeurs, comme partout ailleurs.
+Le vrai coupable : la bulle du correspondant décidait de ses couleurs d'après une
+prop `theme` qui n'existe que dans le portail client — **absente dans l'app**.
+Donc en mode nuit, elle gardait un fond clair avec un texte clair = illisible.
+Corrigé : la nuit se détecte maintenant sur le **mode réel** de l'app. Les bulles
+reçues et les puces de pièce jointe sont lisibles en clair comme en sombre.
 
 ## À vérifier à l'œil
 
-1. Sur un dossier avec des fournitures dans Matériel : onglet **Estimation** →
-   la ligne « Fournitures (matériel) » montre le montant au prix client.
-2. Onglet **Calcul définitif** → la même valeur, sous les trois colonnes.
-3. Facture → la proposition « Fournitures consommées » porte le même montant.
-   Les trois concordent.
+1. La barre : change d'onglet → l'icône se trace au feutre et fait son geste.
+2. Passe l'app en mode sombre : la barre reste lisible (accent + gris sur fond
+   sombre), pas de barre blanche.
+3. Conversations : les cartes ne débordent plus à droite.
+4. Mode sombre + un fil de messages : les bulles reçues sont lisibles (plus de
+   blanc sur blanc).
 
 ## Réserve d'honnêteté
 
-Estimation et Calcul définitif AFFICHENT le montant fournitures (pour que tu
-voies la chaîne concorder) ; ils ne l'AJOUTENT pas encore au total de prestation
-— c'est à la Facture que tu décides de les inclure, d'un geste (lot précédent).
-C'est un choix de design cohérent avec ta règle : la facture reste maîtrisée
-jusqu'à l'émission. Si tu veux que l'Estimation additionne d'office les
-fournitures au devis (pour un prix « tout compris » annoncé au client), c'est une
-petite évolution — dis-le-moi.
+L'animation « feutre » dure ~2,1 s, comme dans ta maquette — c'est un choix
+esthétique assumé, mais sur une barre qu'on touche souvent, tu la trouveras
+peut-être un peu lente à l'usage réel ; on peut l'accélérer d'un chiffre si tu
+veux. Et le rendu exact des gestes (flip 3D, cloche) se juge sur l'appareil : le
+build est vert, mais l'œil sur mobile est le juge final.
