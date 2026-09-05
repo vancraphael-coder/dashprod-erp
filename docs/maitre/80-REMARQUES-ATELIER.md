@@ -352,7 +352,7 @@ faits. Le déplacement de membre demande une petite commande (comme cmd_definir_
 
 ---
 
-## R16 — Bulles de conversation illisibles en mode sombre
+## R16 — Bulles de conversation illisibles en mode sombre ✅ FAIT (01/09)
 
 **Remarque** (*conversations*, 31/08) :
 > Les bulles de dialogue de l'interlocuteur sont blanc sur blanc quand on bascule

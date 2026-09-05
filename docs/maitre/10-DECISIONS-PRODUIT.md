@@ -544,3 +544,17 @@ Tout part de Matériel. Estimation (ligne sous le total) et Calcul définitif
 lu depuis la MÊME source (valoriserVenteEmballage(affaire.emballage, catalogue))
 que la proposition de la Facture. Test de concordance : montant affiché ===
 montant facturé. Réservé à qui voit les prix (peutVoirPrix).
+
+## Nouvelle barre de navigation + corrections Messages (01/09/2026)
+
+- **Barre de nav** : refonte animée (tracé « feutre » à l'activation via
+  pathLength+stroke-dashoffset, animation propre par icône : bond, flip, cloche,
+  salut…). Couleurs LIÉES AU THÈME (variables --nav-on=C.bleu, --nav-off=C.muet,
+  fond C.blanc) → suit l'accent réglable ET le mode nuit, contrairement à la
+  maquette (couleurs claires figées). Routage et filtrage par module inchangés.
+  prefers-reduced-motion respecté. Sélecteur rotatif conservé.
+- **R16 conversations** : (1) alignement — la carte conversation avait width:100%
+  EN PLUS de la marge 0 16px de S.carte → débordait à droite ; retiré. (2) bulle
+  reçue blanc sur blanc en nuit — `theme` (prop portail) servait à tort de
+  booléen de mode ; remplacé par nuit = APP.mode === "nuit". Puce de pièce jointe
+  idem.
