@@ -84,11 +84,100 @@ function BandeauDemo({ versDiagnostic }) {
 }
 
 /** Barre de navigation inférieure — écrans racine uniquement. */
+// Le tracé SVG de chaque icône (pathLength=1 pour l'animation « feutre »).
+// camelCase JSX. Réutilisé par les deux calques (gris + accent).
+function traceIcone(nom) {
+  switch (nom) {
+    case "dossiers":
+      return <path pathLength="1" d="M4 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" />;
+    case "planning":
+      return (<>
+        <rect pathLength="1" x="3" y="4" width="18" height="18" rx="2" ry="2" />
+        <line pathLength="1" x1="16" y1="2" x2="16" y2="6" />
+        <line pathLength="1" x1="8" y1="2" x2="8" y2="6" />
+        <line pathLength="1" x1="3" y1="10" x2="21" y2="10" />
+      </>);
+    case "stockage":
+      return (<>
+        <path pathLength="1" d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        <polyline pathLength="1" points="3.27 6.96 12 12.01 20.73 6.96" />
+        <line pathLength="1" x1="12" y1="22.08" x2="12" y2="12" />
+      </>);
+    case "messages":
+      return (<>
+        <path pathLength="1" d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+        <polyline pathLength="1" points="22,6 12,13 2,6" />
+      </>);
+    case "ressources":
+      return (<>
+        <path pathLength="1" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle pathLength="1" cx="9" cy="7" r="4" />
+        <path pathLength="1" d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path pathLength="1" d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </>);
+    case "compte":
+      return (<>
+        <path pathLength="1" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle pathLength="1" cx="12" cy="7" r="4" />
+      </>);
+    default: return null;
+  }
+}
+
+// Les keyframes + le moteur « feutre ». Scopé sous .dpnav pour ne rien polluer.
+// Les couleurs viennent des variables posées sur .dpnav (donc suivent le thème
+// et le mode nuit). Le tracé se dessine à l'activation ; chaque icône a son
+// animation propre (bond, flip, cloche, salut…).
+const CSS_NAV = `
+.dpnav { --draw: 2.1s; --move: 1.6s; --bounce: cubic-bezier(0.34,1.56,0.64,1);
+         --smooth: cubic-bezier(0.4,0,0.2,1); }
+.dpnav-item { position: relative; flex: 1; display: flex; justify-content: center;
+  align-items: center; background: transparent; border: none; cursor: pointer;
+  outline: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: transform .5s var(--smooth); padding: 9px 4px 7px; }
+.dpnav-item:active { transform: scale(0.92); }
+.dpnav-content { display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: .2px; }
+.dpnav-content.default { color: var(--nav-off); }
+.dpnav-content.default svg { stroke: var(--nav-off); fill: none; }
+.dpnav-content.colored { position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
+  color: var(--nav-on); white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: opacity .5s ease; }
+.dpnav-content.colored svg { stroke: var(--nav-on); fill: none; }
+.dpnav-content.colored svg * { stroke-dasharray: 1; stroke-dashoffset: 1;
+  transition: stroke-dashoffset var(--draw) var(--smooth); }
+.dpnav-content.colored span { clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--draw) var(--smooth); }
+.dpnav-item.active .dpnav-content.colored { opacity: 1; }
+.dpnav-item.active .dpnav-content.colored svg * { stroke-dashoffset: 0; }
+.dpnav-item.active .dpnav-content.colored span { clip-path: inset(0 0 0 0); }
+.dpnav svg { width: 23px; height: 23px; stroke-width: 2.2; stroke-linecap: round;
+  stroke-linejoin: round; transform-origin: center; }
+@keyframes dpnavPop { 0%{transform:translateY(0) scale(1)} 40%{transform:translateY(-4px) scale(1.08)} 100%{transform:translateY(0) scale(1)} }
+.dpnav-dossiers.active svg { animation: dpnavPop var(--move) var(--bounce); }
+.dpnav-planning .dpnav-content { perspective: 400px; }
+@keyframes dpnavFlip { 0%{transform:rotateY(0) translateZ(0)} 50%{transform:rotateY(-30deg) scale(1.1) translateZ(10px)} 100%{transform:rotateY(0) translateZ(0)} }
+.dpnav-planning.active svg { animation: dpnavFlip .8s var(--smooth); }
+@keyframes dpnavFloat { 0%,100%{transform:translateY(0)} 33%{transform:translateY(-3px)} 66%{transform:translateY(1px)} }
+.dpnav-stockage.active svg { animation: dpnavFloat .8s ease-in-out; }
+@keyframes dpnavBell { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-12deg)} 40%{transform:rotate(10deg)} 60%{transform:rotate(-6deg)} 80%{transform:rotate(4deg)} }
+.dpnav-messages.active svg { transform-origin: top center; animation: dpnavBell .7s var(--smooth); }
+@keyframes dpnavPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+.dpnav-ressources.active svg { animation: dpnavPulse .7s var(--smooth); }
+@keyframes dpnavWave { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-16deg)} 50%{transform:rotate(10deg)} 75%{transform:rotate(-8deg)} }
+.dpnav-compte.active svg { transform-origin: 50% 80%; animation: dpnavWave .8s ease-in-out; }
+@media (prefers-reduced-motion: reduce) {
+  .dpnav-content.colored svg *, .dpnav-content.colored span { transition: none; }
+  .dpnav-item.active svg { animation: none !important; }
+}
+`;
+
 function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
   // Un module que l'abonnement n'ouvre pas n'apparaît PAS : pas de porte
-  // fermée, pas de publicité déguisée dans la barre de navigation. La base
-  // refuse de toute façon l'accès — ceci évite seulement le clic inutile.
+  // fermée, pas de publicité déguisée dans la barre de navigation.
   const a = (cle) => modules.includes(cle);
+  // [cle, icôneRotatif (composant Icone), libellé]. Le tracé dpnav se dérive de
+  // la cle (traceNom) car il a ses propres dessins (stockage, messages).
   const items = [
     ["liste", "dossiers", "Dossiers"],
     ["planning", "planning", "Planning"],
@@ -97,36 +186,44 @@ function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
     ...(peutGererEquipe ? [["equipe", "ressources", "Ressources"]] : []),
     ["compte", "compte", "Compte"],
   ];
-  // Le sélecteur rotatif reprend EXACTEMENT ces mêmes entrées : les deux
-  // commandes disent la même chose, l'une au pouce (barre), l'autre au repère
-  // tournant (molette, sur grand écran).
+  const TRACE = { liste: "dossiers", planning: "planning", stockage: "stockage",
+                  conversations: "messages", equipe: "ressources", compte: "compte" };
   const rotatif = items.map(([cle, icone, lib]) => ({ cle, icone, label: lib }));
   return (
     <>
       <div className="selecteur-rotatif-cadre">
         <SelecteurRotatif onglets={rotatif} actif={actif} aller={aller} />
       </div>
-      <div style={{
+      <style>{CSS_NAV}</style>
+      <nav className="dpnav" aria-label="Navigation principale" style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
-        display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
+        display: "flex", justifyContent: "space-between",
+        background: C.blanc, borderTop: `1px solid ${C.bord}`,
         maxWidth: 520, margin: "0 auto",
         paddingBottom: "env(safe-area-inset-bottom)",
-        boxShadow: "0 -4px 16px -8px rgba(15,23,42,.10)",
+        borderRadius: "22px 22px 0 0",
+        boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
+        "--nav-on": C.bleu, "--nav-off": C.muet,
       }}>
-        {items.map(([cle, icone, lib]) => {
+        {items.map(([cle, , lib]) => {
           const estActif = actif === cle;
+          const tn = TRACE[cle] || "dossiers";
           return (
-            <button key={cle} onClick={() => aller(cle)} style={{
-              flex: 1, padding: "9px 4px 7px", border: "none", background: "none",
-              cursor: "pointer",
-            }}>
-              <Icone nom={icone} taille={21} couleur={estActif ? C.vert : C.bleu} />
-              <div style={{ fontSize: 10, fontWeight: 700, marginTop: 2,
-                            color: estActif ? C.vert : C.muet }}>{lib}</div>
+            <button key={cle} onClick={() => aller(cle)} aria-current={estActif ? "page" : undefined}
+              aria-label={lib}
+              className={`dpnav-item dpnav-${tn}${estActif ? " active" : ""}`}>
+              <span className="dpnav-content default" aria-hidden="true">
+                <svg viewBox="0 0 24 24">{traceIcone(tn)}</svg>
+                <span>{lib}</span>
+              </span>
+              <span className="dpnav-content colored" aria-hidden="true">
+                <svg viewBox="0 0 24 24">{traceIcone(tn)}</svg>
+                <span>{lib}</span>
+              </span>
             </button>
           );
         })}
-      </div>
+      </nav>
     </>
   );
 }
