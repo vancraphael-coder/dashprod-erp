@@ -214,7 +214,89 @@ Ne commence qu'une fois les vagues 1 à 4 stables.
 - Design figé et réglementé en interne (le système d'apparence existe déjà :
   sombre/clair, accents, matière, moteur 3D des cartes).
 - Connecteur MCP de pilotage.
-- PWA et distribution multi-store.
+- PWA et distribution multi-store — **plan détaillé ci-dessous.**
+
+---
+
+# DÉPLOIEMENT PWA — le plan (à exécuter APRÈS les travaux prévus)
+
+**Pourquoi après, pas avant.** Une PWA met en cache la « coquille » de l'app.
+Mettre en cache une coquille dont la forme change encore (délimitation, design)
+= des maux de tête d'invalidation permanents. Donc la PWA vient **une fois l'app
+stable** : après la délimitation (vague 6), avec ou juste après le design.
+
+**Ce qui est déjà là** (vérifié le 01/09) : HTTPS (Vercel), interface mobile
+responsive, `theme-color` et `viewport-fit=cover`, `apple-touch-icon`. **Ce qui
+manque pour être installable** : un manifest, des icônes multi-tailles, un
+service worker.
+
+## Étape P1 — La PWA installable (1 lot)
+
+- **Manifest** (`manifest.webmanifest`) : name, short_name « Dashprod »,
+  `display: standalone`, start_url, theme_color, background_color, orientation,
+  et surtout des **icônes** 192, 512 + une **maskable** (générées depuis le logo).
+- **Service worker** via **vite-plugin-pwa (Workbox)** — cohérent avec le build
+  Vite actuel, et compatible avec le dépôt drag-drop → Vercel (assets hachés +
+  mise à jour du SW gérées par le plugin).
+- **Stratégie de cache, prudente et NON négociable :**
+  - Précache de la coquille (JS/CSS/polices).
+  - **Réseau d'abord, jamais de cache, pour Supabase** (`/rest`, `/auth`) : les
+    données doivent être fraîches ET l'isolation par organisation ne doit JAMAIS
+    servir la donnée d'un autre via un cache. C'est un point de sécurité.
+- **Installation** : écouter `beforeinstallprompt`, offrir un bouton « Installer
+  Dashprod » (utile surtout pour le terrain).
+- **Mise à jour** : quand un nouveau SW est prêt, proposer « Nouvelle version —
+  recharger ».
+
+## Étape P2 — Le hors-ligne, par degrés (1 à 2 lots)
+
+Le terrain travaille en cave, en ascenseur, sans signal. Mais le hors-ligne total
+est un gros chantier — on y va par degrés, sans surpromettre :
+
+- **Lecture hors ligne d'abord** : mettre en cache les derniers dossiers/planning
+  consultés, pour qu'ils restent lisibles sans réseau. Bandeau « hors ligne »
+  clair.
+- **Écriture différée, ciblée** : une file locale (« outbox ») pour les gestes
+  terrain critiques — **pointage, constats, photos** — rejouée au retour du
+  réseau. Pas plus, au début.
+- **Interdit hors ligne** : l'**émission de facture** reste en ligne (elle a
+  besoin de la séquence légale du serveur — l'immuabilité et la numérotation
+  continue ne se bricolent pas côté client). Le SW ne doit jamais laisser croire
+  qu'une facture est émise hors ligne.
+
+## Étape P3 — La distribution multi-store (décision + 1 lot)
+
+Trois voies, à choisir selon l'ambition (→ *Raphaël*) :
+
+- **A — PWA web seule** : « ajouter à l'écran d'accueil ». Zéro friction store,
+  mises à jour instantanées. **Recommandé pour commencer.**
+- **B — Google Play via TWA** (Trusted Web Activity / Bubblewrap) : envelopper la
+  PWA dans une coquille Android, publier sur le Play Store. Effort modéré,
+  présence en boutique.
+- **C — App Store iOS** : Apple n'autorise pas les TWA. La PWA marche sur iOS via
+  Safari (« ajouter à l'écran »), avec des limites (notifications push seulement
+  iOS 16.4+, quotas de stockage). Une vraie présence App Store demanderait un
+  emballage natif (Capacitor) — le plus lourd.
+
+**Ma recommandation :** A d'abord (la PWA installable couvre déjà iOS et Android
+correctement), puis B (Play via TWA) si une présence en boutique est voulue. C
+(App Store natif) seulement si un vrai besoin business apparaît — le « ajouter à
+l'écran » iOS suffit largement au départ.
+
+## Risques à garder en tête
+
+- **Cache et isolation des organisations** : ne jamais mettre en cache une
+  réponse Supabase authentifiée. Réseau d'abord sur l'API, point.
+- **Invalidation** : versionner le SW ; le plugin Vite gère le hachage des
+  assets, mais tester la bascule de version après un dépôt.
+- **Rien de légal hors ligne** : émission de facture, numérotation, avoirs
+  restent serveur.
+
+## Ordre d'exécution
+
+P1 (installable) → P2 (hors-ligne par degrés) → P3 (stores, si voulu). P1 seule
+apporte déjà l'essentiel : l'app s'installe, s'ouvre en plein écran, se lance
+vite. Le reste est du confort terrain et de la présence commerciale.
 - Paiement en ligne depuis l'espace client.
 
 ---

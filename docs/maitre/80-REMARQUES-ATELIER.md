@@ -240,7 +240,7 @@ On était sur la bonne voie ; il reste à compléter.
 
 ---
 
-## R10 — Le cycle de vie de la facture, selon le type de devis
+## R10 — Le cycle de vie de la facture, selon le type de devis ⏳ CONFIRMATION FAITE (01/09), règles tarifaire/forfait à venir
 
 **Remarques** (*facture*, 30/08, deux notes) :
 > La facture avant émission → constamment modifiée par « calcul définitif ».

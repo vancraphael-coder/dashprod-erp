@@ -558,3 +558,16 @@ montant facturé. Réservé à qui voit les prix (peutVoirPrix).
   reçue blanc sur blanc en nuit — `theme` (prop portail) servait à tort de
   booléen de mode ; remplacé par nuit = APP.mode === "nuit". Puce de pièce jointe
   idem.
+
+## R10 (confirmation) + plan PWA (01/09/2026)
+
+- **R10 confirmation d'émission** : émettre une facture passe désormais par une
+  confirmation « Émettre cette facture pour X ? … devient IMMUABLE ». L'émission
+  ne se déclenche plus au clic seul (elle est irréversible : numéro légal). Garde
+  de test. Reste de R10 (mise à jour tarifaire sans calcul définitif / forfait
+  suit l'estimation) : lot dédié, croise R11.
+- **Plan PWA** (70-ROADMAP) : après les travaux prévus. P1 installable (manifest +
+  icônes + service worker Vite/Workbox, réseau-d'abord sur Supabase — jamais de
+  cache des données), P2 hors-ligne par degrés (lecture puis outbox
+  pointage/constats/photos ; émission de facture JAMAIS hors ligne), P3 stores
+  (A web / B Play via TWA / C App Store natif — reco : A puis B).
