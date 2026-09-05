@@ -1,56 +1,59 @@
-# Nouvelle barre de navigation + corrections Messages
+# R10 (confirmation d'émission) + plan de déploiement PWA
 
-**01/09/2026.** **1250 tests verts**, build vert. Trois choses d'un coup.
+**01/09/2026.** **1253 tests verts**, build vert. Un correctif de sécurité
+d'usage, et un plan pour plus tard.
 
-## 1. La nouvelle barre de navigation
+## R10 — Émettre une facture demande maintenant confirmation
 
-Ta maquette, portée en React et branchée sur la vraie app :
+Émettre une facture est **irréversible** : elle reçoit un numéro légal et devient
+immuable (seul un avoir peut la corriger). Or, jusqu'ici, un simple clic
+l'émettait. Désormais, le bouton ouvre une **confirmation** qui rappelle le
+montant et l'enjeu :
 
-- **L'animation « feutre »** : à l'activation, l'icône et le libellé se
-  **tracent** (le trait se dessine), comme au feutre.
-- **Chaque icône a son geste** : Dossiers fait un petit bond, Planning tourne
-  comme une page, Stockage flotte, Messages sonne comme une cloche, Ressources
-  respire, Compte salue de la main.
-- Le coin supérieur arrondi et l'ombre douce, comme demandé.
+> « Émettre cette facture pour X € TVAC ? Elle reçoit un numéro légal, une
+> échéance et une communication, et devient IMMUABLE. »
 
-**Une adaptation que j'ai faite exprès** : ta maquette avait des couleurs claires
-figées (fond blanc, bleu en dur). Je les ai **liées à ton thème** — l'onglet
-actif prend ta couleur d'accent (réglable), les autres un gris doux, le fond suit
-la surface. Résultat : **la barre marche en mode sombre** (sinon elle serait
-restée blanche sur une app noire) et suit l'accent que tu choisis. Le routage et
-le filtrage par abonnement (Stockage/Ressources qui n'apparaissent que si
-l'offre les ouvre) sont inchangés, et le sélecteur rotatif est conservé.
+C'est exactement ce que demandait ta remarque R10 (« figé par émettre la facture
+→ avec confirmation, êtes-vous sûr ? oui/non »). La clôture de dossier avait déjà
+sa confirmation ; l'émission de facture l'a enfin aussi.
 
-J'ai aussi ajouté le respect de « mouvement réduit » : sur un appareil réglé pour
-limiter les animations, la barre reste sobre.
+**Le reste de R10** (la facture d'un devis tarifaire ne se met à jour qu'avec le
+calcul définitif, celle d'un forfait suit l'estimation) touche la logique de
+mise à jour scénario → facture ; elle croise ta remarque R11 (l'estimation en
+temps). Je la garde pour un lot dédié, pour la traiter proprement.
 
-## 2. Alignement des conversations (R16)
+## Plan PWA — prévu, positionné après les travaux
 
-La carte de conversation avait une **largeur 100 % EN PLUS** de la marge latérale
-de la carte standard → elle débordait de 32 px à droite, d'où le décalage. Retiré :
-elle s'aligne maintenant comme les autres cartes.
+Comme demandé, j'ai écrit le plan de déploiement PWA dans la roadmap
+(70-ROADMAP), placé **après** les travaux prévus — car une PWA met en cache la
+coquille de l'app, et on ne fige pas une coquille qui bouge encore.
 
-## 3. Bulles blanc sur blanc en mode sombre (R16)
+En résumé :
+- **Ce qui est déjà là** : HTTPS (Vercel), interface mobile, theme-color, icône
+  Apple. **Ce qui manque** : manifest, icônes multi-tailles, service worker.
+- **P1 — installable** : manifest + icônes + service worker (Vite/Workbox). Règle
+  de sécurité non négociable : **réseau d'abord, jamais de cache pour les données
+  Supabase** (fraîcheur + isolation des organisations).
+- **P2 — hors-ligne par degrés** : lecture des derniers dossiers d'abord, puis
+  une file différée pour les gestes terrain (pointage, constats, photos).
+  **L'émission de facture reste en ligne** — la numérotation légale ne se
+  bricole pas côté client.
+- **P3 — stores** : PWA web d'abord (« ajouter à l'écran »), puis Google Play via
+  TWA si tu veux une présence boutique ; App Store natif seulement si un vrai
+  besoin apparaît.
 
-Le vrai coupable : la bulle du correspondant décidait de ses couleurs d'après une
-prop `theme` qui n'existe que dans le portail client — **absente dans l'app**.
-Donc en mode nuit, elle gardait un fond clair avec un texte clair = illisible.
-Corrigé : la nuit se détecte maintenant sur le **mode réel** de l'app. Les bulles
-reçues et les puces de pièce jointe sont lisibles en clair comme en sombre.
+C'est un plan, pas du code : rien n'est déployé, tout est prêt à l'être le moment
+venu.
 
 ## À vérifier à l'œil
 
-1. La barre : change d'onglet → l'icône se trace au feutre et fait son geste.
-2. Passe l'app en mode sombre : la barre reste lisible (accent + gris sur fond
-   sombre), pas de barre blanche.
-3. Conversations : les cartes ne débordent plus à droite.
-4. Mode sombre + un fil de messages : les bulles reçues sont lisibles (plus de
-   blanc sur blanc).
+Sur une facture prête : clique « Émettre » → une confirmation apparaît avec le
+montant. Annuler ne fait rien ; confirmer émet. Les anciennes factures et le reste
+sont inchangés.
 
-## Réserve d'honnêteté
+## Suite proposée
 
-L'animation « feutre » dure ~2,1 s, comme dans ta maquette — c'est un choix
-esthétique assumé, mais sur une barre qu'on touche souvent, tu la trouveras
-peut-être un peu lente à l'usage réel ; on peut l'accélérer d'un chiffre si tu
-veux. Et le rendu exact des gestes (flip 3D, cloche) se juge sur l'appareil : le
-build est vert, mais l'œil sur mobile est le juge final.
+Il reste des remarques (R11 estimation en temps, R13/R14 onglets liste, R15
+centres dans l'équipe, R4 matériel par véhicule) et les vagues de fond (V3 compta
+— bloquée par la question engagement/trésorerie à poser au comptable, V4
+garde-meubles). Dis-moi le cap, ou je continue dans l'ordre le plus utile.
