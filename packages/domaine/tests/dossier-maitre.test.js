@@ -280,3 +280,14 @@ test("le relevé note que R10 confirme l'approche des lots A–D", () => {
   assert.match(r, /confirme/i);
   assert.match(r, /fige à l'émission|figer à l'émission|gel à l'émission/i);
 });
+
+/* ── Plan de déploiement PWA (01/09/2026) ────────────────────────────────── */
+
+test("la roadmap prévoit le déploiement PWA, positionné après les travaux", () => {
+  const r = lire("70-ROADMAP.md");
+  assert.match(r, /DÉPLOIEMENT PWA/i);
+  // Prudence de sécurité : jamais de cache des données Supabase (isolation org).
+  assert.match(r, /réseau d'abord.*Supabase|jamais de cache.*Supabase/is);
+  // Rien de légal hors ligne (émission serveur).
+  assert.match(r, /émission de facture reste en ligne|Rien de légal hors ligne/i);
+});
