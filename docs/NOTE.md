@@ -1,74 +1,80 @@
-# Barres du dossier animées + le plan de travail
+# Verrous de sortie pro — trois défauts réels, corrigés
 
-**01/09/2026.** **1259 tests verts**, build vert.
+**01/09/2026.** **1262 tests verts**, build vert. **Migrations 0167 + 0168**
+appliquées et vérifiées.
 
-## 1. Les barres du dossier reprennent l'animation
+Tu avais raison sur les deux points, et j'ai trouvé pire en creusant. Je te dois
+la vérité complète : **une de ces régressions vient de mon travail.**
 
-Les **trois** barres partagent maintenant le même moteur : la barre principale,
-la barre de sections du dossier (bureau) et celle du terrain. Même tracé au
-feutre à l'activation, mêmes couleurs liées au thème (donc mode sombre inclus).
+## 1. Une facture VIDE a été émise avec un numéro légal ⚠️
 
-- Six nouveaux tracés dessinés pour les sections : Dossier, Relevé, Matériel,
-  Devis, Offre, Facture (Mail réutilise l'enveloppe de Messages).
-- Des gestes **plus sobres** que la barre principale : un léger soulèvement pour
-  les documents, une inclinaison pour Relevé et Matériel. Une barre de 7 entrées
-  ne peut pas gesticuler autant qu'une barre de 6 espacées.
-- Le tracé y est **plus rapide** (1,3 s au lieu de 2,1 s) : on change souvent de
-  section dans un dossier, une animation lente y deviendrait pesante.
-- Un test garantit qu'il n'existe **qu'une seule définition du moteur** : si tu
-  changes l'animation, les trois barres suivent.
+**Constaté sur tes données** : la facture **2026-000019** (un lift) porte
+**zéro ligne** et un total de **0 €** — et elle a consommé un numéro légal. C'est
+un trou dans ta séquence et un document non conforme.
 
-## 2. `05-PLAN-DE-TRAVAIL.md` — le document de pilotage
+**Corrigé, verrou en base** : émettre refuse désormais s'il n'y a aucune ligne ou
+si le total est nul. Message clair au lieu d'un numéro gâché. C'est la base qui
+refuse, pas seulement l'écran — un appel direct ne passe pas non plus.
 
-Tout ce qui reste à faire, fusionné en **une seule liste ordonnée** : les vagues,
-tes remarques R1→R16, l'analyse des six secteurs, le plan PWA, la conformité.
+## 2. La prestation manquait, et le libellé mentait
 
-**La méthode d'abord — cinq règles qui évitent de se perdre :**
-1. **Un seul chantier ouvert à la fois.**
-2. Chaque lot a une **porte d'entrée** (dépendances) et une **porte de sortie**
-   (critère observable) écrites avant de coder.
-3. **« Terminé » a une définition unique** : domaine pur, éprouvé par sabotage,
-   vert sur arbre propre, migrations vérifiées, note avec réserves, décisions
-   consignées, case cochée. Pas de lot « fini à 90 % ».
-4. Toute **décision produit se prend avant** le lot qui en dépend.
-5. **On met à jour le plan à la fin de chaque lot.** Un plan qu'on ne met pas à
-   jour est un plan qui ment.
+**Constaté** : la facture **2026-000020** (lift) ne portait que des fournitures,
+sans la prestation. Et **toutes** les prestations s'intitulaient
+« Déménagement — client », même pour un lift.
 
-**Six phases :**
-- **A — Débloquer les métiers** : le cycle de vie par nature (**le verrou**),
-  les cartes boxe/zone, le contrat récurrent (c'est là qu'est l'argent non
-  facturé), l'établissement boxe, puis le transport/sous-traitance.
-- **B — Voir et piloter** : terrain journalier 5h30–20h00, onglet Pilotage (avec
-  ta barre de progression), espace client par nature.
-- **C — Finir les métiers** : estimation en temps, tarifaire/forfait, onglets de
-  la liste, centres dans l'équipe, matériel par véhicule, vente → stock.
-- **D — Comptabilité**, bloquée tant que les deux questions au comptable ne sont
-  pas posées.
-- **E — Délimitation, registre des paramètres, design, PWA, connecteur.**
-- **F — Conformité**, en parallèle et **sans code** : le RGPD est exigible
-  maintenant.
+**Corrigé :**
+- Le libellé suit la **nature** : « Lift — Dupont », « Boxe — … ». Fini le
+  « Déménagement » universel.
+- **Plus de ligne fantôme à 0 €** : une prestation à zéro signale un chiffrage
+  inabouti, pas une prestation gratuite. On ne l'écrit plus.
+- **L'écran t'avertit** : si tu factures des fournitures sans prestation, un
+  bandeau ambre te le dit avant d'émettre.
 
-Plus **un tableau des neuf décisions qui bloquent des lots**, avec mon avis sur
-chacune, et **un tableau de suivi à cocher**.
+**Ma part de responsabilité** : mes lots « fournitures jointes » ont rendu
+possible d'émettre une facture ne contenant que des fournitures. Le garde-fou
+aurait dû venir avec. Il est là maintenant.
 
-## L'ordre, en une ligne
+## 3. Personne ne pouvait clôturer — et ce n'était pas toi
 
-**F1 (aujourd'hui, hors code) ‖ A1 → A2 → A3 → A4 → B1 → B2 → B3 → C → [D0 puis
-D] → E**
+**La cause exacte** : la fonction de clôture exige la capacité « Clôturer un
+dossier ». Cette capacité existe dans le référentiel, mais elle n'était
+attribuée à **aucun rôle** — zéro ligne dans la table des droits. Donc **personne
+au monde ne pouvait clôturer**, gérant et fondateur compris. Ton accès était
+correct ; c'est le droit qui n'avait jamais été relié.
 
-A1 est le verrou de tout. B1 (terrain journalier) peut s'intercaler n'importe
-quand : lot court, autonome, valeur immédiate.
+**Corrigé** : la capacité va aux rôles qui portent déjà « émettre une facture »
+(fondateur, gérant) — qui facture peut clôturer. Vérifié : chef d'équipe et
+secrétaire ne l'ont pas, c'est voulu.
 
-## Trois décisions n'attendent qu'un mot
+## 4. L'onglet « Clos » existe
 
-D4 (le lift exige-t-il un devis signé ? — mon avis : non), D5 (le boxe passe-t-il
-par planifié/effectué ? — non), D6 (une vente comptoir a-t-elle un espace client ?
-— non). Elles sont nécessaires pour démarrer A1 et B3. Confirme-les et j'attaque
-A1.
+Ajouté entre « À clôturer » et « Tous ». Un dossier clôturé se retrouve sans
+fouiller le fourre-tout qui mêle aussi les annulés.
 
-## Réserve d'honnêteté
+## Éprouvé par sabotage
 
-L'animation des barres est vérifiée par le build et les tests de structure, mais
-le rendu (fluidité sur une barre dense de 7 entrées, lisibilité des petits
-tracés à 19 px) se juge sur ton appareil. Si les libellés sautent ou si le tracé
-paraît confus à cette taille, dis-le : on simplifiera les dessins des sections.
+| Sabotage | Rouges |
+|---|---|
+| le libellé « Déménagement » revient en dur | 1 |
+| la ligne de prestation à 0 € repasse | 1 |
+
+## À vérifier à l'œil
+
+1. **Clôture** : sur un dossier effectué et payé, le bouton clôturer fonctionne
+   maintenant.
+2. **Liste** : l'onglet « Clos » apparaît et contient tes dossiers clôturés.
+3. **Facture d'un lift** : la prestation s'intitule « Lift — … », pas
+   « Déménagement ».
+4. **Facture sans chiffrage** : impossible d'émettre à vide ; message explicite.
+
+## Ce que je n'ai pas fait
+
+Les factures **2026-000019 et 2026-000020 restent telles quelles** — elles sont
+émises, donc immuables. La 19 est vide et la 20 sans prestation. Si elles doivent
+être corrigées, c'est par **avoir**, pas par réécriture : dis-moi si tu veux que
+je prépare ça. C'est une décision comptable, pas technique.
+
+## Suite
+
+Le terrain est déblayé pour **A1 — le cycle de vie par nature**, avec le modèle
+Shurgard/Go Box pour le boxe comme tu l'as indiqué. J'attaque au prochain tour.
