@@ -83,9 +83,10 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarn
   // Regroupement par horizon : en retard / aujourd'hui / demain / cette semaine
   // / semaines nommées / mois. Une liste plate ne dit pas ce qui presse.
   const groupes = useMemo(() => regrouperParHorizon(visibles, {
-    // Sur « Tous », on montre aussi les dossiers terminés ; sur une vue métier,
-    // ils sont déjà filtrés en amont, donc l'option n'a pas d'effet de bord.
-    seulementActifs: vue !== "tous",
+    // Les vues qui montrent des dossiers TERMINÉS doivent désactiver le filtre
+    // « actifs seulement », sinon le regroupement les écarte après coup : c'est
+    // ce qui rendait la vue « Clos » vide alors que son compteur était juste.
+    seulementActifs: vue !== "tous" && vue !== "clos",
   }), [visibles, vue]);
 
   const urgent = useMemo(() => compteurUrgent(affaires), [affaires]);
