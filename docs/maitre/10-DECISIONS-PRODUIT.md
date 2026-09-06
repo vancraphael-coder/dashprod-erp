@@ -589,3 +589,37 @@ Constatés sur les données de production, pas supposés :
    gérant). Vérifié.
 4. **Vue « Clos » ajoutée** à la liste des dossiers (entre « À clôturer » et
    « Tous ») — la fin de cycle avait sa place, pas le fourre-tout.
+
+## A1 — Les cycles de vie par nature (01/09/2026)
+
+Le lot qui débloque les cinq métiers muets (47 dossiers, 1 facture).
+- **Nouveau module** `crm/cycles-nature.js` : trois familles.
+  · CHANTIER (déménagement, lift, sous-traitance) · CONTRAT (boxe, zone :
+  brouillon → proposition → actif → [suspendu] → terminé, NI planifié NI
+  effectué) · VENTE (aucun cycle, la facture fait foi).
+- **Le déménagement est INCHANGÉ** : verifierTransitionNature DÉLÈGUE à la
+  machine générique (affaire.js), qui reste la référence du cycle CHANTIER.
+  L'invariant C-02 (offre signée) est préservé — vérifié par sabotage.
+- **Accord allégé** (lift, sous-traitance) : `accordTrace` vaut confirmation, une
+  signature reste acceptée mais n'est plus exigée. Débloque 20 lifts.
+- **Contrat** : gardes minimales et justes — un tarif (sans quoi rien à facturer)
+  et une date de début. Modèle self-storage (Shurgard/Go Box) : contrat, unité
+  attribuée, facturation récurrente, sortie.
+- exigeSignature / exigeEquipe : un lift part avec un véhicule et son opérateur,
+  pas une équipe constituée.
+
+## Conformité transport — CMR / lettre de voiture (01/09/2026)
+
+`conformite/transport.js`. **Point juridique important** : ce n'est PAS le
+déménagement qui appelle le CMR (régime propre au secteur), c'est la PRESTATION
+DE TRANSPORT pour compte d'autrui — l'actuelle « sous-traitance ».
+- regimeDocument : cmr (international) / national (BE→BE) / aucun.
+- MENTIONS_CMR (art. 6) + verifierMentions : détecte un document incomplet AVANT
+  le départ ; le régime national exige moins que l'international.
+- controleAvantDepart : **on SIGNALE, on ne bloque pas** le terrain.
+- ⚠️ Repérage de terrain, PAS un avis juridique : régimes, seuils et exemptions
+  à confirmer par un conseil en droit belge du transport (F2).
+
+## Correctif — la vue « Clos » affichait 0 dossier
+regrouperParHorizon recevait seulementActifs=true pour toute vue ≠ « tous », donc
+il écartait les clos APRÈS le filtrage (compteur juste, liste vide). Corrigé.
