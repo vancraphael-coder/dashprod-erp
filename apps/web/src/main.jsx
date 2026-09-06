@@ -120,6 +120,45 @@ function traceIcone(nom) {
         <path pathLength="1" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
         <circle pathLength="1" cx="12" cy="7" r="4" />
       </>);
+    // ── Les sections d'un dossier ────────────────────────────────────────────
+    case "fiche":       // la fiche du dossier
+      return (<>
+        <path pathLength="1" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline pathLength="1" points="14 2 14 8 20 8" />
+        <line pathLength="1" x1="8" y1="13" x2="16" y2="13" />
+        <line pathLength="1" x1="8" y1="17" x2="13" y2="17" />
+      </>);
+    case "releve":      // le relevé : mesurer le volume
+      return (<>
+        <path pathLength="1" d="M3 7l9-4 9 4v10l-9 4-9-4z" />
+        <path pathLength="1" d="M3 7l9 4 9-4" />
+        <line pathLength="1" x1="12" y1="11" x2="12" y2="21" />
+      </>);
+    case "materiel":    // le matériel : les cartons
+      return (<>
+        <rect pathLength="1" x="3" y="7" width="18" height="13" rx="2" />
+        <path pathLength="1" d="M3 11h18" />
+        <path pathLength="1" d="M9 7V4h6v3" />
+      </>);
+    case "devis":       // le devis : le calcul
+      return (<>
+        <rect pathLength="1" x="4" y="3" width="16" height="18" rx="2" />
+        <line pathLength="1" x1="8" y1="8" x2="16" y2="8" />
+        <line pathLength="1" x1="8" y1="12" x2="12" y2="12" />
+        <line pathLength="1" x1="8" y1="16" x2="14" y2="16" />
+      </>);
+    case "offre":       // l'offre : le document signé
+      return (<>
+        <path pathLength="1" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline pathLength="1" points="14 2 14 8 20 8" />
+        <path pathLength="1" d="M8 17c2-3 4 1 7-2" />
+      </>);
+    case "facture":     // la facture : le montant dû
+      return (<>
+        <path pathLength="1" d="M6 2h12a1 1 0 0 1 1 1v18l-3-2-3 2-3-2-3 2V3a1 1 0 0 1 1-1z" />
+        <line pathLength="1" x1="9" y1="8" x2="15" y2="8" />
+        <line pathLength="1" x1="9" y1="12" x2="13" y2="12" />
+      </>);
     default: return null;
   }
 }
@@ -166,6 +205,18 @@ const CSS_NAV = `
 .dpnav-ressources.active svg { animation: dpnavPulse .7s var(--smooth); }
 @keyframes dpnavWave { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-16deg)} 50%{transform:rotate(10deg)} 75%{transform:rotate(-8deg)} }
 .dpnav-compte.active svg { transform-origin: 50% 80%; animation: dpnavWave .8s ease-in-out; }
+/* Les sections d'un dossier : gestes plus sobres, la barre est plus dense. */
+@keyframes dpnavLift { 0%,100%{transform:translateY(0) scale(1)} 45%{transform:translateY(-3px) scale(1.07)} }
+.dpnav-fiche.active svg, .dpnav-devis.active svg,
+.dpnav-offre.active svg, .dpnav-facture.active svg { animation: dpnavLift .7s var(--bounce); }
+@keyframes dpnavTilt { 0%,100%{transform:rotate(0)} 40%{transform:rotate(-7deg) scale(1.06)} }
+.dpnav-releve.active svg, .dpnav-materiel.active svg { animation: dpnavTilt .7s var(--smooth); }
+/* Barre dense (7 sections) : icônes et libellés réduits, tracé plus court. */
+.dpnav-dense { --draw: 1.3s; }
+.dpnav-dense .dpnav-item { flex: 1 0 62px; padding: 8px 2px 6px; }
+.dpnav-dense svg { width: 19px; height: 19px; }
+.dpnav-dense .dpnav-content { font-size: 9.5px; gap: 2px; }
+.dpnav-dense .dpnav-content.colored { top: 8px; }
 @media (prefers-reduced-motion: reduce) {
   .dpnav-content.colored svg *, .dpnav-content.colored span { transition: none; }
   .dpnav-item.active svg { animation: none !important; }
@@ -325,28 +376,35 @@ function AppTerrain({ profil }) {
                     ? undefined : { pointerEvents: "none" }}>{vue}</div>
 
         {/* Sous-navigation du parcours */}
-        <div style={{
+        <style>{CSS_NAV}</style>
+        <nav className="dpnav dpnav-dense" aria-label="Sections du dossier" style={{
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
-          display: "flex", background: "#fff", borderTop: `1px solid ${C.bord}`,
+          display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
           maxWidth: 520, margin: "0 auto", overflowX: "auto",
           paddingBottom: "env(safe-area-inset-bottom)",
-          boxShadow: "0 -4px 16px -8px rgba(15,23,42,.12)",
+          borderRadius: "22px 22px 0 0",
+          boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
+          "--nav-on": C.bleu, "--nav-off": C.muet,
         }}>
           {sections.map(([cle, icone, lib]) => {
             const estActif = route.ecran === cle;
+            const tn = icone === "mail" ? "messages" : icone;
             return (
-              <button key={cle} onClick={() => aller(cle)} style={{
-                flex: "1 0 62px", padding: "8px 2px 6px", border: "none",
-                background: "none", cursor: "pointer",
-                borderTop: estActif ? `2px solid ${C.vert}` : "2px solid transparent",
-              }}>
-                <Icone nom={icone} taille={19} couleur={estActif ? C.vert : C.bleu} />
-                <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 2,
-                              color: estActif ? C.vert : C.muet }}>{lib}</div>
+              <button key={cle} onClick={() => aller(cle)}
+                aria-current={estActif ? "page" : undefined} aria-label={lib}
+                className={`dpnav-item dpnav-${tn}${estActif ? " active" : ""}`}>
+                <span className="dpnav-content default" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">{traceIcone(tn)}</svg>
+                  <span>{lib}</span>
+                </span>
+                <span className="dpnav-content colored" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">{traceIcone(tn)}</svg>
+                  <span>{lib}</span>
+                </span>
               </button>
             );
           })}
-        </div>
+        </nav>
       </div>
     );
   }
@@ -448,34 +506,43 @@ function SousNavDossier({ actif, aller, nature }) {
   // sous-traitance garde l'écran (matériel de terrain) sans vendre d'emballage.
   const HORS_PARCOURS = { releve: "releve", materiel: "materiel" };
   return (
-    <div style={{
-      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
-      display: "flex", background: "#fff", borderTop: `1px solid ${C.bord}`,
-      maxWidth: 520, margin: "0 auto", overflowX: "auto",
-      paddingBottom: "env(safe-area-inset-bottom)",
-      boxShadow: "0 -4px 16px -8px rgba(15,23,42,.12)",
-    }}>
-      {SECTIONS_DOSSIER.filter(([cle]) => {
-        // Retirées, pas grisées : ces étapes n'arriveront jamais pour cette
-        // nature. La sous-navigation d'un lift compte donc 4 entrées, pas 6.
-        const etape = HORS_PARCOURS[cle];
-        return !etape || !nature || comporteEtape(nature, etape);
-      }).map(([cle, icone, lib]) => {
-        const estActif = actif === cle;
-        return (
-          <button key={cle} onClick={() => aller(cle)}
-            style={{
-              flex: "1 0 62px", padding: "8px 2px 6px", border: "none",
-              background: "none", cursor: "pointer",
-              borderTop: estActif ? `2px solid ${C.vert}` : "2px solid transparent",
-            }}>
-            <Icone nom={icone} taille={19} couleur={estActif ? C.vert : C.bleu} />
-            <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 2,
-                          color: estActif ? C.vert : C.muet }}>{lib}</div>
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <style>{CSS_NAV}</style>
+      <nav className="dpnav dpnav-dense" aria-label="Sections du dossier" style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+        display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
+        maxWidth: 520, margin: "0 auto", overflowX: "auto",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        borderRadius: "22px 22px 0 0",
+        boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
+        "--nav-on": C.bleu, "--nav-off": C.muet,
+      }}>
+        {SECTIONS_DOSSIER.filter(([cle]) => {
+          // Retirées, pas grisées : ces étapes n'arriveront jamais pour cette
+          // nature. La sous-navigation d'un lift compte donc 4 entrées, pas 6.
+          const etape = HORS_PARCOURS[cle];
+          return !etape || !nature || comporteEtape(nature, etape);
+        }).map(([cle, icone, lib]) => {
+          const estActif = actif === cle;
+          // Le tracé « mail » réutilise l'enveloppe de la barre principale.
+          const tn = icone === "mail" ? "messages" : icone;
+          return (
+            <button key={cle} onClick={() => aller(cle)}
+              aria-current={estActif ? "page" : undefined} aria-label={lib}
+              className={`dpnav-item dpnav-${tn}${estActif ? " active" : ""}`}>
+              <span className="dpnav-content default" aria-hidden="true">
+                <svg viewBox="0 0 24 24">{traceIcone(tn)}</svg>
+                <span>{lib}</span>
+              </span>
+              <span className="dpnav-content colored" aria-hidden="true">
+                <svg viewBox="0 0 24 24">{traceIcone(tn)}</svg>
+                <span>{lib}</span>
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    </>
   );
 }
 
