@@ -571,3 +571,21 @@ montant facturé. Réservé à qui voit les prix (peutVoirPrix).
   cache des données), P2 hors-ligne par degrés (lecture puis outbox
   pointage/constats/photos ; émission de facture JAMAIS hors ligne), P3 stores
   (A web / B Play via TWA / C App Store natif — reco : A puis B).
+
+## Verrous de sortie pro — trois défauts réels corrigés (01/09/2026)
+
+Constatés sur les données de production, pas supposés :
+1. **Facture vide émise** : 2026-000019 (lift) a reçu un NUMÉRO LÉGAL avec 0
+   ligne et 0 €. → **0168** : cmd_emettre_facture refuse si aucune ligne ou
+   total <= 0. Verrou en base, dernier rempart.
+2. **Prestation absente / mal libellée** : 2026-000020 (lift) ne portait que des
+   fournitures ; et le libellé était figé « Déménagement » pour toutes les
+   natures. → libellé = titre de la NATURE ; aucune ligne fantôme à 0 € (elle
+   signale un chiffrage inabouti) ; l'écran AVERTIT quand on facture des
+   fournitures sans prestation.
+3. **Clôture impossible pour tous** : la capacité cloturer_dossier n'était
+   attribuée à AUCUN rôle (role_capacites : 0 ligne) alors que la fonction
+   l'exige. → **0167** : attribuée aux rôles ayant emettre_facture (fondateur,
+   gérant). Vérifié.
+4. **Vue « Clos » ajoutée** à la liste des dossiers (entre « À clôturer » et
+   « Tous ») — la fin de cycle avait sa place, pas le fourre-tout.
