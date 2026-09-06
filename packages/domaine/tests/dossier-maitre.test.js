@@ -320,3 +320,15 @@ test("le plan liste les décisions qui bloquent des lots", () => {
   // Le RGPD est marqué exigible maintenant, pas « plus tard ».
   assert.match(p, /RGPD/);
 });
+
+/* ── A1 : le cycle par nature existe (01/09/2026) ────────────────────────── */
+
+test("A1 : les cycles par nature sont posés, le déménagement reste la référence", () => {
+  // La machine générique (affaire.js) reste volontairement SANS notion de
+  // nature : elle EST le cycle CHANTIER de référence, et le déménagement ne
+  // doit pas bouger. La spécialisation vit dans cycles-nature.js.
+  const cycles = readFileSync(join(dirname(fileURLToPath(import.meta.url)),
+    "..", "src", "crm", "cycles-nature.js"), "utf8");
+  assert.match(cycles, /familleDeNature/);
+  assert.match(cycles, /ETATS_CONTRAT/);
+});

@@ -43,3 +43,11 @@ test("« Clos » est une vue à part entière", () => {
   const cles = VUES.map((v) => v.cle);
   assert.ok(cles.indexOf("clos") < cles.indexOf("tous"));
 });
+
+test("les vues qui montrent des dossiers TERMINÉS n'activent pas « actifs seulement »", () => {
+  // Défaut réel : la vue « Clos » comptait juste mais n'affichait rien — le
+  // regroupement par horizon écartait les terminés après le filtrage.
+  const liste = readFileSync(
+    join(RACINE, "apps/web/src/ecrans/ListeAffaires.jsx"), "utf8");
+  assert.match(liste, /seulementActifs: vue !== "tous" && vue !== "clos"/);
+});
