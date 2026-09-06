@@ -1,80 +1,90 @@
-# Verrous de sortie pro — trois défauts réels, corrigés
+# A1 — Les cycles de vie par nature + conformité CMR
 
-**01/09/2026.** **1262 tests verts**, build vert. **Migrations 0167 + 0168**
-appliquées et vérifiées.
+**01/09/2026.** **1278 tests verts**, build vert. Le lot qui débloque les cinq
+métiers muets.
 
-Tu avais raison sur les deux points, et j'ai trouvé pire en creusant. Je te dois
-la vérité complète : **une de ces régressions vient de mon travail.**
+## Le correctif « Clos » d'abord
 
-## 1. Une facture VIDE a été émise avec un numéro légal ⚠️
+Tu avais raison : le compteur était juste, la liste vide. Le regroupement par
+horizon recevait « actifs seulement » pour **toute** vue autre que « Tous » — il
+écartait donc les dossiers clos juste après les avoir filtrés. Corrigé et
+verrouillé par test.
 
-**Constaté sur tes données** : la facture **2026-000019** (un lift) porte
-**zéro ligne** et un total de **0 €** — et elle a consommé un numéro légal. C'est
-un trou dans ta séquence et un document non conforme.
+## A1 — trois familles de cycles, plus un seul parcours pour six métiers
 
-**Corrigé, verrou en base** : émettre refuse désormais s'il n'y a aucune ligne ou
-si le total est nul. Message clair au lieu d'un numéro gâché. C'est la base qui
-refuse, pas seulement l'écran — un appel direct ne passe pas non plus.
+**CHANTIER** (déménagement, lift, sous-traitance) — on prépare, on exécute, on
+clôt.
+**CONTRAT** (boxe, zone) — brouillon → proposition → **actif** → [suspendu] →
+terminé. **Ni « planifié », ni « effectué »** : un box ne s'exécute pas, il se
+loue. C'est le modèle du self-storage que tu m'as indiqué (Shurgard, Go Box) :
+un contrat, une unité attribuée, une facturation qui court, une sortie.
+**VENTE** (comptoir) — aucun cycle, la facture est l'événement.
 
-## 2. La prestation manquait, et le libellé mentait
+**Ce que ça débloque concrètement :**
+- Un **boxe** peut enfin devenir actif (il était bloqué parce qu'on lui
+  réclamait une équipe et un camion).
+- Un **lift** se confirme sur un **accord tracé** — plus besoin de faire signer
+  un devis pour une prestation de 150 €. C'est ce qui bloquait 20 lifts sur 21.
+- Un lift se planifie **sans équipe constituée** : un véhicule et son opérateur.
 
-**Constaté** : la facture **2026-000020** (lift) ne portait que des fournitures,
-sans la prestation. Et **toutes** les prestations s'intitulaient
-« Déménagement — client », même pour un lift.
+**Ce qui ne change PAS : le déménagement.** J'ai fait attention à ça. La
+vérification par nature **délègue réellement** à la machine existante pour le
+déménagement — l'invariant « une offre signée pour confirmer » est préservé, et
+un sabotage le prouve : si quelqu'un tente d'accepter un simple accord tracé pour
+un déménagement, un test rougit.
 
-**Corrigé :**
-- Le libellé suit la **nature** : « Lift — Dupont », « Boxe — … ». Fini le
-  « Déménagement » universel.
-- **Plus de ligne fantôme à 0 €** : une prestation à zéro signale un chiffrage
-  inabouti, pas une prestation gratuite. On ne l'écrit plus.
-- **L'écran t'avertit** : si tu factures des fournitures sans prestation, un
-  bandeau ambre te le dit avant d'émettre.
+Un contrat exige deux choses seulement, mais fermement : **un tarif** (sans quoi
+la facturation récurrente n'a rien à réclamer) et **une date de début**.
 
-**Ma part de responsabilité** : mes lots « fournitures jointes » ont rendu
-possible d'émettre une facture ne contenant que des fournitures. Le garde-fou
-aurait dû venir avec. Il est là maintenant.
+## Conformité — CMR et lettre de voiture
 
-## 3. Personne ne pouvait clôturer — et ce n'était pas toi
+**Un point juridique qui compte, et qui recoupe ta remarque sur la
+sous-traitance** : ce n'est **pas le déménagement** qui appelle le CMR. Le
+déménagement pour compte d'autrui relève d'un régime propre. C'est la
+**prestation de transport pour un tiers** — précisément l'actuelle
+« sous-traitance » — qui exige un document de transport.
 
-**La cause exacte** : la fonction de clôture exige la capacité « Clôturer un
-dossier ». Cette capacité existe dans le référentiel, mais elle n'était
-attribuée à **aucun rôle** — zéro ligne dans la table des droits. Donc **personne
-au monde ne pouvait clôturer**, gérant et fondateur compris. Ton accès était
-correct ; c'est le droit qui n'avait jamais été relié.
+Ce qui est posé :
+- **Quel régime s'applique** : CMR si la frontière est franchie, lettre de
+  voiture nationale en Belgique, rien pour les autres métiers. Un pays inconnu
+  n'est jamais présumé international.
+- **Les mentions obligatoires** (art. 6 de la Convention) et la détection d'un
+  document incomplet **avant le départ** — un CMR incomplet se découvre au
+  contrôle, c'est-à-dire trop tard.
+- **On signale, on ne bloque pas** : le chauffeur peut avoir le document sous une
+  autre forme. On l'avertit, on ne l'empêche pas de partir.
 
-**Corrigé** : la capacité va aux rôles qui portent déjà « émettre une facture »
-(fondateur, gérant) — qui facture peut clôturer. Vérifié : chef d'équipe et
-secrétaire ne l'ont pas, c'est voulu.
-
-## 4. L'onglet « Clos » existe
-
-Ajouté entre « À clôturer » et « Tous ». Un dossier clôturé se retrouve sans
-fouiller le fourre-tout qui mêle aussi les annulés.
+⚠️ **C'est un repérage de terrain, pas un avis juridique.** Les régimes, seuils
+et exemptions doivent être confirmés par un conseil en droit belge du transport.
+Le module dit ce qu'il faut préparer, pas ce qui est légalement suffisant.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| le libellé « Déménagement » revient en dur | 1 |
-| la ligne de prestation à 0 € repasse | 1 |
+| le déménagement accepte un accord tracé (invariant C-02 cassé) | 1 |
+| le boxe retombe sur le cycle chantier | 4 |
+| un contrat devient actif sans tarif | 1 |
+| le déménagement exigerait un CMR (faux juridiquement) | 3 |
+| un pays inconnu présumé international | 1 |
 
 ## À vérifier à l'œil
 
-1. **Clôture** : sur un dossier effectué et payé, le bouton clôturer fonctionne
-   maintenant.
-2. **Liste** : l'onglet « Clos » apparaît et contient tes dossiers clôturés.
-3. **Facture d'un lift** : la prestation s'intitule « Lift — … », pas
-   « Déménagement ».
-4. **Facture sans chiffrage** : impossible d'émettre à vide ; message explicite.
+1. La vue **Clos** affiche enfin tes dossiers clôturés.
+2. Le reste d'A1 est du **domaine pur** : il ne se voit pas encore à l'écran.
 
-## Ce que je n'ai pas fait
+## Ce qui reste pour que ça se voie (A2, A3)
 
-Les factures **2026-000019 et 2026-000020 restent telles quelles** — elles sont
-émises, donc immuables. La 19 est vide et la 20 sans prestation. Si elles doivent
-être corrigées, c'est par **avoir**, pas par réécriture : dis-moi si tu veux que
-je prépare ça. C'est une décision comptable, pas technique.
+A1 pose les règles ; **elles ne sont pas encore branchées aux écrans ni à la
+base**. Prochaines étapes, dans l'ordre :
+- **A2** : les cartes manquantes (boxe, zone) — aujourd'hui `cartePrincipale`
+  renvoie `null` pour eux.
+- **A3** : le contrat récurrent — chiffrage par palier (boxe) / forfait (zone),
+  échéancier mensuel, génération des factures. **C'est là qu'est l'argent non
+  facturé.**
+- Puis la commande de transition en base (`cmd_transition_affaire`) devra
+  consulter le cycle de la nature.
 
-## Suite
-
-Le terrain est déblayé pour **A1 — le cycle de vie par nature**, avec le modèle
-Shurgard/Go Box pour le boxe comme tu l'as indiqué. J'attaque au prochain tour.
+Je suis un lot à la fois, comme le plan le prescrit : A1 est terminé au sens de
+la définition (domaine pur, sabotage, vert sur arbre propre, consigné). J'attaque
+A2 au prochain tour.
