@@ -59,6 +59,9 @@ Ces points sont tranchés. Les rediscuter fait perdre du temps et dérive :
 ## L'ordre de lecture
 
 1. Ce fichier.
+2. `05-PLAN-DE-TRAVAIL.md` — **LE document de pilotage.** Tout ce qui reste à
+   faire, en une seule liste ordonnée, avec la méthode de suivi et la
+   définition de « terminé ». À ouvrir à chaque reprise.
 2. `60-CIRCUITS-QUATRE-COUCHES.md` — **la carte du territoire.** Les dix circuits
    du produit, chacun lu en quatre couches (métier réel, paramétrage,
    facturation, comptabilité), avec ce qui tient et ce qui casse. À lire avant
