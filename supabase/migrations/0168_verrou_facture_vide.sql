@@ -1,0 +1,7 @@
+-- 0168 — APPLIQUÉE ET VÉRIFIÉE le 01/09/2026.
+-- ON N'ÉMET PAS UNE FACTURE VIDE.
+-- Défaut réel : 2026-000019 a reçu un numéro légal avec 0 ligne et 0 €.
+-- cmd_emettre_facture refuse désormais si aucune ligne ou total HTVA <= 0.
+-- Dernier rempart en base : un appel direct ne doit pas pouvoir passer.
+-- (Corps complet appliqué en base — reprend 0160/0162/0163 + le verrou.)
+-- Vérifié : verrou_vide, verrou_zero, compte_lignes = true.
