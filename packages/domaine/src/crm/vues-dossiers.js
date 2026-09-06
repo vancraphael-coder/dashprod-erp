@@ -38,6 +38,14 @@ export const VUES = Object.freeze([
     etats: ["effectue"],
   },
   {
+    // Un dossier clôturé doit se retrouver sans passer par « Tous » (qui mêle
+    // aussi les annulés). C'est la fin du cycle, elle mérite sa vue.
+    cle: "clos",
+    libelle: "Clos",
+    aide: "Terminés et figés : bilan consultable",
+    etats: ["clos"],
+  },
+  {
     cle: "tous",
     libelle: "Tous",
     aide: "Tout, y compris clos et annulés",
