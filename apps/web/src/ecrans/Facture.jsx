@@ -148,6 +148,17 @@ export default function Facture({ affaireId, factureExistanteId, retour }) {
               joignez directement des fournitures ci-dessous.
             </div>
           )}
+          {/* La prestation manque alors qu'on facture des fournitures : on le
+              DIT, au lieu d'émettre une facture qui oublie le travail presté. */}
+          {lignes.length === 0 && fournitures.length > 0 && (
+            <div style={{ fontSize: 12.5, color: C.ambre, fontWeight: 700,
+                          padding: "8px 10px", borderRadius: 8,
+                          background: `${C.ambre}14`, marginBottom: 6 }}>
+              Aucune prestation sur cette facture — seules des fournitures y
+              figurent. Si le travail presté doit être facturé, établissez son
+              chiffrage au devis avant d'émettre.
+            </div>
+          )}
           {lignes.map((l, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
               <span style={{ fontSize: 13, color: C.encre }}>{l.libelle}</span>
