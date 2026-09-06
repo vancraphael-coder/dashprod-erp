@@ -873,9 +873,18 @@ export async function lignesFacturePour(affaireId) {
     const pct = tauxTva(await obtenirOrganisation().catch(() => ({})));
     const htva = a.tvac_centimes
       ? Math.round(a.tvac_centimes / (1 + pct / 100)) : 0;
-    lignes.push({ type: "prestation", categorie_operation: "vente_services",
-                  libelle: `Déménagement — ${a.client?.nom || ""}`.trim(),
-                  montant_htva_centimes: htva });
+    // Le libellé suit la NATURE : un lift ne se facture pas « Déménagement ».
+    // Défaut réel constaté : toutes les prestations portaient « Déménagement ».
+    const { nature: natureDe } = await import("@domaine/commercial/natures.js");
+    const titre = natureDe(a.nature)?.titre || "Prestation";
+    // Une prestation à 0 € n'est PAS une prestation : elle signale un chiffrage
+    // absent ou inabouti. On ne pousse pas de ligne fantôme — l'écran dira que
+    // le chiffrage manque, et la base refuse d'émettre une facture vide (0168).
+    if (htva > 0) {
+      lignes.push({ type: "prestation", categorie_operation: "vente_services",
+                    libelle: `${titre} — ${a.client?.nom || ""}`.trim(),
+                    montant_htva_centimes: htva });
+    }
   }
 
   // LES FOURNITURES NE SONT PAS SUR CETTE FACTURE.
