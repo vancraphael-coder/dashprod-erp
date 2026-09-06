@@ -1,59 +1,74 @@
-# R10 (confirmation d'émission) + plan de déploiement PWA
+# Barres du dossier animées + le plan de travail
 
-**01/09/2026.** **1253 tests verts**, build vert. Un correctif de sécurité
-d'usage, et un plan pour plus tard.
+**01/09/2026.** **1259 tests verts**, build vert.
 
-## R10 — Émettre une facture demande maintenant confirmation
+## 1. Les barres du dossier reprennent l'animation
 
-Émettre une facture est **irréversible** : elle reçoit un numéro légal et devient
-immuable (seul un avoir peut la corriger). Or, jusqu'ici, un simple clic
-l'émettait. Désormais, le bouton ouvre une **confirmation** qui rappelle le
-montant et l'enjeu :
+Les **trois** barres partagent maintenant le même moteur : la barre principale,
+la barre de sections du dossier (bureau) et celle du terrain. Même tracé au
+feutre à l'activation, mêmes couleurs liées au thème (donc mode sombre inclus).
 
-> « Émettre cette facture pour X € TVAC ? Elle reçoit un numéro légal, une
-> échéance et une communication, et devient IMMUABLE. »
+- Six nouveaux tracés dessinés pour les sections : Dossier, Relevé, Matériel,
+  Devis, Offre, Facture (Mail réutilise l'enveloppe de Messages).
+- Des gestes **plus sobres** que la barre principale : un léger soulèvement pour
+  les documents, une inclinaison pour Relevé et Matériel. Une barre de 7 entrées
+  ne peut pas gesticuler autant qu'une barre de 6 espacées.
+- Le tracé y est **plus rapide** (1,3 s au lieu de 2,1 s) : on change souvent de
+  section dans un dossier, une animation lente y deviendrait pesante.
+- Un test garantit qu'il n'existe **qu'une seule définition du moteur** : si tu
+  changes l'animation, les trois barres suivent.
 
-C'est exactement ce que demandait ta remarque R10 (« figé par émettre la facture
-→ avec confirmation, êtes-vous sûr ? oui/non »). La clôture de dossier avait déjà
-sa confirmation ; l'émission de facture l'a enfin aussi.
+## 2. `05-PLAN-DE-TRAVAIL.md` — le document de pilotage
 
-**Le reste de R10** (la facture d'un devis tarifaire ne se met à jour qu'avec le
-calcul définitif, celle d'un forfait suit l'estimation) touche la logique de
-mise à jour scénario → facture ; elle croise ta remarque R11 (l'estimation en
-temps). Je la garde pour un lot dédié, pour la traiter proprement.
+Tout ce qui reste à faire, fusionné en **une seule liste ordonnée** : les vagues,
+tes remarques R1→R16, l'analyse des six secteurs, le plan PWA, la conformité.
 
-## Plan PWA — prévu, positionné après les travaux
+**La méthode d'abord — cinq règles qui évitent de se perdre :**
+1. **Un seul chantier ouvert à la fois.**
+2. Chaque lot a une **porte d'entrée** (dépendances) et une **porte de sortie**
+   (critère observable) écrites avant de coder.
+3. **« Terminé » a une définition unique** : domaine pur, éprouvé par sabotage,
+   vert sur arbre propre, migrations vérifiées, note avec réserves, décisions
+   consignées, case cochée. Pas de lot « fini à 90 % ».
+4. Toute **décision produit se prend avant** le lot qui en dépend.
+5. **On met à jour le plan à la fin de chaque lot.** Un plan qu'on ne met pas à
+   jour est un plan qui ment.
 
-Comme demandé, j'ai écrit le plan de déploiement PWA dans la roadmap
-(70-ROADMAP), placé **après** les travaux prévus — car une PWA met en cache la
-coquille de l'app, et on ne fige pas une coquille qui bouge encore.
+**Six phases :**
+- **A — Débloquer les métiers** : le cycle de vie par nature (**le verrou**),
+  les cartes boxe/zone, le contrat récurrent (c'est là qu'est l'argent non
+  facturé), l'établissement boxe, puis le transport/sous-traitance.
+- **B — Voir et piloter** : terrain journalier 5h30–20h00, onglet Pilotage (avec
+  ta barre de progression), espace client par nature.
+- **C — Finir les métiers** : estimation en temps, tarifaire/forfait, onglets de
+  la liste, centres dans l'équipe, matériel par véhicule, vente → stock.
+- **D — Comptabilité**, bloquée tant que les deux questions au comptable ne sont
+  pas posées.
+- **E — Délimitation, registre des paramètres, design, PWA, connecteur.**
+- **F — Conformité**, en parallèle et **sans code** : le RGPD est exigible
+  maintenant.
 
-En résumé :
-- **Ce qui est déjà là** : HTTPS (Vercel), interface mobile, theme-color, icône
-  Apple. **Ce qui manque** : manifest, icônes multi-tailles, service worker.
-- **P1 — installable** : manifest + icônes + service worker (Vite/Workbox). Règle
-  de sécurité non négociable : **réseau d'abord, jamais de cache pour les données
-  Supabase** (fraîcheur + isolation des organisations).
-- **P2 — hors-ligne par degrés** : lecture des derniers dossiers d'abord, puis
-  une file différée pour les gestes terrain (pointage, constats, photos).
-  **L'émission de facture reste en ligne** — la numérotation légale ne se
-  bricole pas côté client.
-- **P3 — stores** : PWA web d'abord (« ajouter à l'écran »), puis Google Play via
-  TWA si tu veux une présence boutique ; App Store natif seulement si un vrai
-  besoin apparaît.
+Plus **un tableau des neuf décisions qui bloquent des lots**, avec mon avis sur
+chacune, et **un tableau de suivi à cocher**.
 
-C'est un plan, pas du code : rien n'est déployé, tout est prêt à l'être le moment
-venu.
+## L'ordre, en une ligne
 
-## À vérifier à l'œil
+**F1 (aujourd'hui, hors code) ‖ A1 → A2 → A3 → A4 → B1 → B2 → B3 → C → [D0 puis
+D] → E**
 
-Sur une facture prête : clique « Émettre » → une confirmation apparaît avec le
-montant. Annuler ne fait rien ; confirmer émet. Les anciennes factures et le reste
-sont inchangés.
+A1 est le verrou de tout. B1 (terrain journalier) peut s'intercaler n'importe
+quand : lot court, autonome, valeur immédiate.
 
-## Suite proposée
+## Trois décisions n'attendent qu'un mot
 
-Il reste des remarques (R11 estimation en temps, R13/R14 onglets liste, R15
-centres dans l'équipe, R4 matériel par véhicule) et les vagues de fond (V3 compta
-— bloquée par la question engagement/trésorerie à poser au comptable, V4
-garde-meubles). Dis-moi le cap, ou je continue dans l'ordre le plus utile.
+D4 (le lift exige-t-il un devis signé ? — mon avis : non), D5 (le boxe passe-t-il
+par planifié/effectué ? — non), D6 (une vente comptoir a-t-elle un espace client ?
+— non). Elles sont nécessaires pour démarrer A1 et B3. Confirme-les et j'attaque
+A1.
+
+## Réserve d'honnêteté
+
+L'animation des barres est vérifiée par le build et les tests de structure, mais
+le rendu (fluidité sur une barre dense de 7 entrées, lisibilité des petits
+tracés à 19 px) se juge sur ton appareil. Si les libellés sautent ou si le tracé
+paraît confus à cette taille, dis-le : on simplifiera les dessins des sections.
