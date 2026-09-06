@@ -37,3 +37,25 @@ test("accessibilité et mouvement réduit respectés", () => {
   assert.match(main, /aria-current=\{estActif \? "page" : undefined\}/);
   assert.match(main, /prefers-reduced-motion/);
 });
+
+/* ── Les barres de sections du dossier partagent le même moteur ──────────── */
+
+test("les sections du dossier ont leurs tracés animés", () => {
+  for (const nom of ["fiche", "releve", "materiel", "devis", "offre", "facture"]) {
+    assert.match(main, new RegExp(`case "${nom}":`),
+      `le tracé ${nom} doit exister pour la barre du dossier`);
+  }
+});
+
+test("les trois barres utilisent le MÊME moteur (une seule définition CSS)", () => {
+  // Une seule source d'animation : si on la change, les trois suivent.
+  assert.equal((main.match(/const CSS_NAV = /g) || []).length, 1);
+  // Utilisée par la barre principale ET les deux barres de sections.
+  assert.ok((main.match(/\{CSS_NAV\}/g) || []).length >= 3,
+    "les barres de sections doivent réutiliser le moteur");
+});
+
+test("la barre dense du dossier trace plus vite (7 sections)", () => {
+  // Une barre dense ne peut pas mettre 2,1 s à se tracer sans agacer.
+  assert.match(main, /\.dpnav-dense \{ --draw:/);
+});

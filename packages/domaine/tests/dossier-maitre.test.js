@@ -23,7 +23,7 @@ const lire = (f) => readFileSync(join(MAITRE, f), "utf8");
 test("le dossier maître est complet et se lit dans un ordre", () => {
   // La numérotation N'EST PAS décorative : elle donne l'ordre de lecture à
   // quelqu'un qui arrive sans contexte.
-  const attendus = ["00-DEMARRER-ICI.md", "10-DECISIONS-PRODUIT.md",
+  const attendus = ["00-DEMARRER-ICI.md", "05-PLAN-DE-TRAVAIL.md", "10-DECISIONS-PRODUIT.md",
     "20-OUVERT.md", "25-PARAMETRES-ROADMAP.md", "26-GARDE-MEUBLES-ROADMAP.md",
     "30-REGLES-IA-EXTERNE.md", "40-METHODE.md", "50-ARCHIVE.md",
     // La carte du territoire et l'ordre de marche (29/08/2026).
@@ -290,4 +290,33 @@ test("la roadmap prévoit le déploiement PWA, positionné après les travaux", 
   assert.match(r, /réseau d'abord.*Supabase|jamais de cache.*Supabase/is);
   // Rien de légal hors ligne (émission serveur).
   assert.match(r, /émission de facture reste en ligne|Rien de légal hors ligne/i);
+});
+
+/* ── Le plan de travail : le document de pilotage (01/09/2026) ───────────── */
+
+test("le plan de travail énonce la méthode et la définition de « terminé »", () => {
+  const p = lire("05-PLAN-DE-TRAVAIL.md");
+  // Sans définition de « terminé », un lot reste « fini à 90 % » indéfiniment.
+  assert.match(p, /Définition de « terminé »/i);
+  assert.match(p, /sabotage/i);
+  assert.match(p, /arbre propre/i);
+  // Une seule chose à la fois : la règle qui évite de se perdre.
+  assert.match(p, /Un seul chantier ouvert/i);
+});
+
+test("le plan ordonne les phases et nomme le verrou", () => {
+  const p = lire("05-PLAN-DE-TRAVAIL.md");
+  for (const ph of ["PHASE A", "PHASE B", "PHASE C", "PHASE D", "PHASE E", "PHASE F"]) {
+    assert.match(p, new RegExp(ph), `${ph} doit exister`);
+  }
+  // A1 (cycle par nature) est le lot qui débloque les cinq métiers muets.
+  assert.match(p, /A1.*cycle de vie par nature/is);
+});
+
+test("le plan liste les décisions qui bloquent des lots", () => {
+  const p = lire("05-PLAN-DE-TRAVAIL.md");
+  assert.match(p, /décisions qui bloquent/i);
+  assert.match(p, /D1/);
+  // Le RGPD est marqué exigible maintenant, pas « plus tard ».
+  assert.match(p, /RGPD/);
 });
