@@ -7,8 +7,10 @@ import {
 const A = (etat) => ({ etat });
 
 test("les vues couvrent le travail dans l'ordre où on le pense", () => {
+  // « Clos » vient après « à clôturer » : la fin du cycle a sa vue, au lieu
+  // d'être noyée dans « Tous » avec les annulés.
   assert.deepEqual(VUES.map((v) => v.cle),
-    ["a_traiter", "a_planifier", "terrain", "a_cloturer", "tous"]);
+    ["a_traiter", "a_planifier", "terrain", "a_cloturer", "clos", "tous"]);
 });
 
 test("chaque état actif tombe dans exactement une vue métier", () => {
