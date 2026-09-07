@@ -1,74 +1,58 @@
-# Boîte à facturer + pilotage financier + prix révisés + parrainage
+# La boîte à facturer prend vie + cartes d'offres harmonisées
 
-**01/09/2026.** **1325 tests verts**, build vert. Migrations 0171 + 0172.
+**01/09/2026.** **1326 tests verts**, build vert.
 
-## 1. La boîte à facturer — piloter les sorties
+## 1. L'écran Dépenses — ton idée, à l'écran
 
-Tu vois tes recettes ; il te manquait les **sorties**. C'est posé :
-- Une table **dépenses** pour noter vite une sortie — carburant, une réparation,
-  un café — libre mais structurée juste ce qu'il faut : un montant, une
-  catégorie, et surtout un état : **réglée** ou **dette à payer** (avec échéance).
-- La structure prévoit déjà le **scan de ticket** (champ origine 'saisie'|'scan',
-  chemin du justificatif) : quand tu voudras l'analyse d'image plus tard, elle se
-  branchera ici sans rien casser.
+Le domaine de la semaine dernière avait tout le calcul mais aucune interface.
+C'est réparé : dans Paramètres, une tuile **« Dépenses & dettes »**.
 
-Un piège attrapé au passage : la policy exigeait une capacité « gérer
-comptabilité » qui **n'existait pas** — exactement le bug de la clôture la semaine
-dernière. Corrigé avec une capacité réelle.
+En haut, **le bilan** — pour 100 € encaissés, où va l'argent :
+- Recettes, dépenses (avec leur % sur recettes), et surtout le **reste** — ce qui
+  te revient, en euros et en pourcentage.
+- Chaque poste de dépense en **barre proportionnelle** : tu vois d'un coup d'œil
+  que le carburant pèse 12 % ou que les salaires en font 40 %.
+- Les **dettes en cours** isolées, et une **santé colorée** : vert si ça va,
+  ambre s'il reste peu, rouge si les dépenses dépassent les recettes.
 
-## 2. La structure financière par pourcentage
+En bas, **la saisie rapide** : un libellé, un montant, une catégorie, et le
+choix **réglée** ou **dette** (avec échéance). La liste dessous, où une dette se
+marque « Réglé » d'un clic.
 
-C'est le cœur de ton idée : **pour 100 € encaissés, où va l'argent ?**
+C'est le pilotage simple et efficace que tu demandais — les sorties enfin
+visibles, en face des recettes.
 
-Le bilan calcule les recettes, ventile les dépenses par catégorie (le poste le
-plus lourd en premier), et donne **chaque poste en % des recettes** — le seul
-repère comparable dans le temps. Plus le **reste** (ce qui te revient) et les
-**dettes en cours** isolées du total.
+## 2. Les cartes d'offres, harmonisées
 
-Et une santé dite sans détour : rouge si les dépenses dépassent les recettes ou
-si les dettes dépassent la période, orange s'il reste moins de 10 %. On signale,
-on ne juge pas — mais on ne cache rien.
+Comme demandé : les offres de l'écosystème utilisent **exactement la même carte**
+que les offres déménageur — le même verre dépoli, la même inclinaison 3D au
+survol, la même bille qui déplie le détail, et **la même structure de texte**
+(secteur, nom, prix, promesse, « pour qui », détail dépliable).
 
-## 3. Les prix révisés — tu avais deux points trop hauts
+Concrètement, j'ai **supprimé le composant séparé** que j'avais fait la dernière
+fois et réutilisé la vraie carte : les « récurrents » de chaque offre deviennent
+les lignes de détail, et une offre « bientôt » ferme le bouton d'essai avec un
+message clair au lieu de « souscrire ». Une seule carte à maintenir, une
+cohérence visuelle parfaite entre déménageur et écosystème.
 
-Comme promis, j'ai corrigé ce que je trouvais excessif :
+## À vérifier à l'œil
 
-- **Groupe liftier : 600 € → 450 €.** Le vrai problème n'était pas le montant
-  mais l'**unité** : facturer 20 personnes quand 17 sont sur les machines et ne
-  se connectent jamais, c'est facturer des fantômes. Maintenant on facture les
-  **accès bureau** (5 inclus, +30 €/accès, plafond 15) ; les opérateurs pointent
-  sans compter comme utilisateurs. C'est plus juste ET plus vendable.
-- **Logistique mobilier : 1450 € → 900 €.** Un chiffre que j'avais posé sans
-  connaître le volume réel. 900 € est défendable ; à confronter à un vrai
-  prospect avant de le graver.
-
-Les autres tiennent : 60 € l'indépendant (excellent), 240 € le garde-meubles
-(peut-être même bas). Dis-moi si ça te va.
-
-## 4. Le parrainage — ta doctrine du casino, à la lettre
-
-Tu as raison : le gratuit ne doit jamais coûter. Le parrainage est donc borné
-pour que **la maison ne perde jamais** :
-- **Plafonné à UNE mensualité**, et le plafond est **annuel** — douze filleuls ne
-  donnent qu'un mois, pas douze.
-- Il ne se déclenche qu'au **premier paiement encaissé** du filleul : on ne
-  récompense pas une inscription qui ne paiera jamais.
-- La facture ne descend **jamais sous zéro** : un crédit réduit une dette, ce
-  n'est pas un versement.
-
-Au pire, tu échanges une mensualité contre un client acquis à coût zéro qui
-paiera des mois. Casino gagnant, et parrainage = fidélité, comme tu le voyais.
-Un sabotage garantit que le plafond ne peut pas sauter.
+1. Paramètres → **Dépenses & dettes** : ajoute une dépense, une dette ; le bilan
+   se met à jour, les barres et la santé réagissent.
+2. La landing, section **Réseau** : les cartes sont maintenant identiques aux
+   cartes de tarifs déménageur (verre, bille, dépliable), avec le badge/motif
+   « bientôt ».
 
 ## Ce qui reste de ta liste
 
-Cartes d'offres harmonisées · interface PC · test « indépendant manutention »
-Roovers pilote · espace équipe (messagerie, invité=code, permissions). Je
-continue dans cet ordre.
+Interface PC à consolider · test « indépendant manutention » Roovers pilote ·
+espace équipe (messagerie, invité=code, permissions).
 
 ## Réserve d'honnêteté
 
-Le domaine (dépenses, bilan, parrainage) est posé et testé, mais **les écrans
-n'existent pas encore** : pas de saisie de dépense ni d'affichage du bilan à
-l'écran. C'est le prochain branchement. Les prix révisés sont mon jugement, pas
-une étude de marché — à valider avec tes premiers prospects.
+L'écran dépenses est fonctionnel mais le bilan prend les **recettes = paiements
+encaissés du mois** ; si tu préfères raisonner sur le CA émis (engagement), c'est
+un réglage à ajouter — dis-moi ta préférence comptable. Et le rendu de la carte
+d'offre réutilisée se juge sur ton écran : comme elle a une bille « détail », les
+récurrents sont maintenant dépliables au lieu d'être toujours visibles — dis-moi
+si tu les préfères ouverts d'emblée.
