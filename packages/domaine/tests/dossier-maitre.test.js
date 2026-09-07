@@ -23,7 +23,7 @@ const lire = (f) => readFileSync(join(MAITRE, f), "utf8");
 test("le dossier maître est complet et se lit dans un ordre", () => {
   // La numérotation N'EST PAS décorative : elle donne l'ordre de lecture à
   // quelqu'un qui arrive sans contexte.
-  const attendus = ["00-DEMARRER-ICI.md", "05-PLAN-DE-TRAVAIL.md", "15-MOTEUR-OFFRES.md", "10-DECISIONS-PRODUIT.md",
+  const attendus = ["00-DEMARRER-ICI.md", "05-PLAN-DE-TRAVAIL.md", "15-MOTEUR-OFFRES.md", "16-STRUCTURE-PRIX-RESEAU.md", "10-DECISIONS-PRODUIT.md",
     "20-OUVERT.md", "25-PARAMETRES-ROADMAP.md", "26-GARDE-MEUBLES-ROADMAP.md",
     "30-REGLES-IA-EXTERNE.md", "40-METHODE.md", "50-ARCHIVE.md",
     // La carte du territoire et l'ordre de marche (29/08/2026).
@@ -357,4 +357,27 @@ test("les points juridiques du réseau sont signalés avant ouverture", () => {
   const o = lire("15-MOTEUR-OFFRES.md");
   assert.match(o, /intermédiaire/i);
   assert.match(o, /BCE/);
+});
+
+/* ── La structure de prix du réseau (01/09/2026) ─────────────────────────── */
+
+test("les 12 récurrents sont l'argument de vente, pas un temps gagné inventé", () => {
+  const t = lire("16-STRUCTURE-PRIX-RESEAU.md");
+  assert.match(t, /12 récurrents|douze récurrents/i);
+  // On ne promet pas « gagnez X heures » : invérifiable, donc destructeur.
+  assert.match(t, /invérifiable/i);
+});
+
+test("le côté rare (donneur d'ordre) est subventionné", () => {
+  const t = lire("16-STRUCTURE-PRIX-RESEAU.md");
+  assert.match(t, /Donneur d'ordre/);
+  assert.match(t, /subventionne/i);
+});
+
+test("les garde-fous du réseau sont écrits (loyauté, agrément)", () => {
+  const t = lire("16-STRUCTURE-PRIX-RESEAU.md");
+  // Pas de commission sur une relation qu'on n'a pas créée.
+  assert.match(t, /déjà en relation/i);
+  // Le séquestre de paiement est une activité réglementée.
+  assert.match(t, /réglement/i);
 });
