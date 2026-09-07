@@ -1,5 +1,8 @@
 // =============================================================================
-// LE CADRE PC — consolidation grand écran, sans casser le mobile.
+// CADRE PC — REMPLACÉ par le shell à rail (CadreBureau, 01/09/2026).
+// L'ancien « cadre redimensionné » (app encadrée sur fond) a été révoqué.
+// Ce fichier reste pour ne pas laisser un test orphelin pointer du code
+// disparu ; les vraies garanties sont dans cadre-bureau.test.js.
 // =============================================================================
 
 import test from "node:test";
@@ -9,34 +12,14 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "apps", "web", "src");
-const cadre = readFileSync(join(APP, "lib/cadre-pc.js"), "utf8");
 
-test("le cadre PC ne s'active qu'au-dessus d'un seuil bureau", () => {
-  // En dessous, le mobile doit rester intact : tout est sous @media min-width.
-  assert.match(cadre, /const SEUIL = \d+/);
-  assert.match(cadre, /@media \(min-width: \$\{SEUIL\}px\)/);
-});
-
-test("le contenu garde une largeur de LECTURE, il ne s'étire pas", () => {
-  // La faute serait d'élargir le contenu à tout l'écran : illisible.
-  assert.match(cadre, /max-width: \$\{largeurApp\}/);
-  assert.match(cadre, /width: \$\{largeurApp\}/);
-});
-
-test("il vise UN hôte unique, il ne touche aucun écran", () => {
-  // Non invasif : un seul sélecteur d'hôte, pas de modification par écran.
-  assert.match(cadre, /\.dp-cadre-pc-hote > div/);
-});
-
-test("le cadre s'adapte au mode nuit", () => {
-  assert.match(cadre, /nuit\s*\?/);
-});
-
-test("l'app est enveloppée par l'hôte du cadre", () => {
-  const main = readFileSync(join(APP, "main.jsx"), "utf8");
-  assert.match(main, /dp-cadre-pc-hote/);
-  // Et la largeur vient d'une source unique, pas d'un 520 recopié.
+test("l'ancien cadre-pc redimensionné a bien été révoqué", () => {
+  // theme.jsx ne doit plus installer l'ancien cadre.
   const theme = readFileSync(join(APP, "lib/theme.jsx"), "utf8");
-  assert.match(theme, /export const LARGEUR_APP = \d+/);
-  assert.match(theme, /installerCadrePc/);
+  assert.equal(/installerCadrePc/.test(theme), false);
+  // main.jsx ne doit plus envelopper dans l'hôte du cadre redimensionné.
+  const main = readFileSync(join(APP, "main.jsx"), "utf8");
+  assert.equal(/dp-cadre-pc-hote/.test(main), false);
+  // La nouvelle identité desktop passe par le shell à rail.
+  assert.match(main, /CadreBureau/);
 });
