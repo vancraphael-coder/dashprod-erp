@@ -76,8 +76,14 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme, p
         inaltérable — il fait foi en cas de litige.
       </div>
 
-      <div style={{ maxHeight: pleineHauteur ? "none" : 380,
-                    overflowY: pleineHauteur ? "visible" : "auto",
+      {/* La liste défile DANS son cadre, elle ne déborde jamais. En pleine
+          hauteur, on borne au viewport (moins la barre de saisie et la nav) au
+          lieu de laisser filer : sans borne, le fil poussait la page et les
+          dimensions n'étaient plus respectées. minHeight:0 est indispensable
+          pour qu'un enfant flex puisse défiler. */}
+      <div style={{ maxHeight: pleineHauteur ? "calc(100vh - 260px)" : 380,
+                    minHeight: 0,
+                    overflowY: "auto", overflowX: "hidden",
                     padding: "4px 2px",
                     display: "flex", flexDirection: "column", gap: 8 }}>
         {messages == null && (
@@ -103,7 +109,9 @@ export default function FilMessages({ affaireId, cote, amorce, modeles, theme, p
                 border: aMoi ? "none" : `1px solid ${C.bord}`,
                 borderBottomRightRadius: aMoi ? 4 : 12,
                 borderBottomLeftRadius: aMoi ? 12 : 4,
-                fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap",
+                // Un lien ou un mot long ne doit JAMAIS élargir la bulle.
+                overflowWrap: "anywhere", wordBreak: "break-word" }}>
                 {m.corps}
                 {(m.pieces || []).length > 0 && (
                   <div style={{ marginTop: m.corps ? 8 : 0, display: "flex",
