@@ -384,3 +384,133 @@ export function selectionRecevable(exigence, nbChoisis) {
   }
   return { ok: true, message: null };
 }
+
+// =============================================================================
+// LES OFFRES SECTORIELLES — l'écosystème (voir 15-MOTEUR-OFFRES et
+// 16-STRUCTURE-PRIX-RESEAU).
+//
+// RÈGLE ABSOLUE, tenue par un test : rien ne s'annonce comme DISPONIBLE tant
+// que son parcours n'existe pas de bout en bout. Une offre annoncée et vide
+// coûte plus cher qu'une offre absente — c'est la crédibilité de la landing qui
+// est en jeu, et elle ne se répare pas.
+//
+// `statut` a trois valeurs, et une seule autorise la vente :
+//   · "disponible" — le parcours existe, on peut souscrire ;
+//   · "bientot"    — annonçable, avec liste d'attente, JAMAIS souscriptible ;
+//   · "etude"      — ne s'affiche pas sur la landing.
+// =============================================================================
+
+export const STATUTS_OFFRE = Object.freeze(["disponible", "bientot", "etude"]);
+
+/**
+ * Les offres par SECTEUR (au-delà des trois paliers déménageur).
+ * Prix HTVA mensuels. Les décidés sont marqués ; les autres sont proposés et
+ * attendent validation (T3, T4, T5 de 16-STRUCTURE-PRIX-RESEAU).
+ */
+export const OFFRES_SECTEURS = Object.freeze([
+  {
+    cle: "donneur_ordre",
+    nom: "Donneur d'ordre",
+    secteur: "Cuisiniste, mobilier, industrie",
+    prix_centimes: 0,
+    unite: "gratuit",
+    statut: "bientot",
+    promesse: "Envoyer, suivre, prouver.",
+    pour: "Vous confiez des livraisons, du levage ou de la manutention à des "
+        + "prestataires, et vous passez vos journées à courir après l'info.",
+    // Ce qui est vendu : les récurrents, pas un temps gagné inventé.
+    recurrents: ["Heure d'arrivée réelle", "Qui est intervenu",
+                 "Preuve de livraison signée", "État des biens en photo"],
+    note_prix: "Gratuit : vous apportez le volume. Une commission s'applique "
+             + "aux missions confiées via le réseau.",
+  },
+  {
+    cle: "independant_manutention",
+    nom: "Indépendant manutention",
+    secteur: "Manutention et services",
+    prix_centimes: 6000,               // 60 € — DÉCIDÉ
+    unite: "par mois",
+    statut: "bientot",
+    promesse: "Des bras professionnels, quand vous en avez besoin.",
+    pour: "L'indépendant qui vend son temps et son savoir-faire, et veut être "
+        + "trouvé, planifié et payé sans relancer.",
+    produits: ["1 manutentionnaire", "Équipe joignable", "Demi-journée",
+               "Journée", "Taux horaire", "Intervention ponctuelle"],
+    recurrents: ["Heures réellement prestées", "Accord du client",
+                 "Ce qui reste dû"],
+    note_prix: "Vérification du numéro d'entreprise à l'inscription.",
+  },
+  {
+    cle: "garde_meubles",
+    nom: "Garde-meubles",
+    secteur: "Self-storage",
+    prix_centimes: 24000,              // 240 € — proposé (T3)
+    unite: "par mois",
+    statut: "bientot",
+    promesse: "Vos contrats se facturent tout seuls, chaque mois.",
+    pour: "L'exploitant de boxes qui veut des contrats, des unités attribuées "
+        + "et une facturation récurrente qui ne saute jamais un mois.",
+    recurrents: ["Échéance de chaque période", "Prorata d'entrée et de sortie",
+                 "Référence de paiement", "Ce qui reste dû"],
+  },
+  {
+    cle: "groupe_liftier",
+    nom: "Groupe liftier",
+    secteur: "Levage et monte-meubles",
+    prix_centimes: 60000,              // 600 € — DÉCIDÉ, pack 20
+    unite: "par mois, 20 personnes",
+    statut: "bientot",
+    promesse: "Votre flotte, vos couronnes, vos équipes — au même endroit.",
+    pour: "L'entreprise qui exploite une flotte de lifts et vend du levage à "
+        + "d'autres professionnels.",
+    recurrents: ["Machine affectée", "Heure d'arrivée", "Hauteur et couronne",
+                 "Preuve d'intervention"],
+    note_prix: "Au-delà de 20 personnes, chaque poste supplémentaire s'ajoute.",
+  },
+  {
+    cle: "logistique_mobilier",
+    nom: "Logistique mobilier",
+    secteur: "Débit industriel",
+    prix_centimes: 145000,             // 1450 € — proposé (T4)
+    unite: "par mois, 1 dépôt",
+    statut: "etude",                   // le plus lourd : quais, arrivages, débit
+    promesse: "Arrivages, quais, zones : le débit sous contrôle.",
+    pour: "Le grand acteur du mobilier ou de la cuisine, en flux tendu, avec "
+        + "plusieurs quais sur un même dépôt.",
+    recurrents: ["Créneau de quai", "Arrivage attendu", "Zone occupée",
+                 "Livraison prouvée"],
+  },
+]);
+
+/** Une offre sectorielle par sa clé. `null` plutôt qu'un défaut inventé. */
+export function offreSecteur(cle) {
+  return OFFRES_SECTEURS.find((o) => o.cle === cle) || null;
+}
+
+/**
+ * Les offres à MONTRER sur la landing : tout sauf celles à l'étude.
+ * L'ordre suit le prix croissant — le visiteur lit du plus accessible au plus
+ * engageant.
+ */
+export function offresVitrine() {
+  return OFFRES_SECTEURS
+    .filter((o) => o.statut !== "etude")
+    .slice()
+    .sort((a, b) => a.prix_centimes - b.prix_centimes);
+}
+
+/**
+ * Peut-on SOUSCRIRE à cette offre ? Une seule réponse possible : le statut.
+ * Ce garde-fou est la traduction en code de « rien ne se vend avant d'exister ».
+ */
+export function offreSouscriptible(cle) {
+  return offreSecteur(cle)?.statut === "disponible";
+}
+
+/** Le libellé de statut affiché, sans ambiguïté pour le visiteur. */
+export function libelleStatut(cle) {
+  const s = offreSecteur(cle)?.statut;
+  if (s === "disponible") return null;          // rien à signaler : c'est vendable
+  if (s === "bientot") return "Bientôt disponible";
+  return null;
+}
