@@ -69,9 +69,17 @@ test("un lift n'a ni visite ni emballage", () => {
   assert.deepEqual(cartesDeNature("sous_traitance").map((c) => c.cle), ["sous_traitance"]);
 });
 
-test("une nature de location n'a aucune carte : elle ne passe pas au planning", () => {
-  for (const cle of ["boxe", "zone"]) {
-    assert.deepEqual(cartesDeNature(cle), []);
+test("une location ne se planifie pas, mais ses MOUVEMENTS oui (A2)", () => {
+  // Évolution assumée : le CONTRAT (boxe, zone) ne passe pas au planning — il
+  // court. Mais l'entrée et la sortie sont deux rendez-vous réels, qui eux se
+  // planifient. Sans carte, cartePrincipale("boxe") renvoyait null et rien
+  // n'était exécutable : 14 contrats bloqués.
+  const boxe = cartesDeNature("boxe").map((c) => c.cle);
+  assert.deepEqual(boxe, ["entree_boxe", "sortie_boxe"]);
+  assert.deepEqual(cartesDeNature("zone").map((c) => c.cle), ["mouvement_zone"]);
+  // Aucune de ces cartes n'EXIGE un véhicule : le client apporte parfois seul.
+  for (const c of [...cartesDeNature("boxe"), ...cartesDeNature("zone")]) {
+    assert.notEqual(c.vehicule.besoin, "requis");
   }
 });
 
@@ -487,4 +495,22 @@ test("un MODÈLE (pré-enregistrement) n'applique aucun contrôle de conflit", (
   // véhicule — rien qui puisse entrer en conflit.
   assert.equal("missions" in modele.modele, false);
   assert.equal("vehicules" in modele.modele, false);
+});
+
+/* ── A2 : les cartes des natures à contrat (01/09/2026) ──────────────────── */
+
+test("A2 : boxe et zone ont enfin une carte principale", () => {
+  // Avant A2 : cartePrincipale("boxe") === null → rien d'exécutable, 14
+  // contrats bloqués.
+  assert.equal(cartePrincipale("boxe").cle, "entree_boxe");
+  assert.equal(cartePrincipale("zone").cle, "mouvement_zone");
+  // La vente reste SANS carte : elle n'a rien à planifier, la facture fait foi.
+  assert.equal(cartePrincipale("vente"), null);
+});
+
+test("A2 : l'entrée en boxe précède la sortie (principale vs secondaire)", () => {
+  const entree = carteMetier("entree_boxe");
+  const sortie = carteMetier("sortie_boxe");
+  assert.equal(entree.role, "principale");
+  assert.equal(sortie.role, "secondaire");
 });

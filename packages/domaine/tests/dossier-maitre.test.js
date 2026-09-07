@@ -23,7 +23,7 @@ const lire = (f) => readFileSync(join(MAITRE, f), "utf8");
 test("le dossier maître est complet et se lit dans un ordre", () => {
   // La numérotation N'EST PAS décorative : elle donne l'ordre de lecture à
   // quelqu'un qui arrive sans contexte.
-  const attendus = ["00-DEMARRER-ICI.md", "05-PLAN-DE-TRAVAIL.md", "10-DECISIONS-PRODUIT.md",
+  const attendus = ["00-DEMARRER-ICI.md", "05-PLAN-DE-TRAVAIL.md", "15-MOTEUR-OFFRES.md", "10-DECISIONS-PRODUIT.md",
     "20-OUVERT.md", "25-PARAMETRES-ROADMAP.md", "26-GARDE-MEUBLES-ROADMAP.md",
     "30-REGLES-IA-EXTERNE.md", "40-METHODE.md", "50-ARCHIVE.md",
     // La carte du territoire et l'ordre de marche (29/08/2026).
@@ -331,4 +331,30 @@ test("A1 : les cycles par nature sont posés, le déménagement reste la référ
     "..", "src", "crm", "cycles-nature.js"), "utf8");
   assert.match(cycles, /familleDeNature/);
   assert.match(cycles, /ETATS_CONTRAT/);
+});
+
+/* ── Le moteur d'offres et l'écosystème (01/09/2026) ─────────────────────── */
+
+test("les trois offres décidées sont consignées avec leur prix", () => {
+  const o = lire("15-MOTEUR-OFFRES.md");
+  assert.match(o, /Indépendant manutention.*60 €\/mois/s);
+  assert.match(o, /Groupe liftier.*600 €\/mois/s);
+  assert.match(o, /Groupe logistique mobilier/);
+  // Le plafond de membres est un invariant, pas une option.
+  assert.match(o, /Jamais de membres illimités|jamais de membres illimités/i);
+});
+
+test("la règle « rien ne se vend avant d'exister » est écrite", () => {
+  // La promesse de la landing EST le produit : une offre annoncée et vide
+  // coûte plus cher qu'une offre absente.
+  const o = lire("15-MOTEUR-OFFRES.md");
+  assert.match(o, /Rien ne se vend avant d'exister/i);
+  assert.match(o, /souscriptible/);
+});
+
+test("les points juridiques du réseau sont signalés avant ouverture", () => {
+  // Mettre en relation deux professionnels engage une responsabilité.
+  const o = lire("15-MOTEUR-OFFRES.md");
+  assert.match(o, /intermédiaire/i);
+  assert.match(o, /BCE/);
 });
