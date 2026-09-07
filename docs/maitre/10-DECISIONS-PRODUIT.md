@@ -623,3 +623,30 @@ DE TRANSPORT pour compte d'autrui — l'actuelle « sous-traitance ».
 ## Correctif — la vue « Clos » affichait 0 dossier
 regrouperParHorizon recevait seulementActifs=true pour toute vue ≠ « tous », donc
 il écartait les clos APRÈS le filtrage (compteur juste, liste vide). Corrigé.
+
+## A2 — Les cartes des natures à contrat (01/09/2026)
+
+- **boxe** : `entree_boxe` (principale) + `sortie_boxe` (secondaire).
+  **zone** : `mouvement_zone`. Avant A2, cartePrincipale("boxe") = null → rien
+  d'exécutable, 14 contrats bloqués.
+- **Nuance de fond** : un contrat ne se planifie pas, il court. Ces cartes
+  servent aux MOUVEMENTS qui l'encadrent (faire entrer, ressortir) — modèle
+  self-storage. Aucune n'exige un véhicule : le client apporte parfois lui-même.
+- **Dette corrigée au passage** : EXIGENCES (planning/affectation.js) itérait sur
+  une LISTE ÉCRITE À LA MAIN de 5 clés au lieu de dériver de CARTES_METIER. Un
+  métier ajouté avait donc une carte visible et un verdict muet. Désormais
+  dérivé — 8 exigences. Éprouvé par sabotage.
+- La **vente** reste sans carte : rien à planifier, la facture fait foi.
+
+## Moteur d'offres — l'écosystème (01/09/2026)
+
+Nouveau document `15-MOTEUR-OFFRES.md` (rang 1). Changement d'optique : les
+offres ne sont plus trois paliers d'un même métier mais des portes d'entrée d'un
+RÉSEAU (donneur d'ordre ↔ exécutant). Trois offres décidées (Indépendant
+manutention 60 €, Groupe liftier 600 € pack 20 avec plafond dur, Groupe
+logistique mobilier), quatre proposées (Donneur d'ordre — la clé de voûte,
+garde-meubles, multi-dépôts, sous-traitance entre déménageurs).
+**Règle absolue : rien ne se vend avant d'exister** (souscriptible=false tant que
+le parcours n'est pas démontrable). Points juridiques signalés : contrôle BCE et
+surtout le RÔLE D'INTERMÉDIAIRE, à trancher AVANT d'ouvrir le réseau.
+Phase O ajoutée au plan de travail ; O1 (frontières d'écran par secteur) en travaux.

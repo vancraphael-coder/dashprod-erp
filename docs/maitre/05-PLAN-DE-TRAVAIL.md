@@ -196,6 +196,38 @@ une mission planifiable si demandé.
 
 ---
 
+# PHASE O — L'écosystème et les offres *(après A, voir `15-MOTEUR-OFFRES.md`)*
+
+> **Règle absolue :** rien ne se vend avant d'exister. Une offre reste
+> `souscriptible = false` tant que son parcours n'est pas démontrable de bout en
+> bout. La landing peut dire « bientôt », jamais « disponible ».
+
+### O1 — Frontières d'écran par secteur ⭐ *EN TRAVAUX — le socle*
+**Sortie :** les écrans visibles ET leur contenu se dérivent du secteur, pas
+seulement les modules. Un liftier ne voit pas un relevé volumétrique.
+Sans ce lot, chaque nouvelle offre livre l'écran d'un déménageur.
+
+### O2 — Offre garde-meubles
+**Entrée :** A3. Presque gratuite à produire une fois le contrat récurrent posé.
+Meilleur rapport valeur/effort du catalogue.
+
+### O3 — Offre Indépendant manutention (60 €/mois)
+Produits à créer : 1 manutentionnaire, équipe joignable, demi-journée, journée,
+taux horaire, intervention ponctuelle. + contrôle BCE à l'inscription (O4 juridique).
+
+### O4 — Offre Donneur d'ordre *(la clé de voûte)*
+**Bloqué par la décision juridique d'intermédiation.** Sans ce côté, le réseau
+tourne à vide : les exécutants n'ont rien à recevoir.
+
+### O5 — Offre Groupe liftier (600 €/mois, pack 20, plafond dur)
+**Entrée :** le lift doit être un métier de plein exercice (A1 fait, A2/A3 aidant).
+
+### O6 — Offre Groupe logistique mobilier à débit industriel
+La plus lourde : quais (objet neuf), arrivages, zones de chargement, débit.
+
+### O7 — Le réseau : envoyer/recevoir une mission entre organisations
+Aucune brique n'existe. C'est le cœur technique de l'écosystème.
+
 # PHASE D — La comptabilité *(bloquée par une décision)*
 
 ### D0 — **Poser les deux questions au comptable** *(hors code, 1 heure)*
@@ -304,3 +336,10 @@ autonome, valeur immédiate pour les équipes).
 | D1–D4 comptabilité | ⬜ bloqué D0 | |
 | E1–E5 délimitation → PWA | ⬜ | |
 | F1 RGPD | ⬜ **urgent, hors code** | |
+| O1 frontières d'écran par secteur | 🔨 en travaux | |
+| O2 offre garde-meubles | ⬜ après A3 | |
+| O3 offre indépendant manutention | ⬜ | |
+| O4 offre donneur d'ordre | ⬜ bloqué juridique | |
+| O5 offre groupe liftier | ⬜ | |
+| O6 offre logistique mobilier | ⬜ | |
+| O7 réseau inter-organisations | ⬜ | |

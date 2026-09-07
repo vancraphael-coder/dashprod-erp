@@ -68,7 +68,10 @@ Ces points sont tranchés. Les rediscuter fait perdre du temps et dérive :
    de décider quoi que ce soit : c'est le seul document qui montre l'ensemble.
 3. `70-ROADMAP.md` — **l'ordre de marche.** Les vagues, pourquoi celle-ci avant
    celle-là, et ce qu'il ne faut pas faire.
-4. `10-DECISIONS-PRODUIT.md` — ce qui est arrêté.
+4. `15-MOTEUR-OFFRES.md` — **l'écosystème et les offres.** La base de la
+   rétention : nouvelles offres par métier, le réseau donneur d'ordre ↔
+   exécutant, et la règle « rien ne se vend avant d'exister ».
+5. `10-DECISIONS-PRODUIT.md` — ce qui est arrêté.
 5. `20-OUVERT.md` — ce qui attend une décision.
 6. `25-PARAMETRES-ROADMAP.md` — le détail des réglages qui se saisissent SANS
    EFFET. À lire avant de toucher à la facturation : trois champs sont inertes
