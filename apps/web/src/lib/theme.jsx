@@ -9,6 +9,7 @@ import React from "react";
 import { lireApparence, jetons, matiereCarte, fondPage, rgbAccent, couleurUtilite }
   from "./apparence.js";
 import { installerCartesVives } from "./cartes-vives.js";
+import { installerCadrePc } from "./cadre-pc.js";
 import { matiereSurface } from "./matiere-bille.js";
 
 // Le réglage d'apparence choisi par la personne (mode, accent, matière). Il est
@@ -17,6 +18,12 @@ import { matiereSurface } from "./matiere-bille.js";
 export const APP = lireApparence();
 
 export const C = jetons(APP);
+
+// LARGEUR DE L'APP — une seule source. Le contenu reste borné (lisibilité :
+// un texte sur 1200 px est illisible), mais sur GRAND ÉCRAN on ne laisse plus
+// l'app flotter dans du vide : un fond de bureau discret l'encadre, et les
+// barres fixes s'alignent sur la même colonne. Voir installerCadrePc().
+export const LARGEUR_APP = 520;
 
 // Le fond du document suit le mode : sinon, en nuit, la page flotte dans un
 // halo blanc de part et d'autre de la colonne.
@@ -28,6 +35,10 @@ if (typeof document !== "undefined") {
 // Relief 3D et lueur au curseur sur toutes les cartes, en un seul écouteur.
 installerCartesVives(APP.relief !== false, rgbAccent(APP.accent),
                      APP.matiere === "verre");
+
+// Le cadre d'application sur grand écran : l'app se pose sur le bureau au lieu
+// de flotter dans du vide. Sans effet sous 900 px (mobile intact).
+installerCadrePc(`${LARGEUR_APP}px`, APP.mode === "nuit");
 
 // La matière de la BILLE suit la surface, et c'est la même règle que §3.5 : de
 // nuit ou en « verre », il y a quelque chose derrière elle — elle est
