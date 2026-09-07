@@ -1,0 +1,5 @@
+-- 0170 — APPLIQUÉE ET VÉRIFIÉE le 01/09/2026. A3 : facturation des échéances.
+-- cmd_facturer_echeances : crée UNE facture non émise depuis les échéances non
+-- facturées, libellé « Location <unité> — du .. au .. », marque les échéances.
+-- Refuse s'il n'y a rien à facturer (cohérent avec le verrou 0168 facture vide).
+-- Corps complet appliqué en base.

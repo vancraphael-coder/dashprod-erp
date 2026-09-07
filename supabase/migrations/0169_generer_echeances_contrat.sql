@@ -1,0 +1,6 @@
+-- 0169 — APPLIQUÉE ET VÉRIFIÉE le 01/09/2026. A3 : génération des échéances.
+-- Index d'unicité (contrat_id, periode_debut) = rempart réel contre les doublons.
+-- cmd_generer_echeances : périodes commencées uniquement, prorata, on conflict
+-- do nothing (idempotent), refuse un contrat sans tarif. Vérifié : colonnes ok,
+-- index créé, idempotence et refus-sans-tarif présents dans le corps.
+-- Corps complet appliqué en base.
