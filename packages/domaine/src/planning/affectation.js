@@ -23,7 +23,7 @@
 // signale, on n'interdit pas.
 // =============================================================================
 
-import { carteMetier, effectifAttendu, origineEffectif } from "../metiers/cartes.js";
+import { carteMetier, effectifAttendu, origineEffectif, CARTES_METIER } from "../metiers/cartes.js";
 
 /**
  * Ce qu'attend chaque type de mission — DÉRIVÉ du catalogue des cartes métier.
@@ -39,10 +39,12 @@ import { carteMetier, effectifAttendu, origineEffectif } from "../metiers/cartes
  */
 export const EXIGENCES = Object.freeze(Object.fromEntries(
   [...(function* () {
-    for (const c of [
-      "demenagement", "visite", "emballage", "lift", "sous_traitance",
-    ]) {
-      const carte = carteMetier(c);
+    // Dérivé du CATALOGUE, pas d'une liste recopiée : une carte ajoutée au
+    // catalogue (entrée/sortie de boxe, mouvement de zone…) apporte son
+    // exigence toute seule. Une liste écrite à la main laissait ces métiers
+    // avec une carte visible et un verdict muet.
+    for (const carte of CARTES_METIER) {
+      const c = carte.cle;
       yield [c, Object.freeze({
         titre: carte.titre,
         membres_min: carte.effectif.plancher,
