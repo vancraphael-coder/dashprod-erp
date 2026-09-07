@@ -1,69 +1,62 @@
-# La landing — structure visuelle des offres de l'écosystème
+# A3 en base + capteurs KPI + fix messagerie
 
-**01/09/2026.** **1290 tests verts**, build vert.
+**01/09/2026.** **1314 tests verts**, build vert. Migrations 0169 + 0170.
 
-## Une section « Réseau », distincte des tarifs
+## 1. A3 branché : tes contrats produisent enfin de l'argent
 
-Tes trois paliers déménageur (Basique / Regular / Pro) restent où ils sont : ce
-sont des **tailles** d'un même métier, ils se succèdent.
+Deux commandes en base :
+- **Générer les échéances** d'un contrat (ou de tous) : chaque période commencée
+  devient une échéance, au prorata si elle est partielle. **Un index d'unicité
+  en base** garantit qu'on ne crée jamais deux fois la même période — c'est un
+  rempart réel, pas un contrôle applicatif contournable. Un contrat sans tarif ne
+  génère rien.
+- **Facturer les échéances** : elles deviennent UNE facture, non émise, avec un
+  libellé daté (« Location Box A12 — du 15/01 au 15/02 ») pour que le client
+  puisse rapprocher. L'émission passe ensuite par le circuit habituel : numéro,
+  échéance de paiement, communication.
 
-Les nouvelles offres sont d'une autre nature — ce sont des **métiers**. Elles ont
-donc leur propre section, après les tarifs, avec un traitement visuel distinct :
-ni hiérarchie, ni « ce que vous gagnez par rapport au précédent ». Elles se
-côtoient, elles ne s'empilent pas.
+Cohérent avec le verrou de la semaine : impossible de créer une facture vide.
 
-**Le titre de section** : *« Vos donneurs d'ordre et vos prestataires, au même
-endroit. »* Et juste dessous, la douleur que tu as nommée : *plus de course à
-l'information entre un logiciel, un mail, un WhatsApp et un appel.*
+## 2. Les capteurs KPI, posés AVANT le tableau de bord
 
-## Ce que chaque carte montre
+Tu as raison de vouloir éviter la dette : un indicateur branché après coup oblige
+à retrouver une donnée souvent perdue. J'ai donc déclaré **plus de 20 capteurs**
+— argent, activité, terrain, conformité, **réseau** — chacun avec son unité, son
+sens (une hausse est-elle bonne ?), sa **source réelle** et les secteurs
+concernés.
 
-- **Le secteur** en surtitre (Cuisiniste/mobilier, Manutention, Self-storage,
-  Levage) — le visiteur se reconnaît avant de lire le prix.
-- **Le prix**, franchement. Le donneur d'ordre affiche **« Gratuit »** en toutes
-  lettres, sans astérisque, avec une bordure bleue qui le distingue.
-- **La promesse en une phrase**, puis à qui elle s'adresse.
-- **Les produits** quand l'offre en a (l'indépendant montre ses six : 1
-  manutentionnaire, équipe joignable, demi-journée, journée, taux horaire,
-  intervention ponctuelle).
-- **Et le cœur : « Ne sera plus jamais contesté »** — la liste des récurrents
-  que l'offre verrouille. C'est l'argument vérifiable, pas un temps gagné
-  inventé. Un test exige au moins trois récurrents par offre.
+Deux conséquences immédiates :
+- **Le dashboard par secteur est déjà cadré** : un garde-meubles verra taux
+  d'occupation et revenu récurrent, jamais « heures réelles vs estimées » qu'il
+  n'a pas.
+- **Les branchements futurs sont déclarés** : chaque capteur dit s'il s'expose à
+  une **API de conformité** et/ou au **pilotage MCP**. Un agent pourra lire le
+  catalogue des mesures sans qu'on lui écrive un adaptateur sur mesure. Les
+  capteurs **réseau** existent déjà, prêts à être alimentés le jour où il ouvre.
 
-## La règle de crédibilité, traduite en code
+C'est exactement la dette de structure que tu voulais éviter.
 
-Chaque offre porte un **statut** : disponible, bientôt, ou à l'étude.
+## 3. Le bug d'affichage des messages
 
-- Aucune n'est souscriptible aujourd'hui — **un test le vérifie pour toutes**.
-- Les offres « bientôt » portent un badge ambre visible et leur bouton dit
-  **« Être prévenu au lancement »**, jamais « souscrire ».
-- L'offre logistique mobilier reste **à l'étude** et **n'apparaît pas** : ses
-  quais et ses arrivages n'existent pas encore, donc on ne l'annonce pas.
-- En bas de section, une phrase assumée : *« Nous n'ouvrons une offre que
-  lorsque son parcours fonctionne de bout en bout — pas avant. »*
+Trouvé : en pleine hauteur, la liste passait en hauteur libre et débordement
+visible — elle **poussait la page** au lieu de défiler dans son cadre. Corrigé,
+avec deux détails qui comptent : `minHeight:0` (sans quoi un enfant flex refuse
+de défiler) et un retour à la ligne forcé pour qu'**un lien ou un mot long
+n'élargisse plus la bulle**.
 
-Deux sabotages verrouillent cette règle : rendre une offre souscriptible sans
-parcours, ou faire apparaître l'offre à l'étude, font rougir les tests.
+**Le test que tu demandes est posé** — et il protégera aussi le futur espace
+« équipe » : toute nouvelle surface de discussion devra tenir les mêmes règles.
+Sabotage vérifié.
 
-**C'est la traduction technique de ta phrase** : si l'expérience Dashprod n'est
-pas celle vendue par la landing, la crédibilité baisse. Ici, la landing ne peut
-pas mentir sans casser un test.
+## Ce qui reste de ta liste (je ne l'oublie pas)
 
-## À vérifier à l'œil
+1. **Cartes des offres harmonisées** avec celles du déménagement (même type,
+   même structure de texte).
+2. **Prix et parrainage** — refonte selon ta doctrine du casino (voir ma réponse
+   en message).
+3. **Interface PC** à consolider.
+4. **Test « indépendant manutention »** avec Roovers donneur d'ordre pilote.
+5. **Espace équipe** (messagerie interne, invité = code, permissions du donneur
+   d'ordre).
 
-1. La landing a une nouvelle entrée de nav **« Réseau »**.
-2. La section montre 4 cartes : Donneur d'ordre (gratuit), Indépendant
-   manutention (60 €), Garde-meubles (240 €), Groupe liftier (600 €) — dans cet
-   ordre, du plus accessible au plus engageant.
-3. Chacune porte le badge « Bientôt » et le bouton « Être prévenu ».
-
-## Réserve d'honnêteté
-
-C'est la **structure** visuelle et le modèle de données : le rendu final (le
-contraste du badge, la densité sur mobile, la longueur des listes de récurrents)
-se juge sur ton écran. Dis-moi si une carte paraît trop chargée — les récurrents
-peuvent être réduits à trois.
-
-Et le bouton « Être prévenu » renvoie pour l'instant vers la section contact :
-il n'y a pas encore de liste d'attente réelle. Si tu veux capter ces adresses,
-c'est un petit lot à part.
+Je les prends dans cet ordre aux prochains tours, sauf indication contraire.
