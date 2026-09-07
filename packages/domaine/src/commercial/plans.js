@@ -457,21 +457,23 @@ export const OFFRES_SECTEURS = Object.freeze([
     cle: "groupe_liftier",
     nom: "Groupe liftier",
     secteur: "Levage et monte-meubles",
-    prix_centimes: 60000,              // 600 € — DÉCIDÉ, pack 20
-    unite: "par mois, 20 personnes",
+    prix_centimes: 45000,              // 450 € — révisé (voir note)
+    unite: "par mois, 5 accès bureau",
     statut: "bientot",
     promesse: "Votre flotte, vos couronnes, vos équipes — au même endroit.",
     pour: "L'entreprise qui exploite une flotte de lifts et vend du levage à "
         + "d'autres professionnels.",
     recurrents: ["Machine affectée", "Heure d'arrivée", "Hauteur et couronne",
                  "Preuve d'intervention"],
-    note_prix: "Au-delà de 20 personnes, chaque poste supplémentaire s'ajoute.",
+    note_prix: "On facture les ACCÈS bureau, pas les opérateurs sur machine : "
+             + "5 inclus, +30 €/accès, plafond dur à 15. Les opérateurs pointent "
+             + "sans compter comme utilisateurs.",
   },
   {
     cle: "logistique_mobilier",
     nom: "Logistique mobilier",
     secteur: "Débit industriel",
-    prix_centimes: 145000,             // 1450 € — proposé (T4)
+    prix_centimes: 90000,              // 900 € — révisé (à confronter à un prospect)
     unite: "par mois, 1 dépôt",
     statut: "etude",                   // le plus lourd : quais, arrivages, débit
     promesse: "Arrivages, quais, zones : le débit sous contrôle.",
@@ -513,4 +515,64 @@ export function libelleStatut(cle) {
   if (s === "disponible") return null;          // rien à signaler : c'est vendable
   if (s === "bientot") return "Bientôt disponible";
   return null;
+}
+
+// =============================================================================
+// LE PARRAINAGE — fidélité récompensée, mais la maison ne perd jamais.
+//
+// DOCTRINE (Raphaël, « le casino est toujours gagnant ») :
+//   · le crédit de parrainage est PLAFONNÉ à UNE mensualité — jamais gratuité
+//     totale, jamais travail à perte ;
+//   · il ne se déclenche qu'au PREMIER PAIEMENT ENCAISSÉ du filleul : on ne
+//     récompense pas une inscription qui ne paiera jamais ;
+//   · le plafond est ANNUEL (une mensualité offerte au maximum sur 12 mois) :
+//     sinon douze parrains offriraient une année entière ;
+//   · un crédit ne dépasse jamais le montant de la prochaine facture (pas de
+//     solde qui « déborde » en trésorerie versée).
+//
+// Résultat : on échange AU PIRE une mensualité contre un client acquis à coût
+// d'acquisition nul, qui paiera des mois. Le casino reste gagnant.
+// =============================================================================
+
+/** Le crédit gagné par filleul qui paie : une fraction de SA mensualité,
+ *  reversée au parrain. 25 % par défaut → il faut 4 filleuls pour un mois. */
+export const PART_PARRAINAGE = 0.25;
+
+/**
+ * Le crédit de parrainage applicable à la prochaine facture d'un parrain.
+ *
+ * @param {object} p
+ * @param {number} p.mensualite_centimes         la mensualité du PARRAIN (le plafond)
+ * @param {Array<{paye:boolean, mensualite_centimes:number}>} p.filleuls
+ * @param {number} p.credit_deja_utilise_centimes  cumul déjà consommé cette année
+ * @returns {{credit_centimes:number, plafond_atteint:boolean, filleuls_payants:number}}
+ */
+export function creditParrainage({ mensualite_centimes = 0, filleuls = [],
+                                   credit_deja_utilise_centimes = 0 } = {}) {
+  const mensualite = Math.max(0, Number(mensualite_centimes) || 0);
+  // Plafond ANNUEL : une mensualité du parrain, moins ce qui a déjà servi.
+  const plafondRestant = Math.max(0, mensualite - Math.max(0, credit_deja_utilise_centimes));
+
+  // Seuls les filleuls qui ONT PAYÉ comptent — jamais une inscription non payante.
+  const payants = (filleuls || []).filter((f) => f?.paye === true);
+  const brut = payants.reduce((s, f) =>
+    s + Math.round((Number(f?.mensualite_centimes) || 0) * PART_PARRAINAGE), 0);
+
+  // Le crédit ne dépasse NI le plafond annuel, NI la prochaine facture.
+  const credit = Math.min(brut, plafondRestant, mensualite);
+  return {
+    credit_centimes: credit,
+    plafond_atteint: plafondRestant <= 0 || credit >= plafondRestant,
+    filleuls_payants: payants.length,
+  };
+}
+
+/**
+ * La facture nette après application du crédit. Ne descend JAMAIS sous zéro :
+ * un crédit n'est pas un versement, il réduit une dette.
+ */
+export function factureApresParrainage(mensualite_centimes, credit_centimes) {
+  const m = Math.max(0, Number(mensualite_centimes) || 0);
+  const c = Math.max(0, Math.min(Number(credit_centimes) || 0, m));
+  return m - c;                              // >= 0 par construction
 }
