@@ -1,90 +1,81 @@
-# A1 — Les cycles de vie par nature + conformité CMR
+# Moteur d'offres (mémoire collective) + A2
 
-**01/09/2026.** **1278 tests verts**, build vert. Le lot qui débloque les cinq
-métiers muets.
+**01/09/2026.** **1283 tests verts**, build vert.
 
-## Le correctif « Clos » d'abord
+## 1. `15-MOTEUR-OFFRES.md` — l'écosystème, gravé dans le dépôt
 
-Tu avais raison : le compteur était juste, la liste vide. Le regroupement par
-horizon recevait « actifs seulement » pour **toute** vue autre que « Tous » — il
-écartait donc les dossiers clos juste après les avoir filtrés. Corrigé et
-verrouillé par test.
+Tout ce que tu as défini est consigné, avec la doctrine.
 
-## A1 — trois familles de cycles, plus un seul parcours pour six métiers
+**Le changement d'optique, écrit noir sur blanc** : les offres ne sont plus trois
+tailles d'un même métier, ce sont les **portes d'entrée d'un réseau**. La thèse :
+*un géant de la cuisine doit pouvoir envoyer une mission à une flotte de lifts en
+quelques secondes, avec une traçabilité qui tient devant un litige — et
+l'exécutant la reçoit dans un planning qu'il n'a pas à retaper.*
 
-**CHANTIER** (déménagement, lift, sous-traitance) — on prépare, on exécute, on
-clôt.
-**CONTRAT** (boxe, zone) — brouillon → proposition → **actif** → [suspendu] →
-terminé. **Ni « planifié », ni « effectué »** : un box ne s'exécute pas, il se
-loue. C'est le modèle du self-storage que tu m'as indiqué (Shurgard, Go Box) :
-un contrat, une unité attribuée, une facturation qui court, une sortie.
-**VENTE** (comptoir) — aucun cycle, la facture est l'événement.
+**Ta phrase sur la landing est devenue une règle d'ingénierie** :
+> **Rien ne se vend avant d'exister.** Une offre reste non souscriptible tant que
+> son parcours n'est pas démontrable de bout en bout. La landing peut dire
+> « bientôt », jamais « disponible ».
 
-**Ce que ça débloque concrètement :**
-- Un **boxe** peut enfin devenir actif (il était bloqué parce qu'on lui
-  réclamait une équipe et un camion).
-- Un **lift** se confirme sur un **accord tracé** — plus besoin de faire signer
-  un devis pour une prestation de 150 €. C'est ce qui bloquait 20 lifts sur 21.
-- Un lift se planifie **sans équipe constituée** : un véhicule et son opérateur.
+Un test verrouille cette règle dans le dépôt.
 
-**Ce qui ne change PAS : le déménagement.** J'ai fait attention à ça. La
-vérification par nature **délègue réellement** à la machine existante pour le
-déménagement — l'invariant « une offre signée pour confirmer » est préservé, et
-un sabotage le prouve : si quelqu'un tente d'accepter un simple accord tracé pour
-un déménagement, un test rougit.
+**Les trois offres décidées** sont consignées avec leurs prix, leurs produits
+(pour l'indépendant : manutentionnaire, équipe joignable, demi-journée, journée,
+taux horaire, intervention ponctuelle — chacun devient un objet à construire), et
+le **plafond de membres du pack liftier comme invariant**.
 
-Un contrat exige deux choses seulement, mais fermement : **un tarif** (sans quoi
-la facturation récurrente n'a rien à réclamer) et **une date de début**.
+**Quatre offres que je propose en plus :**
+- **Donneur d'ordre** ⭐ — *la clé de voûte qui manque*. Tes trois offres
+  équipent des **exécutants** ; personne n'équipe celui qui **apporte le volume**.
+  Sans ce côté, le réseau tourne à vide. Mon avis : gratuit ou quasi, la valeur
+  se prend sur le flux de missions, pas sur l'abonnement. C'est ainsi qu'un
+  réseau décolle.
+- **Garde-meubles** — presque gratuit à produire après A3. Meilleur rapport
+  valeur/effort du catalogue.
+- **Multi-dépôts / réseau** — les centres sont déjà construits, il ne manque
+  presque rien.
+- **Sous-traitance entre déménageurs** — le manque que tu as identifié ; le
+  réseau sert d'abord ceux qui sont déjà là.
 
-## Conformité — CMR et lettre de voiture
+**Deux points juridiques que je signale fermement** : le contrôle BCE (source,
+conditions d'usage, données conservées) et surtout le **rôle d'intermédiaire** —
+mettre en relation deux professionnels engage une responsabilité en cas de
+dommage ou de litige. **À trancher avant d'ouvrir le réseau, pas après.**
 
-**Un point juridique qui compte, et qui recoupe ta remarque sur la
-sous-traitance** : ce n'est **pas le déménagement** qui appelle le CMR. Le
-déménagement pour compte d'autrui relève d'un régime propre. C'est la
-**prestation de transport pour un tiers** — précisément l'actuelle
-« sous-traitance » — qui exige un document de transport.
+La **phase O** est entrée au plan de travail, avec O1 (frontières d'écran par
+secteur) marqué **en travaux** comme tu l'as demandé.
 
-Ce qui est posé :
-- **Quel régime s'applique** : CMR si la frontière est franchie, lettre de
-  voiture nationale en Belgique, rien pour les autres métiers. Un pays inconnu
-  n'est jamais présumé international.
-- **Les mentions obligatoires** (art. 6 de la Convention) et la détection d'un
-  document incomplet **avant le départ** — un CMR incomplet se découvre au
-  contrôle, c'est-à-dire trop tard.
-- **On signale, on ne bloque pas** : le chauffeur peut avoir le document sous une
-  autre forme. On l'avertit, on ne l'empêche pas de partir.
+## 2. A2 — Les cartes de boxe et zone
 
-⚠️ **C'est un repérage de terrain, pas un avis juridique.** Les régimes, seuils
-et exemptions doivent être confirmés par un conseil en droit belge du transport.
-Le module dit ce qu'il faut préparer, pas ce qui est légalement suffisant.
+**boxe** : entrée en boxe + sortie de boxe. **zone** : mouvement de zone. Avant,
+ces natures n'avaient **aucune** carte : rien d'exécutable, 14 contrats bloqués.
+
+**La nuance qui compte** : un contrat ne se planifie pas, il court. Ces cartes ne
+servent donc pas à planifier la location, mais les **mouvements** qui l'encadrent
+— faire entrer les biens, les ressortir. C'est le modèle self-storage. Aucune
+n'exige de véhicule : le client apporte parfois lui-même.
+
+**Une dette corrigée en chemin** : la table des exigences de planning itérait sur
+une **liste écrite à la main** de cinq métiers au lieu de dériver du catalogue.
+Un métier ajouté avait donc une carte visible et un verdict muet. C'est un test
+existant qui me l'a fait remarquer — il a bien joué son rôle. Désormais dérivé :
+huit exigences, automatiquement.
 
 ## Éprouvé par sabotage
 
 | Sabotage | Rouges |
 |---|---|
-| le déménagement accepte un accord tracé (invariant C-02 cassé) | 1 |
-| le boxe retombe sur le cycle chantier | 4 |
-| un contrat devient actif sans tarif | 1 |
-| le déménagement exigerait un CMR (faux juridiquement) | 3 |
-| un pays inconnu présumé international | 1 |
+| les exigences reviennent à une liste écrite à la main | 1 |
 
 ## À vérifier à l'œil
 
-1. La vue **Clos** affiche enfin tes dossiers clôturés.
-2. Le reste d'A1 est du **domaine pur** : il ne se voit pas encore à l'écran.
+A2 est du domaine : rien de visible encore. La suite (**A3 — le contrat
+récurrent**) est celle qui fera apparaître les contrats de box à l'écran et
+générera leurs factures mensuelles.
 
-## Ce qui reste pour que ça se voie (A2, A3)
+## Réserve d'honnêteté
 
-A1 pose les règles ; **elles ne sont pas encore branchées aux écrans ni à la
-base**. Prochaines étapes, dans l'ordre :
-- **A2** : les cartes manquantes (boxe, zone) — aujourd'hui `cartePrincipale`
-  renvoie `null` pour eux.
-- **A3** : le contrat récurrent — chiffrage par palier (boxe) / forfait (zone),
-  échéancier mensuel, génération des factures. **C'est là qu'est l'argent non
-  facturé.**
-- Puis la commande de transition en base (`cmd_transition_affaire`) devra
-  consulter le cycle de la nature.
-
-Je suis un lot à la fois, comme le plan le prescrit : A1 est terminé au sens de
-la définition (domaine pur, sabotage, vert sur arbre propre, consigné). J'attaque
-A2 au prochain tour.
+Le document d'offres est une **doctrine et un catalogue**, pas du code : aucune
+nouvelle offre n'est créée en base, et c'est volontaire — la règle « rien ne se
+vend avant d'exister » s'applique d'abord à moi. Les prix du Groupe logistique et
+le palier progressif du pack liftier restent à arrêter (listés dans le document).
