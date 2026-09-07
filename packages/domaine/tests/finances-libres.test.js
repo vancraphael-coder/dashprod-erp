@@ -85,3 +85,18 @@ test("les catégories proposées existent et « divers » est le refuge", () => 
   assert.ok(cles.includes("salaires"));
   assert.ok(cles.includes("divers"), "il faut toujours un refuge de catégorie");
 });
+
+/* ── La boîte à facturer est accessible (tuile de réglages) ──────────────── */
+
+import { readFileSync as _rf } from "node:fs";
+import { join as _j, dirname as _d } from "node:path";
+import { fileURLToPath as _f } from "node:url";
+
+test("la tuile « Dépenses & dettes » existe dans les réglages", () => {
+  const reglages = _rf(_j(_d(_f(import.meta.url)),
+    "..", "src", "organisation", "reglages.js"), "utf8");
+  assert.match(reglages, /cle: "depenses"/);
+  assert.match(reglages, /Dépenses & dettes/);
+  // Sous le même module que la comptabilité : c'est du pilotage financier.
+  assert.match(reglages, /cle: "depenses",[\s\S]*?module: "comptabilite"/);
+});
