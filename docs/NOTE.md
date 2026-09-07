@@ -1,90 +1,69 @@
-# A3 — La facturation récurrente + la structure de prix du réseau
+# La landing — structure visuelle des offres de l'écosystème
 
-**01/09/2026.** **1296 tests verts**, build vert.
+**01/09/2026.** **1290 tests verts**, build vert.
 
-## 1. A3 — le cœur du contrat qui court
+## Une section « Réseau », distincte des tarifs
 
-Le trou comblé : tes 14 contrats de box produisaient **0 échéance, 0 facture**.
-Les tables existaient, rien ne les remplissait.
+Tes trois paliers déménageur (Basique / Regular / Pro) restent où ils sont : ce
+sont des **tailles** d'un même métier, ils se succèdent.
 
-Ce que le calcul fait maintenant, sur le modèle self-storage :
-- **Chaque période commencée est due** — facturation d'avance, comme chez
-  Shurgard ou Go Box. Une période à venir n'est jamais facturée.
-- **Prorata à la sortie** : entré le 15, sorti le 8 → 24 jours, pas un mois
-  plein. Et le 31 janvier + 1 mois donne bien le 28/29 février, pas le 3 mars.
-- **Idempotent** : relancer la génération ne duplique **jamais** une échéance.
-  C'est ce qui permet de la rejouer sans crainte.
-- **Une échéance facturée est figée** — corriger, c'est faire un avoir, comme
-  toute pièce émise.
-- **Un contrat sans tarif ne facture rien** (pas 0 €) : le piège classique.
+Les nouvelles offres sont d'une autre nature — ce sont des **métiers**. Elles ont
+donc leur propre section, après les tarifs, avec un traitement visuel distinct :
+ni hiérarchie, ni « ce que vous gagnez par rapport au précédent ». Elles se
+côtoient, elles ne s'empilent pas.
 
-Trois sabotages le prouvent (duplication, mois plein sur sortie anticipée,
-échéance facturée redevenue modifiable).
+**Le titre de section** : *« Vos donneurs d'ordre et vos prestataires, au même
+endroit. »* Et juste dessous, la douleur que tu as nommée : *plus de course à
+l'information entre un logiciel, un mail, un WhatsApp et un appel.*
 
-**Ce qui reste pour que ça se voie** : la commande SQL qui écrit les échéances et
-l'écran du contrat. A3 pose le cerveau ; le branchement suit.
+## Ce que chaque carte montre
 
-## 2. La structure de prix — `16-STRUCTURE-PRIX-RESEAU.md`
+- **Le secteur** en surtitre (Cuisiniste/mobilier, Manutention, Self-storage,
+  Levage) — le visiteur se reconnaît avant de lire le prix.
+- **Le prix**, franchement. Le donneur d'ordre affiche **« Gratuit »** en toutes
+  lettres, sans astérisque, avec une bordure bleue qui le distingue.
+- **La promesse en une phrase**, puis à qui elle s'adresse.
+- **Les produits** quand l'offre en a (l'indépendant montre ses six : 1
+  manutentionnaire, équipe joignable, demi-journée, journée, taux horaire,
+  intervention ponctuelle).
+- **Et le cœur : « Ne sera plus jamais contesté »** — la liste des récurrents
+  que l'offre verrouille. C'est l'argument vérifiable, pas un temps gagné
+  inventé. Un test exige au moins trois récurrents par offre.
 
-**L'argument de vente, en une ligne** : on ne vend pas « gagnez 10 heures par
-semaine » — chiffre invérifiable qui abîme ta crédibilité au premier mois. On
-vend **12 éléments récurrents qui ne feront plus jamais l'objet d'un litige** :
-l'heure d'arrivée réelle, qui est venu, l'état des biens, ce qui a été consommé,
-les heures prestées, l'accord du client, le prix convenu, la preuve de livraison,
-le document de transport, l'échéance, la référence de paiement, ce qui reste dû.
+## La règle de crédibilité, traduite en code
 
-Chacun existe déjà ou est prévu dans Dashprod. **Un seul litige évité par an paie
-l'abonnement.**
+Chaque offre porte un **statut** : disponible, bientôt, ou à l'étude.
 
-**Trois niveaux d'implication** : Recevoir (60 € l'indépendant, **0 € le donneur
-d'ordre**), Opérer (180/240/360/720), Orchestrer (600 € liftier, 1 450 €
-logistique mobilier). Tous entre **1 % et 3 %** de ce que l'acteur facture via
-l'outil — le ratio que le SaaS vertical soutient durablement.
+- Aucune n'est souscriptible aujourd'hui — **un test le vérifie pour toutes**.
+- Les offres « bientôt » portent un badge ambre visible et leur bouton dit
+  **« Être prévenu au lancement »**, jamais « souscrire ».
+- L'offre logistique mobilier reste **à l'étude** et **n'apparaît pas** : ses
+  quais et ses arrivages n'existent pas encore, donc on ne l'annonce pas.
+- En bas de section, une phrase assumée : *« Nous n'ouvrons une offre que
+  lorsque son parcours fonctionne de bout en bout — pas avant. »*
 
-**Le donneur d'ordre à 0 €, c'est le levier.** Sur un réseau à deux faces, on
-subventionne le côté rare. Les donneurs d'ordre sont rares, les exécutants
-abondants. La valeur se prend ensuite sur le **flux** : commission de 6 % sur les
-missions **qu'ils n'auraient pas trouvées sans toi**. À l'échelle : 500 exécutants
-× 3 missions × 400 € × 6 % = **36 000 €/mois**, sans un abonnement de plus.
+Deux sabotages verrouillent cette règle : rendre une offre souscriptible sans
+parcours, ou faire apparaître l'offre à l'étude, font rougir les tests.
 
-**Le global** : ta thèse tient parce que les 12 récurrents sont universels. Seuls
-changent langue, devise, TVA et document de transport — et le code est déjà en
-centimes entiers, le moteur TVA refuse déjà de deviner, le CMR couvre 56 pays.
-Mon conseil d'ordre : BE → NL/FR → UE → hors UE **par le réseau**, pas par la
-vente directe. Un réseau vide dans dix pays vaut moins qu'un réseau dense dans un.
+**C'est la traduction technique de ta phrase** : si l'expérience Dashprod n'est
+pas celle vendue par la landing, la crédibilité baisse. Ici, la landing ne peut
+pas mentir sans casser un test.
 
-## 3. Là où je ne t'ai pas suivi — et pourquoi ça te rapporte plus
+## À vérifier à l'œil
 
-Tu as dit « quitte à être vicieux ». Je t'ai suivi sur l'**agressivité** : prix
-fermes, plafonds durs, commission réelle, annuel qui prend la trésorerie
-d'avance. C'est un modèle qui prend beaucoup.
-
-Je ne t'ai pas suivi sur trois points, **par intérêt bien compris** :
-- **pas de frais cachés ni de résiliation piégée** — sur un réseau, la confiance
-  EST l'actif ; un exécutant qui se sent piégé le dit à vingt confrères, et les
-  effets de réseau s'inversent contre toi ;
-- **pas de commission sur les relations préexistantes** — le jour où un client
-  comprend qu'il paie 6 % sur son client historique, il part et il le raconte ;
-- **pas de séquestre de paiement sans cadre légal** — c'est une activité
-  réglementée, pas un choix esthétique.
-
-**Le vrai « vicieux » qui rapporte, c'est la position, pas l'entourloupe** :
-quand les 12 récurrents d'un client vivent chez toi, que ses donneurs d'ordre le
-joignent par toi et que sa facturation récurrente tourne chez toi, il ne part
-plus — non parce qu'il est piégé, mais parce que **partir lui coûterait plus cher
-que rester**. C'est le seul verrouillage qui tient dans le temps.
-
-## Huit décisions t'attendent
-
-T1 donneur d'ordre gratuit (mon avis : oui) · T2 commission 6 % · T3 garde-meubles
-240 € · T4 logistique 1 450 € · T5 palier liftier +25 €/plafond 60 · **T6 statut
-d'intermédiaire — juridique, bloquant** · T7 séquestre · T8 TVA sur commission
-transfrontalière.
+1. La landing a une nouvelle entrée de nav **« Réseau »**.
+2. La section montre 4 cartes : Donneur d'ordre (gratuit), Indépendant
+   manutention (60 €), Garde-meubles (240 €), Groupe liftier (600 €) — dans cet
+   ordre, du plus accessible au plus engageant.
+3. Chacune porte le badge « Bientôt » et le bouton « Être prévenu ».
 
 ## Réserve d'honnêteté
 
-Les prix proposés sont bâtis sur des ratios de marché et sur ce que Dashprod sait
-faire — pas sur une étude de ton marché réel. Ils sont un point de départ solide,
-à confronter à tes premiers prospects. Et le calcul de commission suppose un
-réseau qui tourne : tant que T6 (juridique) n'est pas tranché, cette ligne de
-revenus reste théorique.
+C'est la **structure** visuelle et le modèle de données : le rendu final (le
+contraste du badge, la densité sur mobile, la longueur des listes de récurrents)
+se juge sur ton écran. Dis-moi si une carte paraît trop chargée — les récurrents
+peuvent être réduits à trois.
+
+Et le bouton « Être prévenu » renvoie pour l'instant vers la section contact :
+il n'y a pas encore de liste d'attente réelle. Si tu veux capter ces adresses,
+c'est un petit lot à part.
