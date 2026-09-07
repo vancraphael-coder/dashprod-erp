@@ -21,6 +21,7 @@ import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation } from "../lib
 import Fermetures from "./Fermetures.jsx";
 import Confidentialite from "./Confidentialite.jsx";
 import Comptabilite from "./Comptabilite.jsx";
+import Depenses from "./Depenses.jsx";
 import Journal from "./Journal.jsx";
 import Abonnement from "./Abonnement.jsx";
 import { identiteComplete, tauxTva } from "@domaine/organisation/identite.js";
@@ -97,6 +98,9 @@ export default function Parametres({
   if (ouvert === "comptabilite") {
     return <Comptabilite retour={() => setOuvert(null)} />;
   }
+  if (ouvert === "depenses") {
+    return <Depenses retour={() => setOuvert(null)} />;
+  }
   if (ouvert === "journal") {
     return <Journal retour={() => setOuvert(null)} />;
   }
@@ -137,6 +141,7 @@ export default function Parametres({
     stockage: () => setOuvert("stockage"),
     contrats: () => setOuvert("contrats"),
     comptabilite: () => setOuvert("comptabilite"),
+    depenses: () => setOuvert("depenses"),
     journal: () => setOuvert("journal"),
     archivage: versArchivage,
     abonnement: () => setOuvert("abonnement"),
