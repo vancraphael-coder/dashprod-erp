@@ -650,3 +650,31 @@ garde-meubles, multi-dépôts, sous-traitance entre déménageurs).
 le parcours n'est pas démontrable). Points juridiques signalés : contrôle BCE et
 surtout le RÔLE D'INTERMÉDIAIRE, à trancher AVANT d'ouvrir le réseau.
 Phase O ajoutée au plan de travail ; O1 (frontières d'écran par secteur) en travaux.
+
+## A3 — La facturation récurrente des contrats (01/09/2026)
+
+`stocks/recurrent.js`, pur et sabotté (3 sabotages).
+- **periodesDues** : chaque période COMMENCÉE est due (facturation d'AVANCE,
+  norme self-storage) ; une période à venir ne l'est jamais. Garde-fou 120
+  périodes contre un début mal saisi.
+- **montantPeriode** : prorata sur période partielle (sortie le 8 ≠ mois plein).
+  Gestion du 31 janvier → 28/29 février.
+- **echeancesAcreer** : IDEMPOTENT — rejouer ne duplique aucune échéance.
+  Tarif absent/nul → aucune échéance (jamais 0 €).
+- **echeanceModifiable** : une échéance facturée est FIGÉE (corriger = avoir).
+- **libelleEcheance** : dit QUOI et QUAND, sinon le client ne rapproche pas.
+- Reste à brancher : commande SQL de génération + écran contrat. A3 pose le
+  cœur de calcul.
+
+## Structure de prix du réseau (01/09/2026)
+
+Nouveau `16-STRUCTURE-PRIX-RESEAU.md`. Doctrine : on vend les **12 récurrents**
+qui ne seront plus litigieux (liste vérifiable), PAS un temps gagné inventé.
+Trois niveaux d'implication (Recevoir / Opérer / Orchestrer). Le côté RARE
+(donneur d'ordre) est subventionné à 0 € ; les exécutants paient. Prix proposés :
+garde-meubles 240 €, logistique mobilier 1450 €, palier liftier +25 € plafond 60.
+Commission réseau 6 % à l'exécutant, JAMAIS sur une relation préexistante.
+Ratio cible 1–3 % du CA que l'acteur facture via l'outil. Global : les 12
+récurrents sont universels, seuls langue/devise/TVA/document changent — ordre
+recommandé BE → NL/FR → UE → hors UE PAR LE RÉSEAU.
+Décisions T1–T8 en attente ; T6 (statut d'intermédiaire) bloquant.
