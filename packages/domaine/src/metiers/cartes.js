@@ -130,6 +130,44 @@ export const CARTES_METIER = Object.freeze([
     vehicule: { besoin: "facultatif", categorie: null },
     note: "Le camion dépend du donneur d'ordre, qui fournit parfois le sien.",
   },
+  // ── Cartes des natures à CONTRAT (boxe, zone) ────────────────────────────
+  //
+  // Un contrat ne s'exécute pas : il court. Ces cartes ne servent donc PAS à
+  // planifier la location — elles servent aux MOUVEMENTS ponctuels qui
+  // l'encadrent : faire entrer les meubles, les ressortir. C'est le modèle du
+  // self-storage (Shurgard, Go Box) : le contrat vit sa vie, l'entrée et la
+  // sortie sont deux rendez-vous.
+  //
+  // Sans ces cartes, cartePrincipale("boxe") renvoyait null : aucune unité
+  // planifiable, donc rien à exécuter, jamais.
+  {
+    cle: "entree_boxe",
+    titre: "Entrée en boxe",
+    role: "principale",
+    natures: ["boxe"],
+    effectif: { source: SOURCE_EFFECTIF.CARTE, plancher: 1, plafond: null },
+    // Le client apporte parfois lui-même : le véhicule aide, il n'est pas dû.
+    vehicule: { besoin: "facultatif", categorie: null },
+    note: "Faire entrer les biens dans le box. Le client apporte parfois lui-même.",
+  },
+  {
+    cle: "sortie_boxe",
+    titre: "Sortie de boxe",
+    role: "secondaire",
+    natures: ["boxe"],
+    effectif: { source: SOURCE_EFFECTIF.CARTE, plancher: 1, plafond: null },
+    vehicule: { besoin: "facultatif", categorie: null },
+    note: "Restituer les biens. Clôt la période de location.",
+  },
+  {
+    cle: "mouvement_zone",
+    titre: "Mouvement de zone",
+    role: "principale",
+    natures: ["zone"],
+    effectif: { source: SOURCE_EFFECTIF.CHIFFRAGE, plancher: 1, plafond: null },
+    vehicule: { besoin: "facultatif", categorie: null },
+    note: "Arrivage, chargement ou reprise sur la zone louée.",
+  },
 ]);
 
 /** Une carte par sa clé. Rend `null` plutôt que d'inventer un défaut. */
