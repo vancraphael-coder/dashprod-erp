@@ -966,7 +966,8 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(
+  <div className="dp-cadre-pc-hote"><App /></div>);
 
 /**
  * CHOIX DE LA SOCIÉTÉ — quand une même personne travaille pour plusieurs.
