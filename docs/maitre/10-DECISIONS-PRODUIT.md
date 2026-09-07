@@ -717,3 +717,14 @@ Phase O ajoutée au plan de travail ; O1 (frontières d'écran par secteur) en t
   bille dépliante, MÊME structure de texte). Les « récurrents » deviennent les
   lignes de détail ; « bientôt » ferme le bouton d'essai (verrouMotif).
   CarteOffreSecteur.jsx n'est plus utilisé.
+
+## Consolidation de l'interface PC (01/09/2026)
+
+- **lib/cadre-pc.js** : sur grand écran (>=900 px), l'app ne flotte plus dans du
+  vide. Fond de bureau ambiant (dégradés doux, adaptés nuit/jour) + la colonne
+  d'app POSÉE dessus (bordure fine, ombre douce, coins arrondis 20px). Le
+  contenu GARDE sa largeur de lecture (LARGEUR_APP unique dans theme.jsx) : on
+  n'étire jamais un texte sur tout l'écran (illisible).
+- Non invasif : cible l'hôte unique `.dp-cadre-pc-hote > div` (App enveloppée au
+  montage), AUCUN écran modifié. Mobile intact (tout sous @media min-width).
+  Les barres .dpnav suivent les coins bas. Sabotté.
