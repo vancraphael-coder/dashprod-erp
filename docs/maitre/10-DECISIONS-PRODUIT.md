@@ -703,3 +703,17 @@ Phase O ajoutée au plan de travail ; O1 (frontières d'écran par secteur) en t
 - **Parrainage** (doctrine casino) : creditParrainage — PLAFONNÉ à 1 mensualité,
   ANNUEL, déclenché au 1er paiement encaissé du filleul, jamais sous zéro.
   PART_PARRAINAGE 25 %. La maison ne perd jamais. Sabotté.
+
+## Écran dépenses + bilan financier + cartes harmonisées (01/09/2026)
+
+- **Écran Depenses.jsx** : la boîte à facturer prend vie. Bilan en haut (recettes,
+  dépenses par poste avec barre + % sur recettes, reste, dettes, santé colorée),
+  saisie rapide (libellé, montant, catégorie, réglé/dette+échéance), liste avec
+  « Réglé » et suppression. Adapters depensesPeriode/ajouterDepense/reglerDepense/
+  supprimerDepense. Tuile « Dépenses & dettes » (module comptabilite) dans les
+  réglages. Recettes = paiements de la période.
+- **Cartes d'offres HARMONISÉES** : la section écosystème réutilise désormais
+  CarteAbonnement (même composant que les offres déménageur : verre, tilt 3D,
+  bille dépliante, MÊME structure de texte). Les « récurrents » deviennent les
+  lignes de détail ; « bientôt » ferme le bouton d'essai (verrouMotif).
+  CarteOffreSecteur.jsx n'est plus utilisé.
