@@ -1,0 +1,4 @@
+-- 0171 — APPLIQUÉE ET VÉRIFIÉE le 01/09/2026. LA BOÎTE À FACTURER (dépenses/dettes libres).
+-- Table depenses (org_id default jwt_org, libellé, montant, catégorie, regle,
+-- echeance, origine 'saisie'|'scan' pour le futur scan d'image, piece_chemin).
+-- RLS lecture org + écriture. Index date + dette. Vérifié : org_default, 2 policies.
