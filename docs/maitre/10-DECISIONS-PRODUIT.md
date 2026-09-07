@@ -666,3 +666,24 @@ Phase O ajoutée au plan de travail ; O1 (frontières d'écran par secteur) en t
   temps gagné inventé. Un test exige ≥ 3 récurrents par offre.
 - Les 4 offres visibles sont toutes en « bientôt » ; logistique_mobilier reste
   en étude (quais/arrivages non construits).
+
+## A3 en base + capteurs KPI + fix messagerie (01/09/2026)
+
+- **0169 cmd_generer_echeances** : index unique (contrat_id, periode_debut) —
+  le vrai rempart anti-doublon ; périodes commencées seulement ; prorata ;
+  on conflict do nothing ; refuse un contrat sans tarif. Miroir exact du domaine
+  stocks/recurrent.js.
+- **0170 cmd_facturer_echeances** : crée UNE facture non émise depuis les
+  échéances dues, libellé daté, marque les échéances facturées. L'émission passe
+  ensuite par le circuit normal (numéro/échéance/communication, vague 1).
+- **Capteurs KPI** (pilotage/capteurs.js) posés AVANT le tableau de bord, pour
+  ne pas créer de dette : 20+ capteurs déclarés (argent, activité, terrain,
+  conformité, réseau) avec unité, sens, source, secteurs. `contratExposition`,
+  `catalogueMcp`, `catalogueApi` : les branchements futurs (API conformité,
+  pilotage MCP) sont déclarés dès maintenant. Les capteurs RÉSEAU existent déjà,
+  prêts à être alimentés.
+- **Messagerie — dimensions** : en pleineHauteur la liste était en
+  maxHeight:none + overflow:visible → elle poussait la page. Bornée + défilement
+  + minHeight:0 (indispensable en flex) + overflowWrap anywhere (un lien
+  n'élargit plus la bulle). Test dédié qui protégera aussi le futur espace
+  « équipe ». Éprouvé par sabotage.
