@@ -728,3 +728,19 @@ Phase O ajoutée au plan de travail ; O1 (frontières d'écran par secteur) en t
 - Non invasif : cible l'hôte unique `.dp-cadre-pc-hote > div` (App enveloppée au
   montage), AUCUN écran modifié. Mobile intact (tout sous @media min-width).
   Les barres .dpnav suivent les coins bas. Sabotté.
+
+## Identité desktop — le shell à rail (01/09/2026)
+
+- **RÉVOQUÉ** : le cadre-pc redimensionné (l'app encadrée), jugé mauvais goût.
+  Le mobile redevient exactement l'app d'avant (barre du bas, colonne 520).
+- **composants/CadreBureau.jsx** : sur desktop (>=1024 px), une AUTRE disposition
+  — rail vertical à gauche (replié 76 px, déployé 232 px au survol, libellés qui
+  se révèlent), galet actif qui GLISSE, feutre au tracé à l'activation, canvas
+  qui respire. La barre du bas est remplacée par le rail (rendue seulement
+  !estBureau). Bouton « Nouveau » → Dossiers.
+- **Non invasif** : les 40 écrans ne bougent pas, le shell les ENVELOPPE ;
+  passthrough total sous le seuil (mobile intact). itemsNav partagé rail↔barre.
+  useEstBureau réactif au redimensionnement. prefers-reduced-motion respecté.
+  Éprouvé par sabotage.
+- Reste (annoncé) : maître-détail (liste + aperçu côte à côte) et largeur de
+  contenu par écran — gros chantier, après stabilisation des métiers.
