@@ -4165,6 +4165,51 @@ export async function definirContratStockage(c) {
  */
 
 /** Factures fournisseur d'une période (toutes, l'export filtrera). */
+// ── Dépenses et dettes libres (la boîte à facturer) ────────────────────────
+
+/** Les dépenses d'une période, les plus récentes d'abord. */
+export async function depensesPeriode({ debut, fin } = {}) {
+  if (modeDonnees() !== "reel") return [];
+  let q = supabase.from("depenses")
+    .select("id, libelle, montant_centimes, categorie, regle, echeance, "
+          + "date_depense, note")
+    .order("date_depense", { ascending: false });
+  if (debut) q = q.gte("date_depense", debut);
+  if (fin) q = q.lte("date_depense", fin);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/** Enregistre une dépense (ou une dette si regle=false). */
+export async function ajouterDepense({ libelle, montant_centimes, categorie,
+                                       regle = true, echeance = null,
+                                       date_depense = null, note = null }) {
+  if (!libelle || !libelle.trim()) throw new Error("La dépense a besoin d'un libellé.");
+  if (!(Number(montant_centimes) > 0)) throw new Error("Montant invalide.");
+  const { data, error } = await supabase.from("depenses").insert({
+    libelle: libelle.trim(), montant_centimes: Math.round(montant_centimes),
+    categorie: categorie || "divers", regle,
+    echeance: regle ? null : echeance,
+    date_depense: date_depense || undefined, note,
+  }).select("id").single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+/** Marque une dette comme réglée. */
+export async function reglerDepense(id) {
+  const { error } = await supabase.from("depenses")
+    .update({ regle: true, echeance: null }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+/** Supprime une dépense (saisie erronée). */
+export async function supprimerDepense(id) {
+  const { error } = await supabase.from("depenses").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function achatsPeriode({ debut, fin } = {}) {
   if (modeDonnees() !== "reel") return [];
   const { data, error } = await supabase.from("factures_fournisseur")
