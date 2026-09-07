@@ -14,10 +14,11 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  PLANS, plan, module, prixPeriode, gainSurPrecedent, modulesAVenir,
+  PLANS, plan, module, prixPeriode, gainSurPrecedent, modulesAVenir, offresVitrine,
   planDisponible, REMISE_ANNUELLE_PCT, ESSAI_JOURS, ESSAI_PLAN,
 } from "@domaine/commercial/plans.js";
 import { V, MONO, NavPublique, PiedPublic, Etiquette } from "./theme-vitrine.jsx";
+import CarteOffreSecteur from "./CarteOffreSecteur.jsx";
 import { avisPublics, avisReseau, avisProduitPublics }
   from "../../lib/adaptateur.js";
 import CommandeReseau from "./CommandeReseau.jsx";
@@ -40,6 +41,7 @@ function SECTIONS_NAV(avecAvis) {
     { id: "produit", label: "Produit", icone: "produit" },
     { id: "commander", label: "Commander", icone: "commander" },
     { id: "tarifs", label: "Tarifs", icone: "tarifs" },
+    { id: "ecosysteme", label: "Réseau", icone: "tarifs" },
   ];
   if (avecAvis) base.push({ id: "avis", label: "Avis", icone: "avis" });
   base.push({ id: "contact", label: "Contact", icone: "contact" });
@@ -320,6 +322,41 @@ export default function Landing({ aller, orgId }) {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      {/* ── L'ÉCOSYSTÈME — les autres métiers du réseau ───────────────────── */}
+      <section id="ecosysteme" style={{
+        background: `radial-gradient(700px 380px at 15% -10%, rgba(37,99,235,.20), transparent 60%),
+                     ${V.nuit}`,
+        color: "#fff", borderTop: "1px solid rgba(255,255,255,.08)" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto",
+                      padding: "clamp(44px, 6vw, 70px) 20px" }}>
+          <Etiquette numero="Le réseau" libelle="d'autres métiers, le même canal" sombre />
+          <h2 className="v-display" style={{ fontSize: "clamp(24px, 3.4vw, 36px)",
+                                             margin: "14px 0 0", color: "#fff" }}>
+            Vos donneurs d'ordre et vos prestataires,<br />au même endroit.
+          </h2>
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,.66)", lineHeight: 1.6,
+                      margin: "12px 0 0", maxWidth: "60ch" }}>
+            Plus de course à l'information entre un logiciel, un mail, un
+            WhatsApp et un appel. Une mission part, elle est suivie, elle est
+            prouvée — des deux côtés.
+          </p>
+
+          <div style={{ display: "grid", gap: 18, marginTop: 30,
+                        gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
+            {offresVitrine().map((o) => (
+              <CarteOffreSecteur key={o.cle} offre={o}
+                onInteret={() => aller("contact")} />
+            ))}
+          </div>
+
+          <p style={{ fontSize: 12.5, color: "rgba(255,255,255,.42)",
+                      margin: "22px 0 0", lineHeight: 1.6, maxWidth: "62ch" }}>
+            Ces offres ouvrent progressivement. Nous n'ouvrons une offre que
+            lorsque son parcours fonctionne de bout en bout — pas avant.
+          </p>
         </div>
       </section>
 
