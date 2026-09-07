@@ -1,62 +1,74 @@
-# A3 en base + capteurs KPI + fix messagerie
+# Boîte à facturer + pilotage financier + prix révisés + parrainage
 
-**01/09/2026.** **1314 tests verts**, build vert. Migrations 0169 + 0170.
+**01/09/2026.** **1325 tests verts**, build vert. Migrations 0171 + 0172.
 
-## 1. A3 branché : tes contrats produisent enfin de l'argent
+## 1. La boîte à facturer — piloter les sorties
 
-Deux commandes en base :
-- **Générer les échéances** d'un contrat (ou de tous) : chaque période commencée
-  devient une échéance, au prorata si elle est partielle. **Un index d'unicité
-  en base** garantit qu'on ne crée jamais deux fois la même période — c'est un
-  rempart réel, pas un contrôle applicatif contournable. Un contrat sans tarif ne
-  génère rien.
-- **Facturer les échéances** : elles deviennent UNE facture, non émise, avec un
-  libellé daté (« Location Box A12 — du 15/01 au 15/02 ») pour que le client
-  puisse rapprocher. L'émission passe ensuite par le circuit habituel : numéro,
-  échéance de paiement, communication.
+Tu vois tes recettes ; il te manquait les **sorties**. C'est posé :
+- Une table **dépenses** pour noter vite une sortie — carburant, une réparation,
+  un café — libre mais structurée juste ce qu'il faut : un montant, une
+  catégorie, et surtout un état : **réglée** ou **dette à payer** (avec échéance).
+- La structure prévoit déjà le **scan de ticket** (champ origine 'saisie'|'scan',
+  chemin du justificatif) : quand tu voudras l'analyse d'image plus tard, elle se
+  branchera ici sans rien casser.
 
-Cohérent avec le verrou de la semaine : impossible de créer une facture vide.
+Un piège attrapé au passage : la policy exigeait une capacité « gérer
+comptabilité » qui **n'existait pas** — exactement le bug de la clôture la semaine
+dernière. Corrigé avec une capacité réelle.
 
-## 2. Les capteurs KPI, posés AVANT le tableau de bord
+## 2. La structure financière par pourcentage
 
-Tu as raison de vouloir éviter la dette : un indicateur branché après coup oblige
-à retrouver une donnée souvent perdue. J'ai donc déclaré **plus de 20 capteurs**
-— argent, activité, terrain, conformité, **réseau** — chacun avec son unité, son
-sens (une hausse est-elle bonne ?), sa **source réelle** et les secteurs
-concernés.
+C'est le cœur de ton idée : **pour 100 € encaissés, où va l'argent ?**
 
-Deux conséquences immédiates :
-- **Le dashboard par secteur est déjà cadré** : un garde-meubles verra taux
-  d'occupation et revenu récurrent, jamais « heures réelles vs estimées » qu'il
-  n'a pas.
-- **Les branchements futurs sont déclarés** : chaque capteur dit s'il s'expose à
-  une **API de conformité** et/ou au **pilotage MCP**. Un agent pourra lire le
-  catalogue des mesures sans qu'on lui écrive un adaptateur sur mesure. Les
-  capteurs **réseau** existent déjà, prêts à être alimentés le jour où il ouvre.
+Le bilan calcule les recettes, ventile les dépenses par catégorie (le poste le
+plus lourd en premier), et donne **chaque poste en % des recettes** — le seul
+repère comparable dans le temps. Plus le **reste** (ce qui te revient) et les
+**dettes en cours** isolées du total.
 
-C'est exactement la dette de structure que tu voulais éviter.
+Et une santé dite sans détour : rouge si les dépenses dépassent les recettes ou
+si les dettes dépassent la période, orange s'il reste moins de 10 %. On signale,
+on ne juge pas — mais on ne cache rien.
 
-## 3. Le bug d'affichage des messages
+## 3. Les prix révisés — tu avais deux points trop hauts
 
-Trouvé : en pleine hauteur, la liste passait en hauteur libre et débordement
-visible — elle **poussait la page** au lieu de défiler dans son cadre. Corrigé,
-avec deux détails qui comptent : `minHeight:0` (sans quoi un enfant flex refuse
-de défiler) et un retour à la ligne forcé pour qu'**un lien ou un mot long
-n'élargisse plus la bulle**.
+Comme promis, j'ai corrigé ce que je trouvais excessif :
 
-**Le test que tu demandes est posé** — et il protégera aussi le futur espace
-« équipe » : toute nouvelle surface de discussion devra tenir les mêmes règles.
-Sabotage vérifié.
+- **Groupe liftier : 600 € → 450 €.** Le vrai problème n'était pas le montant
+  mais l'**unité** : facturer 20 personnes quand 17 sont sur les machines et ne
+  se connectent jamais, c'est facturer des fantômes. Maintenant on facture les
+  **accès bureau** (5 inclus, +30 €/accès, plafond 15) ; les opérateurs pointent
+  sans compter comme utilisateurs. C'est plus juste ET plus vendable.
+- **Logistique mobilier : 1450 € → 900 €.** Un chiffre que j'avais posé sans
+  connaître le volume réel. 900 € est défendable ; à confronter à un vrai
+  prospect avant de le graver.
 
-## Ce qui reste de ta liste (je ne l'oublie pas)
+Les autres tiennent : 60 € l'indépendant (excellent), 240 € le garde-meubles
+(peut-être même bas). Dis-moi si ça te va.
 
-1. **Cartes des offres harmonisées** avec celles du déménagement (même type,
-   même structure de texte).
-2. **Prix et parrainage** — refonte selon ta doctrine du casino (voir ma réponse
-   en message).
-3. **Interface PC** à consolider.
-4. **Test « indépendant manutention »** avec Roovers donneur d'ordre pilote.
-5. **Espace équipe** (messagerie interne, invité = code, permissions du donneur
-   d'ordre).
+## 4. Le parrainage — ta doctrine du casino, à la lettre
 
-Je les prends dans cet ordre aux prochains tours, sauf indication contraire.
+Tu as raison : le gratuit ne doit jamais coûter. Le parrainage est donc borné
+pour que **la maison ne perde jamais** :
+- **Plafonné à UNE mensualité**, et le plafond est **annuel** — douze filleuls ne
+  donnent qu'un mois, pas douze.
+- Il ne se déclenche qu'au **premier paiement encaissé** du filleul : on ne
+  récompense pas une inscription qui ne paiera jamais.
+- La facture ne descend **jamais sous zéro** : un crédit réduit une dette, ce
+  n'est pas un versement.
+
+Au pire, tu échanges une mensualité contre un client acquis à coût zéro qui
+paiera des mois. Casino gagnant, et parrainage = fidélité, comme tu le voyais.
+Un sabotage garantit que le plafond ne peut pas sauter.
+
+## Ce qui reste de ta liste
+
+Cartes d'offres harmonisées · interface PC · test « indépendant manutention »
+Roovers pilote · espace équipe (messagerie, invité=code, permissions). Je
+continue dans cet ordre.
+
+## Réserve d'honnêteté
+
+Le domaine (dépenses, bilan, parrainage) est posé et testé, mais **les écrans
+n'existent pas encore** : pas de saisie de dépense ni d'affichage du bilan à
+l'écran. C'est le prochain branchement. Les prix révisés sont mon jugement, pas
+une étude de marché — à valider avec tes premiers prospects.
