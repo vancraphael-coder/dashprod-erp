@@ -1,58 +1,56 @@
-# La boîte à facturer prend vie + cartes d'offres harmonisées
+# Consolidation de l'interface PC
 
-**01/09/2026.** **1326 tests verts**, build vert.
+**01/09/2026.** **1331 tests verts**, build vert.
 
-## 1. L'écran Dépenses — ton idée, à l'écran
+## Le problème
 
-Le domaine de la semaine dernière avait tout le calcul mais aucune interface.
-C'est réparé : dans Paramètres, une tuile **« Dépenses & dettes »**.
+Toute l'app était bornée à 520 px et centrée. Sur un téléphone, parfait. Sur un
+écran de bureau, elle flottait au milieu d'un grand vide blanc — deux tiers de
+l'écran perdus, et cette impression de « site mobile étiré » qui abîme la
+crédibilité auprès d'un prospect qui te découvre sur son ordinateur.
 
-En haut, **le bilan** — pour 100 € encaissés, où va l'argent :
-- Recettes, dépenses (avec leur % sur recettes), et surtout le **reste** — ce qui
-  te revient, en euros et en pourcentage.
-- Chaque poste de dépense en **barre proportionnelle** : tu vois d'un coup d'œil
-  que le carburant pèse 12 % ou que les salaires en font 40 %.
-- Les **dettes en cours** isolées, et une **santé colorée** : vert si ça va,
-  ambre s'il reste peu, rouge si les dépenses dépassent les recettes.
+## Ce que j'ai fait — et surtout ce que je n'ai PAS fait
 
-En bas, **la saisie rapide** : un libellé, un montant, une catégorie, et le
-choix **réglée** ou **dette** (avec échéance). La liste dessous, où une dette se
-marque « Réglé » d'un clic.
+**Je n'ai pas élargi le contenu.** C'était le piège : un texte, un formulaire ou
+une liste étirés sur toute la largeur d'un moniteur sont illisibles — l'œil perd
+la ligne. La bonne largeur de lecture ne dépend pas de la taille de l'écran.
 
-C'est le pilotage simple et efficace que tu demandais — les sorties enfin
-visibles, en face des recettes.
+**J'ai posé l'app sur le bureau.** Au-delà de 900 px de large :
+- un **fond de bureau ambiant** discret (deux voiles bleutés très doux, adaptés
+  au mode jour comme au mode nuit) remplace le vide blanc ;
+- la colonne d'app **se pose dessus** : bordure fine, ombre douce, coins
+  arrondis. Elle garde sa largeur de lecture, mais devient une **vraie
+  application encadrée**, pas un ruban perdu. C'est le réflexe des apps pro sur
+  desktop.
 
-## 2. Les cartes d'offres, harmonisées
+## Propre et sûr
 
-Comme demandé : les offres de l'écosystème utilisent **exactement la même carte**
-que les offres déménageur — le même verre dépoli, la même inclinaison 3D au
-survol, la même bille qui déplie le détail, et **la même structure de texte**
-(secteur, nom, prix, promesse, « pour qui », détail dépliable).
-
-Concrètement, j'ai **supprimé le composant séparé** que j'avais fait la dernière
-fois et réutilisé la vraie carte : les « récurrents » de chaque offre deviennent
-les lignes de détail, et une offre « bientôt » ferme le bouton d'essai avec un
-message clair au lieu de « souscrire ». Une seule carte à maintenir, une
-cohérence visuelle parfaite entre déménageur et écosystème.
+- **Une seule source de largeur** (LARGEUR_APP dans le thème) — fini le 520
+  recopié un peu partout.
+- **Aucun écran modifié** : le cadre vise un hôte unique qui enveloppe l'app. Les
+  40 écrans sont intacts.
+- **Le mobile n'est pas touché** : tout est sous un média-query qui ne se
+  déclenche qu'au-delà de 900 px. Un sabotage le vérifie.
 
 ## À vérifier à l'œil
 
-1. Paramètres → **Dépenses & dettes** : ajoute une dépense, une dette ; le bilan
-   se met à jour, les barres et la santé réagissent.
-2. La landing, section **Réseau** : les cartes sont maintenant identiques aux
-   cartes de tarifs déménageur (verre, bille, dépliable), avec le badge/motif
-   « bientôt ».
-
-## Ce qui reste de ta liste
-
-Interface PC à consolider · test « indépendant manutention » Roovers pilote ·
-espace équipe (messagerie, invité=code, permissions).
+1. Sur ton **ordinateur** : l'app est maintenant encadrée, posée sur un fond
+   coloré doux, avec une ombre — plus de vide blanc autour.
+2. Sur **téléphone** : rien ne change, pleine largeur comme avant.
+3. En **mode sombre** : le fond de bureau s'assombrit en cohérence.
 
 ## Réserve d'honnêteté
 
-L'écran dépenses est fonctionnel mais le bilan prend les **recettes = paiements
-encaissés du mois** ; si tu préfères raisonner sur le CA émis (engagement), c'est
-un réglage à ajouter — dis-moi ta préférence comptable. Et le rendu de la carte
-d'offre réutilisée se juge sur ton écran : comme elle a une bille « détail », les
-récurrents sont maintenant dépliables au lieu d'être toujours visibles — dis-moi
-si tu les préfères ouverts d'emblée.
+C'est une consolidation VISUELLE — l'app reste une colonne, elle n'exploite pas
+la largeur pour afficher deux panneaux côte à côte (liste + détail, à la
+« desktop »). C'est un choix : le vrai multi-panneau est un gros chantier qui
+toucherait chaque écran, et il vaut mieux le faire après que les métiers soient
+stables (phase délimitation). Pour l'instant, l'app cesse d'avoir l'air perdue
+sur grand écran — c'est ce qui pesait sur la crédibilité. Le rendu exact (largeur
+du fond, intensité de l'ombre) se juge sur ton moniteur ; dis-moi si tu veux la
+colonne plus large (par ex. 600 px) maintenant qu'elle est encadrée.
+
+## Ce qui reste de ta liste
+
+Test « indépendant manutention » avec Roovers donneur pilote · espace équipe
+(messagerie interne, invité = code, permissions du donneur d'ordre).
