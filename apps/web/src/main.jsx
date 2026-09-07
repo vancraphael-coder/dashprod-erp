@@ -58,6 +58,7 @@ import Centres from "./ecrans/Centres.jsx";
 import RapportCentres from "./ecrans/RapportCentres.jsx";
 import SelecteurCentre from "./composants/SelecteurCentre.jsx";
 import ChoixEspace from "./composants/ChoixEspace.jsx";
+import CadreBureau, { useEstBureau } from "./composants/CadreBureau.jsx";
 import DemandesReseau from "./ecrans/DemandesReseau.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
@@ -223,13 +224,15 @@ const CSS_NAV = `
 }
 `;
 
-function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
-  // Un module que l'abonnement n'ouvre pas n'apparaît PAS : pas de porte
-  // fermée, pas de publicité déguisée dans la barre de navigation.
+// Les entrées de navigation, calculées UNE fois : la barre mobile (bas) et le
+// rail desktop (côté) disent exactement la même chose. Un module non ouvert par
+// l'abonnement n'apparaît pas — pas de porte fermée.
+const TRACE_NAV = { liste: "dossiers", planning: "planning", stockage: "stockage",
+                    conversations: "messages", equipe: "ressources", compte: "compte" };
+
+function itemsNav({ modules = [], peutGererEquipe = false } = {}) {
   const a = (cle) => modules.includes(cle);
-  // [cle, icôneRotatif (composant Icone), libellé]. Le tracé dpnav se dérive de
-  // la cle (traceNom) car il a ses propres dessins (stockage, messages).
-  const items = [
+  return [
     ["liste", "dossiers", "Dossiers"],
     ["planning", "planning", "Planning"],
     ...(a("stockage_3d") ? [["stockage", "boite", "Stockage"]] : []),
@@ -237,8 +240,11 @@ function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
     ...(peutGererEquipe ? [["equipe", "ressources", "Ressources"]] : []),
     ["compte", "compte", "Compte"],
   ];
-  const TRACE = { liste: "dossiers", planning: "planning", stockage: "stockage",
-                  conversations: "messages", equipe: "ressources", compte: "compte" };
+}
+
+function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
+  const items = itemsNav({ modules, peutGererEquipe });
+  const TRACE = TRACE_NAV;
   const rotatif = items.map(([cle, icone, lib]) => ({ cle, icone, label: lib }));
   return (
     <>
@@ -603,6 +609,7 @@ function App() {
   const [centreChoisi, setCentreChoisi] = useState(undefined);
   // R1 : dossier en attente de choix d'espace, quand plusieurs centres existent.
   const [choixEspace, setChoixEspace] = useState(null);
+  const estBureau = useEstBureau();     // desktop → shell à rail ; mobile → barre du bas
 
   // Charger la liste des centres dès qu'on a un profil bureau : le sélecteur en
   // a besoin. Inutile pour le terrain (il n'a pas de bascule).
@@ -899,8 +906,13 @@ function App() {
       <div style={{ position: "fixed", top: 12, right: 14, zIndex: 45 }}>
         <BaliseNote page={route.ecran} titre={LIBELLE_PAGE[route.ecran] || route.ecran} />
       </div>
-      {ecran}
-      {RACINES.includes(route.ecran) && (
+      <CadreBureau
+        items={itemsNav({ modules: acces?.modules || [], peutGererEquipe })}
+        actif={route.ecran} aller={(cle) => nav[cle] && nav[cle]()}
+        creer={() => nav.liste && nav.liste()} nomOrg={org?.nom}>
+        {ecran}
+      </CadreBureau>
+      {!estBureau && RACINES.includes(route.ecran) && (
         <BarreNav actif={route.ecran} aller={(cle) => nav[cle]()} modules={acces?.modules || []}
                   peutGererEquipe={peutGererEquipe} />
       )}
@@ -966,8 +978,7 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(
-  <div className="dp-cadre-pc-hote"><App /></div>);
+createRoot(document.getElementById("root")).render(<App />);
 
 /**
  * CHOIX DE LA SOCIÉTÉ — quand une même personne travaille pour plusieurs.
