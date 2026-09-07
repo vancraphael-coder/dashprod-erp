@@ -1,56 +1,75 @@
-# Consolidation de l'interface PC
+# L'identité desktop de Dashprod — un shell à rail
 
-**01/09/2026.** **1331 tests verts**, build vert.
+**01/09/2026.** **1332 tests verts**, build vert.
 
-## Le problème
+## D'abord, je reviens en arrière
 
-Toute l'app était bornée à 520 px et centrée. Sur un téléphone, parfait. Sur un
-écran de bureau, elle flottait au milieu d'un grand vide blanc — deux tiers de
-l'écran perdus, et cette impression de « site mobile étiré » qui abîme la
-crédibilité auprès d'un prospect qui te découvre sur son ordinateur.
+Tu avais raison : mon « cadre redimensionné » de la fois précédente était un
+pansement de mauvais goût — une app mobile posée sur un fond, rien de plus. **Je
+l'ai révoqué.** Sur téléphone, tu retrouves exactement l'app d'avant : la barre
+du bas, la colonne, tel quel. Un test garantit que l'ancien cadre ne peut pas
+revenir.
 
-## Ce que j'ai fait — et surtout ce que je n'ai PAS fait
+## Ce que devient Dashprod sur un ordinateur
 
-**Je n'ai pas élargi le contenu.** C'était le piège : un texte, un formulaire ou
-une liste étirés sur toute la largeur d'un moniteur sont illisibles — l'œil perd
-la ligne. La bonne largeur de lecture ne dépend pas de la taille de l'écran.
+Ce n'est plus une question de largeur, c'est une autre **façon d'habiter
+l'écran**. Au-delà de 1024 px, la disposition change entièrement :
 
-**J'ai posé l'app sur le bureau.** Au-delà de 900 px de large :
-- un **fond de bureau ambiant** discret (deux voiles bleutés très doux, adaptés
-  au mode jour comme au mode nuit) remplace le vide blanc ;
-- la colonne d'app **se pose dessus** : bordure fine, ombre douce, coins
-  arrondis. Elle garde sa largeur de lecture, mais devient une **vraie
-  application encadrée**, pas un ruban perdu. C'est le réflexe des apps pro sur
-  desktop.
+**Un rail vertical à gauche**, toujours présent, qui remplace la barre du bas.
+- Replié, il ne montre que les icônes — fin, discret, 76 px.
+- Au survol, il **se déploie en douceur** (232 px) et révèle les libellés. Le
+  logo et le nom de ta société apparaissent en haut.
+- L'onglet actif porte un **galet lumineux qui GLISSE** d'un item à l'autre quand
+  tu changes de page — l'œil suit le mouvement, c'est ce qui rend une navigation
+  vivante plutôt que mécanique.
+- L'icône active **se trace au feutre** à l'activation, comme la barre mobile.
+- Un bouton **« Nouveau »** en accent, en haut, pour créer.
 
-## Propre et sûr
+**Un canvas à droite** qui respire : un fond de travail ambiant (adapté nuit/jour
+et à ta couleur d'accent), et l'écran courant posé dedans. Plus de barre en bas
+qui mange l'espace — le rail l'a remplacée, on récupère la hauteur.
 
-- **Une seule source de largeur** (LARGEUR_APP dans le thème) — fini le 520
-  recopié un peu partout.
-- **Aucun écran modifié** : le cadre vise un hôte unique qui enveloppe l'app. Les
-  40 écrans sont intacts.
-- **Le mobile n'est pas touché** : tout est sous un média-query qui ne se
-  déclenche qu'au-delà de 900 px. Un sabotage le vérifie.
+Tout suit **ta couleur d'accent** et **ton mode** (clair/sombre) : le rail, le
+galet, le fond. Ce n'est pas un thème plaqué, c'est le tien.
 
-## À vérifier à l'œil
+## Comment c'est fait — proprement
 
-1. Sur ton **ordinateur** : l'app est maintenant encadrée, posée sur un fond
-   coloré doux, avec une ombre — plus de vide blanc autour.
-2. Sur **téléphone** : rien ne change, pleine largeur comme avant.
-3. En **mode sombre** : le fond de bureau s'assombrit en cohérence.
+- **Aucun des 40 écrans n'a été touché.** Le shell les enveloppe. Sur mobile, il
+  est totalement transparent (il rend ses enfants tels quels) — d'où le mobile
+  intact.
+- **Une seule source de navigation** : le rail (desktop) et la barre (mobile)
+  lisent exactement les mêmes entrées, elles ne peuvent pas diverger.
+- **Réactif** : passe la fenêtre de large à étroit, le shell bascule tout seul.
+- **Mouvement réduit respecté** : sur un appareil réglé pour limiter les
+  animations, le galet et le feutre se figent.
+- Éprouvé par sabotage (le shell qui déborderait sur mobile fait rougir un test).
+
+## À vérifier à l'œil (et c'est là que ça se juge)
+
+1. Sur **ordinateur** : le rail à gauche, survole-le → il se déploie, les
+   libellés apparaissent. Change de page → le galet glisse, l'icône se trace.
+2. Change ta couleur d'accent dans Apparence → le rail et le fond suivent.
+3. Mode sombre → tout s'assombrit en cohérence.
+4. Sur **téléphone** : rien n'a changé, l'app d'avant.
+
+## Ce que je n'ai pas encore fait — et la suite que je propose
+
+C'est la **fondation** de l'expérience desktop : le shell. Ce n'est pas encore le
+**maître-détail** (voir la liste des dossiers À GAUCHE et le dossier ouvert À
+DROITE, sans quitter la liste) ni la largeur de contenu repensée par écran — ça,
+c'est le vrai « promax » que tu vises, et c'est un chantier par écran qui touche
+la mise en page de chacun.
+
+Je te propose de le faire **écran par écran**, en commençant par le plus payant :
+**Dossiers en maître-détail** (liste + aperçu côte à côte). C'est là que
+l'expérience devient bluffante — mais je préfère te livrer d'abord ce socle
+solide et te laisser juger le rail, plutôt que de tout remuer d'un coup. Dis-moi
+si le rail te plaît, et on attaque le maître-détail.
 
 ## Réserve d'honnêteté
 
-C'est une consolidation VISUELLE — l'app reste une colonne, elle n'exploite pas
-la largeur pour afficher deux panneaux côte à côte (liste + détail, à la
-« desktop »). C'est un choix : le vrai multi-panneau est un gros chantier qui
-toucherait chaque écran, et il vaut mieux le faire après que les métiers soient
-stables (phase délimitation). Pour l'instant, l'app cesse d'avoir l'air perdue
-sur grand écran — c'est ce qui pesait sur la crédibilité. Le rendu exact (largeur
-du fond, intensité de l'ombre) se juge sur ton moniteur ; dis-moi si tu veux la
-colonne plus large (par ex. 600 px) maintenant qu'elle est encadrée.
-
-## Ce qui reste de ta liste
-
-Test « indépendant manutention » avec Roovers donneur pilote · espace équipe
-(messagerie interne, invité = code, permissions du donneur d'ordre).
+Le rendu exact (fluidité du déploiement, glisse du galet, densité) se juge sur
+ton écran — le build est vert, mais l'œil est le juge. Deux détails à surveiller
+que je te signale : le petit « i » (balise de page) reste en haut à droite en
+fixe et le bandeau de sections d'un dossier reste centré en bas — ils fonctionnent
+mais méritent d'être repensés pour le desktop au prochain passage.
