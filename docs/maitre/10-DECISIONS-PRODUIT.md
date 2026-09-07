@@ -687,3 +687,19 @@ Phase O ajoutée au plan de travail ; O1 (frontières d'écran par secteur) en t
   + minHeight:0 (indispensable en flex) + overflowWrap anywhere (un lien
   n'élargit plus la bulle). Test dédié qui protégera aussi le futur espace
   « équipe ». Éprouvé par sabotage.
+
+## Boîte à facturer + pilotage financier + prix révisés + parrainage (01/09/2026)
+
+- **Dépenses/dettes libres** (0171/0172) : table depenses (saisie rapide, non
+  structurée, catégorie, réglée/dette, echeance). origine 'scan' prévue pour le
+  futur scan d'image. Policy corrigée : emettre_facture (gerer_comptabilite
+  n'existait pas — même piège que la clôture).
+- **pilotage/finances-libres.js** : bilanFinancier (recettes, dépenses par
+  catégorie, % sur recettes, reste, dettes isolées), santeFinanciere (alerte
+  claire quand ça va mal), CATEGORIES_DEPENSE. Pur, sabotté.
+- **Prix révisés** (comme demandé) : groupe_liftier 600→**450 €** (facturé aux
+  ACCÈS bureau, pas aux têtes ; +30 €/accès, plafond 15) ; logistique
+  1450→**900 €** (à confronter à un prospect). Les autres inchangés (60/240).
+- **Parrainage** (doctrine casino) : creditParrainage — PLAFONNÉ à 1 mensualité,
+  ANNUEL, déclenché au 1er paiement encaissé du filleul, jamais sous zéro.
+  PART_PARRAINAGE 25 %. La maison ne perd jamais. Sabotté.
