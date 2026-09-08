@@ -1,75 +1,66 @@
-# L'identité desktop de Dashprod — un shell à rail
+# L'empreinte visuelle desktop — une scène, la roulette en emblème
 
-**01/09/2026.** **1332 tests verts**, build vert.
+**01/09/2026.** **1334 tests verts**, build vert.
 
-## D'abord, je reviens en arrière
+## Le bon cap, cette fois
 
-Tu avais raison : mon « cadre redimensionné » de la fois précédente était un
-pansement de mauvais goût — une app mobile posée sur un fond, rien de plus. **Je
-l'ai révoqué.** Sur téléphone, tu retrouves exactement l'app d'avant : la barre
-du bas, la colonne, tel quel. Un test garantit que l'ancien cadre ne peut pas
-revenir.
+J'avais mal compris : le mobile reste linéaire (c'est parfait ainsi), et c'est le
+**PC qui devient la zone d'expression** — non-linéaire, une atmosphère de confort.
+J'ai remplacé mon rail par une vraie **scène**.
 
-## Ce que devient Dashprod sur un ordinateur
+## Ce que Dashprod devient sur grand écran
 
-Ce n'est plus une question de largeur, c'est une autre **façon d'habiter
-l'écran**. Au-delà de 1024 px, la disposition change entièrement :
+Ce n'est plus une colonne qui défile. C'est une **composition en deux temps** :
 
-**Un rail vertical à gauche**, toujours présent, qui remplace la barre du bas.
-- Replié, il ne montre que les icônes — fin, discret, 76 px.
-- Au survol, il **se déploie en douceur** (232 px) et révèle les libellés. Le
-  logo et le nom de ta société apparaissent en haut.
-- L'onglet actif porte un **galet lumineux qui GLISSE** d'un item à l'autre quand
-  tu changes de page — l'œil suit le mouvement, c'est ce qui rend une navigation
-  vivante plutôt que mécanique.
-- L'icône active **se trace au feutre** à l'activation, comme la barre mobile.
-- Un bouton **« Nouveau »** en accent, en haut, pour créer.
+**À gauche, l'emblème.** La roulette que tu aimes, **agrandie**, posée dans un
+**puits de lumière** qui respire doucement. Ton logo et le nom de ta société
+au-dessus, le nom de l'écran courant en dessous. Quand tu changes de page, la
+roulette **tourne** pour pointer la nouvelle section — le geste-signature du
+projet, enfin au centre de la scène au lieu d'être une pastille en coin. C'est
+elle, l'empreinte visuelle.
 
-**Un canvas à droite** qui respire : un fond de travail ambiant (adapté nuit/jour
-et à ta couleur d'accent), et l'écran courant posé dedans. Plus de barre en bas
-qui mange l'espace — le rail l'a remplacée, on récupère la hauteur.
+**À droite, le plateau.** L'écran courant ne défile pas : il **se pose** dans une
+carte de verre (flou, ombre ample, liseré lumineux) avec une petite animation à
+chaque changement — il arrive, il s'installe. Confortable, jamais brusque.
 
-Tout suit **ta couleur d'accent** et **ton mode** (clair/sombre) : le rail, le
-galet, le fond. Ce n'est pas un thème plaqué, c'est le tien.
+**Le fond** est un espace profond : des halos lents qui dérivent sur 22 secondes,
+adaptés à ton mode clair/sombre et à ta couleur d'accent. Une pièce vivante, qui
+respire — pas un tableur. Tout, du puits à la carte, suit **ta** couleur.
 
-## Comment c'est fait — proprement
+## Propre et sûr
 
-- **Aucun des 40 écrans n'a été touché.** Le shell les enveloppe. Sur mobile, il
-  est totalement transparent (il rend ses enfants tels quels) — d'où le mobile
-  intact.
-- **Une seule source de navigation** : le rail (desktop) et la barre (mobile)
-  lisent exactement les mêmes entrées, elles ne peuvent pas diverger.
-- **Réactif** : passe la fenêtre de large à étroit, le shell bascule tout seul.
-- **Mouvement réduit respecté** : sur un appareil réglé pour limiter les
-  animations, le galet et le feutre se figent.
-- Éprouvé par sabotage (le shell qui déborderait sur mobile fait rougir un test).
+- **Le mobile est 100 % intact** : la scène ne s'affiche qu'au-delà de 1024 px ;
+  en dessous, le shell s'efface et la barre du bas reprend la main.
+- **Aucun des 40 écrans touché** : la scène les enveloppe.
+- **Plus de doublon** : la roulette flottante des barres est masquée sur desktop,
+  puisque l'emblème la porte.
+- Réactif au redimensionnement, mouvement réduit respecté, sabotage vérifié (la
+  scène qui redeviendrait linéaire fait rougir un test).
 
-## À vérifier à l'œil (et c'est là que ça se juge)
+## À vérifier à l'œil — c'est là que tu juges l'empreinte
 
-1. Sur **ordinateur** : le rail à gauche, survole-le → il se déploie, les
-   libellés apparaissent. Change de page → le galet glisse, l'icône se trace.
-2. Change ta couleur d'accent dans Apparence → le rail et le fond suivent.
-3. Mode sombre → tout s'assombrit en cohérence.
-4. Sur **téléphone** : rien n'a changé, l'app d'avant.
+1. Sur **ordinateur** : la roulette trône à gauche dans sa lumière ; change de
+   page → elle tourne, l'aiguille pointe, la carte de droite se re-pose.
+2. Change ta couleur d'accent → toute la scène (fond, puits, carte) suit.
+3. Mode sombre → l'atmosphère s'assombrit en profondeur.
+4. Sur **téléphone** : rien n'a changé.
 
-## Ce que je n'ai pas encore fait — et la suite que je propose
+## Ce que je propose ensuite
 
-C'est la **fondation** de l'expérience desktop : le shell. Ce n'est pas encore le
-**maître-détail** (voir la liste des dossiers À GAUCHE et le dossier ouvert À
-DROITE, sans quitter la liste) ni la largeur de contenu repensée par écran — ça,
-c'est le vrai « promax » que tu vises, et c'est un chantier par écran qui touche
-la mise en page de chacun.
+C'est le **socle d'expression** — la scène et son emblème. Le cran d'après, celui
+qui rend l'expérience « promax » : que le **contenu** exploite cette scène. Par
+exemple, sur Dossiers, la liste et le dossier ouvert cohabitent sur le plateau
+(maître-détail), et la roulette pourrait piloter des vues, pas seulement des
+écrans. Mais ça se fait écran par écran.
 
-Je te propose de le faire **écran par écran**, en commençant par le plus payant :
-**Dossiers en maître-détail** (liste + aperçu côte à côte). C'est là que
-l'expérience devient bluffante — mais je préfère te livrer d'abord ce socle
-solide et te laisser juger le rail, plutôt que de tout remuer d'un coup. Dis-moi
-si le rail te plaît, et on attaque le maître-détail.
+Regarde d'abord cette scène. Si l'empreinte te parle, on l'enrichit ; si la
+roulette ne te semble pas assez marquante en emblème, dis-le — je peux la
+repenser plus spectaculaire (halo réactif à la souris, reflets, matière).
 
 ## Réserve d'honnêteté
 
-Le rendu exact (fluidité du déploiement, glisse du galet, densité) se juge sur
-ton écran — le build est vert, mais l'œil est le juge. Deux détails à surveiller
-que je te signale : le petit « i » (balise de page) reste en haut à droite en
-fixe et le bandeau de sections d'un dossier reste centré en bas — ils fonctionnent
-mais méritent d'être repensés pour le desktop au prochain passage.
+C'est l'ossature et l'atmosphère : le rendu exact (la douceur de la rotation
+agrandie, la lisibilité des petites icônes à l'échelle ×1.55, la profondeur des
+halos) se juge sur ton écran. La roulette a été dessinée petite ; agrandie, ses
+graduations et libellés peuvent demander un ajustement de finesse — dis-moi ce
+que tu vois, j'affine.
