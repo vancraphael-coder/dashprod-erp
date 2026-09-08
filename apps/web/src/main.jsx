@@ -907,9 +907,10 @@ function App() {
         <BaliseNote page={route.ecran} titre={LIBELLE_PAGE[route.ecran] || route.ecran} />
       </div>
       <CadreBureau
-        items={itemsNav({ modules: acces?.modules || [], peutGererEquipe })}
+        rotatif={itemsNav({ modules: acces?.modules || [], peutGererEquipe })
+          .map(([cle, icone, lib]) => ({ cle, icone, label: lib }))}
         actif={route.ecran} aller={(cle) => nav[cle] && nav[cle]()}
-        creer={() => nav.liste && nav.liste()} nomOrg={org?.nom}>
+        nomOrg={org?.nom}>
         {ecran}
       </CadreBureau>
       {!estBureau && RACINES.includes(route.ecran) && (
