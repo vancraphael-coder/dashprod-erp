@@ -744,3 +744,19 @@ Phase O ajoutée au plan de travail ; O1 (frontières d'écran par secteur) en t
   Éprouvé par sabotage.
 - Reste (annoncé) : maître-détail (liste + aperçu côte à côte) et largeur de
   contenu par écran — gros chantier, après stabilisation des métiers.
+
+## Identité desktop v2 — la SCÈNE (roulette emblème) (01/09/2026)
+
+Cap corrigé : le mobile reste linéaire ; le PC devient la ZONE D'EXPRESSION
+visuelle, non-linéaire, atmosphère de confort.
+- **CadreBureau réécrit** en SCÈNE à deux colonnes : à gauche l'EMBLÈME (la
+  roulette SelecteurRotatif agrandie ×1.55 dans un puits de lumière qui pulse,
+  logo + nom société + libellé de l'écran) ; à droite le PLATEAU où l'écran se
+  POSE dans une carte de verre (blur+saturate, ombre ample, animation « pose »
+  ré-déclenchée par écran via key). Fond ambiant profond (halos lents, dérive
+  22s), tout suivant l'accent et le mode.
+- La roulette flottante (.selecteur-rotatif-cadre) est masquée >=1024px : la
+  scène la porte, plus de doublon.
+- Non invasif (40 écrans intacts, passthrough mobile). prefers-reduced-motion
+  respecté. Sabotté.
+- C'est le SOCLE d'expression : le maître-détail par écran viendra ensuite.
