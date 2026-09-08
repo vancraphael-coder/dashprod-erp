@@ -58,7 +58,6 @@ import Centres from "./ecrans/Centres.jsx";
 import RapportCentres from "./ecrans/RapportCentres.jsx";
 import SelecteurCentre from "./composants/SelecteurCentre.jsx";
 import ChoixEspace from "./composants/ChoixEspace.jsx";
-import CadreBureau, { useEstBureau } from "./composants/CadreBureau.jsx";
 import DemandesReseau from "./ecrans/DemandesReseau.jsx";
 import Ressources from "./ecrans/Ressources.jsx";
 
@@ -256,7 +255,7 @@ function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
         display: "flex", justifyContent: "space-between",
         background: C.blanc, borderTop: `1px solid ${C.bord}`,
-        maxWidth: 520, margin: "0 auto",
+        maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto",
         paddingBottom: "env(safe-area-inset-bottom)",
         borderRadius: "22px 22px 0 0",
         boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
@@ -363,7 +362,7 @@ function AppTerrain({ profil }) {
           display: "flex", alignItems: "center", justifyContent: "space-between",
           background: edit ? "#EFF6FF" : "#F8FAFC",
           borderBottom: `1px solid ${C.bord}`, padding: "9px 14px",
-          maxWidth: 520, margin: "0 auto" }}>
+          maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto" }}>
           <button onClick={fermer} style={{ background: "none", border: "none",
             color: C.bleu, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             ← Chantiers
@@ -386,7 +385,7 @@ function AppTerrain({ profil }) {
         <nav className="dpnav dpnav-dense" aria-label="Sections du dossier" style={{
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
           display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
-          maxWidth: 520, margin: "0 auto", overflowX: "auto",
+          maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto", overflowX: "auto",
           paddingBottom: "env(safe-area-inset-bottom)",
           borderRadius: "22px 22px 0 0",
           boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
@@ -446,7 +445,7 @@ function AppTerrain({ profil }) {
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
         display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
-        maxWidth: 520, margin: "0 auto",
+        maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}>
         {items.map(([cle, icone, lib]) => {
@@ -517,7 +516,7 @@ function SousNavDossier({ actif, aller, nature }) {
       <nav className="dpnav dpnav-dense" aria-label="Sections du dossier" style={{
         position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
         display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
-        maxWidth: 520, margin: "0 auto", overflowX: "auto",
+        maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto", overflowX: "auto",
         paddingBottom: "env(safe-area-inset-bottom)",
         borderRadius: "22px 22px 0 0",
         boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
@@ -609,7 +608,6 @@ function App() {
   const [centreChoisi, setCentreChoisi] = useState(undefined);
   // R1 : dossier en attente de choix d'espace, quand plusieurs centres existent.
   const [choixEspace, setChoixEspace] = useState(null);
-  const estBureau = useEstBureau();     // desktop → shell à rail ; mobile → barre du bas
 
   // Charger la liste des centres dès qu'on a un profil bureau : le sélecteur en
   // a besoin. Inutile pour le terrain (il n'a pas de bascule).
@@ -906,14 +904,8 @@ function App() {
       <div style={{ position: "fixed", top: 12, right: 14, zIndex: 45 }}>
         <BaliseNote page={route.ecran} titre={LIBELLE_PAGE[route.ecran] || route.ecran} />
       </div>
-      <CadreBureau
-        rotatif={itemsNav({ modules: acces?.modules || [], peutGererEquipe })
-          .map(([cle, icone, lib]) => ({ cle, icone, label: lib }))}
-        actif={route.ecran} aller={(cle) => nav[cle] && nav[cle]()}
-        nomOrg={org?.nom}>
-        {ecran}
-      </CadreBureau>
-      {!estBureau && RACINES.includes(route.ecran) && (
+      {ecran}
+      {RACINES.includes(route.ecran) && (
         <BarreNav actif={route.ecran} aller={(cle) => nav[cle]()} modules={acces?.modules || []}
                   peutGererEquipe={peutGererEquipe} />
       )}
