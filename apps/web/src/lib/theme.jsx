@@ -144,6 +144,9 @@ if (typeof document !== "undefined" && !document.getElementById("champs-dashprod
       opacity: 1; transform: scale(1);
     }
     @media (max-width: 900px) { .selecteur-rotatif-cadre { display: none; } }
+    /* Sur desktop (>=1024), c'est la SCÈNE (CadreBureau) qui porte la roulette
+       en emblème : la version flottante ne doit pas faire doublon. */
+    @media (min-width: 1024px) { .selecteur-rotatif-cadre { display: none; } }
     @media (prefers-reduced-motion: reduce) {
       .selecteur-rotatif-cadre, .selecteur-rotatif-cadre * {
         transition-duration: .001ms !important;
