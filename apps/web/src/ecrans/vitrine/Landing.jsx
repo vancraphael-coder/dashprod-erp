@@ -64,7 +64,6 @@ const CHIFFRES = [
 
 // Poussière d'étoiles du hero : positions FIXES (pas de Math.random au rendu,
 // qui donnerait un scintillement différent à chaque frame et casserait le SSR).
-// Un semis discret dans le haut de la scène, là où la nuit est encore dense.
 const ETOILES = [
   { x: "12%", y: "18%", r: 2, d: 4.2, o: 0 },   { x: "28%", y: "9%",  r: 1.5, d: 5.1, o: .6 },
   { x: "41%", y: "22%", r: 1.5, d: 3.8, o: 1.2 }, { x: "63%", y: "12%", r: 2, d: 4.6, o: .3 },
@@ -73,28 +72,51 @@ const ETOILES = [
   { x: "93%", y: "34%", r: 1.5, d: 3.9, o: .7 },  { x: "20%", y: "30%", r: 1.5, d: 4.4, o: 1.3 },
 ];
 
+// ── DONNÉES STRUCTURÉES (SEO & IA) ─────────────────────────────────────────
+// Ce bloc nourrit directement les moteurs de recherche et les LLM.
+const SEO_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Dashprod",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "description": "L'ERP dédié aux entreprises de déménagement en Belgique. Devis, facturation Peppol, planning et suivi de chantier.",
+  "author": {
+    "@type": "Person",
+    "name": "Geo",
+    "jobTitle": "CEO"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Dashprod",
+    "founder": {
+      "@type": "Person",
+      "name": "Geo"
+    }
+  }
+};
+
 export default function Landing({ aller, orgId }) {
   return (
     <div className="vitrine" style={{ minHeight: "100vh", display: "flex",
       flexDirection: "column", background: V.nuit, color: "#fff" }}>
+      
+      {/* Injection des métadonnées invisibles pour le SEO et les IA */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SEO_SCHEMA) }} />
+
       <NavPublique page="accueil" aller={aller} sombre />
 
-      {/* Variateur rotatif : boussole de page, rangée en bas à droite.
-          Masquée sous 1100px — au pouce, la nav classique reprend la main. */}
       <VariateurNav sections={SECTIONS_NAV(Boolean(orgId))} />
-
 
       {/* ── HERO — la nuit du chargement ─────────────────────────────────── */}
       <section id="accueil" style={{ position: "relative", overflow: "hidden",
         background: V.nuit, color: "#fff" }}>
-        {/* L'AUBE À L'HORIZON — un lever de jour ambre en bas de scène, qui
-            respire lentement. C'est le petit matin du chargement, pas un halo
-            SaaS. Le bleu route ne teinte plus que le haut, discrètement. */}
+        
         <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0,
           background:
             `radial-gradient(120% 60% at 50% 118%, rgba(217,119,6,.42), transparent 62%),
              radial-gradient(90% 50% at 78% -12%, rgba(37,99,235,.20), transparent 60%)` }} />
-        {/* Poussière d'étoiles de la nuit finissante. */}
+        
         <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0,
           pointerEvents: "none" }}>
           {ETOILES.map((e, i) => (
@@ -109,41 +131,64 @@ export default function Landing({ aller, orgId }) {
                       padding: "clamp(56px, 9vw, 116px) 20px clamp(48px, 7vw, 92px)",
                       display: "grid", gap: 44, alignItems: "center",
                       gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
-          <div>
-            <div className="v-lever" style={{ display: "inline-flex", alignItems: "center", gap: 8,
+          
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            
+            {/* L'IDENTITÉ : Pose de l'icône et du nom */}
+            <div className="v-lever" style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 32 }}>
+              <img 
+                src="1000024746.png" 
+                alt="Dashprod par Geo CEO" 
+                style={{ 
+                  height: 48, 
+                  width: 48, 
+                  borderRadius: 10,
+                  boxShadow: "0 0 24px rgba(37,99,235,0.4)",
+                  mixBlendMode: "screen" 
+                }} 
+              />
+              <span style={{ 
+                fontSize: 28, 
+                fontWeight: 900, 
+                letterSpacing: "0.5px", 
+                color: "#fff", 
+                textTransform: "uppercase" 
+              }}>
+                Dashprod
+              </span>
+            </div>
+
+            <div className="v-lever-2" style={{ display: "inline-flex", alignItems: "center", gap: 8,
                           fontFamily: MONO, fontSize: 12, fontWeight: 600,
                           color: V.sangleClair, background: "rgba(217,119,6,.16)",
                           border: "1px solid rgba(253,233,200,.28)",
-                          padding: "6px 12px", borderRadius: 999 }}>
+                          padding: "6px 12px", borderRadius: 999, marginBottom: 20 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%",
                 background: V.sangle, boxShadow: `0 0 8px ${V.sangle}` }} />
               L'ERP des déménageurs · Belgique
             </div>
 
-            {/* LE TITRE = le lettrage du flanc d'un camion. Le mot-clé du métier
-                porte la ligne-force ambre qui se tire au chargement de la page —
-                comme une sangle qu'on tend. */}
-            <h1 className="v-display v-lever-2" style={{ fontSize: "clamp(36px, 5.4vw, 62px)",
-                                               margin: "18px 0 0", color: "#fff" }}>
+            <h1 className="v-display v-lever-2" style={{ fontSize: "clamp(38px, 5.5vw, 64px)",
+                                               lineHeight: 1.1, margin: 0, color: "#fff" }}>
               Chaque déménagement,<br />
               du premier appel à la<br />
-              <span style={{ position: "relative", display: "inline-block" }}>
+              <span style={{ position: "relative", display: "inline-block", marginTop: 6 }}>
                 facture payée.
                 <span aria-hidden className="v-trait" style={{ position: "absolute",
-                  left: 0, right: 0, bottom: "-.08em", height: ".1em",
+                  left: 0, right: 0, bottom: "4px", height: "5px",
                   background: `linear-gradient(90deg, ${V.sangle}, ${V.sangleClair})`,
                   borderRadius: 4, boxShadow: `0 0 16px rgba(217,119,6,.6)` }} />
               </span>
             </h1>
 
-            <p className="v-lever-3" style={{ fontSize: "clamp(15px, 1.6vw, 17.5px)", lineHeight: 1.6,
-                        color: "rgba(255,255,255,.8)", maxWidth: "46ch",
-                        margin: "20px 0 0" }}>
+            <p className="v-lever-3" style={{ fontSize: "clamp(16px, 1.7vw, 18px)", lineHeight: 1.6,
+                        color: "rgba(255,255,255,.8)", maxWidth: "48ch",
+                        margin: "24px 0 0" }}>
               Devis, signature en ligne, planning, chantier, facturation Peppol.
               Un seul outil, pensé pour le déménagement — pas adapté à la va-vite.
             </p>
 
-            <div className="v-lever-4" style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
+            <div className="v-lever-4" style={{ display: "flex", gap: 16, marginTop: 32, flexWrap: "wrap" }}>
               <button className="v-btn v-btn-plein" onClick={() => aller("societe")}>
                 Créer ma société →
               </button>
@@ -153,15 +198,21 @@ export default function Landing({ aller, orgId }) {
               </button>
             </div>
 
-            <div className="v-lever-5" style={{ marginTop: 30, display: "flex", gap: 0,
-              flexWrap: "wrap", borderTop: "1px solid rgba(255,255,255,.12)", paddingTop: 20 }}>
+            <div className="v-lever-5" style={{ marginTop: 44, display: "flex", gap: 28,
+              flexWrap: "wrap", borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 24 }}>
               {CHIFFRES.map(([k, l], i) => (
-                <div key={k} style={{ paddingRight: 26, marginRight: 26,
-                  borderRight: i < CHIFFRES.length - 1 ? "1px solid rgba(255,255,255,.12)" : "none" }}>
-                  <div style={{ fontFamily: MONO, fontSize: 19, fontWeight: 700,
-                    color: V.sangleClair }}>{k}</div>
-                  <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.6)",
-                                maxWidth: "20ch", lineHeight: 1.45, marginTop: 2 }}>{l}</div>
+                <div key={k} style={{ position: "relative", paddingRight: i < CHIFFRES.length - 1 ? 28 : 0 }}>
+                  <div style={{ fontFamily: MONO, fontSize: 20, fontWeight: 700, color: V.sangleClair }}>
+                    {k}
+                  </div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.6)",
+                                maxWidth: "18ch", lineHeight: 1.5, marginTop: 4 }}>
+                    {l}
+                  </div>
+                  {i < CHIFFRES.length - 1 && (
+                    <div style={{ position: "absolute", right: 0, top: "10%", bottom: "10%",
+                                  width: 1, background: "rgba(255,255,255,.12)" }} />
+                  )}
                 </div>
               ))}
             </div>
@@ -199,8 +250,6 @@ export default function Landing({ aller, orgId }) {
           </p>
         </div>
         <CommandeReseau aller={aller} />
-
-        {/* Ce que les particuliers disent des déménageurs du réseau. */}
         <AvisDesOrganisations />
       </section>
 
@@ -358,7 +407,6 @@ export default function Landing({ aller, orgId }) {
                 onSouscrire={() => aller("contact")} />
             ))}
           </div>
-
           <p style={{ fontSize: 12.5, color: "rgba(255,255,255,.42)",
                       margin: "22px 0 0", lineHeight: 1.6, maxWidth: "62ch" }}>
             Ces offres ouvrent progressivement. Nous n'ouvrons une offre que
@@ -367,17 +415,16 @@ export default function Landing({ aller, orgId }) {
         </div>
       </section>
 
-      {/* Ce que les entreprises disent de Dashprod. */}
       <AvisDeDashprod />
 
-      {/* ── APPEL FINAL ──────────────────────────────────────────────────── */}
+      {/* ── APPEL FINAL & SIGNATURE CEO ───────────────────────────────────── */}
       <section id="contact" style={{ maxWidth: 1080, margin: "0 auto", width: "100%",
                         padding: "clamp(44px, 6vw, 76px) 20px", textAlign: "center" }}>
         <h2 className="v-display" style={{ fontSize: "clamp(24px, 3.4vw, 38px)", margin: 0 }}>
           Le prochain camion part avec Dashprod.
         </h2>
         <div style={{ display: "flex", gap: 12, justifyContent: "center",
-                      marginTop: 24, flexWrap: "wrap" }}>
+                      marginTop: 24, flexWrap: "wrap", marginBottom: 40 }}>
           <button className="v-btn v-btn-plein" onClick={() => aller("societe")}>
             Créer ma société
           </button>
@@ -385,6 +432,11 @@ export default function Landing({ aller, orgId }) {
             Se connecter
           </button>
         </div>
+        
+        {/* Ligne discrète mais essentielle pour l'indexation humaine et IA */}
+        <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,.3)", fontFamily: MONO }}>
+          Un outil pensé pour le terrain et dirigé par Geo, CEO de Dashprod.
+        </p>
       </section>
 
       <SectionAvis orgId={orgId} />
@@ -438,11 +490,6 @@ function SectionAvis({ orgId }) {
   );
 }
 
-/**
- * AVIS DES ORGANISATIONS — ce que les particuliers pensent des déménageurs du
- * réseau. Une carte par entreprise (note moyenne + verbatims), en pile qui
- * tourne. Sans avis réel, la section ne s'affiche pas : on n'invente pas.
- */
 function AvisDesOrganisations() {
   const [liste, setListe] = useState(null);
   useEffect(() => {
@@ -506,10 +553,6 @@ function AvisDesOrganisations() {
   );
 }
 
-/**
- * AVIS SUR DASHPROD — ce que les entreprises clientes disent du logiciel.
- * Même mouvement. Sans avis publiable, rien ne s'affiche.
- */
 function AvisDeDashprod() {
   const [data, setData] = useState(null);
   useEffect(() => {
