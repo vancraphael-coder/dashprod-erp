@@ -760,3 +760,12 @@ visuelle, non-linéaire, atmosphère de confort.
 - Non invasif (40 écrans intacts, passthrough mobile). prefers-reduced-motion
   respecté. Sabotté.
 - C'est le SOCLE d'expression : le maître-détail par écran viendra ensuite.
+
+## Desktop — abandon du shell, colonne fluide qui épouse l'écran (01/09/2026)
+
+Décision de Raphaël : abandonner le design desktop (rail, puis scène à roulette).
+Retenu, sobre : la colonne s'élargit par PALIERS en gardant une largeur de
+lecture. --dp-largeur (theme.jsx) : 520 (mobile) → 600 (760px) → 720 (1024px) →
+820 (1440px). S.page et les barres fixes (main.jsx) l'utilisent (repli 520).
+CadreBureau supprimé. Le test cadre-pc.test.js garde ce choix et interdit le
+retour d'un shell invasif. Mobile strictement inchangé.
