@@ -154,6 +154,19 @@ if (typeof document !== "undefined" && !document.getElementById("champs-dashprod
     }
 
     /* ─────────────────────────────────────────────────────────────────────
+       LARGEUR DE LA COLONNE — elle épouse l'écran.
+
+       Mobile : 520 (inchangé). Puis on élargit par paliers, en gardant une
+       largeur de LECTURE : un contenu étiré sur tout un moniteur devient
+       illisible. La transition rend le redimensionnement fluide, pas saccadé.
+       Les barres fixes (bas, sections) suivent la même largeur, centrées. */
+    :root { --dp-largeur: 520px; }
+    @media (min-width: 760px)  { :root { --dp-largeur: 600px; } }
+    @media (min-width: 1024px) { :root { --dp-largeur: 720px; } }
+    @media (min-width: 1440px) { :root { --dp-largeur: 820px; } }
+    .dpnav, .selecteur-rotatif-cadre { }  /* alignés via leur propre maxWidth */
+
+    /* ─────────────────────────────────────────────────────────────────────
        LES LISTES DE RÉGLAGES (Compte, Paramètres).
 
        LE DÉFAUT : la règle universelle plus haut (survol = filtre de
@@ -299,7 +312,11 @@ export function euros(centimes) {
 /** Styles de base réutilisés par tous les écrans. */
 export const S = {
   page: { minHeight: "100vh", background: fondPage(APP, C), fontFamily: FS,
-          maxWidth: 520, margin: "0 auto", paddingBottom: 96, color: C.encre },
+          // La colonne épouse l'écran : 520 par défaut (mobile inchangé), mais
+          // la variable --dp-largeur l'élargit modérément sur grand écran, en
+          // gardant une largeur de LECTURE (un texte plein écran est illisible).
+          maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto",
+          paddingBottom: 96, color: C.encre },
   entete: { position: "sticky", top: 0, zIndex: 5,
             background: APP.mode === "nuit" ? "rgba(7,11,24,.88)" : "rgba(244,247,254,.92)",
             backdropFilter: "blur(8px)", padding: "16px 16px 10px",
