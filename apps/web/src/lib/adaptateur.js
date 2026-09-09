@@ -3453,6 +3453,15 @@ export async function reactiverMembre(membreId) {
   return data;
 }
 
+/**
+ * Créer sa société. Fonctionne aussi quand on est DÉJÀ rattaché ailleurs : la
+ * commande bascule alors l'appartenance active sur la nouvelle organisation.
+ *
+ * Elle renvoie `rafraichir_jeton` parce que ce basculement ne vaut rien tant
+ * que le jeton porte l'ancienne organisation — c'est lui, et lui seul, que le
+ * RLS écoute. Sans ce rafraîchissement, l'écran suivant lit encore les données
+ * de la société précédente. Même règle que `choisirSociete`.
+ */
 export async function creerMaSociete(champs) {
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,
@@ -3464,6 +3473,7 @@ export async function creerMaSociete(champs) {
     p_code: champs.code || null,
   });
   if (error) throw error;
+  if (data?.rafraichir_jeton) await supabase.auth.refreshSession();
   return data;
 }
 
