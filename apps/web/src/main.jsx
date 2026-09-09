@@ -16,6 +16,7 @@ import Connexion from "./ecrans/Connexion.jsx";
 import Diagnostic from "./ecrans/Diagnostic.jsx";
 import NonInvite from "./ecrans/NonInvite.jsx";
 import Inscription from "./ecrans/Inscription.jsx";
+import MesSocietes from "./ecrans/MesSocietes.jsx";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide, obtenirAffaire } from "./lib/adaptateur.js";
 import { centreDeRattachement, espacesCreation } from "@domaine/organisation/centres.js";
@@ -797,6 +798,7 @@ function App() {
     archivage: () => setRoute({ ecran: "archivage", affaireId: null }),
     textes: () => setRoute({ ecran: "textes", affaireId: null }),
     parametres: () => setRoute({ ecran: "parametres", affaireId: null }),
+    mesSocietes: () => setRoute({ ecran: "mes_societes", affaireId: null }),
     journal: (id) => setRoute({ ecran: "journal", affaireId: id }),
     rapports: (id) => setRoute({ ecran: "rapports", affaireId: id }),
   };
@@ -825,6 +827,7 @@ function App() {
       versParametres={nav.parametres} versDemandes={nav.demandes}
       versCentres={(acces?.modules || []).includes("multi_depots") ? nav.centres : null}
       versRapport={(acces?.modules || []).includes("multi_depots") ? nav.rapport : null}
+      versMesSocietes={nav.mesSocietes}
       peutConfigurer={peutGererEquipe} />;
   } else if (route.ecran === "vente_rapide") {
     ecran = <VenteRapide retour={nav.liste} versFacture={nav.facture} />;
@@ -843,6 +846,8 @@ function App() {
     ecran = <Conversations ouvrirDossier={nav.dossier} ouvrirPlanning={nav.planningJour} />;
   } else if (route.ecran === "stockage") {
     ecran = <Stockage retour={nav.liste} profil={profil} />;
+  } else if (route.ecran === "mes_societes") {
+    ecran = <MesSocietes retour={nav.compte} />;
   } else if (route.ecran === "centres") {
     ecran = <Centres retour={nav.compte} />;
   } else if (route.ecran === "rapport") {
