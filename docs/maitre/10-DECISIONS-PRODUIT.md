@@ -769,3 +769,50 @@ lecture. --dp-largeur (theme.jsx) : 520 (mobile) → 600 (760px) → 720 (1024px
 820 (1440px). S.page et les barres fixes (main.jsx) l'utilisent (repli 520).
 CadreBureau supprimé. Le test cadre-pc.test.js garde ce choix et interdit le
 retour d'un shell invasif. Mobile strictement inchangé.
+
+## Mes sociétés — créer et changer de société depuis l'application (09/09/2026)
+
+**Le manque.** Une personne déjà rattachée à une organisation ne pouvait ni en
+créer une seconde, ni revenir à la première. La base sait le faire depuis 0081
+(`cmd_creer_ma_societe` autorise explicitement la création quand on est salarié
+ailleurs ; `appartenance_active` porte le choix ; `cmd_mes_societes` /
+`cmd_choisir_societe` existent). L'interface, non : `ChoixSociete` (main.jsx) ne
+s'affiche qu'à un instant précis — jeton SANS organisation ET plusieurs
+appartenances. Dès qu'un choix est posé, l'écran ne réapparaît plus jamais, et
+`Inscription.jsx` n'est atteignable que par la branche `nonInvite`, c'est-à-dire
+un compte rattaché à RIEN. Un fondateur membre de sa propre société était donc
+enfermé dedans.
+
+**Décision.** Un écran `MesSocietes.jsx`, atteint depuis Compte, qui liste mes
+appartenances, marque celle qui est ouverte, permet d'en ouvrir une autre, et
+porte la création d'une société supplémentaire. Sans condition de capacité :
+appartenir à plusieurs sociétés ou monter la sienne ne dépend d'aucun droit dans
+la société courante.
+
+- À NE PAS confondre avec `Societes.jsx` (réservé à l'éditeur, crée des
+  organisations CLIENTES pour un autre administrateur). Cet écran-là n'est
+  monté nulle part à ce jour — dette connue, non traitée ici.
+- Le formulaire de création est extrait dans
+  `composants/FormulaireSociete.jsx`, partagé par Inscription et MesSocietes.
+  La commande, les règles de validation (TVA belge, code d'invitation) et le
+  rafraîchissement du jeton n'existent qu'à un seul endroit. Dupliqués, ils
+  auraient divergé au premier changement de garde — de façon invisible jusqu'au
+  jour où un seul des deux parcours aurait cessé de marcher. L'habillage reste
+  au parent (prop `styles`) : la vitrine et l'application n'ont pas le même
+  thème, et un composant partagé n'a pas à trancher cette question.
+
+**Bogue latent corrigé au passage.** `creerMaSociete` (adaptateur) ignorait le
+`rafraichir_jeton: true` renvoyé par la commande. Comme la création bascule
+`appartenance_active` sur la nouvelle organisation, l'écran suivant lisait
+encore les données de la précédente : c'est le jeton, et lui seul, que le RLS
+écoute. Même règle que `choisirSociete`, désormais appliquée aux deux.
+
+**Dérive de prix corrigée.** `Inscription.jsx` annonçait « 360 € HTVA/mois » en
+dur, alors qu'une société créée démarre en `starter` (180 €). Remplacé par
+`prixMensuel("starter")` — le prix vient du domaine, plus d'un littéral.
+
+**Garde étendue.** `mode-nuit.test.js` ne balayait que `ecrans/`. Les composants
+rendent À L'INTÉRIEUR des écrans : une teinte en dur y ignore le mode nuit
+exactement pareil, et un composant partagé redégrade d'un coup tous les écrans
+qui l'affichent. Le balayage couvre désormais `composants/` (PhotosConstat.jsx
+excepté : il branche déjà explicitement sur `sombre`). Éprouvé par sabotage.
