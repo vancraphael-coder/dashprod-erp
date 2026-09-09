@@ -23,6 +23,11 @@ import { fileURLToPath } from "node:url";
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const ECRANS = join(RACINE, "apps", "web", "src", "ecrans");
+// Les composants rendent À L'INTÉRIEUR des écrans d'application : une teinte
+// posée en dur dans l'un d'eux ignore le mode nuit exactement comme dans un
+// écran. Le dossier échappait au balayage — un composant partagé pouvait donc
+// redégrader d'un coup tous les écrans qui l'affichent.
+const COMPOSANTS = join(RACINE, "apps", "web", "src", "composants");
 
 // Documents et écrans à l'identité propre : fond clair assumé dans les 2 modes.
 const HORS_SUJET = new Set([
@@ -31,6 +36,7 @@ const HORS_SUJET = new Set([
   "Connexion.jsx", "Inscription.jsx",       // pages d'auth : thème vitrine (V.*)
   "Diagnostic.jsx",          // page technique autonome
   "MolettesCouleur.jsx",     // molette graphique, hors thème
+  "PhotosConstat.jsx",       // branche déjà explicitement sur `sombre`
   "theme-client.jsx",        // définition de palette, pas un écran
 ]);
 
@@ -45,12 +51,15 @@ function fichiersJsx(dir) {
   return out;
 }
 
+// Écrans + composants : le même thème s'applique aux deux.
+const surveilles = () => [...fichiersJsx(ECRANS), ...fichiersJsx(COMPOSANTS)];
+
 test("aucun FOND clair en dur dans les écrans d'app (il ignorerait le mode nuit)", () => {
   const fautes = [];
   // `background:` (ou backgroundColor) suivi d'un blanc littéral. On ne vise
   // QUE les fonds : `color: "#fff"` (texte) est autorisé.
   const FOND_BLANC = /background(?:Color)?:\s*["'](#fff|#ffffff|#FFF|#FFFFFF|white)["']/;
-  for (const f of fichiersJsx(ECRANS)) {
+  for (const f of surveilles()) {
     const src = readFileSync(f, "utf8");
     src.split("\n").forEach((ligne, i) => {
       if (/^\s*(\/\/|\*|\/\*)/.test(ligne)) return;   // commentaire
@@ -70,7 +79,7 @@ test("aucun FOND bleu clair en dur (il ignore le mode nuit lui aussi)", () => {
   // fond nuit. Trouvé dans Profil.jsx. Le jeton `C.bleuClair` suit le mode.
   const fautes = [];
   const BLEU_DUR = /background(?:Color)?:\s*["'](#E7EFFC|#EEF2F8|#EFF4FC|#E8F0FE|#DBEAFE)["']/i;
-  for (const f of fichiersJsx(ECRANS)) {
+  for (const f of surveilles()) {
     const src = readFileSync(f, "utf8");
     src.split("\n").forEach((ligne, i) => {
       if (/^\s*(\/\/|\*|\/\*)/.test(ligne)) return;
@@ -115,7 +124,7 @@ test("aucune TEINTE d'alerte en dur : ni fond, ni filet, ni encre", () => {
     "#5B21B6": "C.encreViolet", "#3730A3": "C.encreIndigo", "#9D174D": "C.encreRose",
   };
   const fautes = [];
-  for (const f of fichiersJsx(ECRANS)) {
+  for (const f of surveilles()) {
     const src = readFileSync(f, "utf8");
     src.split("\n").forEach((ligne, i) => {
       if (/^\s*(\/\/|\*|\/\*)/.test(ligne)) return;      // commentaire
