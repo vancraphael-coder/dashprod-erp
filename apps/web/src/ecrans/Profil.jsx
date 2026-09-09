@@ -47,7 +47,8 @@ const jour = (iso) => {
 };
 
 export default function Profil({ profil, versParametres, versDiagnostic, versDemandes,
-                                 versCentres, versRapport, peutConfigurer }) {
+                                 versCentres, versRapport, versMesSocietes,
+                                 peutConfigurer }) {
   const [onglet, setOnglet] = useState("inventaire");
   const [avisOuvert, setAvisOuvert] = useState(false);
   const [note, setNote] = useState(0);
@@ -70,6 +71,12 @@ export default function Profil({ profil, versParametres, versDiagnostic, versDem
       titre: "Demandes du réseau",
       resume: "Les particuliers qui cherchent un déménageur.",
       onClick: versDemandes },
+    // Sans capacité particulière : appartenir à plusieurs sociétés, ou vouloir
+    // monter la sienne, ne dépend d'aucun droit dans la société courante.
+    versMesSocietes && { cle: "mes_societes", icone: "🏢",
+      titre: "Mes sociétés",
+      resume: "Changer de société, ou créer la vôtre.",
+      onClick: versMesSocietes },
   ].filter(Boolean);
 
   return (

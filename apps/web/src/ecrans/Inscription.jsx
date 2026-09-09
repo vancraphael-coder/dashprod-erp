@@ -13,25 +13,13 @@
 // =============================================================================
 
 import React, { useState } from "react";
-import { creerMaSociete } from "../lib/adaptateur.js";
 import { deconnecter } from "../lib/supabase.js";
-import { tvaBelgeValide } from "@domaine/organisation/identite.js";
+import { prixMensuel } from "@domaine/commercial/plans.js";
+import FormulaireSociete from "../composants/FormulaireSociete.jsx";
 import { V, MONO, Logo, Etiquette } from "./vitrine/theme-vitrine.jsx";
 
 export default function Inscription({ email, onCreee }) {
   const [volet, setVolet] = useState(null);   // null | "societe" | "client"
-  const [f, setF] = useState({ nom: "", nomAdmin: "", bce: "", tva: "", tel: "", code: "" });
-  const [enCours, setEnCours] = useState(false);
-  const [erreur, setErreur] = useState(null);
-
-  const tvaOk = tvaBelgeValide(f.tva);
-  const pret = f.nom.trim().length > 1 && tvaOk && f.code.trim().length > 3;
-
-  async function creer() {
-    setErreur(null); setEnCours(true);
-    try { await creerMaSociete(f); onCreee(); }
-    catch (e) { setErreur(e.message || "Création refusée"); setEnCours(false); }
-  }
 
   const champ = { width: "100%", boxSizing: "border-box", padding: "12px 14px",
     border: `1.5px solid ${V.bord}`, borderRadius: 11, fontSize: 15, background: "#fff" };
@@ -71,7 +59,7 @@ export default function Inscription({ email, onCreee }) {
                          margin: "6px 0 4px" }}>Je suis déménageur</span>
           <span style={{ display: "block", fontSize: 12.5, color: V.muet,
                          lineHeight: 1.5 }}>
-            Créer ma société sur Dashprod — 360 € HTVA/mois.
+            Créer ma société sur Dashprod — {prixMensuel("starter")}.
           </span>
         </button>
         <button onClick={() => setVolet("client")} className="v-carte v-carte-hover"
@@ -95,73 +83,27 @@ export default function Inscription({ email, onCreee }) {
           <div className="v-carte" style={{ padding: 24 }}>
             <Etiquette numero="2 min" libelle="base vierge, à vous" />
 
-            {/* Lancement fermé : le code est exigé côté base. On l'affiche en
-                tête pour que ce ne soit pas une surprise au moment de valider. */}
-            <label style={{ ...label, marginTop: 18 }}>
-              Code d'invitation <span style={{ color: "#DC2626" }}>*</span>
-            </label>
-            <input style={{ ...champ, fontFamily: MONO, letterSpacing: ".05em" }}
-                   value={f.code} placeholder="DP-XXXXXXXX" autoFocus
-                   onChange={(e) => setF((x) => ({ ...x, code: e.target.value.toUpperCase() }))} />
-            <div style={{ fontSize: 11.5, color: V.muet, marginTop: 4, lineHeight: 1.45 }}>
-              Dashprod ouvre par vagues. Ce code vous a été transmis par l'équipe.
+            <div style={{ marginTop: 18 }}>
+              <FormulaireSociete
+                styles={{
+                  champ,
+                  label,
+                  aide: { fontSize: 11.5, color: V.muet, marginTop: 4, lineHeight: 1.45 },
+                  mono: { fontFamily: MONO, letterSpacing: ".05em" },
+                  // Vitrine : fond clair assumé dans les deux modes.
+                  alerte: { color: "#991B1B", background: "#FEF2F2",
+                            border: "1px solid #FECACA" },
+                }}
+                libelleBouton="Créer ma société"
+                boutonProps={{ className: "v-btn v-btn-plein",
+                               style: { width: "100%", marginTop: 16 } }}
+                onCreee={onCreee} />
             </div>
-
-            <label style={{ ...label, marginTop: 18 }}>
-              Nom de la société <span style={{ color: "#DC2626" }}>*</span>
-            </label>
-            <input style={champ} value={f.nom}
-                   placeholder="Déménagements Dupont SRL"
-                   onChange={(e) => setF((x) => ({ ...x, nom: e.target.value }))} />
-
-            <label style={label}>Votre nom</label>
-            <input style={champ} value={f.nomAdmin} placeholder="Jean Dupont"
-                   onChange={(e) => setF((x) => ({ ...x, nomAdmin: e.target.value }))} />
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <label style={label}>Numéro d'entreprise</label>
-                <input style={champ} value={f.bce} placeholder="BE 0123.456.789"
-                       onChange={(e) => setF((x) => ({ ...x, bce: e.target.value }))} />
-              </div>
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <label style={label}>
-                  TVA <span style={{ color: "#DC2626" }}>*</span>
-                </label>
-                <input style={{ ...champ,
-                         borderColor: !f.tva || tvaOk ? V.bord : "#DC2626" }}
-                       value={f.tva} placeholder="BE0123456789"
-                       onChange={(e) => setF((x) => ({ ...x, tva: e.target.value }))} />
-              </div>
-            </div>
-            {f.tva && !tvaOk && (
-              <div style={{ fontSize: 11.5, color: "#DC2626", marginTop: 4 }}>
-                Format attendu : BE suivi de 10 chiffres.
-              </div>
-            )}
-
-            <label style={label}>Téléphone</label>
-            <input style={champ} value={f.tel} placeholder="0470 00 00 00"
-                   onChange={(e) => setF((x) => ({ ...x, tel: e.target.value }))} />
 
             <div style={{ fontSize: 11.5, color: V.brume, marginTop: 12, lineHeight: 1.5 }}>
               Adresse, IBAN et barème se complètent juste après, dans Paramètres.
               Ce que vous y réglez alimente ensuite tous vos devis et factures.
             </div>
-
-            {erreur && (
-              <div style={{ fontSize: 12.5, color: "#991B1B", background: "#FEF2F2",
-                            border: "1px solid #FECACA", borderRadius: 10,
-                            padding: "10px 12px", marginTop: 12, lineHeight: 1.5 }}>
-                {erreur}
-              </div>
-            )}
-
-            <button className="v-btn v-btn-plein"
-                    style={{ width: "100%", marginTop: 16, opacity: pret ? 1 : .5 }}
-                    disabled={!pret || enCours} onClick={creer}>
-              {enCours ? "Création…" : "Créer ma société"}
-            </button>
           </div>
         </div>
       )}
