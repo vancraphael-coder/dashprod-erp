@@ -816,3 +816,45 @@ rendent À L'INTÉRIEUR des écrans : une teinte en dur y ignore le mode nuit
 exactement pareil, et un composant partagé redégrade d'un coup tous les écrans
 qui l'affichent. Le balayage couvre désormais `composants/` (PhotosConstat.jsx
 excepté : il branche déjà explicitement sur `sombre`). Éprouvé par sabotage.
+
+## Moteur d'identité d'entreprise — étage pur (09/09/2026)
+
+**Le défaut qui l'a déclenché.** `tvaBelgeValide` exigeait `BE0` suivi de neuf
+chiffres. Or la série des numéros commençant par 0 est épuisée : depuis le
+19 septembre 2023, la BCE attribue des numéros commençant par 1. Toute
+entreprise inscrite depuis cette date était refusée à l'inscription — bouton
+grisé, sans message. Premier cas rencontré : la société de l'éditeur
+(BE1033973082, clé de contrôle juste). C'est le piège classique du préfixe codé
+en dur ; le vrai contrôle structurel est le modulo 97, pas le préfixe.
+
+**Décision.** Un module pur `packages/domaine/src/organisation/bce.js`, premier
+étage du moteur : `normaliserSaisie`, `typeIdentifiant`, `normaliserBce`,
+`cleModulo97Valide`, `bceValide`, `tvaBelgeValide`, `formaterBce`,
+`formaterTvaBe`, `identifiantPeppol`, `statutConfiance`. Aucun réseau, aucune
+base. Tout ce qui suivra — interrogation BCE/KBO, VIES, recherche Peppol — s'y
+appuie et ne le redéfinit jamais. `identite.js` délègue : une seule règle
+existe désormais.
+
+- La clé modulo 97 (97 − reste des huit premiers chiffres) vaut pour les deux
+  séries. Elle attrape la faute de frappe et le numéro inventé. Elle ne dit
+  PAS que l'entreprise existe, ni qu'elle est active, ni qu'elle est
+  assujettie : ces trois questions relèvent des sources officielles.
+- `typeIdentifiant` s'appuie sur un ensemble FERMÉ de préfixes TVA européens.
+  Une règle ouverte (« deux lettres puis alphanumérique ») classait « bonjour »
+  comme TVA européenne.
+- `statutConfiance` rend `absent` / `invalide` / `structure` / `officiel`, et
+  fait retomber une vérification de plus de 180 jours à `structure` : une
+  confirmation vieille de deux ans ne dit rien de l'entreprise d'aujourd'hui.
+- Un numéro d'unité d'établissement (série 2) est explicitement `inconnu` : le
+  confondre mènerait à interroger la mauvaise fiche officielle.
+
+**Forme canonique, décidée et appliquée.** `bce` = dix chiffres ponctués
+(`0478.363.616`), `tva` = `BE` + dix chiffres (`BE0478363616`). Trois
+organisations portaient trois écritures différentes, dont une TVA rangée dans
+la colonne BCE. Normalisé à l'écriture (adaptateur) et rattrapé en base
+(migration 0178, fonction `bce_chiffres`). Aucune contrainte posée sur la
+colonne : verrouiller aujourd'hui fermerait la porte à l'international avant
+de l'avoir instruit.
+
+**Effet de bord révélateur.** Les jeux d'essai utilisaient `BE0123456789`, un
+numéro qui n'a jamais existé et que rien ne vérifiait. Corrigés.
