@@ -167,8 +167,10 @@ export default function Abonnement({ retour }) {
 
             <div style={{ fontSize: 12.5, color: C.muet, marginTop: 4,
                           lineHeight: 1.5 }}>
-              {p.promesse} · {p.utilisateurs ?? "∞"} utilisateur
-              {p.utilisateurs !== 1 ? "s" : ""}
+              {p.promesse} · {p.membres_inclus} utilisateur
+              {p.membres_inclus !== 1 ? "s" : ""} inclus
+              {p.prix_membre_supp_centimes != null
+                && `, puis ${Math.round(p.prix_membre_supp_centimes / 100)} €`}
             </div>
 
             {gains.length > 0 && (
