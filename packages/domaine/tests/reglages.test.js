@@ -124,8 +124,11 @@ test("le badge d'identité dit l'état réel, il ne le mémorise pas", () => {
   })[0].entrees[0];
   assert.match(entree({}).badge, /manquant/);
   assert.equal(entree({}).actif, true);
+  // Le numéro doit désormais porter une clé de contrôle juste : depuis que
+  // l'identité vérifie le modulo 97, un « BE0123456789 » de démonstration est
+  // classé invalide — à raison, il n'a jamais existé.
   const complete = {
-    nom: "X", bce: "BE0123456789", tva: "BE0123456789", adresse: "R 1",
+    nom: "X", bce: "BE0478363616", tva: "BE0478363616", adresse: "R 1",
     cp: "1000", ville: "Bruxelles", tel: "02", email: "a@b.be",
     iban: "BE68539007547034",
   };
