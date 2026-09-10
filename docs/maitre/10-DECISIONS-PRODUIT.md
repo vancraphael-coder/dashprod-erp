@@ -858,3 +858,61 @@ de l'avoir instruit.
 
 **Effet de bord révélateur.** Les jeux d'essai utilisaient `BE0123456789`, un
 numéro qui n'a jamais existé et que rien ne vérifiait. Corrigés.
+
+## Un seul catalogue d'offres (10/09/2026)
+
+**Quatre divergences mesurées** entre la table `offres` — celle que lisent
+`modules_du_plan`, `org_a_module`, le RLS et la facturation — et les constantes
+de `plans.js`, que lisent la vitrine et les écrans :
+
+| | base | domaine (avant) |
+|---|---|---|
+| `signature_client`, `espace_client` | toutes offres | Regular et plus |
+| plafond de membres | aucun, supplément 13 € | refus au 3ᵉ en Basique |
+| membres compris en Pro | 30 | « illimité » |
+| repli d'un plan inconnu | `starter` | `regular` |
+
+Conséquences réelles : un client Basique payait deux modules que ses écrans lui
+cachaient ; l'interface refusait une vente que la facturation savait encaisser ;
+le coût par utilisateur de Pro était incalculable, donc l'argument de montée en
+gamme reposait sur du vide ; un plan inconnu ouvrait à l'écran six modules de
+plus que ce que le RLS autorisait. La même offre s'appelait « Starter » sur la
+vitrine et « Basique » sur la facture.
+
+**Le test de cohérence était la cause du problème qu'il devait prévenir.**
+`plans.test.js` figeait une recopie de `modules_du_plan` datée de la migration
+0075. Quand la décision du lot 02 a ouvert la signature et l'espace client à
+toutes les offres, la base a suivi et la recopie non : le test verrouillait la
+version périmée et refusait la correction. Une recopie manuelle vérifiée par
+une autre recopie manuelle ne protège de rien.
+
+**Décision — une seule saisie.**
+`packages/domaine/src/commercial/referentiel-offres.js` porte les faits : code,
+libellé, rang, statut, prix, seuils, modules, pour les huit offres (trois
+paliers + cinq sectorielles). `plans.js` n'y ajoute que la copie commerciale et
+n'invente aucun nombre. `outils/publier-offres.mjs` en dérive le SQL de
+publication, collé tel quel dans la migration. `offres-referentiel.test.js`
+régénère le bloc et vérifie qu'il figure mot pour mot dans la migration —
+retoucher le SQL à la main casse l'arbre. Éprouvé par sabotage.
+
+**« Rien ne se vend avant d'exister » devient une contrainte de base.** La
+règle vivait dans un commentaire et une fonction. En base désormais : une offre
+n'est souscriptible que si elle a des modules ET un prix, et que si son statut
+est `disponible`. Les deux contraintes sont `not valid` — les publications des
+20 et 22 août portent `souscriptible = true` avec un prix nul, et une donnée
+versionnée ne se réécrit jamais. Elles régissent donc toute publication future,
+ce qui est le but.
+
+**Deux notions séparées.** `membres_inclus` (compris dans le prix) et
+`membres_limite` (plafond dur, `null` = aucun) étaient confondus sous un champ
+`utilisateurs`. Aucun palier déménageur ne porte de plafond ; les offres
+sectorielles oui (Groupe liftier : 5 accès inclus, plafond dur à 15).
+`exigencesChangement` n'exige plus d'archiver personne en descendant d'offre —
+il annonce le surcoût mensuel avant le changement.
+
+**Les cinq offres sectorielles sont publiées en base**, avec leur statut réel
+(`bientot`, `etude` pour Logistique mobilier) et `modules: []`. Le vide n'est
+pas un oubli : le parcours n'existe pas, donc rien ne s'ouvre — et la
+contrainte interdit de les rendre souscriptibles tant que c'est le cas.
+`cmd_catalogue_offres()` expose la version en vigueur de chaque offre, pour que
+la vitrine et l'écran Abonnement lisent un jour la base plutôt qu'une copie.
