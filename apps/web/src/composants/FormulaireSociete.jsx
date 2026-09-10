@@ -93,13 +93,13 @@ export default function FormulaireSociete({
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 160 }}>
           <label style={label}>Numéro d'entreprise</label>
-          <input style={champ} value={f.bce} placeholder="BE 0123.456.789"
+          <input style={champ} value={f.bce} placeholder="0123.456.749"
                  onChange={maj("bce")} />
         </div>
         <div style={{ flex: 1, minWidth: 160 }}>
           <label style={label}>TVA <span style={{ color: "#DC2626" }}>*</span></label>
           <input style={{ ...champ, borderColor: !f.tva || tvaOk ? champ.borderColor : "#DC2626" }}
-                 value={f.tva} placeholder="BE0123456789" onChange={maj("tva")} />
+                 value={f.tva} placeholder="BE0123456749" onChange={maj("tva")} />
         </div>
       </div>
       {f.tva && !tvaOk && (
