@@ -22,8 +22,37 @@
 // « domaine pur » — il touche au DOM — donc il reste dans apps/web/lib.
 // =============================================================================
 
-const CANVAS_MAX = 2000;          // côté le plus long, en pixels
+// 1600 px de côté : une photo de constat sert à montrer une rayure ou un
+// emballage, pas à faire un tirage. Au-delà, on paie du stockage pour des
+// pixels que personne ne regarde. C'était 2000 — le gain est réel et la
+// lisibilité inchangée sur un écran de téléphone comme sur un PDF.
+const CANVAS_MAX = 1600;          // côté le plus long, en pixels
 const QUALITE_JPEG = 0.85;
+
+/**
+ * En dessous de ce poids, ré-encoder ne rapporte rien et dégraderait pour
+ * rien : on garde le fichier tel quel.
+ *
+ * LE DÉFAUT QUE CE SEUIL CORRIGE. Le laissez-passer était à 4 Mo : tout JPEG
+ * en dessous partait BRUT — donc en pleine résolution (4032 × 3024 sur un
+ * téléphone courant) ET avec son EXIF. Or la quasi-totalité des photos de
+ * téléphone pèsent entre 2 et 4 Mo : le chemin d'optimisation ne servait donc
+ * qu'aux HEIC et aux fichiers énormes, c'est-à-dire presque jamais.
+ *
+ * Deux conséquences, l'une chère et l'autre pire :
+ *   · une photo de 3,5 Mo restait 3,5 Mo au lieu de ~250 Ko — facteur 14 sur
+ *     le seul poste de stockage qui grossit vraiment ;
+ *   · son EXIF partait avec, y compris les COORDONNÉES GPS. Déposer la photo
+ *     brute d'un salon, c'est stocker la position du domicile d'un client dans
+ *     l'ERP : une donnée personnelle que personne n'a demandée et dont aucun
+ *     traitement n'a besoin.
+ *
+ * Le ré-encodage par canvas ne recopie AUCUNE métadonnée : elles disparaissent
+ * sans qu'il faille les traquer. Ce n'est donc pas qu'une économie, c'est de
+ * la minimisation de données au sens du RGPD — et elle a lieu AVANT l'envoi,
+ * donc la donnée inutile ne quitte même pas l'appareil.
+ */
+const SEUIL_INTACT = 400 * 1024;
 
 /** Une photo est-elle déjà un JPEG/PNG affichable partout ? */
 function dejaAffichable(type) {
@@ -38,7 +67,11 @@ function dejaAffichable(type) {
  */
 async function decoder(file) {
   if (typeof createImageBitmap === "function") {
-    return await createImageBitmap(file);   // lève si le format est indécodable
+    // `imageOrientation: "from-image"` explicite : la rotation EXIF est
+    // APPLIQUÉE aux pixels avant que les métadonnées ne disparaissent. Sans
+    // ça, une photo prise en portrait ressort couchée — le défaut classique
+    // du redimensionnement maison, et il ne se voit qu'après coup.
+    return await createImageBitmap(file, { imageOrientation: "from-image" });
   }
   // Repli : Image + objectURL.
   return await new Promise((resolve, reject) => {
@@ -63,9 +96,8 @@ function dimensions(bitmap) {
  * @throws si la photo ne peut pas être décodée (→ l'appelant refuse).
  */
 export async function normaliserPhoto(file) {
-  // Un JPEG/PNG raisonnable et pas énorme : on le laisse tel quel (rien à
-  // gagner à le ré-encoder, on éviterait juste une perte de qualité).
-  if (dejaAffichable(file.type) && file.size <= 4 * 1024 * 1024) {
+  // Déjà léger : rien à gagner, et on éviterait juste une perte de qualité.
+  if (dejaAffichable(file.type) && file.size <= SEUIL_INTACT) {
     return file;
   }
 
@@ -94,6 +126,12 @@ export async function normaliserPhoto(file) {
   const blob = await new Promise((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", QUALITE_JPEG));
   if (!blob) throw new Error("HEIC_NON_DECODABLE");
+
+  // Si le ré-encodage n'allège pas, on garde l'original — une image déjà
+  // optimisée par un autre outil ne gagne rien à repasser au four. On ne le
+  // fait QUE pour un format déjà affichable partout : sur un HEIC, garder
+  // l'original produirait une photo invisible hors Safari.
+  if (dejaAffichable(file.type) && blob.size >= file.size) return file;
 
   // Nom en .jpg pour que tout soit cohérent (chemin, affichage, téléchargement).
   const nomBase = (file.name || "photo").replace(/\.[^.]+$/, "");
