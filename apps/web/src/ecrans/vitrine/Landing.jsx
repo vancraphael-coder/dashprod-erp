@@ -349,7 +349,8 @@ export default function Landing({ aller, orgId }) {
               <CarteAbonnement key={o.cle}
                 plan={{ nom: o.nom, prix_centimes: o.prix_centimes,
                         promesse: o.promesse, pour: o.pour,
-                        modules: o.recurrents || [], utilisateurs: null }}
+                        modules: o.recurrents || [],
+                        membres_inclus: o.membres_inclus ?? null }}
                 ouverte={o.statut === "disponible"}
                 gains={(o.recurrents || []).map((r, i) => ({ cle: `r${i}`, titre: r }))}
                 verrouMotif={o.statut === "disponible" ? null

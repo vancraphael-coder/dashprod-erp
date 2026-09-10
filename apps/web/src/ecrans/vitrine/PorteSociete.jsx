@@ -110,9 +110,9 @@ export default function PorteSociete({ aller }) {
                 <b style={{ color: V.encre }}>
                   {Math.round(PLANS[0].prix_centimes / 100)} € HTVA / mois
                 </b>{" "}
-                — {PLANS[0].utilisateurs} utilisateurs, puis{" "}
-                {Math.round(plan("regular").prix_centimes / 100)} € pour{" "}
-                {plan("regular").utilisateurs}.
+                — {PLANS[0].membres_inclus} utilisateurs inclus, puis{" "}
+                {Math.round(PLANS[0].prix_membre_supp_centimes / 100)} € par
+                utilisateur supplémentaire.
               </div>
 
               <ul style={{ margin: "18px 0 0", padding: 0, listStyle: "none",

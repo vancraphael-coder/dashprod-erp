@@ -65,9 +65,13 @@ export default function CarteAbonnement({
   }, []);
 
   const prix = Math.round(plan.prix_centimes / 100);
-  const places = plan.utilisateurs
-    ? `${plan.utilisateurs} utilisateur${plan.utilisateurs > 1 ? "s" : ""}`
-    : "Sans limite";
+  // « Sans limite » était faux ET vendeur. Pro comprend 30 membres ; au-delà
+  // ils se facturent. On annonce le forfait — « — » quand l'offre n'en a pas
+  // encore, plutôt qu'une promesse inventée.
+  const inclus = plan.membres_inclus;
+  const places = inclus == null || inclus === 0
+    ? "—"
+    : `${inclus} inclus`;
   const nbModules = (gains.length + (socle ? socle.length : 0)) || plan.modules.length;
 
   return (
