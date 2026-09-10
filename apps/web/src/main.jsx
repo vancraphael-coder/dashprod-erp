@@ -32,6 +32,7 @@ import Profil from "./ecrans/Profil.jsx";
 import Landing from "./ecrans/vitrine/Landing.jsx";
 import PorteSociete from "./ecrans/vitrine/PorteSociete.jsx";
 import PorteClient from "./ecrans/vitrine/PorteClient.jsx";
+import PorteOffre from "./ecrans/vitrine/PorteOffre.jsx";
 import { CGU, Confidentialite as ConfidentialitePublique, MentionsLegales }
   from "./ecrans/vitrine/Legal.jsx";
 import Bienvenue from "./ecrans/Bienvenue.jsx";
@@ -555,12 +556,17 @@ function SousNavDossier({ actif, aller, nature }) {
 function App() {
   const [session, setSession] = useState(null);
   const [org, setOrg] = useState(null);
-  // Vitrine publique : quatre pages adressables par ?page= (liens directs
-  // partageables : /?page=societe, /?page=client, /?page=connexion).
+  // Vitrine publique, adressable par ?page= — liens directs partageables :
+  // /?page=societe, /?page=client, /?page=connexion, et une page de parcours
+  // par offre : /?page=offre:independant_manutention.
+  const PAGES_PUBLIQUES = ["societe", "client", "connexion", "cgu",
+                           "confidentialite", "mentions"];
+  const pagePubliqueValide = (p) =>
+    PAGES_PUBLIQUES.includes(p) || /^offre:[a-z_]+$/.test(p || "");
   const [pagePublique, setPagePublique] = useState(() => {
     try {
       const p = new URLSearchParams(location.search).get("page");
-      return ["societe", "client", "connexion", "cgu", "confidentialite", "mentions"].includes(p) ? p : "accueil";
+      return pagePubliqueValide(p) ? p : "accueil";
     } catch { return "accueil"; }
   });
   const allerPublic = (page) => {
@@ -578,7 +584,7 @@ function App() {
     const lire = () => {
       try {
         const p = new URLSearchParams(location.search).get("page");
-        setPagePublique(["societe", "client", "connexion"].includes(p) ? p : "accueil");
+        setPagePublique(pagePubliqueValide(p) ? p : "accueil");
       } catch {}
     };
     window.addEventListener("popstate", lire);
@@ -692,6 +698,13 @@ function App() {
     return <SignatureOffre codeInitial={signer} retour={() => setSigner(null)} />;
   }
   if (configPresente && !session) {
+    // « offre:<code> » : une page de parcours par offre. Le code voyage dans
+    // le nom de page plutôt que dans un second paramètre — un seul mécanisme
+    // de navigation publique, donc un seul endroit où se tromper.
+    if (String(pagePublique).startsWith("offre:")) {
+      return <PorteOffre code={String(pagePublique).slice(6)}
+                         aller={allerPublic} />;
+    }
     if (pagePublique === "societe") return <PorteSociete aller={allerPublic} />;
     if (pagePublique === "client") {
       return <PorteClient aller={allerPublic}
