@@ -30,10 +30,16 @@ import { PLANS, OFFRES_SECTEURS, offreSouscriptible } from "../src/commercial/pl
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const MIGRATIONS = join(RACINE, "supabase", "migrations");
 
-/** La migration de publication la plus récente du catalogue. */
+/**
+ * La migration de publication la plus récente — reconnue à son CONTENU, pas à
+ * son nom. Repérée par le nom, le test comparait le référentiel à une
+ * publication périmée dès qu'une republication portait un autre intitulé.
+ */
 function migrationPublication() {
   const f = readdirSync(MIGRATIONS)
-    .filter((n) => /catalogue_offres/.test(n))
+    .filter((n) => n.endsWith(".sql"))
+    .filter((n) => readFileSync(join(MIGRATIONS, n), "utf8")
+      .includes("insert into public.offres ("))
     .sort()
     .pop();
   assert.ok(f, "aucune migration de publication du catalogue");

@@ -30,7 +30,10 @@ test("le dossier maître est complet et se lit dans un ordre", () => {
     "60-CIRCUITS-QUATRE-COUCHES.md", "70-ROADMAP.md",
     // Les remarques de l'atelier classées en lots (30/08/2026).
     "80-REMARQUES-ATELIER.md",
-    "90-PARAMETRES-CARTOGRAPHIE.md"];
+    "90-PARAMETRES-CARTOGRAPHIE.md",
+    // Les coûts récurrents par client, et ce qu'on refuse d'optimiser
+    // (10/09/2026).
+    "17-COUTS-STOCKAGE.md"];
   const presents = readdirSync(MAITRE).filter((f) => f.endsWith(".md")).sort();
   assert.deepEqual(presents, attendus.sort());
 });
