@@ -34,6 +34,10 @@ const pointeurFin = () =>
 export default function CarteAbonnement({
   plan, vedette = false, ouverte = true, gains = [], aVenir = [],
   socle = null, essaiJours, heritage = null, onSouscrire, verrouMotif,
+  // Second geste, discret : traverser l'offre avant de l'essayer. Beaucoup de
+  // visiteurs ne cliquent pas « essayer » parce qu'ils ne savent pas encore
+  // ce qui va se passer chez eux.
+  onParcours = null,
 }) {
   const ref = useRef(null);
   const [deplie, setDeplie] = useState(false);
@@ -215,6 +219,16 @@ export default function CarteAbonnement({
                           marginTop: 18, lineHeight: 1.5, textAlign: "left" }}>
               {verrouMotif}
             </div>
+          )}
+
+          {onParcours && (
+            <button onClick={onParcours} style={{
+              background: "none", border: "none", cursor: "pointer",
+              marginTop: 10, padding: 0, fontSize: 12.5, fontWeight: 600,
+              color: "rgba(255,255,255,.62)", textDecoration: "underline",
+              textUnderlineOffset: 3 }}>
+              Voir le parcours complet
+            </button>
           )}
         </div>
       </article>

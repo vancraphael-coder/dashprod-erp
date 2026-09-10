@@ -21,6 +21,7 @@ import { V, MONO, NavPublique, PiedPublic, Etiquette } from "./theme-vitrine.jsx
 import { avisPublics, avisReseau, avisProduitPublics }
   from "../../lib/adaptateur.js";
 import CommandeReseau from "./CommandeReseau.jsx";
+import CarteOffreSecteur from "./CarteOffreSecteur.jsx";
 import VariateurNav from "./VariateurNav.jsx";
 import CarteAbonnement from "./CarteAbonnement.jsx";
 import PanneauVerre from "./PanneauVerre.jsx";
@@ -317,7 +318,8 @@ export default function Landing({ aller, orgId }) {
                   heritage={i === 0 ? null : PLANS[i - 1].nom}
                   essaiJours={ESSAI_JOURS}
                   verrouMotif={plan(p.cle).verrou_motif}
-                  onSouscrire={() => aller("societe")} />
+                  onSouscrire={() => aller("societe")}
+                  onParcours={() => aller(`offre:${p.cle}`)} />
               );
             })}
           </div>
@@ -346,17 +348,8 @@ export default function Landing({ aller, orgId }) {
           <div style={{ display: "grid", gap: 18, marginTop: 30,
                         gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
             {offresVitrine().map((o) => (
-              <CarteAbonnement key={o.cle}
-                plan={{ nom: o.nom, prix_centimes: o.prix_centimes,
-                        promesse: o.promesse, pour: o.pour,
-                        modules: o.recurrents || [],
-                        membres_inclus: o.membres_inclus ?? null }}
-                ouverte={o.statut === "disponible"}
-                gains={(o.recurrents || []).map((r, i) => ({ cle: `r${i}`, titre: r }))}
-                verrouMotif={o.statut === "disponible" ? null
-                  : "Bientôt — cette offre ouvre lorsque son parcours fonctionne "
-                    + "de bout en bout. Écrivez-nous pour être prévenu au lancement."}
-                onSouscrire={() => aller("contact")} />
+              <CarteOffreSecteur key={o.cle} offre={o}
+                onInteret={() => aller(`offre:${o.cle}`)} />
             ))}
           </div>
 
