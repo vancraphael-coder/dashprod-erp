@@ -916,3 +916,73 @@ pas un oubli : le parcours n'existe pas, donc rien ne s'ouvre — et la
 contrainte interdit de les rendre souscriptibles tant que c'est le cas.
 `cmd_catalogue_offres()` expose la version en vigueur de chaque offre, pour que
 la vitrine et l'écran Abonnement lisent un jour la base plutôt qu'une copie.
+
+## Une page de parcours par offre, et les écrans de l'indépendant (10/09/2026)
+
+**Le problème.** La landing empilait des cartes de prix : un nom, un montant,
+des cases à cocher. Un visiteur ne se demande pas combien de modules il
+achète — il se demande « il se passe quoi, chez moi, du premier appel jusqu'à
+l'argent sur le compte ». Et `CarteOffreSecteur.jsx`, la carte MÉTIER conçue
+pour les offres sectorielles, n'était montée nulle part : la landing rendait
+les offres de secteur avec la carte des PALIERS, qui compare des tailles là où
+il faut comparer des métiers.
+
+**Décision.** `packages/domaine/src/commercial/parcours-offres.js` décrit pour
+chaque offre un TRAJET : les étapes dans l'ordre où elles arrivent, chacune
+nommant l'écran où elle se passe, plus ce que l'offre NE fait PAS. La liste des
+écrans est dérivée du parcours, jamais saisie deux fois.
+`ecrans/vitrine/PorteOffre.jsx` rend cette page, adressable par
+`?page=offre:<code>`. La carte métier est enfin utilisée et mène au parcours.
+
+- **L'invariant tenu par un test** : quand une offre porte des modules, chaque
+  étape de son parcours s'appuie sur un module qu'elle ouvre réellement. Sans
+  ça la landing promettrait un écran que le RLS referme — le même mécanisme qui
+  avait caché `signature_client` aux clients Basique, sauf qu'ici il se voit à
+  la vente. Un test vérifie aussi que le module cité est LIVRÉ : vendre un
+  écran adossé à un module non livré, c'est vendre du vide.
+- **Aucun chiffre dans la page** : prix, seuils et statut viennent du
+  référentiel. C'est exactement par des littéraux que les deux catalogues
+  avaient divergé.
+- **Ce que l'offre ne couvre pas est affiché aussi haut que ce qu'elle
+  couvre.** Une offre dont on découvre les limites après coup ne se garde pas.
+
+**Les modules de « Indépendant manutention », décidés.** `crm`, `planning`,
+`terrain`, `facturation`, `signature_client`, `rapport_chantier`. Choisis en
+dérivant les écrans de son parcours, pas en découpant le catalogue déménageur :
+un indépendant doit être trouvé, recevoir une mission, pointer, prouver,
+facturer, suivre ses encours. Il n'a besoin ni du relevé de volume, ni du devis
+de déménagement, ni de la flotte, ni de la paie — il est seul (`membres_limite`
+à 1, plafond dur).
+
+**L'offre reste `bientot` et non souscriptible.** Les modules sont posés pour
+que le parcours propre à l'indépendant — poser ses disponibilités, recevoir les
+missions d'un donneur d'ordre — puisse être construit. La vente attend qu'il
+tourne de bout en bout, et la contrainte en base l'interdit d'ici là.
+Publication 0180.
+
+**Dette signalée, non traitée :** `Societes.jsx` (écran éditeur des
+organisations clientes) n'est toujours monté nulle part.
+
+## Coûts de stockage : la résolution et les métadonnées (10/09/2026)
+
+Voir `docs/maitre/17-COUTS-STOCKAGE.md` pour le détail. Le point de décision :
+
+**Un laissez-passer court-circuitait l'optimisation dans le cas le plus
+fréquent.** `image.js` renvoyait le fichier brut pour tout JPEG sous 4 Mo —
+soit la quasi-totalité des photos de téléphone. Le chemin d'optimisation ne
+servait donc qu'aux HEIC. Conséquences : une photo de 3,5 Mo restait 3,5 Mo au
+lieu de ~250 Ko (facteur 14 sur le seul poste de stockage qui grossit
+vraiment), et son EXIF partait avec — **y compris les coordonnées GPS du
+domicile du client**. Une donnée personnelle que personne n'a demandée et
+qu'aucune finalité ne couvre : ça relève de P6 autant que du coût.
+
+Seuil descendu à 400 Ko, côté maximal de 2000 à 1600 px, et
+`imageOrientation: "from-image"` explicite pour que les portraits ne
+ressortent pas couchés. Le ré-encodage par canvas ne recopie aucune
+métadonnée : la minimisation est gratuite, et elle a lieu avant l'envoi.
+
+**Règle générale posée : on optimise ce que Dashprod PRODUIT, jamais ce qu'il
+REÇOIT.** Les pièces jointes de messages portent une empreinte SHA-256 qui
+entre dans le hash du message (registre probant) — elles restent bit pour bit
+ce que l'expéditeur a envoyé. Recompresser une preuve détruit ce qui en fait
+une preuve.
