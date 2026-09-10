@@ -26,6 +26,11 @@
  * n'achète pas « l'écran Comptabilite », il achète « ne plus ressaisir chez
  * mon comptable ».
  */
+import { REFERENTIEL_OFFRES, offreReferentiel, paliersDemenageur,
+         offresSectorielles, STATUTS_OFFRE } from "./referentiel-offres.js";
+
+export { STATUTS_OFFRE };
+
 export const MODULES = Object.freeze([
   // ── Le socle : ce sans quoi l'outil ne remplace pas le papier ────────────
   { cle: "crm", titre: "Clients et dossiers", socle: true, livre: true,
@@ -93,75 +98,76 @@ export function modulesSocle() {
 }
 
 /**
- * Les trois offres.
+ * LA COPIE COMMERCIALE des trois paliers — et rien d'autre.
  *
- * `utilisateurs: null` = sans limite.
- * Les prix sont en centimes HTVA, par mois et par entreprise.
+ * Les chiffres (prix, seuils, modules) ne sont PAS ici : ils viennent du
+ * référentiel, qui est aussi la source du SQL de publication. Ce fichier
+ * n'invente aucun nombre. C'est ce qui empêche les deux catalogues de
+ * redivergier — la divergence précédente avait caché deux modules payés à tous
+ * les clients Basique et refusé des ventes que la facturation savait encaisser.
  */
-export const PLANS = Object.freeze([
-  {
-    cle: "starter",
-    nom: "Starter",
-    // 180 € : la moitié de Regular, facile à annoncer. Le prix ne peut pas
-    // descendre plus bas sans casser l'échelle — à 120 € pour 2 personnes, le
-    // coût par utilisateur (60 €) passerait SOUS celui de Regular (72 €), et
-    // monter en gamme reviendrait à payer plus cher par tête. Un test le
-    // vérifie, parce qu'une grille incohérente ne se rattrape pas au discours.
-    prix_centimes: 18000,
-    utilisateurs: 2,
+const COPIE_PALIERS = Object.freeze({
+  starter: {
     promesse: "Sortir du papier",
     pour: "Le déménageur seul ou à deux, qui travaille encore sur Excel et "
         + "sur des devis Word.",
-    modules: [...modulesSocle()],
     // Ce qui donnera envie de monter — dit en une phrase, pas en liste.
-    motif_montee: "Faire signer vos offres en ligne et facturer des entreprises.",
+    motif_montee: "Facturer des entreprises par voie électronique et sortir "
+                + "votre comptabilité sans ressaisie.",
   },
-  {
-    cle: "regular",
-    nom: "Regular",
-    prix_centimes: 36000,
-    utilisateurs: 5,
+  regular: {
     promesse: "Le circuit complet, du premier appel au paiement",
     pour: "L'entreprise établie, avec une équipe bureau et une ou deux équipes "
         + "terrain.",
-    // L'international reste un module de Regular, même Pro ouverte : Pro se
-    // différencie par la logistique multi-sites, qui se suffit à elle-même —
-    // inutile de retirer à Regular une valeur déjà livrée. (À rebasculer en
-    // Pro-only si l'on veut un cran de différenciation supplémentaire.)
-    modules: [...modulesSocle(), "signature_client", "espace_client", "peppol",
-              "comptabilite", "rapport_chantier", "paie", "journal",
-              "international"],
     motif_montee: "Plusieurs centres logistiques, chacun son gestionnaire.",
     recommande: true,
   },
-  {
-    cle: "pro",
-    nom: "Pro",
-    prix_centimes: 72000,
-    utilisateurs: null,
+  pro: {
     promesse: "Plusieurs centres logistiques",
     pour: "L'entreprise qui exploite plusieurs dépôts, chacun avec ses équipes "
         + "et son gestionnaire.",
-    modules: [...modulesSocle(), "signature_client", "espace_client", "peppol",
-              "comptabilite", "rapport_chantier", "paie", "journal",
-              "international", "multi_depots", "gestionnaire_depot",
-              "stockage_3d"],
     motif_montee: null,   // dernier palier
-
-    // OUVERTE le 13/08/2026. Ce qui la définit — centres logistiques,
-    // gestionnaire de dépôt, stockage — est construit, testé et câblé
-    // (table `centres_logistiques`, cloisonnement RLS, écrans Centres /
-    // Stockage / RapportCentres). La condition posée le 05/08 pour ne pas
-    // « vendre une promesse » est remplie : l'offre devient souscriptible.
   },
-]);
+});
+
+/**
+ * Les trois paliers déménageur, dérivés du référentiel.
+ *
+ * `membres_inclus` = compris dans le prix de base.
+ * `membres_limite` = plafond DUR ; `null` = aucun plafond, le membre
+ * supplémentaire se facture. Les deux notions étaient confondues sous un seul
+ * champ `utilisateurs`, ce qui faisait dire à Pro « illimité » alors qu'il
+ * comprend 30 membres, et faisait refuser un 3ᵉ utilisateur en Basique alors
+ * que la base l'accepte et le facture.
+ */
+export const PLANS = Object.freeze(paliersDemenageur().map((o) => Object.freeze({
+  cle: o.code,
+  nom: o.libelle,
+  prix_centimes: o.prix_base_centimes,
+  membres_inclus: o.membres_inclus,
+  membres_limite: o.membres_limite,
+  prix_membre_supp_centimes: o.prix_membre_supp_centimes,
+  centres_inclus: o.centres_inclus,
+  centres_limite: o.centres_limite,
+  statut: o.statut,
+  disponible: o.souscriptible,
+  modules: Object.freeze([...o.modules]),
+  ...COPIE_PALIERS[o.code],
+})));
 
 export function plan(cle) {
   return PLANS.find((p) => p.cle === cle) || null;
 }
 
-/** Le plan par défaut d'une organisation sans plan défini. */
-export const PLAN_DEFAUT = "regular";
+/**
+ * Le plan de REPLI d'une organisation sans plan défini.
+ *
+ * `starter`, comme en base (`modules_du_plan` retombe sur starter). Il valait
+ * `regular` ici : un plan inconnu ouvrait donc, à l'écran, six modules de plus
+ * que ce que le RLS autorisait. Un repli ne doit jamais accorder plus que le
+ * minimum.
+ */
+export const PLAN_DEFAUT = "starter";
 
 /** Une offre peut être annoncée sans être souscriptible. */
 export function planDisponible(clePlan) {
@@ -223,17 +229,35 @@ export function gainSurPrecedent(clePlan) {
  */
 export function peutAjouterUtilisateur(clePlan, nbActuel) {
   const p = plan(clePlan) || plan(PLAN_DEFAUT);
-  const max = p?.utilisateurs;
-  if (max == null) return { ok: true, message: null };
   const n = Number(nbActuel) || 0;
-  if (n < max) {
-    return { ok: true, message: null, restants: max - n };
+  const inclus = p?.membres_inclus ?? 0;
+  const plafond = p?.membres_limite ?? null;
+
+  // Plafond DUR atteint : là, et là seulement, on refuse.
+  if (plafond != null && n >= plafond) {
+    return {
+      ok: false,
+      message: `Votre offre ${p.nom} est plafonnée à ${plafond} utilisateur`
+             + `${plafond > 1 ? "s" : ""}. Passez à l'offre supérieure pour `
+             + `agrandir votre équipe.`,
+    };
   }
+
+  // Dans le forfait : rien à dire.
+  if (n < inclus) return { ok: true, message: null, restants: inclus - n };
+
+  // Au-delà du forfait, sans plafond : c'est OUI, et c'est facturé. Refuser
+  // ici reviendrait à décliner une vente que la facturation sait encaisser —
+  // c'est exactement ce que faisait la version précédente.
+  const supp = p?.prix_membre_supp_centimes ?? null;
   return {
-    ok: false,
-    message: `Votre offre ${p.nom} comprend ${max} utilisateur`
-           + `${max > 1 ? "s" : ""}. Passez à l'offre supérieure pour agrandir `
-           + `votre équipe.`,
+    ok: true,
+    restants: null,
+    supplement_centimes: supp,
+    message: supp == null ? null
+      : `Votre offre ${p.nom} comprend ${inclus} utilisateur`
+      + `${inclus > 1 ? "s" : ""}. Au-delà, chaque utilisateur est facturé `
+      + `${Math.round(supp / 100)} € HTVA par mois.`,
   };
 }
 
@@ -251,8 +275,8 @@ export function prixMensuel(clePlan) {
  */
 export function coutParUtilisateur(clePlan) {
   const p = plan(clePlan);
-  if (!p || !p.utilisateurs) return null;
-  return Math.round(p.prix_centimes / p.utilisateurs / 100);
+  if (!p || !p.membres_inclus) return null;
+  return Math.round(p.prix_centimes / p.membres_inclus / 100);
 }
 
 /**
@@ -338,10 +362,14 @@ export function exigencesChangement({ planActuel, planCible, utilisateursActifs 
   const cible = plan(planCible);
   if (!cible) return { possible: false, message: "Offre inconnue." };
 
-  const max = cible.utilisateurs;
+  const plafond = cible.membres_limite;
+  const inclus = cible.membres_inclus ?? 0;
   const n = Number(utilisateursActifs) || 0;
   const exigences = [];
 
+  // Seul un plafond DUR impose de désigner qui reste. Dépasser le forfait ne
+  // bloque rien : le membre supplémentaire se facture.
+  const max = plafond;
   if (max != null && n > max) {
     exigences.push({
       type: "utilisateurs",
@@ -361,10 +389,19 @@ export function exigencesChangement({ planActuel, planCible, utilisateursActifs 
     .filter((c) => !cible.modules.includes(c))
     .filter((c) => module(c)?.livre);
 
+  // Le surcoût annoncé AVANT le changement : descendre d'offre avec dix
+  // personnes ne se refuse pas, mais ne doit pas se découvrir sur la facture.
+  const au_dela = Math.max(n - inclus, 0);
+  const supplement_mensuel_centimes =
+    au_dela > 0 && cible.prix_membre_supp_centimes != null
+      ? au_dela * cible.prix_membre_supp_centimes : 0;
+
   return {
     possible: true,
     montee: (plan(planCible)?.prix_centimes || 0) > (plan(planActuel)?.prix_centimes || 0),
     exigences,
+    membres_au_dela_du_forfait: au_dela,
+    supplement_mensuel_centimes,
     modules_perdus: perdus,
     // Rien à trancher : le changement s'applique directement.
     immediat: exigences.length === 0,
@@ -400,21 +437,19 @@ export function selectionRecevable(exigence, nbChoisis) {
 //   · "etude"      — ne s'affiche pas sur la landing.
 // =============================================================================
 
-export const STATUTS_OFFRE = Object.freeze(["disponible", "bientot", "etude"]);
+// STATUTS_OFFRE est réexporté depuis le référentiel, en tête de fichier.
 
 /**
  * Les offres par SECTEUR (au-delà des trois paliers déménageur).
  * Prix HTVA mensuels. Les décidés sont marqués ; les autres sont proposés et
  * attendent validation (T3, T4, T5 de 16-STRUCTURE-PRIX-RESEAU).
  */
-export const OFFRES_SECTEURS = Object.freeze([
-  {
-    cle: "donneur_ordre",
-    nom: "Donneur d'ordre",
-    secteur: "Cuisiniste, mobilier, industrie",
-    prix_centimes: 0,
-    unite: "gratuit",
-    statut: "bientot",
+/**
+ * La COPIE des offres sectorielles. Les chiffres — prix, statut, secteur,
+ * unité, seuils — viennent du référentiel, comme pour les paliers.
+ */
+const COPIE_SECTEURS = Object.freeze({
+  donneur_ordre: {
     promesse: "Envoyer, suivre, prouver.",
     pour: "Vous confiez des livraisons, du levage ou de la manutention à des "
         + "prestataires, et vous passez vos journées à courir après l'info.",
@@ -424,13 +459,7 @@ export const OFFRES_SECTEURS = Object.freeze([
     note_prix: "Gratuit : vous apportez le volume. Une commission s'applique "
              + "aux missions confiées via le réseau.",
   },
-  {
-    cle: "independant_manutention",
-    nom: "Indépendant manutention",
-    secteur: "Manutention et services",
-    prix_centimes: 6000,               // 60 € — DÉCIDÉ
-    unite: "par mois",
-    statut: "bientot",
+  independant_manutention: {
     promesse: "Des bras professionnels, quand vous en avez besoin.",
     pour: "L'indépendant qui vend son temps et son savoir-faire, et veut être "
         + "trouvé, planifié et payé sans relancer.",
@@ -440,49 +469,47 @@ export const OFFRES_SECTEURS = Object.freeze([
                  "Ce qui reste dû"],
     note_prix: "Vérification du numéro d'entreprise à l'inscription.",
   },
-  {
-    cle: "garde_meubles",
-    nom: "Garde-meubles",
-    secteur: "Self-storage",
-    prix_centimes: 24000,              // 240 € — proposé (T3)
-    unite: "par mois",
-    statut: "bientot",
+  garde_meubles: {
     promesse: "Vos contrats se facturent tout seuls, chaque mois.",
     pour: "L'exploitant de boxes qui veut des contrats, des unités attribuées "
         + "et une facturation récurrente qui ne saute jamais un mois.",
     recurrents: ["Échéance de chaque période", "Prorata d'entrée et de sortie",
                  "Référence de paiement", "Ce qui reste dû"],
   },
-  {
-    cle: "groupe_liftier",
-    nom: "Groupe liftier",
-    secteur: "Levage et monte-meubles",
-    prix_centimes: 45000,              // 450 € — révisé (voir note)
-    unite: "par mois, 5 accès bureau",
-    statut: "bientot",
+  groupe_liftier: {
     promesse: "Votre flotte, vos couronnes, vos équipes — au même endroit.",
     pour: "L'entreprise qui exploite une flotte de lifts et vend du levage à "
         + "d'autres professionnels.",
     recurrents: ["Machine affectée", "Heure d'arrivée", "Hauteur et couronne",
                  "Preuve d'intervention"],
     note_prix: "On facture les ACCÈS bureau, pas les opérateurs sur machine : "
-             + "5 inclus, +30 €/accès, plafond dur à 15. Les opérateurs pointent "
-             + "sans compter comme utilisateurs.",
+             + "5 inclus, +30 €/accès, plafond dur à 15. Les opérateurs "
+             + "pointent sans compter comme utilisateurs.",
   },
-  {
-    cle: "logistique_mobilier",
-    nom: "Logistique mobilier",
-    secteur: "Débit industriel",
-    prix_centimes: 90000,              // 900 € — révisé (à confronter à un prospect)
-    unite: "par mois, 1 dépôt",
-    statut: "etude",                   // le plus lourd : quais, arrivages, débit
+  logistique_mobilier: {
     promesse: "Arrivages, quais, zones : le débit sous contrôle.",
     pour: "Le grand acteur du mobilier ou de la cuisine, en flux tendu, avec "
         + "plusieurs quais sur un même dépôt.",
     recurrents: ["Créneau de quai", "Arrivage attendu", "Zone occupée",
                  "Livraison prouvée"],
   },
-]);
+});
+
+/** Les offres par SECTEUR, dérivées du référentiel. Prix en centimes HTVA. */
+export const OFFRES_SECTEURS = Object.freeze(offresSectorielles().map((o) =>
+  Object.freeze({
+    cle: o.code,
+    nom: o.libelle,
+    secteur: o.secteur,
+    prix_centimes: o.prix_base_centimes,
+    unite: o.unite,
+    statut: o.statut,
+    souscriptible: o.souscriptible,
+    membres_inclus: o.membres_inclus,
+    membres_limite: o.membres_limite,
+    modules: Object.freeze([...o.modules]),
+    ...COPIE_SECTEURS[o.code],
+  })));
 
 /** Une offre sectorielle par sa clé. `null` plutôt qu'un défaut inventé. */
 export function offreSecteur(cle) {
@@ -506,7 +533,9 @@ export function offresVitrine() {
  * Ce garde-fou est la traduction en code de « rien ne se vend avant d'exister ».
  */
 export function offreSouscriptible(cle) {
-  return offreSecteur(cle)?.statut === "disponible";
+  // Vaut pour toute offre, palier ou secteur : c'est le référentiel — et donc
+  // la base, qui en est dérivée — qui décide. Une seule réponse possible.
+  return offreReferentiel(cle)?.souscriptible === true;
 }
 
 /** Le libellé de statut affiché, sans ambiguïté pour le visiteur. */
