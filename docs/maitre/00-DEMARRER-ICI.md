@@ -89,3 +89,27 @@ Ces points sont tranchés. Les rediscuter fait perdre du temps et dérive :
 10. `30-REGLES-IA-EXTERNE.md` — si vous confiez un travail à un autre outil.
 
 Le reste de `docs/` est de la matière de réflexion : utile, jamais normatif.
+
+---
+
+## Deux dossiers ajoutés le 10/09/2026
+
+`docs/maitre/` répond à « qu'est-ce qui est vrai ». Deux autres questions
+avaient besoin de leur propre place, parce que les mélanger fait lire une
+intention comme un fait :
+
+- **`docs/roadmap/`** — ce qui reste à faire, dans quel ordre, et pourquoi
+  dans cet ordre. Quatre fichiers : le système, l'audit des écrans, les lots,
+  et la boîte d'entrée des demandes. Toute directive nouvelle y arrive
+  littéralement avant d'être classée. **Une intention n'est pas un fait : ce
+  dossier arrive après le dépôt et après `maitre/` dans la hiérarchie des
+  sources.**
+- **`docs/outils/`** — des consignes autonomes pour une tâche bornée, à donner
+  à une session ou à un sous-agent : auditer un écran, vérifier la cohérence
+  des paramètres, vérifier l'existant avant de construire, exécuter un lot de
+  code. Chacune porte le même préambule, qui contient les pièges déjà payés.
+
+La structure des deux dossiers est tenue par `roadmap-systeme.test.js` : un
+outil annoncé mais absent, un lot mal numéroté ou une demande sans classement
+cassent l'arbre. Un inventaire écrit en prose se périme en silence — ce projet
+a déjà payé une fois pour l'avoir cru.
