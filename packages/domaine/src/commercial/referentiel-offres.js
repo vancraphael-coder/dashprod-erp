@@ -47,6 +47,23 @@ const SOCLE = ["crm", "releve", "devis", "offre", "planning", "terrain",
 /** Ouverts à toutes les offres — décision du lot 02, appliquée en base. */
 const TOUTES_OFFRES = ["signature_client", "espace_client"];
 
+/**
+ * INDÉPENDANT MANUTENTION — ce que l'offre ouvre réellement.
+ *
+ * Décidé en dérivant les écrans de son parcours (voir parcours-offres.js), pas
+ * en découpant le catalogue déménageur. Un indépendant a besoin d'être trouvé,
+ * de recevoir une mission, de pointer, de prouver, de facturer. Il n'a pas
+ * besoin de relever un volume, d'établir un devis de déménagement, de gérer
+ * une flotte ni de faire une paie — il est seul.
+ *
+ * L'offre reste NON SOUSCRIPTIBLE : ces modules existent et fonctionnent, mais
+ * le parcours propre à l'indépendant (disponibilités, réception de missions
+ * d'un donneur d'ordre) n'est pas construit. Les modules sont posés pour que
+ * ce parcours puisse l'être ; la vente attend qu'il tourne de bout en bout.
+ */
+const INDEPENDANT = ["crm", "planning", "terrain", "facturation",
+                     "signature_client", "rapport_chantier"];
+
 const REGULAR = [...SOCLE, ...TOUTES_OFFRES, "peppol", "comptabilite",
                  "rapport_chantier", "paie", "journal", "international"];
 
@@ -105,7 +122,7 @@ export const REFERENTIEL_OFFRES = Object.freeze([
     prix_base_centimes: 6000, remise_annuelle_pct: null,
     membres_inclus: 1, membres_limite: 1, prix_membre_supp_centimes: null,
     centres_inclus: 0, centres_limite: 0, prix_centre_supp_centimes: null,
-    modules: [],
+    modules: INDEPENDANT,
   },
   {
     code: "garde_meubles", libelle: "Garde-meubles", rang: 12,
