@@ -12,6 +12,9 @@
 //      une valeur d'une autre entreprise.
 // =============================================================================
 
+import { tvaBelgeValide as tvaBeOk, bceValide as bceOk, normaliserSaisie }
+  from "./bce.js";
+
 /** Réglages de facturation hérités par tous les documents. */
 export const FACTURATION_DEFAUT = Object.freeze({
   tva_taux: 21,
@@ -46,21 +49,19 @@ export const CHAMPS_DOCUMENT = Object.freeze(
 
 const vide = (v) => v == null || String(v).trim() === "";
 
-/** Normalise un numéro BE : majuscules, sans espaces ni points. */
-export function normaliserNumero(v) {
-  return String(v ?? "").toUpperCase().replace(/[\s.\-/]/g, "");
-}
-
-/** Vrai si le numéro de TVA a la forme belge attendue. Vide = non jugé. */
-export function tvaBelgeValide(v) {
-  if (vide(v)) return true;
-  return /^BE0\d{9}$/.test(normaliserNumero(v));
-}
+// L'identifiant d'entreprise a son propre module (organisation/bce.js) : c'est
+// lui, et lui seul, qui sait normaliser, typer et contrôler un numéro. Ces
+// deux réexports gardent les appelants historiques en place tout en supprimant
+// la règle concurrente qui vivait ici — elle exigeait « BE0 » suivi de neuf
+// chiffres et refusait toute la série 1, ouverte le 19 septembre 2023.
+export { tvaBelgeValide, bceValide } from "./bce.js";
+/** Conservé sous son nom historique : la mécanique vit dans bce.js. */
+export const normaliserNumero = normaliserSaisie;
 
 /** Vrai si l'IBAN belge est bien formé ET passe le contrôle modulo 97. */
 export function ibanValide(v) {
   if (vide(v)) return true;
-  const n = normaliserNumero(v);
+  const n = normaliserSaisie(v);
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(n)) return false;
   const reordonne = n.slice(4) + n.slice(0, 4);
   const numerique = reordonne.replace(/[A-Z]/g, (c) => c.charCodeAt(0) - 55);
@@ -82,7 +83,8 @@ export function identiteComplete(org) {
     .map((c) => c.cle);
 
   const invalides = [];
-  if (!tvaBelgeValide(o.tva)) invalides.push("tva");
+  if (!tvaBeOk(o.tva)) invalides.push("tva");
+  if (!bceOk(o.bce)) invalides.push("bce");
   if (!ibanValide(o.iban)) invalides.push("iban");
 
   const bloquants = CHAMPS_DOCUMENT.filter((c) => vide(o[c]));
