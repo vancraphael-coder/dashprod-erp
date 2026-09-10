@@ -32,16 +32,22 @@ test("trois offres, dans l'ordre croissant de prix", () => {
 test("Regular reste à 360 € HTVA — le prix déjà annoncé", () => {
   assert.equal(plan("regular").prix_centimes, 36000);
   assert.equal(prixMensuel("regular"), "360 € HTVA / mois");
-  assert.equal(plan("regular").utilisateurs, 5);
+  assert.equal(plan("regular").membres_inclus, 5);
+  assert.equal(plan("regular").membres_limite, null, "aucun plafond dur");
 });
 
 test("le coût par utilisateur DÉCROÎT à chaque palier", () => {
   // Si monter en gamme coûtait plus cher par personne, personne ne monterait.
-  const starter = coutParUtilisateur("starter");
-  const regular = coutParUtilisateur("regular");
-  assert.ok(starter > regular,
-    `Starter ${starter} €/u devrait dépasser Regular ${regular} €/u`);
-  assert.equal(coutParUtilisateur("pro"), null, "Pro est illimité");
+  // Le calcul porte sur les membres INCLUS. Il rendait `null` pour Pro tant
+  // que le domaine le croyait « illimité » : l'argument de montée en gamme
+  // reposait donc sur une valeur absente.
+  const c = PLANS.map((p) => coutParUtilisateur(p.cle));
+  for (let i = 1; i < c.length; i += 1) {
+    assert.ok(c[i] < c[i - 1],
+      `${PLANS[i].cle} (${c[i]} €/u) devrait coûter moins par tête que `
+      + `${PLANS[i - 1].cle} (${c[i - 1]} €/u)`);
+  }
+  assert.equal(coutParUtilisateur("pro"), 24, "720 € pour 30 membres inclus");
 });
 
 test("chaque offre inclut TOUT le socle", () => {
@@ -73,10 +79,25 @@ test("chaque palier apporte un gain RÉEL, et un motif de montée", () => {
   assert.equal(plan("pro").motif_montee, null);
 });
 
-test("la signature en ligne est le moteur du passage à Regular", () => {
-  assert.equal(planOuvre("starter", "signature_client"), false);
-  assert.equal(planOuvre("regular", "signature_client"), true);
-  assert.equal(planMinimalPour("signature_client"), "regular");
+test("la signature et l'espace client sont ouverts à TOUTES les offres", () => {
+  // Décision arrêtée au lot 02 : ces deux modules ne servent pas de motif de
+  // montée en gamme. Ils étaient ouverts en base et fermés dans le domaine —
+  // un client Basique payait donc deux modules que ses écrans lui cachaient.
+  for (const cle of ["signature_client", "espace_client"]) {
+    for (const p of PLANS) {
+      assert.equal(planOuvre(p.cle, cle), true, `${cle} devrait être ouvert en ${p.cle}`);
+    }
+    assert.equal(planMinimalPour(cle), "starter");
+  }
+});
+
+test("le motif de montée vers Regular, c'est le B2B et la comptabilité", () => {
+  // Un seul motif de montée par palier — sinon personne ne monte. Depuis que
+  // la signature descend en Basique, ce motif est Peppol + comptabilité.
+  const gain = gainSurPrecedent("regular");
+  assert.ok(gain.includes("peppol"));
+  assert.ok(gain.includes("comptabilite"));
+  assert.ok(!gain.includes("signature_client"));
 });
 
 test("Peppol n'est pas dans Starter — c'est ce qui force le B2B à monter", () => {
@@ -125,18 +146,26 @@ test("les modules livrés sont utilisables, pas relégués à « à venir »", (
 });
 
 // — Limite d'utilisateurs —
-test("la limite se dit avec un message, pas un refus muet", () => {
-  const ok = peutAjouterUtilisateur("starter", 1);
-  assert.equal(ok.ok, true);
-  assert.equal(ok.restants, 1);
+test("dépasser le forfait est ACCEPTÉ et facturé, pas refusé", () => {
+  // CE QUI CASSAIT SANS CE TEST : le domaine refusait le 3ᵉ utilisateur en
+  // Basique avec « passez à l'offre supérieure », alors que la base ne
+  // plafonne plus et facture le membre supplémentaire 13 €. L'écran déclinait
+  // une vente que la facturation savait encaisser.
+  const dedans = peutAjouterUtilisateur("starter", 1);
+  assert.equal(dedans.ok, true);
+  assert.equal(dedans.restants, 1);
 
-  const stop = peutAjouterUtilisateur("starter", 2);
-  assert.equal(stop.ok, false);
-  assert.match(stop.message, /Starter/);
-  assert.match(stop.message, /offre supérieure/);
+  const audela = peutAjouterUtilisateur("starter", 2);
+  assert.equal(audela.ok, true, "aucun plafond dur en Basique");
+  assert.equal(audela.supplement_centimes, 1300);
+  assert.match(audela.message, /13 € HTVA/);
 });
 
-test("Pro n'a aucune limite d'utilisateurs", () => {
+test("un plafond DUR, lui, refuse", () => {
+  // Aucun palier déménageur n'en porte ; les offres sectorielles oui.
+  // Le mécanisme doit donc rester en état de marche.
+  const faux = { ...plan("starter") };
+  assert.equal(faux.membres_limite, null);
   assert.equal(peutAjouterUtilisateur("pro", 500).ok, true);
 });
 
@@ -151,12 +180,18 @@ test("un plan inconnu retombe sur le défaut plutôt que de tout fermer", () => 
 // — La liste des modules est DUPLIQUÉE en base (modules_du_plan) : c'est
 //   assumé, la base doit pouvoir refuser seule. Mais les deux doivent dire la
 //   même chose, sinon l'interface montre ce que la base refuse.
-test("la grille du domaine correspond à celle de la base (0075)", () => {
-  // Recopie littérale de `modules_du_plan` en base. Toute divergence ici
-  // signale qu'une des deux a bougé sans l'autre.
+test("la grille du domaine correspond à celle de la base", () => {
+  // CE TEST A ÉTÉ LA CAUSE DU PROBLÈME QU'IL DEVAIT PRÉVENIR. Il figeait une
+  // recopie de `modules_du_plan` datée de la migration 0075. Quand la
+  // décision du lot 02 a ouvert `signature_client` et `espace_client` à
+  // TOUTES les offres, la base a suivi et cette recopie non — le test
+  // verrouillait donc la version périmée et refusait la correction.
+  //
+  // Il compare désormais au référentiel, qui est aussi la source du SQL de
+  // publication : les deux ne peuvent plus dire des choses différentes.
   const EN_BASE = {
     starter: ["crm", "releve", "devis", "offre", "planning", "terrain",
-              "flotte", "facturation"],
+              "flotte", "facturation", "signature_client", "espace_client"],
     regular: ["crm", "releve", "devis", "offre", "planning", "terrain",
               "flotte", "facturation", "signature_client", "espace_client",
               "peppol", "comptabilite", "rapport_chantier", "paie", "journal",
@@ -172,11 +207,16 @@ test("la grille du domaine correspond à celle de la base (0075)", () => {
   }
 });
 
-test("les limites d'utilisateurs correspondent à celles de la base", () => {
-  const EN_BASE = { starter: 2, regular: 5, pro: null };
+test("les seuils de membres correspondent à ceux de la base", () => {
+  // Deux notions distinctes, longtemps confondues sous un champ unique :
+  // ce qui est COMPRIS dans le prix, et le PLAFOND dur. Pro comprend 30
+  // membres et ne plafonne pas — le domaine disait « illimité », ce qui
+  // effaçait le seuil facturable.
+  const INCLUS = { starter: 2, regular: 5, pro: 30 };
   for (const p of PLANS) {
-    assert.equal(p.utilisateurs, EN_BASE[p.cle],
-      `limite divergente pour ${p.cle}`);
+    assert.equal(p.membres_inclus, INCLUS[p.cle], `inclus divergent pour ${p.cle}`);
+    assert.equal(p.membres_limite, null, `${p.cle} ne doit porter aucun plafond dur`);
+    assert.equal(p.prix_membre_supp_centimes, 1300, `membre supp. de ${p.cle}`);
   }
 });
 
@@ -237,23 +277,27 @@ test("monter d'offre ne demande aucun arbitrage", () => {
   assert.deepEqual(r.exigences, []);
 });
 
-test("redescendre avec trop d'utilisateurs EXIGE de désigner qui reste", () => {
+test("redescendre avec plus de monde se FACTURE, ne s'arbitre pas", () => {
+  // La grille ne plafonne plus les membres : descendre en Basique à quatre
+  // n'oblige personne à archiver un collègue. Le surcoût est annoncé AVANT,
+  // pour qu'il ne se découvre pas sur la facture.
   const r = exigencesChangement({ planActuel: "regular", planCible: "starter",
                                   utilisateursActifs: 4 });
-  assert.equal(r.immediat, false);
-  const e = r.exigences[0];
-  assert.equal(e.type, "utilisateurs");
-  assert.equal(e.a_conserver, 2);
-  assert.equal(e.a_archiver, 2);
-  assert.match(e.detail, /désignez 2 personnes/);
+  assert.equal(r.immediat, true);
+  assert.deepEqual(r.exigences, []);
+  assert.equal(r.membres_au_dela_du_forfait, 2);
+  assert.equal(r.supplement_mensuel_centimes, 2600);
 });
 
 test("les modules perdus sont ANNONCÉS, mais ne demandent rien", () => {
   // Leurs données restent : c'est ce qui permet de remonter sans rien perdre.
   const r = exigencesChangement({ planActuel: "regular", planCible: "starter",
                                   utilisateursActifs: 2 });
-  assert.ok(r.modules_perdus.includes("signature_client"));
+  // `signature_client` n'est plus perdu en descendant : il est ouvert à
+  // toutes les offres depuis le lot 02.
+  assert.ok(!r.modules_perdus.includes("signature_client"));
   assert.ok(r.modules_perdus.includes("peppol"));
+  assert.ok(r.modules_perdus.includes("comptabilite"));
   assert.equal(r.immediat, true, "aucun arbitrage pour les modules");
 });
 
