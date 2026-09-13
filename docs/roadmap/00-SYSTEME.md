@@ -59,11 +59,51 @@ Corollaires, tenus dans l'audit :
 4. **Ce qui est vide se dit.** Un écran sans donnée explique pourquoi et ce
    qu'il faut faire. Un tableau vide sans phrase est un bug de conception.
 
-## LE TROISIÈME ANGLE : les paramètres sont le point de vérité
+## LA PYRAMIDE — ses trois angles
 
-La pyramide du produit est énoncée dans `plans.js` :
+Corrigée le 10/09/2026. Ce n'est pas la chaîne technique
+`PLAN → ORGANISATION → UTILISATEURS → RÔLES → MODULES → LIMITES` : celle-là
+décrit comment le produit est gréé, pas ce qui le fait tenir.
 
-    PLAN → ORGANISATION → UTILISATEURS → RÔLES → MODULES → LIMITES
+Les trois angles sont :
+
+1. **LE LÉGAL — le produit final.** Une facture, un contrat, une numérotation
+   continue, un rapport qui vaut preuve. Ce qui doit être juste devant un
+   contrôleur ou un tribunal. Aucune souplesse : cet angle ne se négocie pas
+   contre de la simplicité.
+2. **LE PARAMÉTRAGE — le point de vérité.** Ce que l'entreprise déclare, et
+   dont tout le reste dérive.
+3. **LA PRISE EN MAIN — la compréhension rapide.** Ce qu'un vrai utilisateur
+   comprend en arrivant, sans qu'on lui explique.
+
+Le légal contraint le paramétrage ; le paramétrage rend la prise en main
+possible. Quand le paramétrage manque, l'angle légal se met à vivre dans du
+code écrit en dur et la prise en main s'effondre — c'est exactement ce qui est
+arrivé aux mentions de facture, réparties entre le code et les textes de
+dossier.
+
+### Le deuxième angle : ce qui existe chez l'un n'existe pas forcément chez l'autre
+
+**Il n'y a pas une taxonomie de réglages, il y en a une par métier et par
+niveau.** « Coûts internes » n'a aucun sens pour un indépendant seul :
+il n'a pas de coût à ventiler, il a un tarif. « Centres logistiques » n'existe
+pas dans une entreprise sans dépôt. Un groupe liftier n'a pas de barème de
+déménagement.
+
+Deux conditions, donc, et pas une :
+
+- **le module** — la capacité est-elle achetée ;
+- **la posture** — cette personne-là en a-t-elle l'usage.
+
+Le module dit ce que l'offre a payé ; **la posture fait le tri entre les
+métiers**. C'est elle qui exclut « Coûts internes » chez l'indépendant, pas le
+module — parce que le module `facturation`, lui, est bien acheté. Sans cette
+seconde condition, chaque métier verrait les réglages de tous les autres, et
+le point de vérité deviendrait un fourre-tout.
+
+Tenu en donnée dans `packages/domaine/src/produit/`, tenu par un test.
+
+### Les paramètres sont le point de vérité
 
 Les paramètres sont l'endroit — le seul — où une entreprise déclare ce qui la
 concerne : son identité, ses prix, ses coûts, ses listes, ses centres, ses

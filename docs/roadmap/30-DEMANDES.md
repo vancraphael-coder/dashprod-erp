@@ -108,6 +108,44 @@ refuse de toute façon cette organisation tant qu'elle porte le drapeau
 contrainte `offres_souscriptible_si_disponible` en base. Ne passera
 `disponible` qu'à la fin du lot 5.
 
+### D-10 — Les paramètres sont propres à chaque métier et à chaque niveau
+
+> « Pour les paramètres chacun a les siens et certains existants chez l'un, ne
+> doit pas forcément apparaître chez l'autre (déménageurs (mêmes interne) /
+> indépendants / liftier (même interne) / etc...). »
+
+**Classé :** le modèle de portée dans
+`packages/domaine/src/produit/reglages-portee.js` — deux conditions, module ET
+posture. C'est la posture qui fait le tri entre les métiers, parce que le
+module `facturation` est acheté par l'indépendant comme par le déménageur
+alors que « Coûts internes » ne concerne que la direction. Le « même interne »
+de la demande est couvert par les 9 postures : dans une même entreprise,
+direction, dépôt, chef d'équipe et exécution n'ont pas les mêmes réglages.
+
+Tenu par un test qui vérifie explicitement qu'un indépendant ne voit ni
+`cout`, ni `services`, ni `roles`, ni `depots`, ni `stockage`, ni `contrats`,
+ni `espace_client`, ni `prestataires` — et qu'il voit bien `identite`,
+`facturation`, `disponibilites` et `abonnement`. Éprouvé par sabotage.
+
+### D-11 — La pyramide a trois angles, et ce ne sont pas ceux-là
+
+> « La pyramide c'est plus, le légal (le produit final), le paramétrage, la
+> prise en main / compréhension rapide. »
+
+**Classé :** `00-SYSTEME.md`, section « La pyramide — ses trois angles ».
+L'ancienne formulation (`PLAN → ORGANISATION → UTILISATEURS → RÔLES → MODULES
+→ LIMITES`) décrivait comment le produit est gréé, pas ce qui le fait tenir.
+Les trois angles deviennent trois familles de tests dans
+`produit-registre.test.js`.
+
+### D-12 — L'ordre des lots
+
+> « 1 puis 2, etc... »
+
+**Classé :** ordre de `20-LOTS.md` confirmé. Lot 1 **fait** : le registre
+existe et l'audit est devenu exécutable. Lot 2 (les dix réglages manquants)
+enchaîne.
+
 ---
 
 ## Écartées
