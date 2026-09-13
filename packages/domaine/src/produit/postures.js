@@ -26,14 +26,25 @@
 // =============================================================================
 
 /**
- * Chaque posture : les rôles de base qui l'incarnent, et les offres où elle
- * existe. `roles: []` = posture sans rôle en base (l'indépendant est seul, le
- * client est extérieur à l'organisation).
+ * Chaque posture : les rôles qui l'incarnent, les offres où elle existe, et
+ * son ANCRAGE — l'écran sur lequel on atterrit.
+ *
+ * POURQUOI L'ANCRAGE EST ICI. Il était codé en dur dans `main.jsx` : la route
+ * initiale valait « liste », donc tout le monde atterrissait sur les dossiers
+ * de déménagement — y compris un indépendant, qui n'en monte jamais. Le
+ * correctif appliqué ensuite ne déplaçait la route qu'APRÈS la réponse du
+ * serveur, ce qui laissait l'écran des dossiers s'afficher une fraction de
+ * seconde, puis parfois rester.
+ *
+ * L'ancrage est une propriété du métier, pas une valeur par défaut de
+ * l'application. Il se déclare donc avec la posture, et l'application ne
+ * choisit RIEN avant de savoir à qui elle parle.
  */
 export const POSTURES = Object.freeze([
   {
     cle: "direction",
     titre: "Direction",
+    ancrage: "liste_affaires",
     veut: "L'argent : ce qui rentre, ce qui sort, ce qui bloque.",
     roles: ["fondateur", "direction", "gerant"],
     offres: ["starter", "regular", "pro", "donneur_ordre", "garde_meubles",
@@ -42,6 +53,7 @@ export const POSTURES = Object.freeze([
   {
     cle: "coordination",
     titre: "Coordination",
+    ancrage: "liste_affaires",
     veut: "La semaine : ce qui n'est pas couvert, ce qui n'est pas facturé.",
     roles: ["coordination", "secretaire"],
     offres: ["starter", "regular", "pro", "donneur_ordre", "garde_meubles",
@@ -50,6 +62,7 @@ export const POSTURES = Object.freeze([
   {
     cle: "commerce",
     titre: "Commerce",
+    ancrage: "liste_affaires",
     veut: "Mes affaires en attente de réponse.",
     roles: ["commercial"],
     // Vendre un déménagement suppose un relevé et un devis de volume : c'est
@@ -60,6 +73,7 @@ export const POSTURES = Object.freeze([
   {
     cle: "depot",
     titre: "Responsable de dépôt",
+    ancrage: "liste_affaires",
     veut: "Mon centre aujourd'hui : équipes, camions, ce qui sort et rentre.",
     roles: ["responsable_depot"],
     // Pas de dépôt en Basique ni en Regular : `centres_limite` y vaut 0. La
@@ -70,6 +84,7 @@ export const POSTURES = Object.freeze([
   {
     cle: "chef_equipe",
     titre: "Chef d'équipe",
+    ancrage: "planning",
     veut: "Ma journée, mon équipe, mon pointage.",
     roles: ["chef_equipe"],
     offres: ["starter", "regular", "pro", "groupe_liftier",
@@ -78,6 +93,7 @@ export const POSTURES = Object.freeze([
   {
     cle: "execution",
     titre: "Exécution",
+    ancrage: "planning",
     veut: "Où je vais, avec qui, à quelle heure.",
     roles: ["demenageur", "chauffeur", "livreur", "monteur", "liftier",
             "interimaire"],
@@ -87,6 +103,7 @@ export const POSTURES = Object.freeze([
   {
     cle: "acces_ponctuel",
     titre: "Accès ponctuel",
+    ancrage: "liste_affaires",
     veut: "Le seul relevé pour lequel on m'a ouvert la porte.",
     roles: ["visite_terrain"],
     offres: ["starter", "regular", "pro"],
@@ -94,6 +111,7 @@ export const POSTURES = Object.freeze([
   {
     cle: "independant",
     titre: "Indépendant",
+    ancrage: "rituel_independant",
     veut: "Suis-je booké, ai-je pointé, ai-je été payé.",
     // Aucun rôle en base : l'offre n'admet qu'un seul accès
     // (`membres_limite: 1`). Il n'y a personne à qui déléguer, donc rien à
@@ -104,6 +122,7 @@ export const POSTURES = Object.freeze([
   {
     cle: "client",
     titre: "Client",
+    ancrage: "espace_client",
     veut: "C'est confirmé pour quand, que dois-je faire, combien je paie.",
     // Extérieur à l'organisation : il entre par un code, pas par un rôle.
     roles: [],
@@ -126,6 +145,21 @@ export function postureDuRole(role) {
 /** Les postures qui existent dans une offre. */
 export function posturesDeLOffre(code) {
   return POSTURES.filter((p) => p.offres.includes(code));
+}
+
+/**
+ * L'écran d'ancrage d'une offre. C'est la posture qui décide, et la posture se
+ * déduit de l'offre : dans une offre qui en porte plusieurs, on prend celle
+ * dont l'ancrage est le plus spécifique — l'indépendant avant tout, puisqu'il
+ * est seul dans son offre.
+ */
+export function ancrageDeLOffre(codeOffre) {
+  const p = posturesDeLOffre(codeOffre);
+  const indep = p.find((x) => x.cle === "independant");
+  if (indep) return indep.ancrage;
+  // Sinon l'entreprise : la direction et la coordination partagent le même
+  // ancrage, et c'est celui qu'on sert par défaut au bureau.
+  return p.find((x) => x.cle === "direction")?.ancrage || "liste_affaires";
 }
 
 /** Vrai si la posture existe dans cette offre. */

@@ -39,6 +39,10 @@
 //   `kpi`        — centre de chiffres. UN SEUL écran dans tout Dashprod a le
 //                  droit de l'être, et ce n'est jamais un écran d'arrivée.
 //   `capacite`   — capacité requise en plus de la posture, quand il y en a une.
+//   `route`      — la clé de route utilisée par `main.jsx`, quand elle diffère
+//                  de `cle`. Le registre et le routeur parlaient deux langues
+//                  (`liste_affaires` ici, « liste » là-bas) : déclarer la
+//                  correspondance ICI évite d'en tenir une table ailleurs.
 // =============================================================================
 
 /** `fichier: null` = écran manquant, déclaré pour cesser d'être invisible. */
@@ -100,14 +104,26 @@ export const ECRANS = Object.freeze([
     monte: true, legal: true },
 
   // ── Commerce : du premier appel à la signature ──────────────────────────
+  //
+  // AUCUN de ces écrans ne porte la posture `independant`, et c'est le cœur de
+  // l'encadrement. Un indépendant ne monte pas de dossier de déménagement : il
+  // reçoit des missions par des engagements. Lui ouvrir le carnet, la liste
+  // des affaires et l'écran de dossier lui donnerait « la panoplie
+  // d'interaction de l'interface de nouveaux dossiers » — une entreprise en
+  // réduction, alors que ce n'est pas le même métier.
+  //
+  // Le module `crm` reste dans son offre parce qu'une facture s'accroche
+  // techniquement à une affaire ; c'est la POSTURE qui ferme les écrans, pas
+  // le module. Le rattachement facture ↔ engagement viendra du lot 5.
   { cle: "carnet", fichier: "Carnet.jsx", module: "crm",
-    postures: ["direction", "coordination", "commerce", "independant"],
+    postures: ["direction", "coordination", "commerce"],
     reglages: [], etat: "livre", monte: true, legal: false },
-  { cle: "liste_affaires", fichier: "ListeAffaires.jsx", module: "crm",
-    postures: ["direction", "coordination", "commerce", "independant"],
+  { cle: "liste_affaires", fichier: "ListeAffaires.jsx", route: "liste",
+    module: "crm",
+    postures: ["direction", "coordination", "commerce"],
     reglages: [], etat: "livre", monte: true, legal: false },
   { cle: "dossier", fichier: "Dossier.jsx", module: "crm",
-    postures: ["direction", "coordination", "commerce", "independant"],
+    postures: ["direction", "coordination", "commerce"],
     reglages: [], etat: "livre", monte: true, legal: false },
   { cle: "releve", fichier: "Releve.jsx", module: "releve",
     postures: ["commerce", "coordination", "acces_ponctuel"],
@@ -132,7 +148,7 @@ export const ECRANS = Object.freeze([
     module: "signature_client", postures: ["commerce", "coordination"],
     reglages: [], etat: "livre", monte: true, legal: true },
   { cle: "vente_rapide", fichier: "VenteRapide.jsx", module: "facturation",
-    postures: ["coordination", "direction", "independant"],
+    postures: ["coordination", "direction"],
     reglages: ["fournitures", "facturation"], etat: "esquisse", monte: true,
     legal: true },
 
@@ -206,13 +222,14 @@ export const ECRANS = Object.freeze([
   { cle: "stockage", fichier: "Stockage.jsx", module: "stockage_3d",
     postures: ["direction", "depot"], reglages: ["stockage"], etat: "livre",
     monte: true, legal: false },
-  { cle: "contrats_stockage", fichier: "Contrats.jsx", module: "stockage_3d",
+  { cle: "contrats_stockage", fichier: "Contrats.jsx", route: "contrats",
+    module: "stockage_3d",
     postures: ["direction", "depot"], reglages: ["contrats", "mentions"],
     etat: "esquisse", monte: true, legal: true },
 
   // ── Échanges ────────────────────────────────────────────────────────────
   { cle: "conversations", fichier: "Conversations.jsx", module: "crm",
-    postures: ["coordination", "direction", "independant"], reglages: [],
+    postures: ["coordination", "direction"], reglages: [],
     etat: "livre", monte: true, legal: false },
   { cle: "fil_messages", fichier: "FilMessages.jsx", module: "crm",
     postures: ["coordination", "direction", "client", "independant"],
@@ -370,6 +387,12 @@ export const ECRANS = Object.freeze([
     postures: ["client"], reglages: ["espace_client"], etat: "manquant",
     monte: false, legal: false },
 ]);
+
+/** La clé de route d'un écran. Par défaut, sa propre clé. */
+export function routeDeLEcran(cle) {
+  const e = ECRANS.find((x) => x.cle === cle);
+  return e ? (e.route || e.cle) : null;
+}
 
 /** Un écran par sa clé. `null` plutôt qu'un défaut inventé. */
 export function ecran(cle) {
