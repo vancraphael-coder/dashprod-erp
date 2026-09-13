@@ -81,6 +81,14 @@ export const ECRANS = Object.freeze([
   { cle: "textes_dossiers", fichier: "TextesDossiers.jsx", module: "devis",
     postures: ["direction", "commerce"], reglages: ["textes", "mentions"],
     etat: "esquisse", monte: true, legal: true },
+  // Le plus structurant des dix réglages manquants. Décider ce qu'un rôle peut
+  // faire n'est pas gérer une équipe : c'est définir l'entreprise. D'où sa
+  // place ici et non dans Ressources — les deux écrans ne répondent pas à la
+  // même question.
+  { cle: "reglages_roles", fichier: "ReglagesRoles.jsx", module: null,
+    postures: ["direction"], capacite: "confier_les_acces",
+    reglages: ["roles"], etat: "livre", monte: true, legal: false },
+
   { cle: "cout", fichier: "Cout.jsx", module: null, postures: ["direction"],
     reglages: ["cout", "services"], etat: "livre", monte: true, legal: false },
   { cle: "services", fichier: "Services.jsx", module: null,

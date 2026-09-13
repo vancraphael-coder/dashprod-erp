@@ -113,8 +113,11 @@ export const REGLAGES = Object.freeze([
   // point de vérité ne les expose pas. `Equipe.jsx` les gère depuis
   // `Ressources` — qui peut quoi n'est pas un réglage d'équipe, c'est la
   // définition de l'entreprise.
+  // Livré le 13/09/2026 (lot 2). Avec l'anti-verrouillage : le retrait d'une
+  // clé de voûte qui ne laisserait aucun détenteur actif est refusé, en base
+  // comme à l'écran.
   { cle: "roles", titre: "Rôles et capacités", module: null,
-    postures: ["direction"], legal: false, etat: "manquant" },
+    postures: ["direction"], legal: false, etat: "livre" },
 
   // Le moteur `bce.js` produit un `statutConfiance` que rien n'affiche.
   { cle: "identite_verifiee", titre: "Identité vérifiée (BCE, TVA)",
