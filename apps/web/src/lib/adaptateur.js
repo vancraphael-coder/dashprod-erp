@@ -3815,6 +3815,37 @@ export async function proposerEngagement(champs) {
   return data;
 }
 
+/**
+ * Les engagements rattachés à UN dossier, côté donneur d'ordre, avec la
+ * facture reçue s'il y en a une. C'est ce qui alimente le poste
+ * « sous-traitance » du coût du dossier.
+ */
+export async function engagementsDeLAffaire(affaireId) {
+  const { data, error } = await supabase.rpc("cmd_engagements_de_l_affaire",
+    { p_affaire: affaireId });
+  if (error) throw error;
+  return (data || []).map((e) => ({
+    id: e.id,
+    contrepartie: e.contrepartie,
+    etat: e.etat,
+    date: e.date_prestation,
+    nature: e.nature,
+    unite: e.unite,
+    prix_htva_centimes: e.prix_htva_centimes,
+    facture_htva_centimes: e.facture_htva_centimes,
+    factureId: e.facture_id,
+  }));
+}
+
+/** Rattacher une facture reçue à un engagement. Donneur d'ordre uniquement. */
+export async function rattacherFactureEngagement(engagementId, factureId) {
+  const { data, error } = await supabase.rpc("cmd_rattacher_facture_engagement", {
+    p_engagement: engagementId, p_facture: factureId,
+  });
+  if (error) throw error;
+  return data;
+}
+
 /** Les tarifs publiés d'un prestataire. Rien d'autre ne traverse la cloison. */
 export async function tarifsDuPrestataire(orgId) {
   const { data, error } = await supabase.rpc("cmd_tarifs_du_prestataire", { p_org: orgId });
