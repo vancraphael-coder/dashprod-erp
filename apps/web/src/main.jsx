@@ -20,6 +20,7 @@ import MesSocietes from "./ecrans/MesSocietes.jsx";
 import RituelIndependant from "./ecrans/RituelIndependant.jsx";
 import ConfierMission from "./ecrans/ConfierMission.jsx";
 import SuiviEngagements from "./ecrans/SuiviEngagements.jsx";
+import MaDisponibilite from "./ecrans/MaDisponibilite.jsx";
 // L'écran d'arrivée se choisit par la POSTURE, et la posture se déduit de
 // l'offre : interroger le registre plutôt que comparer un nom de plan en dur.
 import { postureDansOffre, ancrageDeLOffre } from "@domaine/produit/postures.js";
@@ -862,6 +863,7 @@ function App() {
     rituelIndependant: () => setRoute({ ecran: "rituel_independant", affaireId: null }),
     confierMission: () => setRoute({ ecran: "confier_mission", affaireId: route.affaireId }),
     suiviEngagements: () => setRoute({ ecran: "suivi_engagements", affaireId: null }),
+    maDisponibilite: () => setRoute({ ecran: "ma_disponibilite", affaireId: null }),
     journal: (id) => setRoute({ ecran: "journal", affaireId: id }),
     rapports: (id) => setRoute({ ecran: "rapports", affaireId: id }),
   };
@@ -927,12 +929,14 @@ function App() {
     ecran = <Conversations ouvrirDossier={nav.dossier} ouvrirPlanning={nav.planningJour} />;
   } else if (route.ecran === "stockage") {
     ecran = <Stockage retour={nav.liste} profil={profil} />;
+  } else if (route.ecran === "ma_disponibilite") {
+    ecran = <MaDisponibilite retour={nav.rituelIndependant} />;
   } else if (route.ecran === "suivi_engagements") {
     ecran = <SuiviEngagements retour={nav.carnet} versConfier={nav.confierMission} />;
   } else if (route.ecran === "confier_mission") {
     ecran = <ConfierMission affaireId={route.affaireId} retour={nav.carnet} />;
   } else if (route.ecran === "rituel_independant") {
-    ecran = <RituelIndependant />;
+    ecran = <RituelIndependant versDisponibilite={nav.maDisponibilite} />;
   } else if (route.ecran === "mes_societes") {
     ecran = <MesSocietes retour={nav.compte} />;
   } else if (route.ecran === "centres") {
