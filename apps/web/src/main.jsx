@@ -17,6 +17,11 @@ import Diagnostic from "./ecrans/Diagnostic.jsx";
 import NonInvite from "./ecrans/NonInvite.jsx";
 import Inscription from "./ecrans/Inscription.jsx";
 import MesSocietes from "./ecrans/MesSocietes.jsx";
+import RituelIndependant from "./ecrans/RituelIndependant.jsx";
+import ConfierMission from "./ecrans/ConfierMission.jsx";
+// L'écran d'arrivée se choisit par la POSTURE, et la posture se déduit de
+// l'offre : interroger le registre plutôt que comparer un nom de plan en dur.
+import { postureDansOffre } from "@domaine/produit/postures.js";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide, obtenirAffaire } from "./lib/adaptateur.js";
 import { centreDeRattachement, espacesCreation } from "@domaine/organisation/centres.js";
@@ -677,7 +682,18 @@ function App() {
   const [natureDossier, setNatureDossier] = useState(null);
   useEffect(() => {
     if (modeDonnees() !== "reel" || !org) return;
-    monAcces().then(setAcces).catch(() => setAcces(null));
+    monAcces().then((a) => {
+      setAcces(a);
+      // L'écran d'ARRIVÉE dépend de la posture, et la posture se déduit de
+      // l'offre : `independant` n'existe que dans `independant_manutention`
+      // (voir produit/postures.js). On interroge le registre plutôt que de
+      // comparer le nom du plan en dur — sinon ce test-là devient une
+      // seconde saisie de la même règle.
+      if (a?.plan && postureDansOffre("independant", a.plan)) {
+        setRoute((r) => (r.ecran === "liste"
+          ? { ecran: "rituel_independant", affaireId: null } : r));
+      }
+    }).catch(() => setAcces(null));
   }, [org]);
 
   // La nature suit le dossier ouvert. On l'efface dès qu'on en sort, sinon la
@@ -812,6 +828,8 @@ function App() {
     textes: () => setRoute({ ecran: "textes", affaireId: null }),
     parametres: () => setRoute({ ecran: "parametres", affaireId: null }),
     mesSocietes: () => setRoute({ ecran: "mes_societes", affaireId: null }),
+    rituelIndependant: () => setRoute({ ecran: "rituel_independant", affaireId: null }),
+    confierMission: () => setRoute({ ecran: "confier_mission", affaireId: route.affaireId }),
     journal: (id) => setRoute({ ecran: "journal", affaireId: id }),
     rapports: (id) => setRoute({ ecran: "rapports", affaireId: id }),
   };
@@ -854,11 +872,16 @@ function App() {
                       centreChoisi={centreChoisi} onChoisirCentre={setCentreChoisi} />;
   } else if (route.ecran === "carnet") {
     ecran = <Carnet retour={nav.liste} ouvrirDossier={nav.dossier}
-                    nouvelleAffaire={nav.nouvelle} />;
+                    nouvelleAffaire={nav.nouvelle}
+                    confierMission={peutGererEquipe ? nav.confierMission : null} />;
   } else if (route.ecran === "conversations") {
     ecran = <Conversations ouvrirDossier={nav.dossier} ouvrirPlanning={nav.planningJour} />;
   } else if (route.ecran === "stockage") {
     ecran = <Stockage retour={nav.liste} profil={profil} />;
+  } else if (route.ecran === "confier_mission") {
+    ecran = <ConfierMission affaireId={route.affaireId} retour={nav.carnet} />;
+  } else if (route.ecran === "rituel_independant") {
+    ecran = <RituelIndependant />;
   } else if (route.ecran === "mes_societes") {
     ecran = <MesSocietes retour={nav.compte} />;
   } else if (route.ecran === "centres") {
