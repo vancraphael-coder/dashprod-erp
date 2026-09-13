@@ -41,7 +41,7 @@ const ETIQ = {
   zone: { vif: "#94A3B8", sombre: "#475569" },
 };
 
-export default function MenuCreation({ ouvert, basculer, choisir }) {
+export default function MenuCreation({ ouvert, basculer, choisir, modules = null }) {
   const zone = useRef(null);
 
   // Un clic à côté referme : sans ça, le menu reste ouvert sous les doigts et
@@ -60,7 +60,10 @@ export default function MenuCreation({ ouvert, basculer, choisir }) {
     };
   }, [ouvert, basculer]);
 
-  const natures = naturesDuMenu();
+  // Filtré par ce que l'offre ouvre réellement. Proposer une nature dont les
+  // écrans sont fermés conduit dans un cul-de-sac : on crée le dossier, puis
+  // on découvre qu'on ne peut rien en faire.
+  const natures = naturesDuMenu(modules);
 
   return (
     <div ref={zone}>
