@@ -68,6 +68,10 @@ function badgeIdentite(organisation) {
  * @param {number} p.nbCouts          articles de catalogue portant un coût
  * @param {object[]} p.listesCatalogue LISTES_CATALOGUE (injecté : le socle ne
  *        dépend pas de `stocks`, qui est un métier)
+ * @param {string[]} [p.capacites]   capacités de l'acteur. Une entrée qui en
+ *        exige une (distribuer des droits, par exemple) n'apparaît pas à qui
+ *        ne l'a pas — montrer un réglage qu'on ne peut pas ouvrir est une
+ *        promesse vide, et pour les accès c'est même une invitation à essayer.
  * @param {(cle:string)=>({texte:string,actif:boolean}|null)} [p.badgeListe]
  * @returns {{cle,titre,aide,entrees}[]} familles NON VIDES uniquement
  */
@@ -77,6 +81,7 @@ export function famillesReglages({
   modules = [],
   nbCouts = 0,
   listesCatalogue = [],
+  capacites = null,
   badgeListe = null,
 } = {}) {
   const ouvert = (cle) => !cle || modules.includes(cle);
@@ -96,6 +101,13 @@ export function famillesReglages({
           module: "multi_depots" },
         { cle: "fermetures", icone: "🗓️", titre: "Fermetures de l'entreprise",
           resume: "Congé collectif, ponts. Visibles au planning." },
+        // Définir ce qu'un rôle peut faire n'est pas gérer une équipe : c'est
+        // définir l'entreprise. D'où sa place dans « Mon entreprise » et non
+        // dans Ressources — les deux écrans ne répondent pas à la même
+        // question. Réservé : distribuer des droits demande d'en avoir.
+        { cle: "roles", icone: "🔑", titre: "Rôles et capacités",
+          resume: "Ce que chaque rôle peut faire chez vous.",
+          capacite: "confier_les_acces" },
       ],
     },
     {
@@ -204,7 +216,11 @@ export function famillesReglages({
   //    que de la faire disparaître. Perdre un réglage serait pire que de
   //    laisser une famille courte.
   const gardees = brutes
-    .map((f) => ({ ...f, entrees: f.entrees.filter((e) => ouvert(e.module)) }))
+    .map((f) => ({ ...f, entrees: f.entrees.filter((e) => ouvert(e.module)
+      // `capacites` non fourni → aucun filtrage, pour ne pas casser les
+      // appels qui ne la passent pas encore (démo, tests).
+      && (!e.capacite || !Array.isArray(capacites)
+          || capacites.includes(e.capacite))) }))
     .filter((f) => f.entrees.length > 0);
 
   const orphelines = [];
