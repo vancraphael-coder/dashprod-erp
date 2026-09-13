@@ -69,6 +69,20 @@ export const CAPACITES = Object.freeze([
     titre: "Voir la paie de toute l'équipe",
     detail: "Salaires et coûts employeur de TOUS les membres. Chacun voit "
           + "déjà ses propres heures sans cette autorisation." },
+  // DIVERGENCE TROUVÉE le 13/09/2026 en construisant l'écran des rôles : ces
+  // deux capacités existent en base (table `capacites`, et distribuées dans
+  // `role_capacites`) et manquaient au catalogue du domaine. Donc aucun écran
+  // ne pouvait les lister ni les décrire — y compris la plus puissante de
+  // toutes, celle qui commande la distribution des droits.
+  { cle: "confier_les_acces", sensible: true,
+    titre: "Confier les accès",
+    detail: "Inviter, retirer, et distribuer les capacités des autres. C'est "
+          + "la capacité qui commande toutes les autres : sans elle, plus "
+          + "personne ne peut redonner de droits." },
+  { cle: "cloturer_dossier",
+    titre: "Clôturer un dossier",
+    detail: "Déclarer une affaire terminée. Après clôture, les écritures du "
+          + "dossier sont figées." },
   { cle: "gerer_referentiels", sensible: true,
     titre: "Régler les paramètres de l'entreprise",
     detail: "Barème, catalogues, textes, identité, confidentialité." },
@@ -151,4 +165,70 @@ export function resumeAcces(membre) {
   if (t) bouts.push(`${t} action${t > 1 ? "s" : ""} de terrain`);
   if (b) bouts.push(`${b} action${b > 1 ? "s" : ""} de bureau`);
   return bouts.join(" · ");
+}
+
+// =============================================================================
+// L'ANTI-VERROUILLAGE — étage pur.
+//
+// Retirer une capacité à un rôle peut faire disparaître la dernière personne
+// qui la détenait. Pour deux d'entre elles, c'est irréversible depuis
+// l'application : sans `confier_les_acces`, plus personne ne peut redonner de
+// droits ; sans `gerer_referentiels`, plus personne ne peut reparamétrer. La
+// société s'enferme dehors — par erreur, ou par malveillance d'un salarié sur
+// le départ.
+//
+// La règle est donc calculée ici, dans un étage sans base : on compte les
+// détenteurs qui RESTERAIENT, en tenant compte des deux origines — la capacité
+// portée par un autre rôle, et la dérogation individuelle. La base applique
+// exactement la même règle (migration 0191) ; l'avoir ici permet de l'éprouver
+// sans muter quoi que ce soit, et de prévenir à l'écran avant le refus.
+// =============================================================================
+
+/** Les capacités dont la perte totale enferme la société dehors. */
+export const CAPACITES_CLE_DE_VOUTE = Object.freeze([
+  "confier_les_acces", "gerer_referentiels",
+]);
+
+/** Vrai si perdre cette capacité sur un rôle est irréversible. */
+export function estCleDeVoute(capacite) {
+  return CAPACITES_CLE_DE_VOUTE.includes(capacite);
+}
+
+/**
+ * Combien de personnes porteraient encore `capacite` si on la retirait du rôle
+ * `roleRetire`.
+ *
+ * @param membres [{ actif, retire, roles: [cle], capacitesIndividuelles: [cle] }]
+ * @param capacitesParRole { [roleCle]: [capaciteCle] }
+ */
+export function detenteursApresRetrait(
+  membres, capacitesParRole, capacite, roleRetire,
+) {
+  return (membres || []).filter((m) => {
+    if (m.actif === false || m.retire) return false;
+    if ((m.capacitesIndividuelles || []).includes(capacite)) return true;
+    return (m.roles || []).some((r) =>
+      r !== roleRetire && (capacitesParRole?.[r] || []).includes(capacite));
+  }).length;
+}
+
+/**
+ * Le retrait est-il permis ? Rend `{ permis, motif }`.
+ *
+ * Une capacité ordinaire se retire librement : on peut toujours la redonner.
+ * Une clé de voûte ne se retire que s'il reste quelqu'un pour la porter.
+ */
+export function retraitPermis(
+  membres, capacitesParRole, capacite, roleRetire,
+) {
+  if (!estCleDeVoute(capacite)) return { permis: true, motif: null };
+  const restants = detenteursApresRetrait(
+    membres, capacitesParRole, capacite, roleRetire);
+  if (restants > 0) return { permis: true, motif: null, restants };
+  return {
+    permis: false,
+    restants: 0,
+    motif: `Plus personne ne porterait « ${capacite} ». Votre société se `
+         + "verrouillerait dehors : accordez-la d'abord à quelqu'un d'autre.",
+  };
 }
