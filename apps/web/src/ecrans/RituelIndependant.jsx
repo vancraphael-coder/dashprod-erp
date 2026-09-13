@@ -56,7 +56,7 @@ function quand(iso) {
   return d.toLocaleDateString("fr-BE", { day: "numeric", month: "long" });
 }
 
-export default function RituelIndependant({ versEngagement }) {
+export default function RituelIndependant({ versEngagement, versDisponibilite }) {
   const [tout, setTout] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [enCours, setEnCours] = useState(null);
@@ -195,6 +195,17 @@ export default function RituelIndependant({ versEngagement }) {
 
       {/* ── BLOC 3 — Ce qu'on me doit ───────────────────────────────────── */}
       <BlocEncours tout={tout} versEngagement={versEngagement} />
+
+      {/* Pas un quatrième bloc : un lien. Le plafond de trois blocs tient, et
+          poser ses disponibilités n'est pas un geste du matin — c'est un
+          réglage qu'on fait une fois. */}
+      {versDisponibilite && (
+        <div style={{ padding: "0 16px 24px" }}>
+          <button style={S.boutonSecondaire} onClick={versDisponibilite}>
+            Mes disponibilités
+          </button>
+        </div>
+      )}
     </div>
   );
 }
