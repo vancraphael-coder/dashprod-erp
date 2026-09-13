@@ -373,4 +373,76 @@ Reste à construire au lot 5 : partir d'une demande du réseau ou d'un dossier
 existant pour la confier, plutôt que de resaisir date, ville et nature à la
 main.
 
+### D-28 — L'engagement entre dans les coûts du dossier
+
+> « Il faut l'écran de visualisation (aussi pour l'indépendant concerné) et
+> surtout, c'est généralement accordé a un dossier, donc il doit rentrer dans
+> les coûts d'un dossier (->pour ça) au même titre qu'un membre de l'équipe
+> mais avec son système de calcul (->facture liée). »
+
+**Classé :** porte 1, étage pur et base **faits** ; les deux écrans au lot 5.
+
+Le poste est à part, et ce n'est pas un détail de rangement. Le coût d'un
+salarié se CALCULE (heures pointées × coût horaire interne) ; celui d'un
+prestataire se CONSTATE (montant convenu, puis montant facturé). Mélangés, on
+perd le chiffre qu'un gérant regarde avant de décider d'embaucher plutôt que
+de sous-traiter : la part du chantier qui part dehors. Et « divers » ne se
+pilote pas.
+
+**Trois états, trois natures de chiffre** — c'est la règle centrale : une
+PROPOSITION ne coûte rien (le prestataire peut refuser, et la compter
+gonflerait tous les chantiers en cours) ; un ACCORD est un dû même sans
+facture (sinon la marge paraît bonne jusqu'à l'arrivée de la facture, puis
+s'effondre sans explication) ; une FACTURE reçue prime sur le prix convenu, et
+l'écart se voit plutôt que d'être masqué.
+
+HTVA, parce que c'est ce qui grève réellement le chantier : compter du TVAC
+surestimerait le coût de 21 % et ferait préférer l'embauche à tort.
+
+La clôture PRÉVIENT sans bloquer — une entreprise doit pouvoir clôturer, mais
+une facture qui arrive après arrive sur un dossier dont la marge est déjà
+annoncée.
+
+### D-29 — Le temps d'un devis se décompose
+
+> « Au lieux d'estimer une heure totale, il faut structurer ça en temps total
+> de route a 90km/h donc conversion rapide de km->heure et minutes sous forme
+> d'étapes, temps de chargement(s)->heure et minutes, et temps de
+> déchargement(s)->heure et minutes. »
+
+**Classé :** porte 1, étage pur **fait**
+(`packages/domaine/src/chiffrage/temps-chantier.js`). Le branchement dans
+l'écran Devis suit.
+
+Le moteur recevait `heures` : un nombre unique, estimé de tête. Deux défauts
+qui coûtent de l'argent. On ne sait pas d'où vient le chiffre — « j'ai compté
+six heures » ne défend pas un devis contesté, alors que « 2 h 02 de route,
+2 h de chargement, 1 h 30 de déchargement » se défend ligne par ligne. Et
+**l'oubli n'est pas aléatoire** : il porte toujours sur le trajet, parce que
+c'est le seul temps où personne ne travaille. Mesuré sur un chantier à 80 km :
+2 h 02 de route oubliées, dont 1 h 01 pour le seul retour au dépôt.
+
+Trois décisions prises en le construisant :
+
+- **90 km/h est une convention de calcul, pas une mesure.** Elle appartient au
+  barème — une entreprise de centre-ville et une d'autoroute n'ont pas la
+  même. En attendant l'entrée de réglage, le défaut s'applique et le devis dit
+  laquelle : un chiffre dont on ignore l'hypothèse ne se discute pas.
+- **L'arrondi se fait par étape, pas sur le total.** C'est ce qui garantit que
+  la somme des durées affichées égale le total affiché. Arrondir le total
+  donnerait parfois une minute de plus que la somme des lignes, et cette
+  minute-là est indéfendable devant un client.
+- **Les heures facturées s'arrondissent au quart d'heure SUPÉRIEUR.** Arrondir
+  en dessous fait perdre de l'argent à chaque chantier sans que ça se voie :
+  personne ne remarque huit minutes. Au-dessus, c'est visible, donc
+  discutable, donc honnête.
+
+Une majoration facultative (trafic, pauses) reste **explicite** et apparaît sur
+le devis. Un coefficient caché dans la formule mentirait sur la nature du
+chiffre : le modèle calcule un temps théorique, pas un temps de trajet réel.
+
+---
+
+## Écartées
+
 *(vide)*
