@@ -72,6 +72,11 @@ export const CAPACITES = Object.freeze([
   { cle: "gerer_referentiels", sensible: true,
     titre: "Régler les paramètres de l'entreprise",
     detail: "Barème, catalogues, textes, identité, confidentialité." },
+  { cle: "voir_tresorerie", sensible: true,
+    titre: "Voir la trésorerie de l'entreprise",
+    detail: "Encaissements, impayés, échéances et marge, chiffrés. Réservé : "
+          + "c'est la vue la plus complète sur la santé financière, et elle "
+          + "n'est utile qu'à qui décide des paiements." },
   { cle: "gerer_depot",
     titre: "Gérer le dépôt et le garde-meubles",
     detail: "Boxes, zones, contrats de stockage, entrées et sorties d'un "

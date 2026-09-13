@@ -68,6 +68,11 @@ const ADMINISTRATION = [
 const DIRECTION = [
   ...ADMINISTRATION,
   "emettre_facture", "voir_paie", "gerer_referentiels",
+  // La trésorerie est une capacité à part, et non un effet de `emettre_facture` :
+  // on peut avoir à facturer sans avoir à connaître la santé financière de
+  // l'entreprise. C'est ce qui permettra de la confier à un gestionnaire de
+  // trésorerie sans lui donner le reste de la direction.
+  "voir_tresorerie",
 ];
 
 // Le responsable de dépôt : l'administration, plus la gestion du dépôt et du
