@@ -3147,6 +3147,55 @@ export async function etatFacturation(affaireId) {
 // seul le second se retire depuis la fiche, le premier demande de changer le
 // rôle du membre.
 
+/**
+ * Ce que chaque RÔLE de l'organisation peut faire.
+ *
+ * À ne pas confondre avec `capacitesMembre`, qui rend les dérogations d'UNE
+ * personne. Ici c'est la définition de l'entreprise : « qu'est-ce qu'un chef
+ * d'équipe chez nous ».
+ */
+export async function capacitesDesRoles() {
+  const { data, error } = await supabase.rpc("cmd_capacites_des_roles");
+  if (error) throw error;
+  const roles = {};
+  for (const l of data || []) {
+    if (!roles[l.role_cle]) {
+      roles[l.role_cle] = {
+        libelle: l.role_libelle, capacites: [], membresActifs: l.membres_actifs,
+      };
+    }
+    // `capacite_cle` est nulle pour un rôle sans aucune capacité — la jointure
+    // est volontairement externe pour que ces rôles apparaissent quand même.
+    if (l.capacite_cle) roles[l.role_cle].capacites.push(l.capacite_cle);
+  }
+  return { roles };
+}
+
+/** Accorder ou retirer une capacité à un rôle, pour toute l'organisation. */
+export async function definirCapaciteRole(roleCle, capacite, accorder) {
+  const { data, error } = await supabase.rpc("cmd_definir_capacite_role", {
+    p_role_cle: roleCle, p_capacite: capacite, p_accorder: Boolean(accorder),
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Le retrait d'une capacité à un rôle est-il permis ?
+ *
+ * Une seule requête : reconstituer la réponse côté interface demandait un
+ * appel par membre pour connaître ses dérogations individuelles — N+1
+ * requêtes pour une question à une réponse.
+ */
+export async function peutRetirerCapaciteRole(roleCle, capacite) {
+  const { data, error } = await supabase.rpc("cmd_peut_retirer_capacite_role", {
+    p_role_cle: roleCle, p_capacite: capacite,
+  });
+  if (error) throw error;
+  return { permis: data?.permis !== false, motif: data?.motif || null,
+           restants: data?.restants };
+}
+
 export async function capacitesMembre(membreId) {
   if (modeDonnees() === "reel") {
     const { data, error } = await supabase.rpc("cmd_capacites_membre",
