@@ -262,9 +262,14 @@ export const ECRANS = Object.freeze([
     postures: ["coordination", "direction"],
     reglages: ["prestataires", "identite_verifiee"], etat: "manquant",
     monte: false, legal: false },
-  { cle: "confier_mission", fichier: null, module: "planning",
-    postures: ["coordination", "direction"], reglages: ["prestataires"],
-    etat: "manquant", monte: false, legal: false },
+  // Livré le 13/09/2026. `reglages: []` : l'écran ne lit aucun réglage — il
+  // lit deux tables PUBLIABLES (vitrine, tarifs publiés) et jamais
+  // `organisations`. Les commissions et le périmètre confié, eux, relèveront
+  // du réglage `prestataires` quand il existera ; l'écran ne les consomme pas
+  // aujourd'hui et ne doit donc pas les déclarer.
+  { cle: "confier_mission", fichier: "ConfierMission.jsx", module: "planning",
+    postures: ["coordination", "direction"], reglages: [],
+    etat: "livre", monte: true, legal: false },
   { cle: "suivi_missions_confiees", fichier: null, module: "planning",
     postures: ["coordination", "direction"], reglages: ["prestataires"],
     etat: "manquant", monte: false, legal: false },
@@ -333,9 +338,19 @@ export const ECRANS = Object.freeze([
   { cle: "rituel_commerce", fichier: null, module: "crm",
     postures: ["commerce"], reglages: [], etat: "manquant", monte: false,
     legal: false, rituel: true, blocs: 2 },
-  { cle: "rituel_independant", fichier: null, module: "planning",
-    postures: ["independant"], reglages: ["disponibilites"],
-    etat: "manquant", monte: false, legal: false, rituel: true, blocs: 3 },
+  // Livré le 13/09/2026. Trois blocs : où je vais, ce qu'on me demande, ce
+  // qu'il reste à facturer. L'écran d'arrivée se choisit par la posture, elle
+  // -même déduite de l'offre (main.jsx interroge `postureDansOffre`).
+  // `reglages: []` et c'est délibéré. La garde du deuxième angle a signalé
+  // cet écran dès sa livraison parce qu'il déclarait dépendre de
+  // `disponibilites`, qui n'existe pas encore. Vérification faite : il ne le
+  // lit pas — il ne lit que des engagements. La dépendance appartient à
+  // `ma_disponibilite`, qui la déclare déjà. La déclaration était fausse, pas
+  // la garde.
+  { cle: "rituel_independant", fichier: "RituelIndependant.jsx",
+    module: "planning", postures: ["independant"],
+    reglages: [], etat: "livre", monte: true, legal: false,
+    rituel: true, blocs: 3 },
 
   // Lot 8 — le client réordonné
   { cle: "compte_a_rebours", fichier: null, module: "espace_client",
