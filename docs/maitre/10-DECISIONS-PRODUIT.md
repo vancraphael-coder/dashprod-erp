@@ -986,3 +986,56 @@ REÇOIT.** Les pièces jointes de messages portent une empreinte SHA-256 qui
 entre dans le hash du message (registre probant) — elles restent bit pour bit
 ce que l'expéditeur a envoyé. Recompresser une preuve détruit ce qui en fait
 une preuve.
+
+## Lot 1 — Le registre du produit, et la portée des réglages (10/09/2026)
+
+**La pyramide, corrigée.** Trois angles : **le légal** (le produit final —
+facture, contrat, numérotation, rapport probant : aucune souplesse), **le
+paramétrage** (le point de vérité) et **la prise en main** (ce qu'un vrai
+utilisateur comprend en arrivant). L'ancienne formulation `PLAN → ORGANISATION
+→ UTILISATEURS → RÔLES → MODULES → LIMITES` décrivait comment le produit est
+gréé, pas ce qui le fait tenir.
+
+**Il n'y a pas une taxonomie de réglages, il y en a une par métier et par
+niveau.** Deux conditions de portée, et pas une :
+
+- le **module** — la capacité est-elle achetée ;
+- la **posture** — cette personne-là en a-t-elle l'usage.
+
+C'est la posture qui fait le tri entre les métiers, parce que le module
+`facturation` est acheté par l'indépendant comme par le déménageur alors que
+« Coûts internes » ne concerne que la direction. Les offres ne sont jamais
+listées à la main sur un réglage : elles se déduisent du module croisé avec
+les postures — une liste écrite deux fois finit par diverger.
+
+**Les 15 rôles se ramènent à 9 postures**, et chaque offre n'a pas les mêmes.
+Un indépendant est seul (`membres_limite: 1`) : il n'est ni « direction » ni
+« exécution », il est sa propre posture. Une entreprise en Basique ou Regular
+n'a pas de responsable de dépôt, parce que `centres_limite` y vaut 0 — ce
+n'est pas un écran caché, c'est une fonction qui n'existe pas.
+
+**Trois contradictions révélées par le registre lui-même**, dès sa première
+exécution :
+
+1. **Le module `international` est vendu et n'existe pas.** Marqué `livre` dans
+   le catalogue, vendu dans Regular (360 €) et Pro (720 €), promis par le
+   parcours Pro sur la landing — et **aucun écran ne le porte** : ni inventaire
+   colis par colis, ni liste de colisage douanière, ni poids taxable. Seul
+   `EspaceClient.jsx` en évoque le vocabulaire. C'est la même faute que
+   « 360 € » codé en dur, en plus cher : une promesse encaissée. Deux issues,
+   aucune à ignorer — construire l'écran, ou retirer le module des offres.
+   Figé comme dette de vente dans le test : la liste ne peut que descendre.
+2. **Le module `flotte` n'a pas d'écran dédié** — les véhicules vivent dans les
+   ressources, le planning et les centres. Légitime, mais il fallait le
+   déclarer (`aussi: ["flotte"]`) sinon on conclut à tort qu'il manque.
+3. **15 écrans déjà livrés dépendent d'un réglage inexistant** — donc portent
+   leur configuration en dur. Le chiffre est figé dans le test : il ne peut que
+   descendre. `facture`, `facture_doc`, `offre`, `contrat` et
+   `contrats_stockage` dépendent tous de `mentions`, qui n'existe pas ; c'est
+   la justification chiffrée de l'ordre des lots.
+
+**Ce que le registre interdit désormais.** Un écran ajouté sans déclaration
+casse l'arbre. Un écran `livre` non monté est signalé (`Societes.jsx`, seul
+orphelin). Un artefact légal sans réglage est refusé. Un réglage qui fuit vers
+un métier voisin est refusé. Éprouvé par sabotage sur les deux gardes
+principales.
