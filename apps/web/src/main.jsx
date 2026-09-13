@@ -981,6 +981,7 @@ function App() {
   } else {
     ecran = <ListeAffaires ouvrirAffaire={nav.dossier} nouvelleAffaire={nav.nouvelle}
                            versCarnet={nav.carnet}
+                           modules={acces?.modules || null}
                            profil={profil} centres={centresOrg}
                            centreChoisi={centreChoisi} onChoisirCentre={setCentreChoisi} />;
   }
