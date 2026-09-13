@@ -21,7 +21,8 @@ import {
 import { nature as natureDe } from "@domaine/commercial/natures.js";
 import { C, S, euros, ETATS_UI } from "../lib/theme.jsx";
 
-export default function Carnet({ retour, ouvrirDossier, nouvelleAffaire }) {
+export default function Carnet({ retour, ouvrirDossier, nouvelleAffaire,
+                                 confierMission }) {
   const [liste, setListe] = useState(null);
   const [q, setQ] = useState("");
   const [ouvert, setOuvert] = useState(null);
@@ -63,6 +64,18 @@ export default function Carnet({ retour, ouvrirDossier, nouvelleAffaire }) {
         <input style={S.input} value={q} onChange={(e) => setQ(e.target.value)}
                placeholder="Nom, société, téléphone…" />
       </div>
+
+      {/* Le carnet, c'est les gens avec qui on travaille — et un indépendant
+          à qui on confie une mission en fait partie. On l'atteint donc d'ici,
+          pas depuis un écran de paramètres : c'est le geste de quelqu'un qui
+          cherche quelqu'un. */}
+      {confierMission && (
+        <div style={{ padding: "0 16px 14px" }}>
+          <button style={S.boutonSecondaire} onClick={confierMission}>
+            Confier une mission à un indépendant
+          </button>
+        </div>
+      )}
 
       {err && <div style={{ ...S.carte, color: C.rouge, fontSize: 13 }}>{err}</div>}
       {liste === null && (
