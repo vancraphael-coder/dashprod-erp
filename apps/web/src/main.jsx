@@ -234,10 +234,31 @@ const CSS_NAV = `
 // rail desktop (côté) disent exactement la même chose. Un module non ouvert par
 // l'abonnement n'apparaît pas — pas de porte fermée.
 const TRACE_NAV = { liste: "dossiers", planning: "planning", stockage: "stockage",
-                    conversations: "messages", equipe: "ressources", compte: "compte" };
+                    conversations: "messages", equipe: "ressources", compte: "compte",
+                    rituel_independant: "ma_journee" };
 
-function itemsNav({ modules = [], peutGererEquipe = false } = {}) {
+/**
+ * La barre de navigation dépend de la POSTURE, pas seulement des modules.
+ *
+ * CE QUI N'ALLAIT PAS. Un indépendant recevait la navigation d'une entreprise :
+ * « Dossiers » avec toute la panoplie de création d'affaire, et « Ressources »
+ * pour inviter des gens. Or un indépendant est sous-traitant — il tient des
+ * postes de livreur à déménageur pour d'autres — et son offre n'admet qu'un
+ * seul accès (`membres_limite: 1`). Lui montrer un écran d'invitation, c'est
+ * lui proposer une action que la base refusera : le pire des deux mondes.
+ *
+ * Sa navigation tient en trois entrées : sa journée, son planning, son compte.
+ * Il ne monte pas de dossier client, il répond à des demandes.
+ */
+function itemsNav({ modules = [], peutGererEquipe = false, posture = null } = {}) {
   const a = (cle) => modules.includes(cle);
+  if (posture === "independant") {
+    return [
+      ["rituel_independant", "planning", "Ma journée"],
+      ["planning", "planning", "Planning"],
+      ["compte", "compte", "Compte"],
+    ];
+  }
   return [
     ["liste", "dossiers", "Dossiers"],
     ["planning", "planning", "Planning"],
@@ -248,8 +269,8 @@ function itemsNav({ modules = [], peutGererEquipe = false } = {}) {
   ];
 }
 
-function BarreNav({ actif, aller, peutGererEquipe, modules = [] }) {
-  const items = itemsNav({ modules, peutGererEquipe });
+function BarreNav({ actif, aller, peutGererEquipe, modules = [], posture = null }) {
+  const items = itemsNav({ modules, peutGererEquipe, posture });
   const TRACE = TRACE_NAV;
   const rotatif = items.map(([cle, icone, lib]) => ({ cle, icone, label: lib }));
   return (
@@ -839,7 +860,17 @@ function App() {
       [cle, (...args) => naviguerAvecGarde(() => fn(...args))]));
   const retourDossier = () => nav.dossier(route.affaireId);
 
-  const RACINES = ["liste", "planning", "stockage", "conversations", "equipe", "compte"];
+  // La posture vient de l'offre : `independant` n'existe que dans
+  // `independant_manutention` (produit/postures.js). Un seul calcul, utilisé
+  // pour la navigation ET pour l'écran d'arrivée — sinon les deux dérivent.
+  const postureCourante = acces?.plan
+    && postureDansOffre("independant", acces.plan) ? "independant" : null;
+
+  // `rituel_independant` est un écran d'ARRIVÉE : il doit porter la barre de
+  // navigation, faute de quoi il est un cul-de-sac. C'est le défaut qui a été
+  // signalé dès la première mise en service.
+  const RACINES = ["liste", "planning", "stockage", "conversations", "equipe",
+                   "compte", "rituel_independant"];
   let ecran;
   if (route.ecran === "diagnostic") {
     ecran = (
@@ -859,11 +890,13 @@ function App() {
       versCentres={(acces?.modules || []).includes("multi_depots") ? nav.centres : null}
       versRapport={(acces?.modules || []).includes("multi_depots") ? nav.rapport : null}
       versMesSocietes={nav.mesSocietes}
-      peutConfigurer={peutGererEquipe} />;
+      peutConfigurer={peutGererEquipe}
+      // Un indépendant n'a personne à inviter : son offre n'admet qu'un accès.
+      peutGererEquipe={peutGererEquipe && postureCourante !== "independant"} />;
   } else if (route.ecran === "vente_rapide") {
     ecran = <VenteRapide retour={nav.liste} versFacture={nav.facture} />;
   } else if (route.ecran === "demandes") {
-    ecran = <DemandesReseau />;
+    ecran = <DemandesReseau retour={nav.compte} />;
   } else if (route.ecran === "equipe") {
     ecran = <Ressources profil={profil} />;
   } else if (route.ecran === "planning") {
@@ -948,7 +981,7 @@ function App() {
       {ecran}
       {RACINES.includes(route.ecran) && (
         <BarreNav actif={route.ecran} aller={(cle) => nav[cle]()} modules={acces?.modules || []}
-                  peutGererEquipe={peutGererEquipe} />
+                  peutGererEquipe={peutGererEquipe} posture={postureCourante} />
       )}
       {SECTIONS_DOSSIER.some(([cle]) => cle === route.ecran) && route.affaireId && (
         <SousNavDossier actif={route.ecran} nature={natureDossier}
