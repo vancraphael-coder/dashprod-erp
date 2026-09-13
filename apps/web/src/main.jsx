@@ -19,6 +19,7 @@ import Inscription from "./ecrans/Inscription.jsx";
 import MesSocietes from "./ecrans/MesSocietes.jsx";
 import RituelIndependant from "./ecrans/RituelIndependant.jsx";
 import ConfierMission from "./ecrans/ConfierMission.jsx";
+import SuiviEngagements from "./ecrans/SuiviEngagements.jsx";
 // L'écran d'arrivée se choisit par la POSTURE, et la posture se déduit de
 // l'offre : interroger le registre plutôt que comparer un nom de plan en dur.
 import { postureDansOffre, ancrageDeLOffre } from "@domaine/produit/postures.js";
@@ -860,6 +861,7 @@ function App() {
     mesSocietes: () => setRoute({ ecran: "mes_societes", affaireId: null }),
     rituelIndependant: () => setRoute({ ecran: "rituel_independant", affaireId: null }),
     confierMission: () => setRoute({ ecran: "confier_mission", affaireId: route.affaireId }),
+    suiviEngagements: () => setRoute({ ecran: "suivi_engagements", affaireId: null }),
     journal: (id) => setRoute({ ecran: "journal", affaireId: id }),
     rapports: (id) => setRoute({ ecran: "rapports", affaireId: id }),
   };
@@ -919,11 +921,14 @@ function App() {
   } else if (route.ecran === "carnet") {
     ecran = <Carnet retour={nav.liste} ouvrirDossier={nav.dossier}
                     nouvelleAffaire={nav.nouvelle}
-                    confierMission={peutGererEquipe ? nav.confierMission : null} />;
+                    confierMission={peutGererEquipe ? nav.confierMission : null}
+                    suiviEngagements={peutGererEquipe ? nav.suiviEngagements : null} />;
   } else if (route.ecran === "conversations") {
     ecran = <Conversations ouvrirDossier={nav.dossier} ouvrirPlanning={nav.planningJour} />;
   } else if (route.ecran === "stockage") {
     ecran = <Stockage retour={nav.liste} profil={profil} />;
+  } else if (route.ecran === "suivi_engagements") {
+    ecran = <SuiviEngagements retour={nav.carnet} versConfier={nav.confierMission} />;
   } else if (route.ecran === "confier_mission") {
     ecran = <ConfierMission affaireId={route.affaireId} retour={nav.carnet} />;
   } else if (route.ecran === "rituel_independant") {
