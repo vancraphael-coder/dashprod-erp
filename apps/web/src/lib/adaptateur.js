@@ -3703,6 +3703,25 @@ export async function repondreEngagement(id, accepte, motif = null) {
   return data;
 }
 
+/** Mon état vis-à-vis du réseau : inscrit, vitrine publiée, tarifs publiés. */
+export async function monReseau() {
+  const { data, error } = await supabase.rpc("cmd_mon_reseau");
+  if (error) throw error;
+  return {
+    inscrit: Boolean(data?.visible_reseau),
+    vitrinePubliee: Boolean(data?.vitrine_publiee),
+    nbTarifs: Number(data?.tarifs_publies || 0),
+  };
+}
+
+/** Rejoindre le réseau, ou le quitter. Geste explicite, jamais un défaut. */
+export async function rejoindreReseau(visible) {
+  const { data, error } = await supabase.rpc("cmd_rejoindre_reseau",
+    { p_visible: Boolean(visible) });
+  if (error) throw error;
+  return data;
+}
+
 /**
  * L'annuaire des prestataires. Ne joint que des tables PUBLIABLES
  * (`vitrine_prestataire`, `tarifs_publies`) — jamais `organisations`. Ce qui
