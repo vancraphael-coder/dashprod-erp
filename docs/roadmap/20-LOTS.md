@@ -166,6 +166,32 @@ Indépendant de tout le reste. Peut se glisser entre deux lots.
 
 ---
 
+## Lot 10 — Les boutons de paiement
+
+Lier chaque option payante à sa page de paiement et à la confirmation
+d'encaissement.
+
+**Pourquoi après le lot 2, et pas avant.** Encaisser suppose des mentions
+légales, des conditions générales, une politique de remboursement et une
+identité d'entreprise vérifiée : quatre entrées de réglages qui n'existent pas
+encore. Brancher un bouton de paiement avant elles, c'est coder en dur ce qui
+engage juridiquement — et la facture, elle, ne se corrige pas après coup.
+
+**Blocage hors code, à traiter en parallèle et dès maintenant.** Encaisser des
+abonnements engage une responsabilité personnelle : conseil juridique belge et
+assurance RC professionnelle à voir avant la première facture, pas avant la
+première ligne de code. Rejoint P6 et P7, qui courent déjà.
+
+## Lot 11 — Doublons et corrélation paramètres / interface
+
+Doublons déjà identifiés par le registre : `Societes.jsx` (orphelin), `Equipe`
+et `Ressources` qui se chevauchent sur les rôles, `Cout` et `Services` sur les
+grilles, `Contrat` et `Offre`, `Facture` et `FactureDoc`.
+
+La corrélation paramètre → écran est déjà tenue côté données par l'invariant du
+deuxième angle. Ce lot en tire les conséquences côté interface : un réglage,
+un endroit, un nom.
+
 ## Ce qui reste hors roadmap, volontairement
 
 - **Accès ponctuel** (`visite_terrain`) : le rôle existe en base sans parcours.

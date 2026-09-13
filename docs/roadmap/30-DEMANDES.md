@@ -237,6 +237,71 @@ trésorerie à quelqu'un sans lui donner le reste de la direction. Accordée aux
 rôles portant déjà `emettre_facture` ET `voir_paie` — aucun rôle ne gagne un
 accès qu'il n'avait pas en substance (migration 0186).
 
+### D-17 — Un indépendant n'est pas une entreprise en réduction
+
+> « Un indépendant n'a pas a avoir la panoplie d'interaction de l'interface de
+> nouveaux dossier, il est généralement sous-traitant des postes allant de
+> livreur à déménageurs; il ne doit pas pouvoir inviter quelqu'un dans sa
+> 'société'. »
+
+**Classé :** fait. La barre de navigation dépend désormais de la POSTURE, pas
+seulement des modules : un indépendant a trois entrées — Ma journée, Planning,
+Compte. Ni « Dossiers » avec la création d'affaire, ni « Ressources » pour
+inviter. Lui montrer un écran d'invitation, c'est lui proposer une action que
+la base refusera (`membres_limite: 1`) : le pire des deux mondes.
+
+### D-18 — Lier les boutons d'options payantes au paiement
+
+> « Lier le boutons des options payante a la bonne page de payement et a la
+> confirmation de payement. (Dès que j'ai lié mes info de payement-> avant
+> d'etre payer je dois surment voir un avocat et l'assurance si je ne peux pas
+> le faire en ligne. »
+
+**Classé :** lot 10, volontairement APRÈS le lot 2, et voici pourquoi. Encaisser
+suppose des mentions légales, des conditions générales, une politique de
+remboursement et une identité d'entreprise vérifiée — soit quatre entrées de
+réglages qui n'existent pas encore (`mentions`, `sequences`,
+`identite_verifiee`, `conservation`). Brancher un bouton de paiement avant
+elles, c'est coder en dur ce qui engage juridiquement.
+
+**Blocage réel, à traiter hors code et en parallèle :** encaisser des
+abonnements engage une responsabilité personnelle. Conseil juridique belge et
+assurance RC professionnelle à voir avant la première facture — pas avant la
+première ligne de code. Ce point rejoint P6 et P7 du dossier maître, qui
+courent déjà.
+
+### D-19 — Supprimer les doublons, corréler paramètres / UI / UX
+
+> « Supprimer les doublons et améliorer la correlation d'info entre
+> paramètres/ui/ux-> clarté pure. »
+
+**Classé :** lot 11, et le registre le rend mesurable. Les doublons déjà
+identifiés : `Societes.jsx` (écran éditeur orphelin), `Equipe` et `Ressources`
+qui se chevauchent sur les rôles, `Cout` et `Services` qui se chevauchent sur
+les grilles, `Contrat` et `Offre`, `Facture` et `FactureDoc`. La corrélation
+paramètres / écrans est déjà tenue par l'invariant du deuxième angle ; ce lot
+en tire les conséquences côté interface plutôt que côté données.
+
+### D-20 — Les documents d'accès à la profession
+
+> « Trouver la bonne place pour les documents d'accès a la profession (ex:
+> licence de transport pour ceux qui en ont besoin legalement). »
+
+**Classé :** lot 2, nouvelle entrée de réglage `acces_profession`. Sa place est
+dans « Mon entreprise », à côté de `identite_verifiee` — c'est la même famille
+de questions : qu'est-ce qui prouve que cette société a le droit d'exercer.
+
+Deux raisons de ne PAS le mettre ailleurs : ce n'est pas un document de dossier
+(il ne concerne aucun client en particulier) et ce n'est pas une pièce
+comptable (il ne se facture pas). Une licence de transport, une attestation
+d'assurance RC, un accès à la profession de déménageur : même nature, même
+place, avec une date d'échéance et un rappel — un document périmé est plus
+dangereux qu'un document absent, parce qu'on croit l'avoir.
+
+Portée : toutes les offres, postures `direction` et `independant`. Un
+indépendant en manutention n'a pas besoin de licence de transport ; un
+indépendant qui livre, oui. C'est le métier déclaré qui décide, pas l'offre.
+
 ---
 
 ## Écartées
