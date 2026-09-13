@@ -170,6 +170,35 @@ L'audit traite donc chaque manque de paramètre comme **bloquant**, au même
 titre qu'un écran manquant — et plus urgent, parce qu'un écran construit sur
 un paramètre absent devra être refait.
 
+## OÙ INSÉRER UNE DEMANDE NOUVELLE — la règle des trois portes
+
+Une idée arrive rarement au bon moment. La question n'est pas « faut-il la
+faire » mais « où la poser sans casser l'ordre des lots ». Trois portes, et une
+seule s'ouvre pour une demande donnée.
+
+**Porte 1 — la demande complète un lot en cours.** Elle entre tout de suite.
+Critère : elle ne demande aucun mécanisme nouveau et elle rend le lot plus
+juste. Le menu « + » filtré par l'offre est passé par là — c'était le même
+sujet que l'encadrement par métier, découvert en le construisant.
+
+**Porte 2 — la demande est un lot à elle seule.** Elle prend un numéro à la
+suite, et son motif d'ordre est écrit. Les canaux du réseau par corps de métier
+sont passés par là.
+
+**Porte 3 — la demande dépend d'un lot non fait.** Elle est notée avec sa
+dépendance, et elle attend. Les boutons de paiement sont passés par là : ils
+dépendent de quatre réglages qui n'existent pas.
+
+**La règle qui tranche entre porte 1 et porte 2 :** est-ce que ça change ce que
+le lot en cours doit PROUVER ? Si oui, porte 1 — sinon le lot se fermerait sur
+une vérité incomplète. Si non, porte 2, même si c'est tentant de l'ajouter
+« puisqu'on y est ». C'est l'élargissement en cours de route qui fait échouer
+les lots, pas leur nombre.
+
+**Cadence.** On fait une pause de bilan tous cinq lots fermés. Entre deux
+pauses, on enchaîne — une pause à chaque lot transformerait la roadmap en
+réunion permanente.
+
 ## Comment un lot se ferme
 
 Un lot est clos quand les cinq conditions sont réunies :
