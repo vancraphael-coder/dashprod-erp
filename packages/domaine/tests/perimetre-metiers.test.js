@@ -30,6 +30,7 @@ import { POSTURES, posturesDeLOffre, ancrageDeLOffre, posture }
 import { REGLAGES } from "../src/produit/reglages-portee.js";
 import { REFERENTIEL_OFFRES, offreReferentiel }
   from "../src/commercial/referentiel-offres.js";
+import { naturesDuMenu } from "../src/commercial/natures.js";
 
 /**
  * Les écrans réellement atteignables dans une offre : module porté par
@@ -62,23 +63,20 @@ test("L'INDÉPENDANT — périmètre figé, et rien de plus", () => {
   // Le métier le plus étroit, et celui où une fuite se voit tout de suite :
   // il est SEUL. Tout écran d'équipe, de dossier de déménagement ou de dépôt
   // qui apparaît ici est une erreur.
-  // TREIZE écrans. Les cinq écrans du circuit de vente déménagement — carnet,
-  // liste des affaires, dossier, conversations, vente rapide — ont été retirés
-  // de sa posture : il reçoit des missions, il ne monte pas de dossiers.
+  // DIX-HUIT écrans. Un indépendant A des dossiers — il les reçoit en
+  // sous-traitance, il y pointe, il les facture. Ce qu'il n'a pas, c'est la
+  // panoplie de CRÉATION : voir le test sur les natures du menu « + ».
   assert.deepEqual(ecransDeLOffre("independant_manutention"), [
-    "abonnement", "apparence", "confidentialite", "facture", "facture_doc",
-    "fil_messages", "identite", "molettes_couleur", "planning",
-    "rapport_chantier", "rituel_independant", "signature_offre", "terrain",
+    "abonnement", "apparence", "carnet", "confidentialite", "conversations",
+    "dossier", "facture", "facture_doc", "fil_messages", "identite",
+    "liste_affaires", "molettes_couleur", "planning", "rapport_chantier",
+    "rituel_independant", "signature_offre", "terrain", "vente_rapide",
   ]);
 
   const interdits = ["releve", "devis", "offre", "equipe", "ressources",
                      "centres", "stockage", "paie", "heures", "comptabilite",
                      "espace_client", "materiel", "journal",
-                     // Le circuit de vente déménagement, fermé par la posture
-                     // et non par le module : `crm` reste dans son offre
-                     // parce qu'une facture s'accroche à une affaire.
-                     "carnet", "liste_affaires", "dossier", "conversations",
-                     "vente_rapide", "demandes_reseau", "confier_mission"];
+                     "demandes_reseau", "confier_mission"];
   const vus = ecransDeLOffre("independant_manutention");
   for (const x of interdits) {
     assert.ok(!vus.includes(x),
@@ -95,6 +93,22 @@ test("L'INDÉPENDANT — ses réglages, et rien de plus", () => {
     assert.ok(!reglagesDeLOffre("independant_manutention").includes(x),
       `le réglage « ${x} » ne concerne pas un indépendant`);
   }
+});
+
+test("LE MENU « + » — on ne propose que ce que l'offre permet de créer", () => {
+  // L'encadrement se fait là où le GESTE commence. Le menu proposait les six
+  // natures à tout le monde, dont « Déménagement » avec relevé, emballage et
+  // fournitures — à un indépendant dont l'offre n'ouvre ni `releve` ni
+  // `devis`. Créer un dossier qu'on ne peut pas traiter est un cul-de-sac.
+  const menu = (code) =>
+    naturesDuMenu(offreReferentiel(code).modules).map((n) => n.cle);
+
+  assert.deepEqual(menu("independant_manutention"), ["sous_traitance"],
+    "un indépendant est sous-traitant, et c'est tout ce qu'il crée");
+  assert.ok(menu("starter").includes("demenagement"));
+  assert.ok(!menu("starter").includes("boxe"), "pas de box sans stockage 3D");
+  assert.ok(menu("pro").includes("boxe"));
+  assert.ok(menu("pro").includes("zone"));
 });
 
 test("BASIQUE — pas de dépôt, donc pas d'écran de dépôt", () => {
