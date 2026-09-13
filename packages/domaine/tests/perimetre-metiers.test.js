@@ -63,14 +63,15 @@ test("L'INDÉPENDANT — périmètre figé, et rien de plus", () => {
   // Le métier le plus étroit, et celui où une fuite se voit tout de suite :
   // il est SEUL. Tout écran d'équipe, de dossier de déménagement ou de dépôt
   // qui apparaît ici est une erreur.
-  // DIX-HUIT écrans. Un indépendant A des dossiers — il les reçoit en
+  // DIX-NEUF écrans. Un indépendant A des dossiers — il les reçoit en
   // sous-traitance, il y pointe, il les facture. Ce qu'il n'a pas, c'est la
   // panoplie de CRÉATION : voir le test sur les natures du menu « + ».
   assert.deepEqual(ecransDeLOffre("independant_manutention"), [
     "abonnement", "apparence", "carnet", "confidentialite", "conversations",
     "dossier", "facture", "facture_doc", "fil_messages", "identite",
-    "liste_affaires", "molettes_couleur", "planning", "rapport_chantier",
-    "rituel_independant", "signature_offre", "terrain", "vente_rapide",
+    "liste_affaires", "ma_disponibilite", "molettes_couleur", "planning",
+    "rapport_chantier", "rituel_independant", "signature_offre", "terrain",
+    "vente_rapide",
   ]);
 
   const interdits = ["releve", "devis", "offre", "equipe", "ressources",
@@ -86,7 +87,8 @@ test("L'INDÉPENDANT — périmètre figé, et rien de plus", () => {
 
 test("L'INDÉPENDANT — ses réglages, et rien de plus", () => {
   assert.deepEqual(reglagesDeLOffre("independant_manutention"), [
-    "abonnement", "apparence", "confidentialite", "facturation", "identite",
+    "abonnement", "apparence", "confidentialite", "disponibilites",
+    "facturation", "identite",
   ]);
   for (const x of ["cout", "services", "roles", "depots", "stockage",
                    "contrats", "bareme", "textes", "materiel_terrain"]) {
