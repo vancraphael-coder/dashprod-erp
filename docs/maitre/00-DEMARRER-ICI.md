@@ -113,3 +113,26 @@ La structure des deux dossiers est tenue par `roadmap-systeme.test.js` : un
 outil annoncé mais absent, un lot mal numéroté ou une demande sans classement
 cassent l'arbre. Un inventaire écrit en prose se périme en silence — ce projet
 a déjà payé une fois pour l'avoir cru.
+
+## Le registre du produit (10/09/2026)
+
+`packages/domaine/src/produit/` porte l'inventaire du produit **en donnée**,
+plus en prose :
+
+- `postures.js` — les niveaux qui décident de ce qu'on voit. Les 15 rôles de
+  la base se ramènent à 9 postures, et **chaque offre n'a pas les mêmes**. Un
+  indépendant est seul : il n'est ni « direction » ni « exécution ». Une
+  entreprise sans dépôt n'a pas de responsable de dépôt.
+- `reglages-portee.js` — les réglages, avec deux conditions de portée : le
+  module (la capacité est-elle achetée) et la posture (cette personne-là en
+  a-t-elle l'usage). C'est la posture qui fait le tri entre les MÉTIERS : un
+  réglage qui existe chez l'un ne doit pas forcément apparaître chez l'autre.
+- `ecrans.js` — chaque écran avec sa posture, son module, les réglages qu'il
+  consomme et son état : `livre`, `esquisse` ou `manquant`. Les écrans qui
+  n'existent pas encore y sont déclarés, pour cesser d'être invisibles.
+
+`produit-registre.test.js` tient les trois angles de la pyramide : le légal
+(un artefact contraint tire ses mentions d'un réglage, jamais du code), le
+paramétrage (aucun écran ne dépend d'un réglage inexistant) et la prise en
+main (chaque posture a un écran d'arrivée). Un écran ajouté sans déclaration
+casse l'arbre.
