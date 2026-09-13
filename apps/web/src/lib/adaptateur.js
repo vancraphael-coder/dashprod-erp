@@ -18,6 +18,7 @@ const CLE = "dashprod-demo-v1";
 const CLE_DEMO_FORCEE = "dashprod-demo-forcee";
 
 import { tauxTva } from "@domaine/organisation/identite.js";
+import { formaterBce, formaterTvaBe } from "@domaine/organisation/bce.js";
 import { natureValide } from "@domaine/commercial/natures.js";
 import { affectationDepuisEquipes, missionsImpactees }
   from "@domaine/planning/equipes.js";
@@ -3463,10 +3464,16 @@ export async function reactiverMembre(membreId) {
  * de la société précédente. Même règle que `choisirSociete`.
  */
 export async function creerMaSociete(champs) {
+  // Forme canonique DÈS l'écriture. Sans cela la même colonne recevait
+  // « BE 0478.363.616 » d'un côté et « 1033973082 » de l'autre : un
+  // identifiant qui s'écrit de deux façons ne sert plus à rapprocher quoi que
+  // ce soit — ni une fiche BCE, ni un participant Peppol.
+  const bce = formaterBce(champs.bce) || champs.bce || null;
+  const tva = formaterTvaBe(champs.tva || champs.bce) || champs.tva || null;
   const { data, error } = await supabase.rpc("cmd_creer_ma_societe", {
     p_nom: champs.nom,
-    p_bce: champs.bce || null,
-    p_tva: champs.tva || null,
+    p_bce: bce,
+    p_tva: tva,
     p_tel: champs.tel || null,
     p_email: champs.email || null,
     p_nom_admin: champs.nomAdmin || null,
@@ -3648,6 +3655,108 @@ export async function rouvrirDossier(affaireId, motif) {
 // session — sinon l'ancien jeton continue de désigner l'ancienne société, et
 // c'est lui qui commande le RLS.
 // =============================================================================
+
+// =============================================================================
+// ENGAGEMENTS INTER-ORGANISATIONS
+//
+// Trois fonctions, et aucune écriture directe : la table `engagements` n'a
+// qu'une politique de lecture, le RLS refuse insert/update/delete. Tout passe
+// par les commandes, qui inscrivent un événement dans la chaîne d'empreintes.
+// =============================================================================
+
+/**
+ * Mes engagements, dans les deux sens. `sens` vaut "recue" (on me propose) ou
+ * "confiee" (je confie). La même requête sert le rituel de l'indépendant et
+ * le suivi du donneur d'ordre : un seul point de lecture, donc une seule
+ * vérité sur l'état d'un engagement.
+ */
+export async function mesEngagements(etat = null) {
+  const { data, error } = await supabase.rpc("cmd_mes_engagements", { p_etat: etat });
+  if (error) throw error;
+  return (data || []).map((e) => ({
+    id: e.id,
+    sens: e.sens,
+    contrepartie: e.contrepartie,
+    date: e.date_prestation,
+    heure: e.heure_debut,
+    nature: e.nature,
+    ville: e.ville,
+    codePostal: e.code_postal,
+    unite: e.unite,
+    prixHtvaCentimes: e.prix_htva_centimes,
+    etat: e.etat,
+    // Nulles tant que l'engagement n'est pas accepté : l'adresse n'existe pas
+    // dans l'objet partagé avant l'accord, elle n'est pas masquée.
+    adresse: e.adresse_complete,
+    contact: e.contact_sur_place,
+    reponduLe: e.repondu_le,
+    motifRefus: e.motif_refus,
+  }));
+}
+
+/** Répondre à une proposition. Réservé au prestataire par la commande. */
+export async function repondreEngagement(id, accepte, motif = null) {
+  const { data, error } = await supabase.rpc("cmd_repondre_engagement", {
+    p_engagement: id, p_accepte: accepte, p_motif: motif,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * L'annuaire des prestataires. Ne joint que des tables PUBLIABLES
+ * (`vitrine_prestataire`, `tarifs_publies`) — jamais `organisations`. Ce qui
+ * apparaît ici a été publié par son propriétaire, sans exception.
+ */
+export async function annuairePrestataires(zone = null, metier = null) {
+  const { data, error } = await supabase.rpc("cmd_annuaire_prestataires", {
+    p_zone: zone, p_metier: metier,
+  });
+  if (error) throw error;
+  return (data || []).map((p) => ({
+    orgId: p.org_id, nom: p.nom_public, metier: p.metier, zone: p.zone,
+    presentation: p.presentation, tel: p.tel_public, email: p.email_public,
+    prixMinHtvaCentimes: p.prix_min_htva_centimes, nbTarifs: p.nb_tarifs,
+  }));
+}
+
+/**
+ * Proposer une date à un prestataire. Le prix n'est PAS transmis : la commande
+ * le recopie depuis le tarif publié choisi. Envoyer un montant depuis l'écran
+ * aurait permis d'imposer un prix que le prestataire n'a jamais affiché.
+ *
+ * L'adresse et le contact restent de NOTRE côté : la commande les range dans
+ * notre rattachement privé et ils ne franchissent la cloison qu'à
+ * l'acceptation.
+ */
+export async function proposerEngagement(champs) {
+  const { data, error } = await supabase.rpc("cmd_proposer_engagement", {
+    p_prestataire: champs.prestataireOrgId,
+    p_tarif: champs.tarifId,
+    p_date: champs.date,
+    p_nature: champs.nature,
+    p_ville: champs.ville,
+    p_code_postal: champs.codePostal,
+    p_heure: champs.heure || null,
+    p_duree_min: champs.dureeMinutes || null,
+    p_adresse: champs.adresse || null,
+    p_contact: champs.contact || null,
+    p_affaire: champs.affaireId || null,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/** Les tarifs publiés d'un prestataire. Rien d'autre ne traverse la cloison. */
+export async function tarifsDuPrestataire(orgId) {
+  const { data, error } = await supabase.rpc("cmd_tarifs_du_prestataire", { p_org: orgId });
+  if (error) throw error;
+  return (data || []).map((t) => ({
+    id: t.id, libelle: t.libelle, unite: t.unite,
+    prixHtvaCentimes: t.prix_htva_centimes, tvaPct: t.tva_pct,
+    zone: t.zone, delaiPrevenanceHeures: t.delai_prevenance_heures, note: t.note,
+  }));
+}
 
 export async function mesSocietes() {
   if (modeDonnees() !== "reel") return [];
