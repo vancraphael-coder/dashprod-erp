@@ -139,9 +139,12 @@ export const REGLAGES = Object.freeze([
     legal: true, etat: "manquant" },
 
   // Premier écran du parcours de l'indépendant : c'est un réglage.
+  // Livré le 13/09/2026 (lot 2). Rythme hebdomadaire + exceptions ; les
+  // tarifs vivent dans `tarifs_publies` depuis 0181. Ce qui sort à l'extérieur
+  // n'est qu'une liste de dates libres — jamais une occupation.
   { cle: "disponibilites", titre: "Disponibilités et tarifs",
     module: "planning", postures: ["independant"], legal: false,
-    etat: "manquant" },
+    etat: "livre" },
 
   { cle: "prestataires", titre: "Prestataires externes et commissions",
     module: "planning", postures: ["direction", "coordination"],

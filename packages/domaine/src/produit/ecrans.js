@@ -273,9 +273,12 @@ export const ECRANS = Object.freeze([
   // écran qui dépend d'un réglage `manquant` est signalé non constructible.
 
   // Lot 4 — l'indépendant
-  { cle: "ma_disponibilite", fichier: null, module: "planning",
-    postures: ["independant"], reglages: ["disponibilites"], etat: "manquant",
-    monte: false, legal: false },
+  // Livré le 13/09/2026. Un réglage, pas un agenda : on pose un rythme une
+  // fois et on ne touche plus qu'aux exceptions. Un agenda à remplir chaque
+  // semaine ne se remplit pas, et un agenda vide ne reçoit aucune proposition.
+  { cle: "ma_disponibilite", fichier: "MaDisponibilite.jsx",
+    module: "planning", postures: ["independant"],
+    reglages: ["disponibilites"], etat: "livre", monte: true, legal: false },
   { cle: "mes_missions", fichier: null, module: "planning",
     postures: ["independant"], reglages: ["disponibilites"], etat: "manquant",
     monte: false, legal: false },
