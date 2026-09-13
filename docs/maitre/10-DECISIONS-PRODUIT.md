@@ -1039,3 +1039,49 @@ casse l'arbre. Un écran `livre` non monté est signalé (`Societes.jsx`, seul
 orphelin). Un artefact légal sans réglage est refusé. Un réglage qui fuit vers
 un métier voisin est refusé. Éprouvé par sabotage sur les deux gardes
 principales.
+
+## Lot 3c — Le rituel de l'indépendant et l'écran « confier » (13/09/2026)
+
+**Le rituel.** `RituelIndependant.jsx`, trois blocs : où je vais aujourd'hui,
+ce qu'on me demande, ce qu'il reste à facturer. Une demande à la fois, la plus
+proche devant — afficher les cinq d'un coup transformerait une décision en
+corvée de tri. Le vide se dit et dit la suite : « aucune intervention,
+prochaine jeudi à Wavre », sinon la personne ouvre trois écrans pour vérifier
+qu'elle n'a rien oublié.
+
+Aucun chiffre qu'on ne peut pas décider : le montant réalisé du mois ne figure
+pas, le nombre d'interventions réalisées non facturées figure.
+
+**L'écran d'arrivée se choisit par la POSTURE, pas par le nom du plan.**
+`main.jsx` interroge `postureDansOffre("independant", plan)` — la règle vit
+dans le registre, et la comparer en dur ici aurait été une seconde saisie.
+
+**Le côté donneur d'ordre.** `ConfierMission.jsx`, atteint depuis le carnet —
+parce que confier une mission, c'est chercher quelqu'un, et que le carnet est
+l'endroit où l'on cherche des gens. Trois étapes dans l'ordre où l'on pense :
+qui, quoi, envoyer.
+
+**Le prix ne se saisit pas.** On choisit un tarif publié, la commande recopie
+le montant. L'écran n'envoie aucun prix : pouvoir le taper permettrait
+d'imposer un tarif que le prestataire n'a jamais affiché.
+
+**L'annuaire ne lit jamais `organisations`.** Nouvelle table
+`vitrine_prestataire` (migration 0187) : l'identité publiable d'un prestataire,
+saisie par lui, jamais dérivée du nom légal. L'annuaire joint deux tables
+publiables et rien d'autre. Une fonction `security definer` qui n'aurait
+renvoyé que deux colonnes d'`organisations` aurait marché — mais elle aurait
+protégé une table sensible par du code, ce que le principe de 0181 refuse. Et
+`cmd_annuaire_prestataires` est `stable` et NON `security definer` : elle
+s'exécute sous RLS, sinon les vitrines non publiées deviendraient visibles.
+
+Un prestataire n'apparaît qu'avec au moins un tarif publié : un profil sans
+prix ne sert à personne.
+
+**La garde du deuxième angle a mordu à la livraison.** `rituel_independant`
+déclarait dépendre du réglage `disponibilites`, qui n'existe pas — le test l'a
+signalé immédiatement. Vérification faite, l'écran ne le lit pas : il ne lit
+que des engagements. **La déclaration était fausse, pas la garde.** Corrigée en
+`reglages: []`. C'est le premier cas où l'invariant a attrapé une erreur de
+déclaration plutôt qu'une vraie dette — utile de le noter, parce que la
+tentation inverse (relever le plafond de dette pour faire passer le test) était
+là.
