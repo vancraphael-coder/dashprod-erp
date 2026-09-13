@@ -302,8 +302,75 @@ Portée : toutes les offres, postures `direction` et `independant`. Un
 indépendant en manutention n'a pas besoin de licence de transport ; un
 indépendant qui livre, oui. C'est le métier déclaré qui décide, pas l'offre.
 
----
+### D-21 — Encadrer chaque page et chaque SQL par métier
 
-## Écartées
+> « Encadre bien chaque pages de chaque offres et/ou sql de dashprod pour bien
+> délimiter chaques métiers et chaque page attentant spécifique a chaque
+> métier. »
+
+**Classé :** `perimetre-metiers.test.js`. Le périmètre de chaque offre est
+calculé (module porté ET posture existante) puis **figé** : la liste exacte des
+écrans et des réglages de chaque métier est écrite dans le test. Toute
+variation casse l'arbre et oblige à dire pourquoi.
+
+L'encadrement se fait donc à deux étages, et les deux sont nécessaires :
+
+- **côté SQL** — le verrou d'offre en RLS (12 politiques) et
+  `modules_du_plan()` ferment la donnée. C'est ce qui fait qu'un indépendant ne
+  LIT pas ce qui ne le concerne pas, même en appelant l'API directement.
+- **côté écrans** — la posture ferme l'interface. C'est ce qui fait qu'on ne
+  lui PROPOSE pas une action que la base refuserait.
+
+Le module seul ne suffisait pas : `crm` est dans l'offre indépendant (une
+facture s'accroche techniquement à une affaire), et lui ouvrait donc le carnet,
+la liste des affaires et l'écran de dossier. **Cinq écrans du circuit de vente
+déménagement ont été retirés de sa posture** : carnet, liste des affaires,
+dossier, conversations, vente rapide. Son périmètre tombe à 13 écrans et
+5 réglages, figés.
+
+### D-22 — L'ancrage était les dossiers de déménagement
+
+> « quand je charge la page indépendant, elle se lance en d'abord sur l'écran
+> dossier déménagement comme page d'encrage au lieu du Dashboard, et le
+> Dashboard n'a pas encore de bouton dans la barre de navigation. »
+
+**Classé :** fait. Trois défauts distincts sous un seul symptôme.
+
+1. La route initiale valait « liste » en dur : tout le monde atterrissait sur
+   les dossiers de déménagement. L'ancrage est **une propriété du métier**, pas
+   une valeur par défaut de l'application — il se déclare désormais avec la
+   posture (`postures.js`, champ `ancrage`), et l'application n'affiche RIEN
+   avant de savoir à qui elle parle.
+2. Le correctif précédent ne déplaçait la route qu'après la réponse du
+   serveur : l'écran des dossiers s'affichait donc le temps de l'aller-retour,
+   et parfois restait.
+3. `rituel_independant` était absent de `RACINES` : aucune barre de
+   navigation. Ajouté, avec une barre réduite à trois entrées pour cette
+   posture.
+
+Défaut de conception révélé au passage : le registre et le routeur parlaient
+deux langues (`liste_affaires` d'un côté, « liste » de l'autre). La
+correspondance est maintenant déclarée dans le registre (champ `route`) plutôt
+que tenue dans une table ailleurs.
+
+### D-23 — La distribution d'une demande ne se fait pas
+
+> « la distribution de la demande ne se fait pas encore, (sur le Dashboard
+> c'est un kpi de 'demande reseau'). »
+
+**Classé :** lot 5. Deux choses à ne pas confondre, et c'est la confusion que
+la tuile entretenait :
+
+- **`demandes_reseau`** est un vivier de PARTICULIERS qui cherchent un
+  déménageur. Un indépendant en manutention n'y répond pas. La tuile a été
+  retirée de son compte — elle lui promettait un flux qui ne le concerne pas.
+- **la distribution d'une mission à un prestataire** passe par un engagement
+  (`cmd_proposer_engagement`), et elle fonctionne en base : l'engagement du
+  20/09 existe et attend la réponse. Ce qui manquait, c'est que l'indépendant
+  ne voyait pas son écran — voir D-22.
+
+Reste à construire au lot 5 : partir d'une demande du réseau ou d'un dossier
+existant pour la confier, plutôt que de resaisir date, ville et nature à la
+main.
 
 *(vide)*
