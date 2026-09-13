@@ -163,6 +163,15 @@ export const REGLAGES = Object.freeze([
   // une pièce comptable (il ne se facture pas). Avec une date d'échéance et un
   // rappel : un document périmé est plus dangereux qu'un document absent,
   // parce qu'on croit l'avoir.
+  // Les canaux du réseau auxquels on s'abonne. Un par corps de métier — le
+  // réseau est HORIZONTAL : aucun corps ne commande les autres, et un
+  // déménageur peut être donneur d'ordre le lundi et prestataire le mardi.
+  // Réglage, et pas effet du plan : deux sociétés de la même offre ne
+  // travaillent pas forcément les mêmes corps.
+  { cle: "canaux_reseau", titre: "Canaux du réseau (corps de métier)",
+    module: "crm", postures: ["direction", "coordination", "independant"],
+    legal: false, etat: "manquant" },
+
   { cle: "acces_profession", titre: "Accès à la profession et licences",
     module: null, postures: ["direction", "independant"], legal: true,
     etat: "manquant" },

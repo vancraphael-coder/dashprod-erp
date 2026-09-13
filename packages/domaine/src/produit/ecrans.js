@@ -105,25 +105,26 @@ export const ECRANS = Object.freeze([
 
   // ── Commerce : du premier appel à la signature ──────────────────────────
   //
-  // AUCUN de ces écrans ne porte la posture `independant`, et c'est le cœur de
-  // l'encadrement. Un indépendant ne monte pas de dossier de déménagement : il
-  // reçoit des missions par des engagements. Lui ouvrir le carnet, la liste
-  // des affaires et l'écran de dossier lui donnerait « la panoplie
-  // d'interaction de l'interface de nouveaux dossiers » — une entreprise en
-  // réduction, alors que ce n'est pas le même métier.
+  // CES ÉCRANS RESTENT OUVERTS À L'INDÉPENDANT, et c'est une correction d'une
+  // erreur de lecture de ma part. Un indépendant A des dossiers : il les
+  // reçoit en sous-traitance, il y pointe, il les facture. Fermer la page des
+  // dossiers l'aurait privé de son propre travail.
   //
-  // Le module `crm` reste dans son offre parce qu'une facture s'accroche
-  // techniquement à une affaire ; c'est la POSTURE qui ferme les écrans, pas
-  // le module. Le rattachement facture ↔ engagement viendra du lot 5.
+  // Ce qu'il ne doit pas avoir, c'est la PANOPLIE DE CRÉATION : le menu « + »
+  // proposait les six natures à tout le monde, dont « Déménagement » avec
+  // relevé, emballage et fournitures — alors que son offre n'ouvre ni `releve`
+  // ni `devis`. L'encadrement se fait donc là où le geste commence :
+  // `naturesDuMenu(modules)` ne propose que ce que l'offre permet de créer.
+  // Pour un indépendant, une seule nature : « Sous-traitance ».
   { cle: "carnet", fichier: "Carnet.jsx", module: "crm",
-    postures: ["direction", "coordination", "commerce"],
+    postures: ["direction", "coordination", "commerce", "independant"],
     reglages: [], etat: "livre", monte: true, legal: false },
   { cle: "liste_affaires", fichier: "ListeAffaires.jsx", route: "liste",
     module: "crm",
-    postures: ["direction", "coordination", "commerce"],
+    postures: ["direction", "coordination", "commerce", "independant"],
     reglages: [], etat: "livre", monte: true, legal: false },
   { cle: "dossier", fichier: "Dossier.jsx", module: "crm",
-    postures: ["direction", "coordination", "commerce"],
+    postures: ["direction", "coordination", "commerce", "independant"],
     reglages: [], etat: "livre", monte: true, legal: false },
   { cle: "releve", fichier: "Releve.jsx", module: "releve",
     postures: ["commerce", "coordination", "acces_ponctuel"],
@@ -148,7 +149,7 @@ export const ECRANS = Object.freeze([
     module: "signature_client", postures: ["commerce", "coordination"],
     reglages: [], etat: "livre", monte: true, legal: true },
   { cle: "vente_rapide", fichier: "VenteRapide.jsx", module: "facturation",
-    postures: ["coordination", "direction"],
+    postures: ["coordination", "direction", "independant"],
     reglages: ["fournitures", "facturation"], etat: "esquisse", monte: true,
     legal: true },
 
@@ -229,7 +230,7 @@ export const ECRANS = Object.freeze([
 
   // ── Échanges ────────────────────────────────────────────────────────────
   { cle: "conversations", fichier: "Conversations.jsx", module: "crm",
-    postures: ["coordination", "direction"], reglages: [],
+    postures: ["coordination", "direction", "independant"], reglages: [],
     etat: "livre", monte: true, legal: false },
   { cle: "fil_messages", fichier: "FilMessages.jsx", module: "crm",
     postures: ["coordination", "direction", "client", "independant"],
@@ -341,6 +342,14 @@ export const ECRANS = Object.freeze([
   { cle: "vue_des_trous", fichier: null, module: "planning",
     postures: ["coordination"], reglages: ["fermetures"], etat: "manquant",
     monte: false, legal: false, rituel: true, blocs: 2 },
+
+  // Le choix des canaux : à quels corps de métier je réponds. C'est ce qui
+  // rend le réseau utile à un indépendant — il ne voit plus la file des
+  // particuliers cherchant un déménageur, il voit son corps.
+  { cle: "canaux_reseau", fichier: null, module: "crm",
+    postures: ["direction", "coordination", "independant"],
+    reglages: ["canaux_reseau"], etat: "manquant", monte: false,
+    legal: false },
 
   // L'écran de réglage des licences. Un réglage sans écran est un réglage que
   // personne ne remplira — la garde des réglages orphelins l'a signalé dès sa
