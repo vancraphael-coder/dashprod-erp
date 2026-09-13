@@ -28,6 +28,8 @@ export const NATURES = Object.freeze([
   {
     cle: "demenagement",
     titre: "Déménagement",
+    // Modules SANS lesquels cette nature ne sert à rien.
+    requiert: ["releve", "devis"],
     resume: "Le parcours complet : relevé, emballage, fournitures, planning.",
     pourEntreprise: false,
     etapes: { releve: true, materiel: true, emballage: true,
@@ -38,6 +40,8 @@ export const NATURES = Object.freeze([
   {
     cle: "sous_traitance",
     titre: "Sous-traitance",
+    // Modules SANS lesquels cette nature ne sert à rien.
+    requiert: ["planning", "terrain"],
     resume: "Vous travaillez pour un vendeur de mobilier ou un transporteur "
           + "qui ne peut pas assurer une livraison simple. Prix négocié, "
           + "à l'homme, camion si besoin.",
@@ -51,6 +55,8 @@ export const NATURES = Object.freeze([
   {
     cle: "lift",
     titre: "Lift",
+    // Modules SANS lesquels cette nature ne sert à rien.
+    requiert: ["planning", "flotte"],
     resume: "Monte-meubles seul. Ni relevé, ni emballage, ni fournitures. "
           + "Le prix suit la couronne kilométrique du centre.",
     pourEntreprise: false,
@@ -61,6 +67,8 @@ export const NATURES = Object.freeze([
   {
     cle: "boxe",
     titre: "Boxe",
+    // Modules SANS lesquels cette nature ne sert à rien.
+    requiert: ["stockage_3d"],
     resume: "Location d'un box. Facturé au mois, selon le volume.",
     pourEntreprise: false,
     etapes: { releve: false, materiel: false, emballage: false,
@@ -70,6 +78,8 @@ export const NATURES = Object.freeze([
   {
     cle: "zone",
     titre: "Zone",
+    // Modules SANS lesquels cette nature ne sert à rien.
+    requiert: ["stockage_3d"],
     resume: "Location d'une zone à une entreprise, au forfait. Souvent "
           + "attachée à une livraison, avec ou sans étages, avec ou sans "
           + "montage de mobilier.",
@@ -85,6 +95,8 @@ export const NATURES = Object.freeze([
     // dédiée, pas comme un métier.
     cle: "vente",
     titre: "Vente",
+    // Modules SANS lesquels cette nature ne sert à rien.
+    requiert: ["facturation"],
     resume: "Vente de fournitures — cartons, emballage. Au comptoir ou livrée.",
     pourEntreprise: false,
     etapes: { releve: false, materiel: false, emballage: false,
@@ -106,9 +118,28 @@ export function natureValide(cle) {
   return NATURES.some((n) => n.cle === cle);
 }
 
-/** Les natures dans l'ordre du menu. */
-export function naturesDuMenu() {
-  return ORDRE_MENU.map((c) => nature(c)).filter(Boolean);
+/**
+ * Les natures du menu « + », filtrées par ce que l'offre ouvre RÉELLEMENT.
+ *
+ * CE QUI N'ALLAIT PAS. Le menu proposait les six natures à tout le monde. Un
+ * indépendant en manutention y voyait « Déménagement » avec son parcours
+ * complet — relevé, emballage, fournitures — alors que son offre n'ouvre ni
+ * `releve` ni `devis`. Proposer une nature dont les écrans sont fermés, c'est
+ * conduire quelqu'un dans un cul-de-sac : il crée le dossier, puis découvre
+ * qu'il ne peut rien en faire.
+ *
+ * Ce n'est PAS la page des dossiers qu'il faut fermer — un indépendant a des
+ * dossiers, il les reçoit en sous-traitance. C'est le menu de création qui
+ * doit dire ce que l'offre permet de créer.
+ *
+ * `modules` vide ou absent → tout le menu, pour ne pas casser les appels qui
+ * n'ont pas encore la liste (démo, tests).
+ */
+export function naturesDuMenu(modules = null) {
+  const toutes = ORDRE_MENU.map((c) => nature(c)).filter(Boolean);
+  if (!Array.isArray(modules) || modules.length === 0) return toutes;
+  return toutes.filter((n) =>
+    (n.requiert || []).every((m) => modules.includes(m)));
 }
 
 /** Cette nature comporte-t-elle cette étape ? Inconnue → non. */
