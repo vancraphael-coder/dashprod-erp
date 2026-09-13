@@ -24,12 +24,13 @@ const ROADMAP = join(DOCS, "roadmap");
 const OUTILS = join(DOCS, "outils");
 const lire = (d, f) => readFileSync(join(d, f), "utf8");
 
-test("le dossier roadmap a ses quatre fichiers, et rien de plus", () => {
-  // Quatre questions, quatre fichiers. Un cinquième signifierait qu'une
-  // question s'est ajoutée sans être nommée.
+test("le dossier roadmap a ses cinq fichiers, et rien de plus", () => {
+  // Cinq questions, cinq fichiers. Un sixième signifierait qu'une question
+  // s'est ajoutée sans être nommée dans le système.
   assert.deepEqual(
     readdirSync(ROADMAP).filter((f) => f.endsWith(".md")).sort(),
-    ["00-SYSTEME.md", "10-AUDIT-ECRANS.md", "20-LOTS.md", "30-DEMANDES.md"]);
+    ["00-SYSTEME.md", "10-AUDIT-ECRANS.md", "20-LOTS.md", "30-DEMANDES.md",
+     "40-ARCHITECTURE.md"]);
 });
 
 test("chaque outil annoncé existe, et chaque outil existant est annoncé", () => {
@@ -92,6 +93,15 @@ test("chaque demande est classée, aucune ne reste en suspens", () => {
     // on ne peut plus vérifier ce qui avait été demandé.
     assert.match(b, /^>/m,
       `la demande « ${titre} » n'est pas citée littéralement`);
+  }
+});
+
+test("les trois axes d'architecture sont nommés et distingués", () => {
+  // Un seul mot pour trois axes conduit, tôt ou tard, à une décision prise
+  // sur la mauvaise grille.
+  const src = lire(ROADMAP, "40-ARCHITECTURE.md");
+  for (const axe of ["hexagon", "cloison", "trois angles"]) {
+    assert.match(src, new RegExp(axe, "i"), `l'axe « ${axe} » n'est plus nommé`);
   }
 });
 
