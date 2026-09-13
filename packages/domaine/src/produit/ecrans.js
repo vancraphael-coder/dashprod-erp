@@ -296,9 +296,13 @@ export const ECRANS = Object.freeze([
   { cle: "confier_mission", fichier: "ConfierMission.jsx", module: "planning",
     postures: ["coordination", "direction"], reglages: [],
     etat: "livre", monte: true, legal: false },
-  { cle: "suivi_missions_confiees", fichier: null, module: "planning",
-    postures: ["coordination", "direction"], reglages: ["prestataires"],
-    etat: "manquant", monte: false, legal: false },
+  // Livré le 13/09/2026. `reglages: []` : l'écran ne lit aucun réglage — il
+  // lit les engagements et calcule le poste de coût par le domaine. Les
+  // commissions relèveront du réglage `prestataires` quand il existera.
+  { cle: "suivi_missions_confiees", fichier: "SuiviEngagements.jsx",
+    route: "suivi_engagements", module: "planning",
+    postures: ["coordination", "direction"], reglages: [],
+    etat: "livre", monte: true, legal: false },
   { cle: "reception_preuve", fichier: null, module: "rapport_chantier",
     postures: ["coordination", "direction"], reglages: [], etat: "manquant",
     monte: false, legal: true },
