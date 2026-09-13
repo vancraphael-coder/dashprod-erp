@@ -30,6 +30,7 @@ import { C, S, Badge, ZONES_MARGE, ETATS_UI, euros } from "../lib/theme.jsx";
 // vivent dans le domaine (crm/vues-dossiers), testées.
 
 export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarnet,
+                                       modules = null,
   profil, centres = [], centreChoisi, onChoisirCentre }) {
   const [affaires, setAffaires] = useState([]);
   const [menuOuvert, setMenuOuvert] = useState(false);
@@ -269,6 +270,7 @@ export default function ListeAffaires({ ouvrirAffaire, nouvelleAffaire, versCarn
       ))}
 
       <MenuCreation ouvert={menuOuvert} basculer={setMenuOuvert}
+                    modules={modules}
                     choisir={(nature) => nouvelleAffaire(nature)} />
     </div>
   );
