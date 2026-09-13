@@ -21,7 +21,10 @@ import RituelIndependant from "./ecrans/RituelIndependant.jsx";
 import ConfierMission from "./ecrans/ConfierMission.jsx";
 // L'écran d'arrivée se choisit par la POSTURE, et la posture se déduit de
 // l'offre : interroger le registre plutôt que comparer un nom de plan en dur.
-import { postureDansOffre } from "@domaine/produit/postures.js";
+import { postureDansOffre, ancrageDeLOffre } from "@domaine/produit/postures.js";
+// Le registre et le routeur parlaient deux langues (`liste_affaires` ici,
+// « liste » là-bas). La correspondance est déclarée dans le registre.
+import { routeDeLEcran } from "@domaine/produit/ecrans.js";
 import ListeAffaires from "./ecrans/ListeAffaires.jsx";
 import { creerDossierVide, obtenirAffaire } from "./lib/adaptateur.js";
 import { centreDeRattachement, espacesCreation } from "@domaine/organisation/centres.js";
@@ -633,7 +636,12 @@ function App() {
   // C'est voulu — deviner serait la pire des réponses (0081).
   const [aChoisir, setAChoisir] = useState(null);
   const [charge, setCharge] = useState(false);
-  const [route, setRoute] = useState({ ecran: "liste", affaireId: null });
+  // `ecran: null` — pas « liste ». Ancrer sur les dossiers de déménagement
+  // par défaut faisait atterrir un indépendant sur un écran qu'il n'utilise
+  // jamais, le temps que le serveur réponde, et parfois durablement. L'ancrage
+  // est une propriété du MÉTIER (produit/postures.js) : on n'affiche rien
+  // avant de savoir à qui on parle.
+  const [route, setRoute] = useState({ ecran: null, affaireId: null });
   const [gardeEnAttente, setGardeEnAttente] = useState(null); // () => void — navigation différée
   // Bascule de centre (secrétaire+). undefined = pas encore choisi → le domaine
   // (porteeCentres) place l'acteur sur son centre par défaut. Voir SelecteurCentre.
@@ -705,16 +713,17 @@ function App() {
     if (modeDonnees() !== "reel" || !org) return;
     monAcces().then((a) => {
       setAcces(a);
-      // L'écran d'ARRIVÉE dépend de la posture, et la posture se déduit de
-      // l'offre : `independant` n'existe que dans `independant_manutention`
-      // (voir produit/postures.js). On interroge le registre plutôt que de
-      // comparer le nom du plan en dur — sinon ce test-là devient une
-      // seconde saisie de la même règle.
-      if (a?.plan && postureDansOffre("independant", a.plan)) {
-        setRoute((r) => (r.ecran === "liste"
-          ? { ecran: "rituel_independant", affaireId: null } : r));
-      }
-    }).catch(() => setAcces(null));
+      // L'ancrage vient du registre des postures, jamais d'un test en dur sur
+      // le nom du plan : sinon la règle existe à deux endroits.
+      setRoute((r) => (r.ecran === null
+        ? { ecran: routeDeLEcran(ancrageDeLOffre(a?.plan)) || "liste",
+            affaireId: null } : r));
+    }).catch(() => {
+      setAcces(null);
+      // Sans réponse du serveur on ne connaît pas le métier. On ancre sur les
+      // dossiers, qui est le cas majoritaire, plutôt que de rester blanc.
+      setRoute((r) => (r.ecran === null ? { ecran: "liste", affaireId: null } : r));
+    });
   }, [org]);
 
   // La nature suit le dossier ouvert. On l'efface dès qu'on en sort, sinon la
@@ -886,7 +895,11 @@ function App() {
     );
   } else if (route.ecran === "compte") {
     ecran = <Profil profil={profil} versDiagnostic={nav.diagnostic}
-      versParametres={nav.parametres} versDemandes={nav.demandes}
+      versParametres={nav.parametres}
+      // Le vivier `demandes_reseau` est celui de particuliers qui cherchent un
+      // DÉMÉNAGEUR. Un indépendant en manutention n'y répond pas : la tuile
+      // n'a rien à faire sur son compte.
+      versDemandes={postureCourante === "independant" ? null : nav.demandes}
       versCentres={(acces?.modules || []).includes("multi_depots") ? nav.centres : null}
       versRapport={(acces?.modules || []).includes("multi_depots") ? nav.rapport : null}
       versMesSocietes={nav.mesSocietes}
@@ -961,6 +974,10 @@ function App() {
     ecran = <Mail affaireId={route.affaireId} retour={retourDossier} versOffre={nav.offre} />;
   } else if (route.ecran === "facture") {
     ecran = <Facture affaireId={route.affaireId} retour={retourDossier} />;
+  } else if (route.ecran === null) {
+    // Le métier n'est pas encore connu : on n'ancre sur rien. Un écran vide
+    // pendant un aller-retour vaut mieux qu'un écran faux qui reste.
+    ecran = null;
   } else {
     ecran = <ListeAffaires ouvrirAffaire={nav.dossier} nouvelleAffaire={nav.nouvelle}
                            versCarnet={nav.carnet}
