@@ -153,6 +153,19 @@ export const REGLAGES = Object.freeze([
 
   { cle: "conservation", titre: "Conservation et purge", module: null,
     postures: ["direction"], legal: true, etat: "manquant" },
+
+  // Les documents qui prouvent le DROIT D'EXERCER : licence de transport,
+  // accès à la profession de déménageur, attestation d'assurance RC. Même
+  // famille que `identite_verifiee` — qu'est-ce qui atteste que cette société
+  // peut légalement faire ce qu'elle vend.
+  //
+  // Ni un document de dossier (il ne concerne aucun client en particulier), ni
+  // une pièce comptable (il ne se facture pas). Avec une date d'échéance et un
+  // rappel : un document périmé est plus dangereux qu'un document absent,
+  // parce qu'on croit l'avoir.
+  { cle: "acces_profession", titre: "Accès à la profession et licences",
+    module: null, postures: ["direction", "independant"], legal: true,
+    etat: "manquant" },
 ]);
 
 /** Un réglage par sa clé. `null` plutôt qu'un défaut inventé. */

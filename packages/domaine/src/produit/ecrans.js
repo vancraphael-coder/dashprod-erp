@@ -325,6 +325,13 @@ export const ECRANS = Object.freeze([
     postures: ["coordination"], reglages: ["fermetures"], etat: "manquant",
     monte: false, legal: false, rituel: true, blocs: 2 },
 
+  // L'écran de réglage des licences. Un réglage sans écran est un réglage que
+  // personne ne remplira — la garde des réglages orphelins l'a signalé dès sa
+  // déclaration.
+  { cle: "acces_profession", fichier: null, module: null,
+    postures: ["direction", "independant"], reglages: ["acces_profession"],
+    etat: "manquant", monte: false, legal: true },
+
   // ── LE SEUL CENTRE DE CHIFFRES ───────────────────────────────────────────
   // En ONGLET, jamais en écran d'arrivée. Celui qui gère la trésorerie VEUT
   // des chiffres denses et vient les chercher ; il n'a pas à les recevoir
