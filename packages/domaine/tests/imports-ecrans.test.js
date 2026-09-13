@@ -63,6 +63,37 @@ function importsDe(src) {
   return noms;
 }
 
+/**
+ * Retire des sources tout ce qui n'est pas du code : commentaires, chaînes
+ * littérales, et les parties TEXTE des gabarits.
+ *
+ * POURQUOI. Les commentaires étaient déjà retirés — sans quoi le mot
+ * « ligne » dans une phrase passait pour un appel `ligne(`. Les CHAÎNES ne
+ * l'étaient pas, et le français les piège tout autant : le libellé
+ * « En attente de facture (3) » contient littéralement `facture (`, ce qui
+ * accusait l'écran d'utiliser `facture()` sans l'importer. Constaté le
+ * 13/09/2026 sur `SuiviEngagements.jsx`.
+ *
+ * Les expressions `${...}` d'un gabarit sont CONSERVÉES : c'est du code, et un
+ * appel non importé peut s'y cacher. Les retirer aurait troué le test pour
+ * échapper à un faux positif — le remède aurait été pire.
+ */
+function sansTexte(brut) {
+  const sansCommentaires = brut
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  return sansCommentaires
+    // Gabarits : on ne garde que les expressions interpolées.
+    .replace(/`(?:[^`\\]|\\.)*`/g, (g) => {
+      const expressions = [...g.matchAll(/\$\{([\s\S]*?)\}/g)]
+        .map((m) => m[1]);
+      return expressions.length ? ` ${expressions.join(" ; ")} ` : " ";
+    })
+    // Chaînes simples et doubles : jamais du code.
+    .replace(/'(?:[^'\\\n]|\\.)*'/g, " ")
+    .replace(/"(?:[^"\\\n]|\\.)*"/g, " ");
+}
+
 test("aucun écran n'utilise un symbole du domaine sans l'importer", () => {
   const dispo = exportsDomaine();
   const fautes = [];
@@ -72,9 +103,7 @@ test("aucun écran n'utilise un symbole du domaine sans l'importer", () => {
     // On retire les commentaires AVANT d'analyser : un mot comme « en ligne »
     // dans une phrase ne doit pas passer pour un appel `ligne(`. Sans ça, le
     // test accuse à tort un fichier selon la prose de ses commentaires.
-    const src = brut
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    const src = sansTexte(brut);
     const importes = importsDe(brut);
     // On ignore ce que le fichier définit lui-même — y compris les noms issus
     // d'une déstructuration (`const [facture, setFacture] = useState()`), sans
