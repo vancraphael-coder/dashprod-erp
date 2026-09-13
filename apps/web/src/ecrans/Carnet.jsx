@@ -22,7 +22,7 @@ import { nature as natureDe } from "@domaine/commercial/natures.js";
 import { C, S, euros, ETATS_UI } from "../lib/theme.jsx";
 
 export default function Carnet({ retour, ouvrirDossier, nouvelleAffaire,
-                                 confierMission }) {
+                                 confierMission, suiviEngagements }) {
   const [liste, setListe] = useState(null);
   const [q, setQ] = useState("");
   const [ouvert, setOuvert] = useState(null);
@@ -70,10 +70,18 @@ export default function Carnet({ retour, ouvrirDossier, nouvelleAffaire,
           pas depuis un écran de paramètres : c'est le geste de quelqu'un qui
           cherche quelqu'un. */}
       {confierMission && (
-        <div style={{ padding: "0 16px 14px" }}>
-          <button style={S.boutonSecondaire} onClick={confierMission}>
-            Confier une mission à un indépendant
+        <div style={{ padding: "0 16px 14px", display: "flex", gap: 8 }}>
+          <button style={{ ...S.boutonSecondaire, flex: 1 }} onClick={confierMission}>
+            Confier une mission
           </button>
+          {/* Le suivi est à côté du geste, pas ailleurs : celui qui confie est
+              celui qui veut savoir ce que sa demande est devenue. */}
+          {suiviEngagements && (
+            <button style={{ ...S.boutonSecondaire, flex: 1 }}
+                    onClick={suiviEngagements}>
+              Suivi
+            </button>
+          )}
         </div>
       )}
 
