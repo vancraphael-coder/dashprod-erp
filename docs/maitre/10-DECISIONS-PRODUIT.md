@@ -1085,3 +1085,39 @@ que des engagements. **La déclaration était fausse, pas la garde.** Corrigée 
 déclaration plutôt qu'une vraie dette — utile de le noter, parce que la
 tentation inverse (relever le plafond de dette pour faire passer le test) était
 là.
+
+## L'encadrement par métier, et l'ancrage (13/09/2026)
+
+**L'encadrement se fait à deux étages, et les deux sont nécessaires.** Le
+verrou d'offre en RLS ferme la DONNÉE : un indépendant ne lit pas ce qui ne le
+concerne pas, même en appelant l'API directement. La posture ferme
+l'INTERFACE : on ne lui propose pas une action que la base refuserait.
+
+Le module seul ne suffisait pas. `crm` est dans l'offre indépendant — une
+facture s'accroche techniquement à une affaire — et lui ouvrait donc le carnet,
+la liste des affaires et l'écran de dossier de déménagement. **Cinq écrans du
+circuit de vente ont été retirés de sa posture** : carnet, liste des affaires,
+dossier, conversations, vente rapide. C'est la POSTURE qui ferme, pas le
+module.
+
+Son périmètre est désormais figé à 13 écrans et 5 réglages
+(`perimetre-metiers.test.js`). Les périmètres de Basique, Regular et Pro le
+sont aussi. Ajouter une posture à un écran casse l'arbre et oblige à dire
+pourquoi — éprouvé par sabotage.
+
+**L'ancrage est une propriété du métier, pas une valeur par défaut.** La route
+initiale valait « liste » en dur : tout le monde atterrissait sur les dossiers
+de déménagement, y compris un indépendant qui n'en monte jamais. Le champ
+`ancrage` est déclaré avec la posture, et l'application n'affiche RIEN avant de
+savoir à qui elle parle — un écran vide pendant un aller-retour vaut mieux
+qu'un écran faux qui reste.
+
+**Défaut de conception révélé au passage :** le registre et le routeur
+parlaient deux langues (`liste_affaires` / « liste »). La correspondance est
+déclarée dans le registre (champ `route`) au lieu d'être tenue ailleurs.
+
+**Deux flux distincts, que la tuile du compte confondait.** `demandes_reseau`
+est un vivier de particuliers cherchant un déménageur — retirée du compte de
+l'indépendant, elle lui promettait un flux qui ne le concerne pas. La
+distribution d'une mission à un prestataire, elle, passe par un engagement et
+fonctionne : ce qui manquait était l'écran pour la voir.
