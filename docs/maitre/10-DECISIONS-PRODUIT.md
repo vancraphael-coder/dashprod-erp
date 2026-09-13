@@ -1121,3 +1121,43 @@ est un vivier de particuliers cherchant un déménageur — retirée du compte d
 l'indépendant, elle lui promettait un flux qui ne le concerne pas. La
 distribution d'une mission à un prestataire, elle, passe par un engagement et
 fonctionne : ce qui manquait était l'écran pour la voir.
+
+## Lot 5 — Le suivi des missions confiées (13/09/2026)
+
+**La moitié manquante.** L'indépendant voyait ses missions reçues dans son
+rituel ; le donneur d'ordre envoyait une proposition et n'avait plus aucun
+endroit pour savoir ce qu'elle devenait. Une relation à deux sens dont un seul
+côté est outillé ne tient pas — **c'est celui qui paie qui abandonne le
+premier.**
+
+**Ce n'est pas un tableau de bord, c'est une liste de travail**, et l'ordre est
+volontaire : les propositions sans réponse passent devant les engagements
+confirmés, même quand ces derniers sont plus proches dans le temps. Un chantier
+confirmé est réglé ; un chantier sans réponse est un risque. Trier par date
+mettrait le risque en bas de l'écran.
+
+**Le poste de coût est calculé par le domaine, pas par l'écran.** La règle des
+trois états — proposition sans coût, accord dû, facture prioritaire — ne doit
+exister qu'à un seul endroit. L'écran affiche trois chiffres qui appellent
+chacun une décision différente : l'engagé (la marge), le déjà facturé (le
+rapprochement), l'attendu (la clôture sans surprise). Plus l'écart convenu /
+facturé quand il existe — ce n'est pas une anomalie à masquer, c'est ce qui
+permet de discuter avec un prestataire ou de corriger un tarif publié qui ne
+correspond plus au terrain.
+
+**Le suivi est à côté du geste.** Boutons « Confier » et « Suivi » côte à côte
+dans le carnet : celui qui confie est celui qui veut savoir ce que sa demande
+est devenue. Le ranger dans un écran de paramètres l'aurait rendu invisible.
+
+**Garde d'imports améliorée, pas contournée.** `imports-ecrans.test.js` m'a
+accusé d'utiliser `facture()` sans l'importer — le coupable était le libellé
+« En attente de facture (3) », qui contient littéralement `facture (`. Le test
+retirait déjà les commentaires (le mot « ligne » dans une phrase passait pour
+`ligne(`) mais pas les chaînes, et le français les piège autant.
+
+Les chaînes et les parties texte des gabarits sont désormais retirées avant
+analyse, **mais les expressions `${...}` sont conservées** : c'est du code, et
+un appel non importé peut s'y cacher. Les retirer aurait troué le test pour
+échapper à un faux positif — le remède aurait été pire que le mal. Éprouvé par
+sabotage : un vrai `formaterDuree(12)` glissé dans un gabarit est toujours
+attrapé.
