@@ -3752,6 +3752,38 @@ export async function repondreEngagement(id, accepte, motif = null) {
   return data;
 }
 
+/** Mon calendrier : tout est visible ici, motifs compris. C'est mon agenda. */
+export async function monCalendrier(du, au) {
+  const { data, error } = await supabase.rpc("cmd_mon_calendrier",
+    { p_du: du, p_au: au });
+  if (error) throw error;
+  return (data || []).map((j) => ({
+    date: j.jour, etat: j.etat, pour: j.pour, motif: j.motif,
+  }));
+}
+
+/** Mon rythme habituel, par jour ISO (lundi = 1). Remplace l'ancien. */
+export async function definirRythme(jours) {
+  const { data, error } = await supabase.rpc("cmd_definir_rythme",
+    { p_jours: jours });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Fermer ou ouvrir une date. `disponible === null` retire l'exception et
+ * rend la main au rythme habituel.
+ *
+ * Le motif reste privé : il n'apparaît dans aucune sortie publiable.
+ */
+export async function definirException(date, disponible, motif = null) {
+  const { data, error } = await supabase.rpc("cmd_definir_exception", {
+    p_date: date, p_disponible: disponible, p_motif: motif,
+  });
+  if (error) throw error;
+  return data;
+}
+
 /** Mon état vis-à-vis du réseau : inscrit, vitrine publiée, tarifs publiés. */
 export async function monReseau() {
   const { data, error } = await supabase.rpc("cmd_mon_reseau");
