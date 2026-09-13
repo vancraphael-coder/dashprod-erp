@@ -1161,3 +1161,60 @@ un appel non importé peut s'y cacher. Les retirer aurait troué le test pour
 échapper à un faux positif — le remède aurait été pire que le mal. Éprouvé par
 sabotage : un vrai `formaterDuree(12)` glissé dans un gabarit est toujours
 attrapé.
+
+## Lot 2 + lot 4 — Les disponibilités (13/09/2026)
+
+**LE PRINCIPE : on publie une disponibilité, jamais une occupation.** Un
+créneau est soit déclaré libre, soit absent — et l'absence ne dit pas pourquoi.
+Publier un agenda d'occupation dirait à un donneur d'ordre quand l'indépendant
+travaille pour un autre, et pour qui probablement. C'est une information
+commerciale : elle ne traverse pas la cloison.
+
+Conséquence assumée et vérifiée par un test : **un indépendant très occupé et
+un indépendant en vacances présentent la même chose — rien.** Personne ne peut
+distinguer les deux.
+
+La garantie ne repose pas sur une politique mais sur le TYPE DE RETOUR :
+`cmd_dates_libres_prestataire` rend un `setof date`. Un tableau de dates ne
+peut pas fuiter ce qu'il ne contient pas. Même famille de décision que
+`tarifs_publies` (0181) et `vitrine_prestataire` (0187).
+
+**Trois sources, une seule saisie.** Le rythme hebdomadaire, les exceptions, et
+les engagements acceptés qui occupent le créneau AUTOMATIQUEMENT. Le troisième
+point est ce qui évite l'agenda qui ment : sans lui, il faudrait retirer sa
+disponibilité à la main après chaque acceptation, on l'oublierait, et on
+recevrait des propositions pour des jours déjà pris.
+
+**Une proposition n'occupe rien.** Elle peut être refusée. Bloquer la journée
+dès la proposition permettrait à n'importe qui de geler l'agenda d'un
+indépendant en le sollicitant.
+
+**Un réglage, pas un agenda.** On pose un rythme une fois — « du lundi au
+vendredi » — et on ne touche plus qu'aux exceptions. Un agenda à remplir chaque
+semaine ne se remplit pas, et un agenda vide ne reçoit aucune proposition.
+
+**Le délai de prévenance protège l'indépendant.** Recevoir à 22 h une
+proposition pour le lendemain 7 h n'est pas une opportunité, c'est une
+pression. Il se règle, parce que 48 h pour un manutentionnaire et 48 h pour un
+liftier ne sont pas la même contrainte. Il se compte jusqu'au DÉBUT DE LA
+JOURNÉE, pas jusqu'à l'heure du chantier : la disponibilité est déclarée à la
+journée, compter à l'heure supposerait une précision que la déclaration n'a
+pas.
+
+**Le refus rendu à l'extérieur reste pauvre** : « le prestataire n'est pas
+disponible ce jour-là ». Ni pourquoi, ni pour qui. Un motif riche ferait fuiter
+par la porte du message d'erreur ce qu'on protège partout ailleurs.
+
+**Le motif d'une exception est privé** — « congé », « chantier pour un autre ».
+Il s'affiche sur l'écran de son propriétaire et dans aucune sortie publiable.
+L'écran le dit explicitement : une garantie qu'on ne voit pas ne rassure
+personne.
+
+**Retirer une exception plutôt que poser une exception « disponible ».**
+`cmd_definir_exception(date, null)` supprime la ligne et rend la main au rythme
+habituel. Une exception « disponible » survivrait à un changement de rythme et
+finirait par surprendre.
+
+**Le rituel garde ses trois blocs.** « Mes disponibilités » est un lien, pas un
+quatrième bloc : poser ses disponibilités n'est pas un geste du matin, c'est un
+réglage qu'on fait une fois.
