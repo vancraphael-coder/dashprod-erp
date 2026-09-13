@@ -211,6 +211,32 @@ avant l'accord. Ajout non demandé mais cohérent : `est_editeur()` n'apparaît
 dans AUCUNE politique de ces tables — l'exploitant de la plateforme ne lit pas
 les conditions commerciales que ses clients se consentent entre eux.
 
+### D-16 — Le tableau de bord est un rituel, pas un centre de KPI
+
+> « Le dashboard ne doit pas etre un centre kpi, il doit être un rituel qui
+> n'assome pas a 6h du matin, meme philosophie pour le dashboard du bureau et
+> du terrain d'un employé.
+> Un tableau de board en plus (en onglet), pour les gestionnaire de trésorerie,
+> ->centre kpi. »
+
+**Classé :** doctrine du rituel dans `00-SYSTEME.md`, sept règles dont trois
+sont tenues par des tests — un rituel par posture, trois blocs au plus, un
+seul centre de chiffres dans tout Dashprod.
+
+Conséquences sur le registre : les écrans d'arrivée du lot 7 sont marqués
+`rituel` avec leur nombre de blocs ; deux rituels manquants apparaissent
+(commerce et indépendant) ; le centre de chiffres devient un écran distinct,
+`tableau_tresorerie`, en onglet et jamais en arrivée.
+
+Décision technique prise au passage : **`voir_tresorerie` est une capacité à
+part**, et non un effet de `emettre_facture`. Une secrétaire émet des factures
+toute la journée sans avoir à voir la marge ni les impayés globaux ; un
+gestionnaire de trésorerie doit voir l'ensemble sans nécessairement pouvoir
+numéroter une facture. Séparer les deux est ce qui permettra de confier la
+trésorerie à quelqu'un sans lui donner le reste de la direction. Accordée aux
+rôles portant déjà `emettre_facture` ET `voir_paie` — aucun rôle ne gagne un
+accès qu'il n'avait pas en substance (migration 0186).
+
 ---
 
 ## Écartées

@@ -104,6 +104,48 @@ le point de vérité deviendrait un fourre-tout.
 
 Tenu en donnée dans `packages/domaine/src/produit/`, tenu par un test.
 
+## LE RITUEL — la doctrine des écrans d'arrivée
+
+Posée le 13/09/2026. Elle gouverne les lots 3c, 7 et 8.
+
+> **Un écran d'arrivée est un rituel, pas un centre de chiffres.**
+
+Un déménageur ouvre l'application à 6 h du matin, debout, dans un camion, avec
+des gants. Il ne veut pas un rapport de gestion : il veut savoir où il va.
+Même chose pour le bureau — la coordination veut voir ce qui n'est pas couvert,
+pas un graphique de chiffre d'affaires. Même chose pour la direction.
+
+**Ce qui fait un rituel, et qui se vérifie :**
+
+1. **Trois blocs au plus.** Chiffre, pas intention. Au-delà, on assomme. Le
+   registre le déclare (`blocs`) et un test le plafonne.
+2. **Il se termine.** Un rituel a une fin : on l'a fait, on passe à autre
+   chose. Un tableau de bord ne finit jamais — c'est ce qui le rend
+   anxiogène.
+3. **Une action au plus.** Ce qui est à faire maintenant, pas les huit choses
+   possibles.
+4. **Aucun chiffre qu'on ne peut pas décider.** Un nombre sur lequel on ne peut
+   rien est du bruit. « 3 chantiers cette semaine » n'appelle aucune décision ;
+   « personne sur celui de jeudi » en appelle une.
+5. **La même chose au même endroit, chaque jour.** Le corps apprend. Un
+   rituel qui change de forme redevient un écran à lire.
+6. **Aucune capacité requise.** Un rituel réservé serait vide pour une partie
+   de son public — donc ce ne serait pas un rituel.
+7. **Le vide se dit.** « Rien aujourd'hui » est une réponse complète, et c'est
+   souvent la meilleure nouvelle de la journée.
+
+**L'exception, et elle est unique : la trésorerie.** Celui qui gère les
+paiements VEUT de la densité, et il vient la chercher. Il a donc son onglet —
+`tableau_tresorerie`, réservé par la capacité `voir_tresorerie`. C'est le SEUL
+écran de tout Dashprod autorisé à être un centre de chiffres, et il n'est
+jamais un écran d'arrivée.
+
+Un test tient les trois règles dures : exactement un rituel par posture, trois
+blocs au plus, et un seul centre de chiffres dans tout le produit. Le
+glissement d'un écran d'arrivée vers un tableau de bord est naturel — on ajoute
+un chiffre, puis un graphique, puis une liste. Il fallait une garde, pas une
+bonne intention.
+
 ### Les paramètres sont le point de vérité
 
 Les paramètres sont l'endroit — le seul — où une entreprise déclare ce qui la
