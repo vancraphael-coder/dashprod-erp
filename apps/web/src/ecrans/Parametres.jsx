@@ -19,6 +19,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { obtenirCatalogues, sauverCatalogues, obtenirOrganisation } from "../lib/adaptateur.js";
 import Fermetures from "./Fermetures.jsx";
+import ReglagesRoles from "./ReglagesRoles.jsx";
 import Confidentialite from "./Confidentialite.jsx";
 import Comptabilite from "./Comptabilite.jsx";
 import Depenses from "./Depenses.jsx";
@@ -92,6 +93,9 @@ export default function Parametres({
   if (ouvert === "fermetures") {
     return <Fermetures retour={() => setOuvert(null)} />;
   }
+  if (ouvert === "roles") {
+    return <ReglagesRoles retour={() => setOuvert(null)} />;
+  }
   if (ouvert === "confidentialite") {
     return <Confidentialite retour={() => setOuvert(null)} />;
   }
@@ -133,6 +137,7 @@ export default function Parametres({
     identite: () => setOuvert("identite"),
     depots: () => setOuvert("depots"),
     fermetures: () => setOuvert("fermetures"),
+    roles: () => setOuvert("roles"),
     bareme: versBareme,
     facturation: () => setOuvert("facturation"),
     textes: versTextes,
@@ -153,6 +158,7 @@ export default function Parametres({
   const familles = famillesReglages({
     catalogues: cats, organisation: org, modules, nbCouts: coutsMateriel(cats).length,
     listesCatalogue: LISTES_CATALOGUE,
+    capacites: profil?.capacites || null,
     badgeListe: (cle) => (estPersonnalise(cats, cle)
       ? { texte: `${catalogue(cats, cle).length} articles`, actif: true }
       : { texte: "liste par défaut", actif: false }),
