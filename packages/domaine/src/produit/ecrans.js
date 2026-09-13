@@ -30,6 +30,15 @@
 //                  monté est du travail déjà fait qu'on s'apprête à refaire.
 //   `legal`      — l'écran produit ou affiche un artefact contraint par la loi.
 //                  Premier angle de la pyramide : aucune souplesse.
+//   `rituel`     — écran d'ARRIVÉE d'une posture. Un rituel, pas un tableau de
+//                  bord : il répond à la question du moment, en trois blocs au
+//                  plus, et se termine. Voir la doctrine dans
+//                  docs/roadmap/00-SYSTEME.md.
+//   `blocs`      — combien de blocs l'écran présente. Plafonné à 3 pour un
+//                  rituel : au-delà, on assomme.
+//   `kpi`        — centre de chiffres. UN SEUL écran dans tout Dashprod a le
+//                  droit de l'être, et ce n'est jamais un écran d'arrivée.
+//   `capacite`   — capacité requise en plus de la posture, quand il y en a une.
 // =============================================================================
 
 /** `fichier: null` = écran manquant, déclaré pour cesser d'être invisible. */
@@ -293,8 +302,8 @@ export const ECRANS = Object.freeze([
 
   // Lot 7 — les écrans d'arrivée par posture
   { cle: "ma_journee", fichier: null, module: "terrain",
-    postures: ["execution"], reglages: [], etat: "manquant", monte: false,
-    legal: false },
+    postures: ["execution", "chef_equipe"], reglages: [], etat: "manquant", monte: false,
+    legal: false, rituel: true, blocs: 3 },
   { cle: "pointage_hors_chantier", fichier: null, module: "terrain",
     postures: ["execution", "chef_equipe"], reglages: [], etat: "manquant",
     monte: false, legal: true },
@@ -303,18 +312,35 @@ export const ECRANS = Object.freeze([
     etat: "manquant", monte: false, legal: false },
   { cle: "vue_du_matin", fichier: null, module: "gestionnaire_depot",
     postures: ["depot"], reglages: [], etat: "manquant", monte: false,
-    legal: false },
+    legal: false, rituel: true, blocs: 3 },
   { cle: "vue_de_l_argent", fichier: null, module: "facturation",
     postures: ["direction"], reglages: [], etat: "manquant", monte: false,
-    legal: false },
+    legal: false, rituel: true, blocs: 3 },
   { cle: "vue_des_trous", fichier: null, module: "planning",
     postures: ["coordination"], reglages: ["fermetures"], etat: "manquant",
-    monte: false, legal: false },
+    monte: false, legal: false, rituel: true, blocs: 2 },
+
+  // ── LE SEUL CENTRE DE CHIFFRES ───────────────────────────────────────────
+  // En ONGLET, jamais en écran d'arrivée. Celui qui gère la trésorerie VEUT
+  // des chiffres denses et vient les chercher ; il n'a pas à les recevoir
+  // à 6 h du matin comme tout le monde.
+  { cle: "tableau_tresorerie", fichier: null, module: "comptabilite",
+    postures: ["direction", "coordination"], capacite: "voir_tresorerie",
+    reglages: ["comptabilite", "facturation"], etat: "manquant",
+    monte: false, legal: false, kpi: true, blocs: 8 },
+
+  // ── LES RITUELS D'ARRIVÉE, un par posture ────────────────────────────────
+  { cle: "rituel_commerce", fichier: null, module: "crm",
+    postures: ["commerce"], reglages: [], etat: "manquant", monte: false,
+    legal: false, rituel: true, blocs: 2 },
+  { cle: "rituel_independant", fichier: null, module: "planning",
+    postures: ["independant"], reglages: ["disponibilites"],
+    etat: "manquant", monte: false, legal: false, rituel: true, blocs: 3 },
 
   // Lot 8 — le client réordonné
   { cle: "compte_a_rebours", fichier: null, module: "espace_client",
     postures: ["client"], reglages: ["espace_client"], etat: "manquant",
-    monte: false, legal: false },
+    monte: false, legal: false, rituel: true, blocs: 3 },
   { cle: "ma_liste_a_faire", fichier: null, module: "espace_client",
     postures: ["client"], reglages: ["espace_client", "textes"],
     etat: "manquant", monte: false, legal: false },
