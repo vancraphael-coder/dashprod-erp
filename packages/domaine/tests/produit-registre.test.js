@@ -29,6 +29,7 @@ import { REFERENTIEL_OFFRES, offreReferentiel }
   from "../src/commercial/referentiel-offres.js";
 import { MODULES } from "../src/commercial/plans.js";
 import { PARCOURS_OFFRES } from "../src/commercial/parcours-offres.js";
+import { CAPACITES } from "../src/rh/capacites.js";
 
 const RACINE = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const DOSSIER_ECRANS = join(RACINE, "apps", "web", "src", "ecrans");
@@ -278,6 +279,59 @@ test("les écrans des parcours d'offre sont couverts par le registre", () => {
   // promettre autre chose qu'elle ne tient.
   assert.deepEqual(vides, ["pro/international"],
     "une offre souscriptible promet un module sans écran livré");
+});
+
+test("LE RITUEL — un écran d'arrivée par posture, trois blocs au plus", () => {
+  // CE QUI CASSE SANS CE TEST : le glissement naturel d'un écran d'arrivée
+  // vers un tableau de bord. On ajoute un chiffre, puis un graphique, puis
+  // une liste — et un déménageur qui ouvre l'app à 6 h du matin, debout dans
+  // un camion, reçoit un rapport de gestion au lieu de son adresse du jour.
+  const SANS_RITUEL = new Set(["acces_ponctuel"]);  // rôle sans parcours
+  for (const p of POSTURES) {
+    if (SANS_RITUEL.has(p.cle)) continue;
+    const rituels = ECRANS.filter((e) => e.rituel && e.postures.includes(p.cle));
+    assert.equal(rituels.length, 1,
+      `la posture ${p.cle} doit avoir EXACTEMENT un rituel d'arrivée, `
+      + `elle en a ${rituels.length} (${rituels.map((r) => r.cle).join(", ")})`);
+    assert.ok(rituels[0].blocs >= 1 && rituels[0].blocs <= 3,
+      `${rituels[0].cle} présente ${rituels[0].blocs} blocs : au-delà de 3, `
+      + "on assomme");
+  }
+});
+
+test("LE RITUEL — un rituel n'est jamais un centre de chiffres", () => {
+  for (const e of ECRANS) {
+    if (!e.rituel) continue;
+    assert.notEqual(e.kpi, true,
+      `${e.cle} est à la fois rituel et centre de chiffres : il faut choisir`);
+    // Un rituel qui exige une capacité serait vide pour une partie de son
+    // public — donc ce ne serait pas un rituel.
+    assert.equal(e.capacite, undefined,
+      `${e.cle} est un rituel : il ne peut pas dépendre d'une capacité`);
+  }
+});
+
+test("LE RITUEL — un seul centre de chiffres dans tout Dashprod", () => {
+  // Le seul public qui veut de la densité est celui qui vient la chercher.
+  // Deux centres de chiffres signifieraient qu'un autre écran a commencé à en
+  // devenir un.
+  const kpis = ECRANS.filter((e) => e.kpi);
+  assert.deepEqual(kpis.map((e) => e.cle), ["tableau_tresorerie"],
+    "la liste des centres de chiffres a changé");
+  assert.equal(kpis[0].capacite, "voir_tresorerie",
+    "le centre de chiffres doit être réservé par une capacité");
+  assert.notEqual(kpis[0].rituel, true, "un centre de chiffres n'est pas un rituel");
+});
+
+test("une capacité citée par un écran existe au catalogue", () => {
+  // Un écran réservé par une capacité inexistante serait ouvert à tous ou
+  // fermé à tous — dans les deux cas, pas ce qu'on croyait avoir écrit.
+  const connues = new Set(CAPACITES.map((c) => c.cle));
+  for (const e of ECRANS) {
+    if (!e.capacite) continue;
+    assert.ok(connues.has(e.capacite),
+      `${e.cle} cite la capacité inconnue « ${e.capacite} »`);
+  }
 });
 
 test("l'état du produit est mesurable", () => {
