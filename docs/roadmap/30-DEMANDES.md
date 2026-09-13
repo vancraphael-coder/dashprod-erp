@@ -146,6 +146,71 @@ Les trois angles deviennent trois familles de tests dans
 existe et l'audit est devenu exécutable. Lot 2 (les dix réglages manquants)
 enchaîne.
 
+## 13/09/2026
+
+### D-13 — Pyramide ou hexagone ?
+
+> « Attention, je parle de pyramide mais si tu vois que mon architecture
+> ressemble plus a un hexagone et que je ne le vois pas dis le, j'aime ajouter
+> a l'existant mais je ne vois pas toujours si te donner certaine explication
+> ne te fais pas effondrer ce que tu fais d'exellent. »
+
+**Classé :** `40-ARCHITECTURE.md`. Réponse : ce ne sont pas deux descriptions
+concurrentes mais **trois axes distincts** — la forme du code (hexagonale, et
+déjà en place), les trois exigences de qualité (légal / paramétrage / prise en
+main), et la cloison inter-organisation (ni couche ni exigence : une
+frontière). Le mot « pyramide » n'était pas faux, il était vague : il
+désignait tantôt la chaîne technique, tantôt les trois exigences.
+
+Sur la question de fond : les corrections apportées ont toutes amélioré le
+résultat, et deux ont changé l'ordre des travaux pour de bonnes raisons. Le
+risque n'est pas dans les explications, il est dans l'adoption d'une image
+comme si c'était une contrainte — d'où les invariants dans des tests plutôt
+que dans la prose.
+
+### D-14 — Le blocage réel : donneur d'ordre et confirmation chez l'indépendant
+
+> « Voici un blocage de l'utilisation réel, j'attends qu'on l'utilise au lieu
+> de l'utiliser moi, donc il faudrait 'donneurs d'ordre' et un possibilité dans
+> le 'carnet' d'ajouter un indépendant pour lui proposer une date, chez
+> l'indépendant, sur son dashboard il doit avoir une demande de confirmation.
+> Le prix de l'indépendant est fourni par les paramètres (d'une logique à
+> partager certaines données sans liée les données sensibles entre
+> organisation-> trouve la logique la plus pure et sécurisée-> pour le
+> promovoir). »
+
+**Classé :** lot 3 avancé et découpé en quatre. 3a et 3b **faits**
+(migrations 0181 à 0184) :
+
+- **3a — tarifs publiés.** Principe retenu : on ne protège pas une donnée
+  sensible par une politique, on met la donnée publiable dans une AUTRE table.
+  Une politique peut être mal écrite ; une table qui ne contient rien de
+  sensible ne peut rien divulguer de sensible.
+- **3b — l'objet-frontière `engagements`.** Seule table de la base sans
+  `org_id`. Aucune clé étrangère vers les données privées. Adresse
+  physiquement absente avant l'accord. Aucune écriture directe. Chaîne
+  d'empreintes append-only.
+- **3c — les écrans** (carnet → ajouter un indépendant, tableau de bord
+  indépendant → demande de confirmation) : reste à faire.
+- **3d — la facture entrante** rattachée à l'engagement : reste à faire.
+
+### D-15 — Sécurité anti-sabotage interne
+
+> « N'oublie jamais la sécurité total anti sabotage interne ou réduire au
+> maximum comme on fait avec la sûreté d'enregistrement dans les dossiers. »
+
+**Classé :** appliqué dans 0181 à 0184, sur le même modèle que le registre
+probant des messages de dossier (`rang`, `empreinte`, `empreinte_prec`) —
+volontairement le MÊME mécanisme, parce qu'un second dispositif pour le même
+besoin finirait par diverger du premier.
+
+Quatre verrous, tous éprouvés par sabotage : un tarif publié ne se modifie ni
+ne se supprime ; un événement d'engagement est immuable et non supprimable ;
+les termes d'un engagement accepté sont figés ; l'adresse ne peut pas exister
+avant l'accord. Ajout non demandé mais cohérent : `est_editeur()` n'apparaît
+dans AUCUNE politique de ces tables — l'exploitant de la plateforme ne lit pas
+les conditions commerciales que ses clients se consentent entre eux.
+
 ---
 
 ## Écartées
