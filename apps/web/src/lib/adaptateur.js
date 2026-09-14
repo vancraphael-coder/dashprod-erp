@@ -3865,15 +3865,29 @@ export async function engagementsDeLAffaire(affaireId) {
     unite: e.unite,
     prix_htva_centimes: e.prix_htva_centimes,
     facture_htva_centimes: e.facture_htva_centimes,
-    factureId: e.facture_id,
+    depenseId: e.depense_id,
   }));
 }
 
-/** Rattacher une facture reçue à un engagement. Donneur d'ordre uniquement. */
-export async function rattacherFactureEngagement(engagementId, factureId) {
-  const { data, error } = await supabase.rpc("cmd_rattacher_facture_engagement", {
-    p_engagement: engagementId, p_facture: factureId,
-  });
+/**
+ * Enregistrer la facture REÇUE d'un prestataire. Donneur d'ordre uniquement.
+ *
+ * Elle devient une DÉPENSE imputée au dossier — pas une facture. Une facture
+ * reçue a déjà un numéro, donné par le fournisseur : lui en attribuer un des
+ * nôtres fabriquerait un numéro pour un document qu'on n'a pas émis, et
+ * consommerait une séquence légale pour rien. Voir migration 0198.
+ */
+export async function enregistrerFacturePrestataire(engagementId, {
+  montantHtvaCentimes, numeroFournisseur = null, date = null, echeance = null,
+} = {}) {
+  const { data, error } = await supabase.rpc(
+    "cmd_enregistrer_facture_prestataire", {
+      p_engagement: engagementId,
+      p_montant_htva_centimes: montantHtvaCentimes,
+      p_numero_fournisseur: numeroFournisseur,
+      p_date: date,
+      p_echeance: echeance,
+    });
   if (error) throw error;
   return data;
 }
