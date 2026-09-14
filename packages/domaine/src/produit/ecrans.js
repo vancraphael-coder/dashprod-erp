@@ -310,8 +310,13 @@ export const ECRANS = Object.freeze([
     route: "suivi_engagements", module: "planning",
     postures: ["coordination", "direction"], reglages: [],
     etat: "livre", monte: true, legal: false },
+  // Socle livré le 13/09/2026 : les empreintes traversent la cloison, les
+  // fichiers restent chez leur producteur. Trois sorties depuis une seule
+  // série de faits — la vue de chaque partie, et l'attestation commune qui dit
+  // ce qu'elle NE certifie pas. L'écran reste à poser.
   { cle: "reception_preuve", fichier: null, module: "rapport_chantier",
-    postures: ["coordination", "direction"], reglages: [], etat: "manquant",
+    postures: ["coordination", "direction"],
+    reglages: ["identite", "conservation"], etat: "manquant",
     monte: false, legal: true },
   // Livré le 13/09/2026, DANS l'écran de suivi et non à part : enregistrer la
   // facture d'un prestataire est un geste du suivi de mission, pas une entrée
