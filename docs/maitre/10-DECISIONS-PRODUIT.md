@@ -1266,3 +1266,46 @@ déclenche pas un `if`. La forme correcte est `is distinct from`, déjà employ�
 par `cmd_repondre_engagement` et `cmd_marquer_engagement_realise`, qui ne
 souffraient donc pas du défaut. **Une seule forme partout vaut mieux que deux
 dont l'une est correcte par hasard.**
+
+## Lot 5 — La facture reçue, et une erreur de conception corrigée (13/09/2026)
+
+**J'avais construit faux.** Dans 0193, `engagement_rattachements.facture_id`
+pointait vers `factures` pour porter la facture reçue d'un prestataire. C'est
+faux de deux façons :
+
+1. `factures` est la table des pièces qu'on ÉMET. Sa numérotation vient de
+   `sequences` — continue et immuable, contrainte légale. Une facture reçue a
+   déjà un numéro, celui du fournisseur. Lui en attribuer un des nôtres
+   fabriquerait un numéro pour un document qu'on n'a pas émis, et consommerait
+   une séquence légale pour rien.
+2. Une facture reçue est une CHARGE : elle se déduit, elle se rapproche d'un
+   paiement sortant, elle n'a pas de client. `depenses` existe pour ça.
+
+**Pourquoi je l'ai construit faux : j'ai raisonné depuis le MOT « facture »
+plutôt que depuis le sens comptable.** Le nom d'une colonne n'est pas son
+modèle. À retenir pour tout ce qui touche à la comptabilité.
+
+**Ce qui manquait pour le faire juste.** `depenses` n'avait pas d'`affaire_id` —
+une dépense ne pouvait donc pas être imputée à un dossier, alors que c'était
+toute la demande. Ajoutée, nullable : une dépense de structure (assurance,
+loyer) n'appartient à aucun chantier.
+
+**La même table sert les deux côtés.** `engagement_rattachements` porte
+`depense_id` ET `facture_id` : le donneur d'ordre rattache la dépense qu'il
+subit, le prestataire la facture qu'il émet. Deux colonnes, deux organisations,
+une seule table cloisonnée — chacun ne voit que sa ligne.
+
+**La commande fausse est supprimée, pas laissée en place.** Une commande
+erronée qu'on garde « au cas où » finit par être appelée.
+
+**L'écran : dans le suivi, pas à part.** Enregistrer la facture d'un
+prestataire est un geste du suivi de mission, pas une entrée de comptabilité.
+La séparer aurait obligé à retrouver l'engagement depuis un autre écran. Le
+montant est pré-rempli au prix convenu mais modifiable : l'écart est une
+information, pas une erreur.
+
+**Dette de paramétrage : plafond abaissé de 15 à 14.** `facture_entrante`
+déclare honnêtement dépendre de `conservation`, qui n'existe pas encore — ça
+fait monter la dette d'une unité, et c'est exactement à ça que sert le
+compteur. Deux réglages livrés (`roles`, `disponibilites`) l'ont fait baisser
+de deux.
