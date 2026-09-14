@@ -21,6 +21,7 @@ import RituelIndependant from "./ecrans/RituelIndependant.jsx";
 import ConfierMission from "./ecrans/ConfierMission.jsx";
 import SuiviEngagements from "./ecrans/SuiviEngagements.jsx";
 import MaDisponibilite from "./ecrans/MaDisponibilite.jsx";
+import MesMissions from "./ecrans/MesMissions.jsx";
 // L'écran d'arrivée se choisit par la POSTURE, et la posture se déduit de
 // l'offre : interroger le registre plutôt que comparer un nom de plan en dur.
 import { postureDansOffre, ancrageDeLOffre } from "@domaine/produit/postures.js";
@@ -240,7 +241,8 @@ const CSS_NAV = `
 // l'abonnement n'apparaît pas — pas de porte fermée.
 const TRACE_NAV = { liste: "dossiers", planning: "planning", stockage: "stockage",
                     conversations: "messages", equipe: "ressources", compte: "compte",
-                    rituel_independant: "ma_journee" };
+                    rituel_independant: "ma_journee",
+                    mes_missions: "mes_missions" };
 
 /**
  * La barre de navigation dépend de la POSTURE, pas seulement des modules.
@@ -258,9 +260,12 @@ const TRACE_NAV = { liste: "dossiers", planning: "planning", stockage: "stockage
 function itemsNav({ modules = [], peutGererEquipe = false, posture = null } = {}) {
   const a = (cle) => modules.includes(cle);
   if (posture === "independant") {
+    // « Planning » a été remplacé par « Mes missions » : le planning est
+    // l'écran d'une entreprise qui répartit des équipes sur des chantiers.
+    // Un indépendant n'a personne à répartir — il a un flux de demandes.
     return [
       ["rituel_independant", "planning", "Ma journée"],
-      ["planning", "planning", "Planning"],
+      ["mes_missions", "dossiers", "Mes missions"],
       ["compte", "compte", "Compte"],
     ];
   }
@@ -864,6 +869,7 @@ function App() {
     confierMission: () => setRoute({ ecran: "confier_mission", affaireId: route.affaireId }),
     suiviEngagements: () => setRoute({ ecran: "suivi_engagements", affaireId: null }),
     maDisponibilite: () => setRoute({ ecran: "ma_disponibilite", affaireId: null }),
+    mesMissions: () => setRoute({ ecran: "mes_missions", affaireId: null }),
     journal: (id) => setRoute({ ecran: "journal", affaireId: id }),
     rapports: (id) => setRoute({ ecran: "rapports", affaireId: id }),
   };
@@ -883,7 +889,7 @@ function App() {
   // navigation, faute de quoi il est un cul-de-sac. C'est le défaut qui a été
   // signalé dès la première mise en service.
   const RACINES = ["liste", "planning", "stockage", "conversations", "equipe",
-                   "compte", "rituel_independant"];
+                   "compte", "rituel_independant", "mes_missions"];
   let ecran;
   if (route.ecran === "diagnostic") {
     ecran = (
@@ -929,6 +935,8 @@ function App() {
     ecran = <Conversations ouvrirDossier={nav.dossier} ouvrirPlanning={nav.planningJour} />;
   } else if (route.ecran === "stockage") {
     ecran = <Stockage retour={nav.liste} profil={profil} />;
+  } else if (route.ecran === "mes_missions") {
+    ecran = <MesMissions retour={nav.rituelIndependant} />;
   } else if (route.ecran === "ma_disponibilite") {
     ecran = <MaDisponibilite retour={nav.rituelIndependant} />;
   } else if (route.ecran === "suivi_engagements") {
