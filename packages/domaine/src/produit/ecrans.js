@@ -279,9 +279,13 @@ export const ECRANS = Object.freeze([
   { cle: "ma_disponibilite", fichier: "MaDisponibilite.jsx",
     module: "planning", postures: ["independant"],
     reglages: ["disponibilites"], etat: "livre", monte: true, legal: false },
-  { cle: "mes_missions", fichier: null, module: "planning",
-    postures: ["independant"], reglages: ["disponibilites"], etat: "manquant",
-    monte: false, legal: false },
+  // Livré le 13/09/2026. Le second écran de l'indépendant : le rituel montre
+  // UNE demande à la fois, celui-ci montre tout. Deux besoins opposés — 6 h du
+  // matin contre dimanche soir — donc deux écrans. Élargir le rituel aurait
+  // cassé ce qui le rend utilisable.
+  { cle: "mes_missions", fichier: "MesMissions.jsx", module: "planning",
+    postures: ["independant"], reglages: [], etat: "livre",
+    monte: true, legal: false },
   { cle: "mes_encours", fichier: null, module: "facturation",
     postures: ["independant", "direction"], reglages: ["facturation"],
     etat: "manquant", monte: false, legal: false },
