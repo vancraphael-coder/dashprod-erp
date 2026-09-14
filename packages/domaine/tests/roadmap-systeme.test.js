@@ -24,13 +24,13 @@ const ROADMAP = join(DOCS, "roadmap");
 const OUTILS = join(DOCS, "outils");
 const lire = (d, f) => readFileSync(join(d, f), "utf8");
 
-test("le dossier roadmap a ses cinq fichiers, et rien de plus", () => {
-  // Cinq questions, cinq fichiers. Un sixième signifierait qu'une question
+test("le dossier roadmap a ses six fichiers, et rien de plus", () => {
+  // Six questions, six fichiers. Un septième signifierait qu'une question
   // s'est ajoutée sans être nommée dans le système.
   assert.deepEqual(
     readdirSync(ROADMAP).filter((f) => f.endsWith(".md")).sort(),
     ["00-SYSTEME.md", "10-AUDIT-ECRANS.md", "20-LOTS.md", "30-DEMANDES.md",
-     "40-ARCHITECTURE.md"]);
+     "40-ARCHITECTURE.md", "50-TENUE-A-10-SECTEURS.md"]);
 });
 
 test("chaque outil annoncé existe, et chaque outil existant est annoncé", () => {
