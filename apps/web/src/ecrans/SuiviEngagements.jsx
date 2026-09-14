@@ -25,7 +25,8 @@
 // =============================================================================
 
 import React, { useEffect, useState } from "react";
-import { mesEngagements } from "../lib/adaptateur.js";
+import { mesEngagements, enregistrerFacturePrestataire }
+  from "../lib/adaptateur.js";
 import { coutSousTraitance } from "@domaine/pilotage/cout-sous-traitance.js";
 import { C, S } from "../lib/theme.jsx";
 
@@ -54,12 +55,47 @@ function jourLisible(iso) {
 export default function SuiviEngagements({ retour, versConfier }) {
   const [liste, setListe] = useState(null);
   const [erreur, setErreur] = useState(null);
+  const [saisie, setSaisie] = useState(null);   // engagement en cours de facturation
+  const [montant, setMontant] = useState("");
+  const [numero, setNumero] = useState("");
+  const [enCours, setEnCours] = useState(null);
 
-  useEffect(() => {
+  function charger() {
     mesEngagements()
       .then((l) => setListe(l.filter((e) => e.sens === "confiee")))
       .catch((e) => { setErreur(e?.message || "Lecture impossible"); setListe([]); });
-  }, []);
+  }
+  useEffect(charger, []);
+
+  /**
+   * La facture reçue devient une DÉPENSE imputée au dossier, pas une facture.
+   * Le montant est saisi tel qu'il figure sur la facture du prestataire : il
+   * peut différer du prix convenu, et cet écart est une information.
+   */
+  async function enregistrer(e) {
+    setErreur(null);
+    const centimes = Math.round(Number(String(montant).replace(",", ".")) * 100);
+    if (!Number.isFinite(centimes) || centimes <= 0) {
+      setErreur("Montant HTVA requis");
+      return;
+    }
+    setEnCours(e.id);
+    try {
+      const r = await enregistrerFacturePrestataire(e.id, {
+        montantHtvaCentimes: centimes,
+        numeroFournisseur: numero.trim() || null,
+      });
+      if (r?.ok === false) setErreur(r.motif);
+      setSaisie(null);
+      setMontant("");
+      setNumero("");
+      charger();
+    } catch (err) {
+      setErreur(err?.message || "Refusé");
+    } finally {
+      setEnCours(null);
+    }
+  }
 
   if (liste === null) return null;
 
@@ -175,6 +211,61 @@ export default function SuiviEngagements({ retour, versConfier }) {
                       {euros(e.prixHtvaCentimes)}
                     </div>
                   </div>
+
+                  {/* La facture ne s'enregistre qu'après réalisation : avant,
+                      il n'y a rien à payer. */}
+                  {e.etat === "realisee" && saisie !== e.id && (
+                    <button style={{ ...S.boutonLien, padding: 0, marginTop: 6 }}
+                            disabled={Boolean(enCours)}
+                            onClick={() => { setSaisie(e.id);
+                                             setMontant(String(e.prixHtvaCentimes / 100)
+                                               .replace(".", ","));
+                                             setNumero(""); }}>
+                      Enregistrer sa facture
+                    </button>
+                  )}
+
+                  {saisie === e.id && (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ ...S.label, marginTop: 0 }}>
+                            Montant HTVA
+                          </label>
+                          <input style={{ ...S.input, marginTop: 0 }} autoFocus
+                                 value={montant} inputMode="decimal"
+                                 onChange={(ev) => setMontant(ev.target.value)} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ ...S.label, marginTop: 0 }}>
+                            N° de sa facture
+                          </label>
+                          <input style={{ ...S.input, marginTop: 0 }}
+                                 value={numero} placeholder="F2026-014"
+                                 onChange={(ev) => setNumero(ev.target.value)} />
+                        </div>
+                      </div>
+                      {/* Le numéro appartient au fournisseur : c'est la
+                          référence qu'on citera en cas de litige, et on ne
+                          lui en attribue pas un des nôtres. */}
+                      <div style={{ fontSize: 11.5, color: C.muet, marginTop: 5,
+                                    lineHeight: 1.5 }}>
+                        Enregistrée comme dépense imputée au dossier. Le numéro
+                        est celui du prestataire — nous n'en attribuons pas.
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                        <button style={{ ...S.boutonPlein, flex: 1 }}
+                                disabled={Boolean(enCours)}
+                                onClick={() => enregistrer(e)}>
+                          Enregistrer
+                        </button>
+                        <button style={S.boutonSecondaire}
+                                onClick={() => { setSaisie(null); setMontant(""); }}>
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
