@@ -346,8 +346,11 @@ test("l'état du produit est mesurable", () => {
   // « ma_disponibilite » était l'exemple de référence des écrans manquants ;
   // il est livré depuis le 13/09/2026. On prend un manquant encore ouvert,
   // sinon ce test mesurerait un état révolu.
-  assert.equal(ecran("mes_missions")?.etat, "manquant");
+  // Le parcours de l'indépendant est complet ; on mesure sur un manquant du
+  // lot 5, encore ouvert.
+  assert.equal(ecran("reception_preuve")?.etat, "manquant");
   assert.equal(ecran("ma_disponibilite")?.etat, "livre");
+  assert.equal(ecran("mes_missions")?.etat, "livre");
 });
 
 test("le registre ne cite aucun réglage orphelin", () => {
