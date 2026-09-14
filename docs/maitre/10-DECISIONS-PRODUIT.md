@@ -1218,3 +1218,51 @@ finirait par surprendre.
 **Le rituel garde ses trois blocs.** « Mes disponibilités » est un lien, pas un
 quatrième bloc : poser ses disponibilités n'est pas un geste du matin, c'est un
 réglage qu'on fait une fois.
+
+## Lot 4 — « Mes missions », et le cycle de vie complet (13/09/2026)
+
+**Deux écrans pour deux besoins opposés.** Le rituel montre UNE demande à la
+fois : c'est ce qu'il faut à 6 h du matin. « Mes missions » montre tout : c'est
+ce qu'il faut le dimanche soir, quand on prépare sa semaine ou qu'on cherche
+« c'était quand, ce chantier pour Roovers ». Élargir le rituel aurait cassé ce
+qui le rend utilisable.
+
+**Le chaînon qui manquait : déclarer une mission réalisée.** L'état `realisee`
+existait dans la contrainte depuis 0182 et aucune commande n'y menait. Sans
+lui, le prestataire ne peut pas facturer et le donneur d'ordre ne sait pas si
+le chantier a eu lieu.
+
+C'est le PRESTATAIRE qui déclare, parce que c'est lui qui était sur place. Le
+donneur d'ordre déclarant à sa place ouvrirait la porte à « je considère que tu
+n'y étais pas » — un rapport de force que le produit n'a pas à installer. Et
+pas avant la date : on ne déclare pas réalisé un chantier qui n'a pas eu lieu.
+
+**Déclarer « c'est fait » ne facture pas.** Émettre une facture est un acte
+séparé, avec sa numérotation légale. Enchaîner automatiquement ferait émettre
+des pièces comptables par un clic destiné à dire « j'ai fini ».
+
+**La barre de l'indépendant perd « Planning ».** Le planning est l'écran d'une
+entreprise qui répartit des équipes sur des chantiers. Un indépendant n'a
+personne à répartir — il a un flux de demandes. Trois entrées : Ma journée,
+Mes missions, Compte.
+
+### Le défaut de garde trouvé en éprouvant
+
+`cmd_annuler_engagement` vérifiait l'appartenance par
+`if v_org not in (org_donneur, org_prestataire)`. Avec `jwt_org()` nul — un
+compte authentifié rattaché à aucune organisation, cas qui EXISTE dans
+Dashprod (branche `nonInvite`) — l'expression rend NULL, la branche n'est pas
+prise, et la commande continue. **La garde ne protégeait que les gens qui
+avaient une organisation.**
+
+Exploitable en connaissant l'identifiant d'un engagement entre deux sociétés
+tierces. Un UUID ne se devine pas, mais la sécurité par l'obscurité n'en est
+pas une.
+
+**C'est le même piège que la contrainte `check` qui passe quand elle rend NULL
+(0179), sous une autre forme.** Il mérite d'être noté deux fois : en SQL, une
+comparaison avec NULL n'est pas fausse, elle est INCONNUE — et « inconnu » ne
+déclenche pas un `if`. La forme correcte est `is distinct from`, déjà employée
+par `cmd_repondre_engagement` et `cmd_marquer_engagement_realise`, qui ne
+souffraient donc pas du défaut. **Une seule forme partout vaut mieux que deux
+dont l'une est correcte par hasard.**
