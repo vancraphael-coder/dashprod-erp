@@ -313,9 +313,20 @@ export const ECRANS = Object.freeze([
   { cle: "reception_preuve", fichier: null, module: "rapport_chantier",
     postures: ["coordination", "direction"], reglages: [], etat: "manquant",
     monte: false, legal: true },
-  { cle: "facture_entrante", fichier: null, module: "comptabilite",
-    postures: ["direction", "coordination"], reglages: ["prestataires"],
-    etat: "manquant", monte: false, legal: true },
+  // Livré le 13/09/2026, DANS l'écran de suivi et non à part : enregistrer la
+  // facture d'un prestataire est un geste du suivi de mission, pas une entrée
+  // de comptabilité. La séparer aurait obligé à retrouver l'engagement depuis
+  // un autre écran.
+  // `reglages` déclarés honnêtement : l'écran n'ÉMET aucun document, il
+  // enregistre une pièce reçue. Son poids légal porte sur la conservation de
+  // cette pièce et son imputation comptable. `conservation` n'existe pas
+  // encore — la déclarer fait monter la dette de paramétrage, et c'est
+  // exactement à ça que sert le compteur.
+  { cle: "facture_entrante", fichier: "SuiviEngagements.jsx",
+    route: "suivi_engagements", module: "planning",
+    postures: ["direction", "coordination"],
+    reglages: ["comptabilite", "conservation"],
+    etat: "livre", monte: true, legal: true },
 
   // DETTE DE VENTE — le module `international` est marqué livré et vendu dans
   // Regular (360 €) comme dans Pro (720 €). Aucun écran ne le porte : ni
