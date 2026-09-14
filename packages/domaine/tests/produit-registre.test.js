@@ -102,7 +102,10 @@ test("ANGLE 2 — un écran livré sur un réglage manquant est signalé", () =>
   // Le chiffre est volontairement figé : il ne peut que DESCENDRE. S'il
   // remonte, un écran a été livré sur un réglage absent — exactement ce
   // qu'on cherche à empêcher.
-  assert.ok(dette.length <= 15,
+  // Plafond abaissé à 14 le 13/09/2026 : deux réglages livrés (`roles`,
+  // `disponibilites`), un écran ajouté qui déclare honnêtement sa dépendance à
+  // `conservation`. Le chiffre ne peut que DESCENDRE.
+  assert.ok(dette.length <= 14,
     `la dette de paramétrage augmente (${dette.length} écrans) :\n`
     + dette.map(([c, m]) => `  ${c} → ${m.join(", ")}`).join("\n"));
 });
