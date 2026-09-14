@@ -1309,3 +1309,65 @@ déclare honnêtement dépendre de `conservation`, qui n'existe pas encore — �
 fait monter la dette d'une unité, et c'est exactement à ça que sert le
 compteur. Deux réglages livrés (`roles`, `disponibilites`) l'ont fait baisser
 de deux.
+
+## Trois sorties pour une même série de faits (13/09/2026)
+
+**Le principe posé.** Certaines informations exigent plusieurs documents : une
+vue par partie, regroupant son point de vue, plus **une attestation commune qui
+limite la responsabilité de l'exploitant**.
+
+Appliqué à la preuve d'une mission confiée :
+
+1. **Vue du prestataire** — ce qu'il a produit, sa preuve d'avoir exécuté, avec
+   ses fichiers. À opposer à un donneur d'ordre qui contesterait.
+2. **Vue du donneur d'ordre** — ce qu'il a reçu, sa preuve envers son PROPRE
+   client, qui n'a jamais entendu parler du sous-traitant.
+3. **Attestation commune** — ce que Dashprod constate, et seulement ça.
+
+**La distinction qui protège : Dashprod est un tiers technique, pas un
+témoin.** Il atteste qu'une donnée a été enregistrée à tel instant par tel
+acteur et qu'elle n'a pas bougé depuis. Il n'atteste pas que le travail a été
+bien fait, ni que les photos montrent ce qu'on prétend, ni qui a raison.
+
+**Et cette limite figure SUR le document.** Quatre non-certifications
+explicites, plus une mention. Un document qui ne dit pas ce qu'il ne certifie
+PAS sera lu comme certifiant tout — et c'est l'exploitant qui répondra de la
+lecture qu'on en fait. C'est le seul endroit où une clause de
+non-certification protège vraiment : sur la pièce, pas dans des conditions
+générales que personne ne rouvre. Un test vérifie qu'elle y est toujours.
+
+**Ce qui ne sort pas de l'attestation** : le prix convenu (il ne concerne pas
+un tiers, et l'y mettre transformerait un constat technique en pièce
+commerciale), l'adresse, le contact sur place. Ce qui y figure : les deux
+organisations nommées — sans elles le document ne prouve rien — et les
+empreintes. Vérifié par un test qui fouille le JSON produit.
+
+**Une chaîne rompue se DIT, l'attestation ne se refuse pas.** L'intégrité est
+un fait vérifiable, pas une opinion. Refuser d'émettre priverait les parties du
+constat au moment où elles en ont le plus besoin.
+
+**Les trois sorties viennent d'une SEULE lecture des faits.** La base ne
+distingue pas les vues : elle sert une série d'événements et de preuves, le
+domaine les compose. Trois découpages du même fait finiraient par se
+contredire, et une contradiction entre nos propres documents est indéfendable.
+
+### Les empreintes traversent, les fichiers restent
+
+La preuve est produite par le prestataire, derrière la cloison. Plutôt que de
+faire traverser des fichiers, chaque pièce est enregistrée avec son **empreinte
+SHA-256**. Le donneur d'ordre peut vérifier qu'une photo qu'on lui montre est
+celle enregistrée sur place — sans qu'aucun fichier ne change d'organisation.
+
+**Pourquoi c'est mieux qu'un partage de fichiers.** Une photo de l'intérieur
+d'un logement est une donnée personnelle du client FINAL, qui n'est le client
+d'aucune des deux organisations en même temps. La faire traverser créerait un
+transfert entre responsables de traitement. Une empreinte de 64 caractères
+hexadécimaux ne dit rien du contenu et ne transfère aucune donnée personnelle.
+
+La contrainte impose exactement 64 caractères hexadécimaux : une empreinte
+tronquée ne vérifie rien et donnerait une fausse assurance. Éprouvé par
+sabotage.
+
+**Ce cadrage réduit l'exposition évidente. Ce n'est pas un avis juridique et il
+ne remplace pas un conseil qualifié en droit belge — voir P6/P7, qui courent
+déjà.**
