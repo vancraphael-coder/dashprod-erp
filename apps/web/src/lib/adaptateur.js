@@ -3878,6 +3878,22 @@ export async function rattacherFactureEngagement(engagementId, factureId) {
   return data;
 }
 
+/** Déclarer une mission réalisée. Le prestataire seul, et pas avant la date. */
+export async function marquerEngagementRealise(id) {
+  const { data, error } = await supabase.rpc("cmd_marquer_engagement_realise",
+    { p_engagement: id });
+  if (error) throw error;
+  return data;
+}
+
+/** Annuler. Les deux parties le peuvent, avant réalisation, avec un motif. */
+export async function annulerEngagement(id, motif) {
+  const { data, error } = await supabase.rpc("cmd_annuler_engagement",
+    { p_engagement: id, p_motif: motif });
+  if (error) throw error;
+  return data;
+}
+
 /** Les tarifs publiés d'un prestataire. Rien d'autre ne traverse la cloison. */
 export async function tarifsDuPrestataire(orgId) {
   const { data, error } = await supabase.rpc("cmd_tarifs_du_prestataire", { p_org: orgId });
