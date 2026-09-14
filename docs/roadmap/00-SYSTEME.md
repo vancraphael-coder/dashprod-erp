@@ -6,7 +6,7 @@ quel ordre, et pourquoi dans cet ordre**. Les mélanger produit une
 documentation où une intention se lit comme un fait — c'est exactement la
 dérive contre laquelle le dossier maître a été construit.
 
-## Les cinq fichiers, et rien de plus
+## Les six fichiers, et rien de plus
 
 | fichier | question à laquelle il répond |
 |---|---|
@@ -14,6 +14,7 @@ dérive contre laquelle le dossier maître a été construit.
 | `10-AUDIT-ECRANS.md` | quels écrans existent, pour qui, et lesquels manquent |
 | `20-LOTS.md` | dans quel ordre on construit, et ce qui bloque quoi |
 | `30-DEMANDES.md` | la boîte d'entrée : toute directive arrive ici avant d'être classée |
+| `50-TENUE-A-10-SECTEURS.md` | l'architecture tient-elle à l'échelle de la vision, mesures à l'appui |
 | `40-ARCHITECTURE.md` | les trois axes — forme du code, exigences de qualité, cloison — et pourquoi les confondre est le seul vrai danger |
 
 ## La règle d'entrée
