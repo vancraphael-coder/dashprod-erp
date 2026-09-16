@@ -33,6 +33,8 @@ import { mainOeuvreReelle, pointagesParMembre, ecartHeures }
 import { CIRCUITS, typesLitige, libelleType, libelleEtape, couleurType,
          etapeSuivante, issues as issuesLitige, progression } from "@domaine/crm/litige.js";
 import { C, S, ZONES_MARGE, euros, declarerModifs} from "../lib/theme.jsx";
+import CalculTemps, { calculer as calculerTemps }
+  from "../composants/CalculTemps.jsx";
 
 const FORMULES = [
   { cle: "tarifaire", libelle: "Tarifaire" },
@@ -47,6 +49,9 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
   const [org, setOrg] = useState(null);
   const [faits, setFaits] = useState({
     formule: "tarifaire", nbDemenageurs: 3, heures: 6, nbCamions: 1,
+    // `tempsDetaille` : les heures et les km se DÉDUISENT des étapes au lieu
+    // d'être tapés. Faux par défaut pour ne pas changer un devis en cours.
+    tempsDetaille: false, temps: null,
     km: 0, elevateur: false, remisePct: 0, remiseMotif: "promo",
     heuresEmballage: 0, kmEmballage: 0, forfaitTvacEuros: 0,
   });
@@ -295,25 +300,61 @@ export default function Devis({ affaireId, retour, versOffre, versReleve, versFa
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <label style={S.label}>Heures facturées</label>
-                <input style={S.input} type="number" min="0" step="0.5"
-                       value={faits.heures}
-                       onChange={(e) => maj("heures", num(e.target.value))} />
-              </div>
+              {/* En mode étapes, heures et km sont DÉDUITS : les laisser
+                  éditables créerait deux sources pour la même réalité, et
+                  c'est exactement ce qui les faisait diverger. */}
+              {!faits.tempsDetaille && (
+                <div style={{ flex: 1 }}>
+                  <label style={S.label}>Heures facturées</label>
+                  <input style={S.input} type="number" min="0" step="0.5"
+                         value={faits.heures}
+                         onChange={(e) => maj("heures", num(e.target.value))} />
+                </div>
+              )}
               <div style={{ flex: 1 }}>
                 <label style={S.label}>Véhicules</label>
                 <input style={S.input} type="number" min="1"
                        value={faits.nbCamions}
                        onChange={(e) => maj("nbCamions", num(e.target.value))} />
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={S.label}>Km (dépôt–dépôt)</label>
-                <input style={S.input} type="number" min="0"
-                       value={faits.km}
-                       onChange={(e) => maj("km", num(e.target.value))} />
-              </div>
+              {!faits.tempsDetaille && (
+                <div style={{ flex: 1 }}>
+                  <label style={S.label}>Km (dépôt–dépôt)</label>
+                  <input style={S.input} type="number" min="0"
+                         value={faits.km}
+                         onChange={(e) => maj("km", num(e.target.value))} />
+                </div>
+              )}
             </div>
+
+            <CalculTemps
+              temps={faits.temps}
+              actif={Boolean(faits.tempsDetaille)}
+              onBasculer={() => {
+                const versEtapes = !faits.tempsDetaille;
+                if (versEtapes) {
+                  // On part des km déjà saisis plutôt que de zéro : la reprise
+                  // d'un devis commencé ne doit pas perdre ce qui est connu.
+                  const t = faits.temps
+                    || { ...{ kmChargementLivraison: faits.km || 0 } };
+                  const r = calculerTemps(t);
+                  setFaits((f) => ({ ...f, tempsDetaille: true, temps: t,
+                                     heures: r.heures, km: r.km }));
+                } else {
+                  setFaits((f) => ({ ...f, tempsDetaille: false }));
+                }
+                // Le garde-modifications doit savoir : basculer change le
+                // devis, donc quitter sans enregistrer doit prévenir.
+                marquerTouche();
+              }}
+              onChange={(t) => {
+                const r = calculerTemps(t);
+                // Les trois valeurs partent ensemble : recalculer les heures
+                // sans les km laisserait le prix kilométrique sur l'ancienne
+                // saisie.
+                setFaits((f) => ({ ...f, temps: t, heures: r.heures, km: r.km }));
+                marquerTouche();
+              }} />
 
             <label style={{ ...S.label, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input type="checkbox" checked={faits.elevateur}
