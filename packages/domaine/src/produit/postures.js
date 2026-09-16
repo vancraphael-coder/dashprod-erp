@@ -44,7 +44,11 @@ export const POSTURES = Object.freeze([
   {
     cle: "direction",
     titre: "Direction",
-    ancrage: "liste_affaires",
+    // Le patron n'atterrit plus sur un catalogue d'affaires : il atterrit sur
+    // ce qu'il doit décider aujourd'hui. C'est le sens même du produit —
+    // sortir un patron de l'opérationnel commence par ne pas l'y replonger
+    // dès l'ouverture.
+    ancrage: "rituel_direction",
     veut: "L'argent : ce qui rentre, ce qui sort, ce qui bloque.",
     roles: ["fondateur", "direction", "gerant"],
     offres: ["starter", "regular", "pro", "donneur_ordre", "garde_meubles",
@@ -53,7 +57,9 @@ export const POSTURES = Object.freeze([
   {
     cle: "coordination",
     titre: "Coordination",
-    ancrage: "liste_affaires",
+    // Le planning montre ce qui est prévu ; la coordination a besoin de ce qui
+    // MANQUE. Un planning bien rempli cache ses trous.
+    ancrage: "rituel_coordination",
     veut: "La semaine : ce qui n'est pas couvert, ce qui n'est pas facturé.",
     roles: ["coordination", "secretaire"],
     offres: ["starter", "regular", "pro", "donneur_ordre", "garde_meubles",
@@ -183,8 +189,8 @@ export function ancrageDeLOffre(codeOffre) {
  * devient un menu.
  */
 export const NAVIGATION = Object.freeze({
-  direction: ["liste", "planning", "conversations", "equipe", "compte"],
-  coordination: ["liste", "planning", "conversations", "compte"],
+  direction: ["rituel_direction", "liste", "planning", "equipe", "compte"],
+  coordination: ["rituel_coordination", "liste", "planning", "compte"],
   commerce: ["liste", "planning", "compte"],
   depot: ["liste", "planning", "equipe", "compte"],
   // Un chef d'équipe a besoin du planning : il sait qui vient demain.

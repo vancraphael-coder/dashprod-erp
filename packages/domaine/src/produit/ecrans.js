@@ -384,12 +384,12 @@ export const ECRANS = Object.freeze([
   { cle: "vue_du_matin", fichier: null, module: "gestionnaire_depot",
     postures: ["depot"], reglages: [], etat: "manquant", monte: false,
     legal: false, rituel: true, blocs: 3 },
-  { cle: "vue_de_l_argent", fichier: null, module: "facturation",
-    postures: ["direction"], reglages: [], etat: "manquant", monte: false,
-    legal: false, rituel: true, blocs: 3 },
-  { cle: "vue_des_trous", fichier: null, module: "planning",
-    postures: ["coordination"], reglages: ["fermetures"], etat: "manquant",
-    monte: false, legal: false, rituel: true, blocs: 2 },
+  { cle: "rituel_direction", fichier: "RituelDirection.jsx",
+    module: "facturation", postures: ["direction"], reglages: [],
+    etat: "livre", monte: true, legal: false, rituel: true, blocs: 3 },
+  { cle: "rituel_coordination", fichier: "RituelCoordination.jsx",
+    module: "planning", postures: ["coordination"], reglages: [],
+    etat: "livre", monte: true, legal: false, rituel: true, blocs: 2 },
 
   // Le choix des canaux : à quels corps de métier je réponds. C'est ce qui
   // rend le réseau utile à un indépendant — il ne voit plus la file des
