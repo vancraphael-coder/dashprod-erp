@@ -137,9 +137,13 @@ export const ECRANS = Object.freeze([
   { cle: "releve", fichier: "Releve.jsx", module: "releve",
     postures: ["commerce", "coordination", "acces_ponctuel"],
     reglages: ["pieces"], etat: "livre", monte: true, legal: false },
+  // Relu aussi : en-tête émetteur avec BCE et téléphone, inventaire groupé par
+  // pièce, total d'articles, et une décision produit délibérée — le VOLUME
+  // n'y figure pas, pour qu'un client qui transmet le relevé à un concurrent
+  // ne lui donne pas notre estimation. Livré.
   { cle: "releve_doc", fichier: "ReleveDoc.jsx", module: "releve",
     postures: ["commerce", "coordination"], reglages: ["identite", "pieces"],
-    etat: "esquisse", monte: true, legal: false },
+    etat: "livre", monte: true, legal: false },
   { cle: "devis", fichier: "Devis.jsx", module: "devis",
     postures: ["commerce", "coordination", "direction"],
     reglages: ["bareme", "fournitures", "textes"], etat: "livre", monte: true,
@@ -166,10 +170,15 @@ export const ECRANS = Object.freeze([
     postures: ["direction", "coordination", "independant"],
     reglages: ["facturation", "sequences", "mentions"], etat: "livre",
     monte: true, legal: true },
+  // Relu ligne par ligne le 14/09/2026 : j'avais mis « esquisse » sans la
+  // lire. Elle porte le numéro, la date d'émission, l'échéance, le client avec
+  // son adresse et sa TVA, les totaux HTVA/TVA/TVAC, l'IBAN, la mention légale
+  // tirée de `facturation(org)` et le pied avec BCE, IBAN, téléphone, courriel.
+  // C'est livré. Mon étiquette était fausse, pas l'écran.
   { cle: "facture_doc", fichier: "FactureDoc.jsx", module: "facturation",
     postures: ["direction", "coordination", "independant"],
     reglages: ["identite", "facturation", "sequences", "mentions"],
-    etat: "esquisse", monte: true, legal: true },
+    etat: "livre", monte: true, legal: true },
   { cle: "facture_peppol", fichier: "FacturePeppol.jsx", module: "peppol",
     postures: ["direction", "coordination"],
     reglages: ["identite_verifiee", "peppol", "sequences"], etat: "esquisse",
@@ -186,9 +195,13 @@ export const ECRANS = Object.freeze([
     postures: ["coordination", "direction", "depot", "chef_equipe",
                "independant"],
     reglages: ["fermetures"], etat: "livre", monte: true, legal: false },
+  // Relu : chantiers du jour triés, pointage départ/arrivée, pauses, clôture
+  // sous capacité, sessions. C'est l'écran de l'exécutant et il fonctionne.
+  // Ce qui manquait n'était pas l'écran mais l'ANCRAGE : un déménageur
+  // atterrissait sur la liste des dossiers. Corrigé le 14/09/2026.
   { cle: "terrain", fichier: "Terrain.jsx", module: "terrain",
     postures: ["chef_equipe", "execution", "independant"],
-    reglages: ["materiel_terrain"], etat: "esquisse", monte: true,
+    reglages: ["materiel_terrain"], etat: "livre", monte: true,
     legal: false },
   { cle: "terrain_profil", fichier: "TerrainProfil.jsx", module: "terrain",
     postures: ["chef_equipe", "execution"], reglages: [], etat: "esquisse",
