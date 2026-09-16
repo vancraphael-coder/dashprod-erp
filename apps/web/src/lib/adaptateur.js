@@ -3784,6 +3784,51 @@ export async function definirException(date, disponible, motif = null) {
   return data;
 }
 
+/**
+ * Le rituel de direction : trois décisions, en une requête.
+ *
+ * Une requête et non trois, ni un appel par dossier : `etat_facturation` est
+ * par affaire, et l'appeler en boucle rendrait l'écran d'arrivée lent le jour
+ * où il y a du volume — c'est-à-dire le jour où il sert.
+ */
+export async function rituelDirection() {
+  const { data, error } = await supabase.rpc("cmd_rituel_direction");
+  if (error) throw error;
+  return {
+    aFacturer: {
+      nb: Number(data?.a_facturer?.nb || 0),
+      lignes: data?.a_facturer?.lignes || [],
+    },
+    impayes: {
+      nb: Number(data?.impayes?.nb || 0),
+      totalCentimes: Number(data?.impayes?.total_centimes || 0),
+      joursMax: Number(data?.impayes?.jours_max || 0),
+      lignes: data?.impayes?.lignes || [],
+    },
+    nonCouverts: {
+      nb: Number(data?.non_couverts?.nb || 0),
+      lignes: data?.non_couverts?.lignes || [],
+    },
+  };
+}
+
+/** Le rituel de coordination : les trous, pas l'argent. */
+export async function rituelCoordination() {
+  const { data, error } = await supabase.rpc("cmd_rituel_coordination");
+  if (error) throw error;
+  return {
+    trous: {
+      nb: Number(data?.trous?.nb || 0),
+      lignes: data?.trous?.lignes || [],
+    },
+    sansMission: {
+      nb: Number(data?.sans_mission?.nb || 0),
+      lignes: data?.sans_mission?.lignes || [],
+    },
+    couverts: Number(data?.couverts || 0),
+  };
+}
+
 /** Mon état vis-à-vis du réseau : inscrit, vitrine publiée, tarifs publiés. */
 export async function monReseau() {
   const { data, error } = await supabase.rpc("cmd_mon_reseau");
@@ -3906,6 +3951,51 @@ export async function annulerEngagement(id, motif) {
     { p_engagement: id, p_motif: motif });
   if (error) throw error;
   return data;
+}
+
+/** Les preuves d'un engagement : empreintes, horodatages, auteur. */
+export async function preuvesEngagement(engagementId) {
+  const { data, error } = await supabase.rpc("cmd_preuves_engagement",
+    { p_engagement: engagementId });
+  if (error) throw error;
+  return (data || []).map((p) => ({
+    rang: p.rang, type: p.type, libelle: p.libelle, empreinte: p.empreinte,
+    octets: p.octets, par_org: p.par_org, est_moi: p.est_moi, au: p.au,
+  }));
+}
+
+/**
+ * Déposer une preuve. On envoie l'EMPREINTE, jamais le fichier : il reste
+ * chez son producteur. Voir migration 0199.
+ */
+export async function deposerPreuve(engagementId, {
+  type, empreinte, libelle = null, octets = null,
+} = {}) {
+  const { data, error } = await supabase.rpc("cmd_deposer_preuve", {
+    p_engagement: engagementId, p_type: type, p_empreinte: empreinte,
+    p_libelle: libelle, p_octets: octets,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/** Vérifier la chaîne d'empreintes d'un engagement. */
+export async function verifierChaineEngagement(engagementId) {
+  const { data, error } = await supabase.rpc("cmd_verifier_chaine_engagement",
+    { p_engagement: engagementId });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * L'empreinte SHA-256 d'un fichier, calculée DANS LE NAVIGATEUR avant tout
+ * envoi. C'est ce qui permet de ne jamais faire traverser le fichier.
+ */
+export async function empreinteFichier(fichier) {
+  const buf = await fichier.arrayBuffer();
+  const h = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(h))
+    .map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /** Les tarifs publiés d'un prestataire. Rien d'autre ne traverse la cloison. */
