@@ -19,6 +19,8 @@ import Inscription from "./ecrans/Inscription.jsx";
 import MesSocietes from "./ecrans/MesSocietes.jsx";
 import RituelIndependant from "./ecrans/RituelIndependant.jsx";
 import ConfierMission from "./ecrans/ConfierMission.jsx";
+import RituelDirection from "./ecrans/RituelDirection.jsx";
+import RituelCoordination from "./ecrans/RituelCoordination.jsx";
 import SuiviEngagements from "./ecrans/SuiviEngagements.jsx";
 import MaDisponibilite from "./ecrans/MaDisponibilite.jsx";
 import MesMissions from "./ecrans/MesMissions.jsx";
@@ -288,6 +290,8 @@ function itemsNav({ modules = [], peutGererEquipe = false, posture = null } = {}
       terrain: ["planning", "Mon chantier"],
       rituel_independant: ["planning", "Ma journée"],
       mes_missions: ["dossiers", "Mes missions"],
+      rituel_direction: ["compte", "Aujourd'hui"],
+      rituel_coordination: ["planning", "Les trous"],
     };
     return declaree
       // On n'affiche pas « Ressources » à qui ne gère pas d'équipe, ni le
@@ -903,6 +907,8 @@ function App() {
     rituelIndependant: () => setRoute({ ecran: "rituel_independant", affaireId: null }),
     confierMission: () => setRoute({ ecran: "confier_mission", affaireId: route.affaireId }),
     suiviEngagements: () => setRoute({ ecran: "suivi_engagements", affaireId: null }),
+    rituelDirection: () => setRoute({ ecran: "rituel_direction", affaireId: null }),
+    rituelCoordination: () => setRoute({ ecran: "rituel_coordination", affaireId: null }),
     maDisponibilite: () => setRoute({ ecran: "ma_disponibilite", affaireId: null }),
     mesMissions: () => setRoute({ ecran: "mes_missions", affaireId: null }),
     journal: (id) => setRoute({ ecran: "journal", affaireId: id }),
@@ -933,7 +939,8 @@ function App() {
   // d'arrivée absent de cette liste est un cul-de-sac — défaut signalé dès la
   // première mise en service du rituel indépendant.
   const RACINES = ["liste", "planning", "stockage", "conversations", "equipe",
-                   "compte", "rituel_independant", "mes_missions", "terrain"];
+                   "compte", "rituel_independant", "mes_missions", "terrain",
+                   "rituel_direction", "rituel_coordination"];
   let ecran;
   if (route.ecran === "diagnostic") {
     ecran = (
@@ -983,6 +990,10 @@ function App() {
     ecran = <MesMissions retour={nav.rituelIndependant} />;
   } else if (route.ecran === "ma_disponibilite") {
     ecran = <MaDisponibilite retour={nav.rituelIndependant} />;
+  } else if (route.ecran === "rituel_direction") {
+    ecran = <RituelDirection ouvrirDossier={nav.dossier} versPlanning={nav.planning} />;
+  } else if (route.ecran === "rituel_coordination") {
+    ecran = <RituelCoordination ouvrirDossier={nav.dossier} versPlanning={nav.planning} />;
   } else if (route.ecran === "suivi_engagements") {
     ecran = <SuiviEngagements retour={nav.carnet} versConfier={nav.confierMission} />;
   } else if (route.ecran === "confier_mission") {
