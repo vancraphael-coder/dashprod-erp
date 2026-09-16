@@ -24,7 +24,8 @@ import MaDisponibilite from "./ecrans/MaDisponibilite.jsx";
 import MesMissions from "./ecrans/MesMissions.jsx";
 // L'écran d'arrivée se choisit par la POSTURE, et la posture se déduit de
 // l'offre : interroger le registre plutôt que comparer un nom de plan en dur.
-import { postureDansOffre, ancrageDeLOffre } from "@domaine/produit/postures.js";
+import { postureDansOffre, ancrageDeLOffre, postureDuRole, posture as postureDe,
+         navigationDeLaPosture } from "@domaine/produit/postures.js";
 // Le registre et le routeur parlaient deux langues (`liste_affaires` ici,
 // « liste » là-bas). La correspondance est déclarée dans le registre.
 import { routeDeLEcran } from "@domaine/produit/ecrans.js";
@@ -257,18 +258,46 @@ const TRACE_NAV = { liste: "dossiers", planning: "planning", stockage: "stockage
  * Sa navigation tient en trois entrées : sa journée, son planning, son compte.
  * Il ne monte pas de dossier client, il répond à des demandes.
  */
+/**
+ * L'écran d'arrivée d'un acteur : sa posture d'abord, l'offre en repli.
+ *
+ * Deux sources, un seul ordre de priorité, et il est écrit ici une fois. Le
+ * poste vient de `mon_profil()`, qui le calcule déjà en base.
+ */
+function ancrageDeLActeur(acces, profil) {
+  const p = postureDuRole(profil?.poste);
+  if (p) return routeDeLEcran(p.ancrage) || "liste";
+  return routeDeLEcran(ancrageDeLOffre(acces?.plan)) || "liste";
+}
+
 function itemsNav({ modules = [], peutGererEquipe = false, posture = null } = {}) {
   const a = (cle) => modules.includes(cle);
-  if (posture === "independant") {
-    // « Planning » a été remplacé par « Mes missions » : le planning est
-    // l'écran d'une entreprise qui répartit des équipes sur des chantiers.
-    // Un indépendant n'a personne à répartir — il a un flux de demandes.
-    return [
-      ["rituel_independant", "planning", "Ma journée"],
-      ["mes_missions", "dossiers", "Mes missions"],
-      ["compte", "compte", "Compte"],
-    ];
+
+  // La barre se DÉDUIT de la posture (produit/postures.js). Elle était écrite
+  // en dur, posture par posture : ajouter une posture demandait d'éditer ce
+  // fichier, et à dix secteurs les postures se multiplient.
+  const declaree = navigationDeLaPosture(posture);
+  if (declaree.length > 0) {
+    const LIB = {
+      liste: ["dossiers", "Dossiers"],
+      planning: ["planning", "Planning"],
+      stockage: ["boite", "Stockage"],
+      conversations: ["mail", "Messages"],
+      equipe: ["ressources", "Ressources"],
+      compte: ["compte", "Compte"],
+      terrain: ["planning", "Mon chantier"],
+      rituel_independant: ["planning", "Ma journée"],
+      mes_missions: ["dossiers", "Mes missions"],
+    };
+    return declaree
+      // On n'affiche pas « Ressources » à qui ne gère pas d'équipe, ni le
+      // stockage à qui ne l'a pas acheté : la posture dit l'usage, le module
+      // et la capacité disent le droit.
+      .filter((c) => (c !== "equipe" || peutGererEquipe)
+                  && (c !== "stockage" || a("stockage_3d")))
+      .map((c) => [c, ...(LIB[c] || ["dossiers", c])]);
   }
+
   return [
     ["liste", "dossiers", "Dossiers"],
     ["planning", "planning", "Planning"],
@@ -718,20 +747,26 @@ function App() {
   const [natureDossier, setNatureDossier] = useState(null);
   useEffect(() => {
     if (modeDonnees() !== "reel" || !org) return;
-    monAcces().then((a) => {
-      setAcces(a);
-      // L'ancrage vient du registre des postures, jamais d'un test en dur sur
-      // le nom du plan : sinon la règle existe à deux endroits.
-      setRoute((r) => (r.ecran === null
-        ? { ecran: routeDeLEcran(ancrageDeLOffre(a?.plan)) || "liste",
-            affaireId: null } : r));
-    }).catch(() => {
-      setAcces(null);
-      // Sans réponse du serveur on ne connaît pas le métier. On ancre sur les
-      // dossiers, qui est le cas majoritaire, plutôt que de rester blanc.
-      setRoute((r) => (r.ecran === null ? { ecran: "liste", affaireId: null } : r));
-    });
+    monAcces().then(setAcces).catch(() => setAcces(null));
   }, [org]);
+
+  // L'ANCRAGE, résolu une fois que l'on sait À QUI on parle.
+  //
+  // Séparé du chargement de l'accès à cause d'une course : `profil` est posé
+  // par l'amorçage de session, `acces` par cet effet-ci. Calculer l'ancrage
+  // dans le second alors que le premier n'a pas répondu faisait retomber sur
+  // l'offre — donc un déménageur sur la liste des dossiers, exactement le
+  // défaut qu'on corrige.
+  //
+  // On attend donc les deux. `route.ecran === null` garantit qu'on n'écrase
+  // jamais une navigation déjà faite par l'utilisateur.
+  useEffect(() => {
+    if (modeDonnees() !== "reel" || !org) return;
+    if (!acces && !profil) return;
+    setRoute((r) => (r.ecran === null
+      ? { ecran: ancrageDeLActeur(acces, profil) || "liste", affaireId: null }
+      : r));
+  }, [org, acces, profil]);
 
   // La nature suit le dossier ouvert. On l'efface dès qu'on en sort, sinon la
   // sous-navigation garderait l'atténuation du dossier précédent.
@@ -879,17 +914,26 @@ function App() {
       [cle, (...args) => naviguerAvecGarde(() => fn(...args))]));
   const retourDossier = () => nav.dossier(route.affaireId);
 
-  // La posture vient de l'offre : `independant` n'existe que dans
-  // `independant_manutention` (produit/postures.js). Un seul calcul, utilisé
-  // pour la navigation ET pour l'écran d'arrivée — sinon les deux dérivent.
-  const postureCourante = acces?.plan
-    && postureDansOffre("independant", acces.plan) ? "independant" : null;
+  // LA POSTURE VIENT DE LA PERSONNE, plus de l'offre.
+  //
+  // CE QUI NE MARCHAIT PAS. L'ancrage se déduisait de l'OFFRE : dans une
+  // société déménageur, tout le monde atterrissait sur la liste des dossiers —
+  // y compris un déménageur qui ouvre l'app à 6 h du matin, debout dans un
+  // camion. L'offre dit ce que la société a acheté ; elle ne dit pas à QUI on
+  // parle.
+  //
+  // `mon_profil()` renvoie déjà le poste de l'acteur : c'est lui qui décide.
+  // L'offre ne sert plus que de repli — le cas de l'indépendant, dont la
+  // posture n'a aucun rôle en base puisqu'il est seul.
+  const postureCourante = postureDuRole(profil?.poste)?.cle
+    || (acces?.plan && postureDansOffre("independant", acces.plan)
+        ? "independant" : null);
 
-  // `rituel_independant` est un écran d'ARRIVÉE : il doit porter la barre de
-  // navigation, faute de quoi il est un cul-de-sac. C'est le défaut qui a été
-  // signalé dès la première mise en service.
+  // Les racines sont les écrans qui portent la barre de navigation. Un écran
+  // d'arrivée absent de cette liste est un cul-de-sac — défaut signalé dès la
+  // première mise en service du rituel indépendant.
   const RACINES = ["liste", "planning", "stockage", "conversations", "equipe",
-                   "compte", "rituel_independant", "mes_missions"];
+                   "compte", "rituel_independant", "mes_missions", "terrain"];
   let ecran;
   if (route.ecran === "diagnostic") {
     ecran = (
