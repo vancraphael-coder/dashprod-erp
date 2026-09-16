@@ -84,7 +84,10 @@ export const POSTURES = Object.freeze([
   {
     cle: "chef_equipe",
     titre: "Chef d'équipe",
-    ancrage: "planning",
+    // Le terrain, pas le planning : le planning est l'écran de celui qui
+    // RÉPARTIT. Un chef d'équipe exécute avec son équipe — il pointe, il
+    // prouve, il clôture.
+    ancrage: "terrain",
     veut: "Ma journée, mon équipe, mon pointage.",
     roles: ["chef_equipe"],
     offres: ["starter", "regular", "pro", "groupe_liftier",
@@ -93,7 +96,11 @@ export const POSTURES = Object.freeze([
   {
     cle: "execution",
     titre: "Exécution",
-    ancrage: "planning",
+    // CE QUI NE MARCHAIT PAS. Un déménageur ouvrait l'app et atterrissait sur
+    // la liste des dossiers — parce que l'ancrage venait de l'OFFRE et non de
+    // la personne. À 6 h du matin, debout dans un camion, il faut son
+    // chantier, pas un catalogue d'affaires.
+    ancrage: "terrain",
     veut: "Où je vais, avec qui, à quelle heure.",
     roles: ["demenageur", "chauffeur", "livreur", "monteur", "liftier",
             "interimaire"],
@@ -160,6 +167,38 @@ export function ancrageDeLOffre(codeOffre) {
   // Sinon l'entreprise : la direction et la coordination partagent le même
   // ancrage, et c'est celui qu'on sert par défaut au bureau.
   return p.find((x) => x.cle === "direction")?.ancrage || "liste_affaires";
+}
+
+/**
+ * Les entrées de navigation d'une posture : son ancrage d'abord, puis ce dont
+ * elle a besoin au quotidien, puis le compte.
+ *
+ * POURQUOI ICI ET PLUS DANS `main.jsx`. La barre était écrite en dur, posture
+ * par posture : ajouter une posture demandait d'éditer du code, et à dix
+ * secteurs les postures se multiplient (opérateur machine, cariste,
+ * préparateur). Déclarée ici, elle suit la posture — et le registre reste la
+ * seule source.
+ *
+ * Trois entrées maximum hors direction : au-delà, une barre de téléphone
+ * devient un menu.
+ */
+export const NAVIGATION = Object.freeze({
+  direction: ["liste", "planning", "conversations", "equipe", "compte"],
+  coordination: ["liste", "planning", "conversations", "compte"],
+  commerce: ["liste", "planning", "compte"],
+  depot: ["liste", "planning", "equipe", "compte"],
+  // Un chef d'équipe a besoin du planning : il sait qui vient demain.
+  chef_equipe: ["terrain", "planning", "compte"],
+  // Un exécutant n'a rien à répartir. Son chantier, ses messages, son compte.
+  execution: ["terrain", "conversations", "compte"],
+  acces_ponctuel: ["liste", "compte"],
+  independant: ["rituel_independant", "mes_missions", "compte"],
+  client: [],
+});
+
+/** Les entrées de navigation d'une posture. Vide = navigation par défaut. */
+export function navigationDeLaPosture(cle) {
+  return NAVIGATION[cle] || [];
 }
 
 /** Vrai si la posture existe dans cette offre. */
