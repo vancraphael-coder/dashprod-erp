@@ -19,10 +19,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ECRANS, ecran, ecransParEtat, reglagesManquantsDe }
+import { ECRANS, ecran, ecransParEtat, reglagesManquantsDe, routeDeLEcran }
   from "../src/produit/ecrans.js";
-import { POSTURES, posture, postureDuRole, posturesDeLOffre }
-  from "../src/produit/postures.js";
+import { POSTURES, posture, postureDuRole, posturesDeLOffre,
+         navigationDeLaPosture } from "../src/produit/postures.js";
 import { REGLAGES, reglage, CLES_REGLAGES }
   from "../src/produit/reglages-portee.js";
 import { REFERENTIEL_OFFRES, offreReferentiel }
@@ -371,4 +371,57 @@ test("le dossier produit est cité dans le dossier maître", () => {
     join(RACINE, "docs", "maitre", "00-DEMARRER-ICI.md"), "utf8");
   assert.match(src, /produit\//,
     "00-DEMARRER-ICI.md ne mentionne pas le registre des écrans");
+});
+
+test("ANCRAGE — aucune posture n'atterrit sur une page blanche", () => {
+  // Ce que ce test empêche : un ancrage vers un écran MANQUANT, c'est-à-dire
+  // un utilisateur devant rien à 6 h du matin. Le cas s'est produit —
+  // l'exécution ancrait sur « planning » alors que son écran est « terrain ».
+  //
+  // Une ESQUISSE est tolérée : elle s'ouvre et montre quelque chose. La
+  // posture `client` ancre sur `espace_client`, en esquisse assumée — ses huit
+  // onglets sont la vue d'un développeur qui range ses données, pas celle d'un
+  // client qui déménage dans douze jours (lot 8). Exiger « livré » ici
+  // reviendrait à confondre « ne fonctionne pas » et « pas encore assez bien ».
+  for (const p of POSTURES) {
+    const e = ECRANS.find((x) => x.cle === p.ancrage);
+    assert.ok(e, `la posture ${p.cle} ancre sur « ${p.ancrage} », inconnu`);
+    assert.notEqual(e.etat, "manquant",
+      `la posture ${p.cle} ancre sur « ${p.ancrage} », qui n'existe pas`);
+    assert.equal(e.monte, true,
+      `la posture ${p.cle} ancre sur « ${p.ancrage} », non monté`);
+  }
+});
+
+test("NAVIGATION — chaque entrée déclarée existe et est atteignable", () => {
+  // La barre est déduite de la posture. Une entrée qui ne correspond à aucun
+  // écran monté produit un bouton mort.
+  const routes = new Set(ECRANS.filter((x) => x.monte).map((x) => routeDeLEcran(x.cle)));
+  routes.add("compte");   // écran de compte, transverse et toujours monté
+  for (const p of POSTURES) {
+    for (const entree of navigationDeLaPosture(p.cle)) {
+      assert.ok(routes.has(entree),
+        `la posture ${p.cle} navigue vers « ${entree} », qui n'est pas un écran monté`);
+    }
+  }
+});
+
+test("NAVIGATION — l'ancrage est la PREMIÈRE entrée de la barre", () => {
+  // Sinon le bouton actif au démarrage n'est pas celui de l'écran affiché, et
+  // l'utilisateur croit s'être trompé.
+  for (const p of POSTURES) {
+    const nav = navigationDeLaPosture(p.cle);
+    if (nav.length === 0) continue;   // le client n'a pas de barre
+    assert.equal(nav[0], routeDeLEcran(p.ancrage),
+      `la posture ${p.cle} : ancrage « ${p.ancrage} » absent en tête de barre`);
+  }
+});
+
+test("NAVIGATION — trois entrées au plus sur le terrain", () => {
+  // Une barre de téléphone au-delà de trois entrées devient un menu, et on ne
+  // navigue pas dans un menu avec des gants.
+  for (const cle of ["execution", "chef_equipe", "independant"]) {
+    assert.ok(navigationDeLaPosture(cle).length <= 3,
+      `${cle} porte ${navigationDeLaPosture(cle).length} entrées`);
+  }
 });
