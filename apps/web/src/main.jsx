@@ -13,17 +13,17 @@ import { modeDonnees, demoForceeActive, quitterDemoForcee, monAcces, reclamerInv
   from "./lib/adaptateur.js";
 import { C, Icone, gardeModifs, Confirmation } from "./lib/theme.jsx";
 import Connexion from "./ecrans/Connexion.jsx";
-import Diagnostic from "./ecrans/Diagnostic.jsx";
-import NonInvite from "./ecrans/NonInvite.jsx";
-import Inscription from "./ecrans/Inscription.jsx";
-import MesSocietes from "./ecrans/MesSocietes.jsx";
-import RituelIndependant from "./ecrans/RituelIndependant.jsx";
-import ConfierMission from "./ecrans/ConfierMission.jsx";
-import RituelDirection from "./ecrans/RituelDirection.jsx";
-import RituelCoordination from "./ecrans/RituelCoordination.jsx";
-import SuiviEngagements from "./ecrans/SuiviEngagements.jsx";
-import MaDisponibilite from "./ecrans/MaDisponibilite.jsx";
-import MesMissions from "./ecrans/MesMissions.jsx";
+const Diagnostic = React.lazy(() => import("./ecrans/Diagnostic.jsx"));
+const NonInvite = React.lazy(() => import("./ecrans/NonInvite.jsx"));
+const Inscription = React.lazy(() => import("./ecrans/Inscription.jsx"));
+const MesSocietes = React.lazy(() => import("./ecrans/MesSocietes.jsx"));
+const RituelIndependant = React.lazy(() => import("./ecrans/RituelIndependant.jsx"));
+const ConfierMission = React.lazy(() => import("./ecrans/ConfierMission.jsx"));
+const RituelDirection = React.lazy(() => import("./ecrans/RituelDirection.jsx"));
+const RituelCoordination = React.lazy(() => import("./ecrans/RituelCoordination.jsx"));
+const SuiviEngagements = React.lazy(() => import("./ecrans/SuiviEngagements.jsx"));
+const MaDisponibilite = React.lazy(() => import("./ecrans/MaDisponibilite.jsx"));
+const MesMissions = React.lazy(() => import("./ecrans/MesMissions.jsx"));
 // L'écran d'arrivée se choisit par la POSTURE, et la posture se déduit de
 // l'offre : interroger le registre plutôt que comparer un nom de plan en dur.
 import { postureDansOffre, ancrageDeLOffre, postureDuRole, posture as postureDe,
@@ -31,51 +31,52 @@ import { postureDansOffre, ancrageDeLOffre, postureDuRole, posture as postureDe,
 // Le registre et le routeur parlaient deux langues (`liste_affaires` ici,
 // « liste » là-bas). La correspondance est déclarée dans le registre.
 import { routeDeLEcran } from "@domaine/produit/ecrans.js";
-import ListeAffaires from "./ecrans/ListeAffaires.jsx";
+const ListeAffaires = React.lazy(() => import("./ecrans/ListeAffaires.jsx"));
 import { creerDossierVide, obtenirAffaire } from "./lib/adaptateur.js";
 import { centreDeRattachement, espacesCreation } from "@domaine/organisation/centres.js";
 import { comporte as comporteEtape } from "@domaine/commercial/natures.js";
-import Terrain from "./ecrans/Terrain.jsx";
-import TerrainProfil from "./ecrans/TerrainProfil.jsx";
-import Bareme from "./ecrans/Bareme.jsx";
-import Cout from "./ecrans/Cout.jsx";
-import Archivage from "./ecrans/Archivage.jsx";
-import TextesDossiers from "./ecrans/TextesDossiers.jsx";
-import Parametres from "./ecrans/Parametres.jsx";
-import Profil from "./ecrans/Profil.jsx";
-import Landing from "./ecrans/vitrine/Landing.jsx";
-import PorteSociete from "./ecrans/vitrine/PorteSociete.jsx";
-import PorteClient from "./ecrans/vitrine/PorteClient.jsx";
-import PorteOffre from "./ecrans/vitrine/PorteOffre.jsx";
+const Terrain = React.lazy(() => import("./ecrans/Terrain.jsx"));
+const TerrainProfil = React.lazy(() => import("./ecrans/TerrainProfil.jsx"));
+const Bareme = React.lazy(() => import("./ecrans/Bareme.jsx"));
+const Cout = React.lazy(() => import("./ecrans/Cout.jsx"));
+const Archivage = React.lazy(() => import("./ecrans/Archivage.jsx"));
+const TextesDossiers = React.lazy(() => import("./ecrans/TextesDossiers.jsx"));
+const Parametres = React.lazy(() => import("./ecrans/Parametres.jsx"));
+const Profil = React.lazy(() => import("./ecrans/Profil.jsx"));
+const Landing = React.lazy(() => import("./ecrans/vitrine/Landing.jsx"));
+const PorteSociete = React.lazy(() => import("./ecrans/vitrine/PorteSociete.jsx"));
+const PorteClient = React.lazy(() => import("./ecrans/vitrine/PorteClient.jsx"));
+const PorteOffre = React.lazy(() => import("./ecrans/vitrine/PorteOffre.jsx"));
 import { CGU, Confidentialite as ConfidentialitePublique, MentionsLegales }
   from "./ecrans/vitrine/Legal.jsx";
-import Bienvenue from "./ecrans/Bienvenue.jsx";
-import EspaceClient from "./ecrans/EspaceClient.jsx";
-import SignatureOffre from "./ecrans/SignatureOffre.jsx";
+const Bienvenue = React.lazy(() => import("./ecrans/Bienvenue.jsx"));
+const EspaceClient = React.lazy(() => import("./ecrans/EspaceClient.jsx"));
+const SignatureOffre = React.lazy(() => import("./ecrans/SignatureOffre.jsx"));
 import { clientMoi, obtenirOrganisation, depots } from "./lib/adaptateur.js";
 import { identiteComplete } from "@domaine/organisation/identite.js";
-import Dossier from "./ecrans/Dossier.jsx";
-import Releve from "./ecrans/Releve.jsx";
-import Devis from "./ecrans/Devis.jsx";
-import Offre from "./ecrans/Offre.jsx";
-import Facture from "./ecrans/Facture.jsx";
-import Mail from "./ecrans/Mail.jsx";
-import Journal from "./ecrans/Journal.jsx";
-import RapportsDossier from "./ecrans/RapportsDossier.jsx";
-import VenteRapide from "./ecrans/VenteRapide.jsx";
-import Materiel from "./ecrans/Materiel.jsx";
-import Planning from "./ecrans/Planning.jsx";
-import Conversations from "./ecrans/Conversations.jsx";
+const Dossier = React.lazy(() => import("./ecrans/Dossier.jsx"));
+const Releve = React.lazy(() => import("./ecrans/Releve.jsx"));
+const Devis = React.lazy(() => import("./ecrans/Devis.jsx"));
+const Offre = React.lazy(() => import("./ecrans/Offre.jsx"));
+const Facture = React.lazy(() => import("./ecrans/Facture.jsx"));
+const Mail = React.lazy(() => import("./ecrans/Mail.jsx"));
+const Journal = React.lazy(() => import("./ecrans/Journal.jsx"));
+const RapportsDossier = React.lazy(() => import("./ecrans/RapportsDossier.jsx"));
+const VenteRapide = React.lazy(() => import("./ecrans/VenteRapide.jsx"));
+const Materiel = React.lazy(() => import("./ecrans/Materiel.jsx"));
+const Planning = React.lazy(() => import("./ecrans/Planning.jsx"));
+const Conversations = React.lazy(() => import("./ecrans/Conversations.jsx"));
 import SelecteurRotatif from "./composants/SelecteurRotatif.jsx";
 import BaliseNote from "./composants/BaliseNote.jsx";
-import Carnet from "./ecrans/Carnet.jsx";
-import Stockage from "./ecrans/Stockage.jsx";
-import Centres from "./ecrans/Centres.jsx";
-import RapportCentres from "./ecrans/RapportCentres.jsx";
+import Chargement from "./composants/Chargement.jsx";
+const Carnet = React.lazy(() => import("./ecrans/Carnet.jsx"));
+const Stockage = React.lazy(() => import("./ecrans/Stockage.jsx"));
+const Centres = React.lazy(() => import("./ecrans/Centres.jsx"));
+const RapportCentres = React.lazy(() => import("./ecrans/RapportCentres.jsx"));
 import SelecteurCentre from "./composants/SelecteurCentre.jsx";
 import ChoixEspace from "./composants/ChoixEspace.jsx";
-import DemandesReseau from "./ecrans/DemandesReseau.jsx";
-import Ressources from "./ecrans/Ressources.jsx";
+const DemandesReseau = React.lazy(() => import("./ecrans/DemandesReseau.jsx"));
+const Ressources = React.lazy(() => import("./ecrans/Ressources.jsx"));
 
 function BandeauDemo({ versDiagnostic }) {
   if (modeDonnees() !== "demo") return null;
@@ -469,7 +470,9 @@ function AppTerrain({ profil }) {
             chevron réactive localement le pointeur (pointerEvents:auto) : le
             chef déroule pour lire une remarque, sans rien pouvoir modifier. */}
         <div style={(edit || route.ecran === "materiel")
-                    ? undefined : { pointerEvents: "none" }}>{vue}</div>
+                    ? undefined : { pointerEvents: "none" }}>
+          <React.Suspense fallback={<Chargement />}>{vue}</React.Suspense>
+        </div>
 
         {/* Sous-navigation du parcours */}
         <style>{CSS_NAV}</style>
@@ -1088,7 +1091,7 @@ function App() {
       <div style={{ position: "fixed", top: 12, right: 14, zIndex: 45 }}>
         <BaliseNote page={route.ecran} titre={LIBELLE_PAGE[route.ecran] || route.ecran} />
       </div>
-      {ecran}
+      <React.Suspense fallback={<Chargement />}>{ecran}</React.Suspense>
       {/* LA BARRE NAVIGUE PAR CLÉ DE ROUTE, pas par nom de fonction.
           Elle appelait `nav[cle]()`, or les clés déclarées dans
           `produit/postures.js` sont des clés de ROUTE (`rituel_direction`,
@@ -1170,7 +1173,9 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(
+  <React.Suspense fallback={<Chargement />}><App /></React.Suspense>
+);
 
 /**
  * CHOIX DE LA SOCIÉTÉ — quand une même personne travaille pour plusieurs.
