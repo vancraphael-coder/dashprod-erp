@@ -1069,8 +1069,23 @@ function App() {
         <BaliseNote page={route.ecran} titre={LIBELLE_PAGE[route.ecran] || route.ecran} />
       </div>
       {ecran}
+      {/* LA BARRE NAVIGUE PAR CLÉ DE ROUTE, pas par nom de fonction.
+          Elle appelait `nav[cle]()`, or les clés déclarées dans
+          `produit/postures.js` sont des clés de ROUTE (`rituel_direction`,
+          `terrain`, `mes_missions`) alors que l'objet `nav` les nomme en
+          camelCase (`rituelDirection`). Résultat : tous les boutons de rituel
+          et « Mon chantier » étaient muets — `nav[cle]` valait `undefined`, et
+          rien ne se passait au clic. Une seule convention supprime la classe
+          entière de défaut, et les entrées de barre sont toutes des écrans
+          racines sans paramètre.
+
+          Le garde de modifications s'applique aussi, comme sur la sous-barre
+          de dossier : quitter un devis à moitié saisi doit prévenir. */}
       {RACINES.includes(route.ecran) && (
-        <BarreNav actif={route.ecran} aller={(cle) => nav[cle]()} modules={acces?.modules || []}
+        <BarreNav actif={route.ecran}
+                  aller={(cle) => naviguerAvecGarde(() =>
+                    setRoute({ ecran: cle, affaireId: null }))}
+                  modules={acces?.modules || []}
                   peutGererEquipe={peutGererEquipe} posture={postureCourante} />
       )}
       {SECTIONS_DOSSIER.some(([cle]) => cle === route.ecran) && route.affaireId && (
