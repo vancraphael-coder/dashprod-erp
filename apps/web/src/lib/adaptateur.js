@@ -3809,6 +3809,13 @@ export async function rituelDirection() {
       nb: Number(data?.non_couverts?.nb || 0),
       lignes: data?.non_couverts?.lignes || [],
     },
+    // Le volume distingue « rien à faire » de « rien du tout ». Sans lui,
+    // l'écran affiche un message de succès sur une société vide.
+    volume: {
+      dossiersActifs: Number(data?.volume?.dossiers_actifs || 0),
+      facturesEmises: Number(data?.volume?.factures_emises || 0),
+      missions14j: Number(data?.volume?.missions_14j || 0),
+    },
   };
 }
 
@@ -3826,6 +3833,10 @@ export async function rituelCoordination() {
       lignes: data?.sans_mission?.lignes || [],
     },
     couverts: Number(data?.couverts || 0),
+    volume: {
+      missions14j: Number(data?.volume?.missions_14j || 0),
+      dossiersActifs: Number(data?.volume?.dossiers_actifs || 0),
+    },
   };
 }
 
