@@ -48,6 +48,13 @@ export default function RituelDirection({ ouvrirDossier, versFacture, versPlanni
 
   const rienAFaire = d && d.aFacturer.nb === 0 && d.impayes.nb === 0
     && d.nonCouverts.nb === 0;
+  // ZÉRO A DEUX CAUSES OPPOSÉES. « Tout est réglé » est une bonne nouvelle ;
+  // « il n'y a rien » est un démarrage. Afficher le premier message dans le
+  // second cas est un mensonge, et ça se lit comme un bug : un patron qui sait
+  // qu'il a des chantiers la semaine prochaine et lit « tout est couvert »
+  // cesse de croire l'écran.
+  const demarrage = d && rienAFaire
+    && d.volume.dossiersActifs === 0 && d.volume.facturesEmises === 0;
 
   return (
     <div style={{ ...S.page, paddingBottom: 90 }}>
@@ -67,7 +74,22 @@ export default function RituelDirection({ ouvrirDossier, versFacture, versPlanni
         </div>
       )}
 
-      {rienAFaire && (
+      {demarrage && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
+            Rien à décider : il n'y a pas encore de dossier.
+          </div>
+          <div style={{ fontSize: 12.5, color: C.muet, marginTop: 5,
+                        lineHeight: 1.55 }}>
+            Cet écran se remplit tout seul au fur et à mesure. Il vous
+            montrera trois choses : les chantiers faits qu'il reste à
+            facturer, ce que vos clients vous doivent et depuis combien de
+            temps, et les chantiers des deux prochaines semaines sans équipe.
+          </div>
+        </div>
+      )}
+
+      {rienAFaire && !demarrage && (
         <div style={{ ...S.carte, background: C.teinteVerte,
                       border: `1px solid ${C.filetVert}` }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: C.encreVert }}>
@@ -75,8 +97,9 @@ export default function RituelDirection({ ouvrirDossier, versFacture, versPlanni
           </div>
           <div style={{ fontSize: 12.5, color: C.encreVert, marginTop: 5,
                         lineHeight: 1.5 }}>
-            C'est la journée où l'application a fait son travail. Vous pouvez
-            fermer.
+            {d.volume.missions14j > 0
+              ? `${d.volume.missions14j} chantier${d.volume.missions14j > 1 ? "s" : ""} dans les deux prochaines semaines, tous avec une équipe.`
+              : "Aucun chantier planifié dans les deux prochaines semaines."}
           </div>
         </div>
       )}
