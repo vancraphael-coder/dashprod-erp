@@ -242,10 +242,27 @@ const CSS_NAV = `
 // Les entrées de navigation, calculées UNE fois : la barre mobile (bas) et le
 // rail desktop (côté) disent exactement la même chose. Un module non ouvert par
 // l'abonnement n'apparaît pas — pas de porte fermée.
+// Chaque entrée de barre doit désigner un tracé qui EXISTE dans
+// `traceIcone` ET une classe qui existe dans `CSS_NAV`. Mes ajouts
+// (`ma_journee`, `mes_missions`) n'avaient ni l'un ni l'autre : les boutons
+// sortaient sans icône, et `terrain` — absent de cette table — retombait sur
+// l'icône « dossiers », déjà utilisée par une autre entrée de la même barre.
+// Deux boutons au même dessin, c'est un bouton qu'on ne trouve pas.
 const TRACE_NAV = { liste: "dossiers", planning: "planning", stockage: "stockage",
                     conversations: "messages", equipe: "ressources", compte: "compte",
-                    rituel_independant: "ma_journee",
-                    mes_missions: "mes_missions" };
+                    // Le chantier : le matériel, les cartons. C'est ce que
+                    // l'exécutant a sous les yeux.
+                    terrain: "materiel",
+                    // Le rituel du patron parle d'argent.
+                    rituel_direction: "facture",
+                    // Celui de la coordination parle de chantiers sans
+                    // personne dessus — d'où les ressources, et surtout PAS
+                    // « planning », déjà porté par l'entrée voisine de la même
+                    // barre.
+                    rituel_coordination: "ressources",
+                    // L'indépendant : sa journée, puis ses missions.
+                    rituel_independant: "fiche",
+                    mes_missions: "dossiers" };
 
 /**
  * La barre de navigation dépend de la POSTURE, pas seulement des modules.
@@ -287,11 +304,14 @@ function itemsNav({ modules = [], peutGererEquipe = false, posture = null } = {}
       conversations: ["mail", "Messages"],
       equipe: ["ressources", "Ressources"],
       compte: ["compte", "Compte"],
-      terrain: ["planning", "Mon chantier"],
+      terrain: ["planning", "Chantier"],
       rituel_independant: ["planning", "Ma journée"],
       mes_missions: ["dossiers", "Mes missions"],
       rituel_direction: ["compte", "Aujourd'hui"],
       rituel_coordination: ["planning", "Les trous"],
+      // Note : le second élément de ces paires n'est plus utilisé — l'icône
+      // vient de TRACE_NAV. Conservé pour ne pas changer la forme du tuple
+      // que `BarreNav` déstructure.
     };
     return declaree
       // On n'affiche pas « Ressources » à qui ne gère pas d'équipe, ni le
