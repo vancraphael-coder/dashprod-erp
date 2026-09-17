@@ -41,15 +41,20 @@ export default function RituelCoordination({ ouvrirDossier, versPlanning }) {
 
   if (!d && !erreur) return null;
   const rien = d && d.trous.nb === 0 && d.sansMission.nb === 0;
+  // Zéro trou sur zéro chantier n'est pas une couverture parfaite : c'est un
+  // agenda vide. Le dire autrement serait mentir, et se lirait comme un bug.
+  const demarrage = d && rien && d.volume.missions14j === 0;
 
   return (
     <div style={{ ...S.page, paddingBottom: 90 }}>
       <div style={S.entete}>
         <div style={S.titre}>Les trous</div>
         <div style={{ fontSize: 12, color: C.muet, marginTop: 2 }}>
-          {rien
-            ? "Les quatorze prochains jours sont couverts."
-            : "Ce qui n'est pas couvert dans les quatorze prochains jours."}
+          {!rien
+            ? "Ce qui n'est pas couvert dans les quatorze prochains jours."
+            : demarrage
+              ? "Aucun chantier planifié pour l'instant."
+              : "Les quatorze prochains jours sont couverts."}
         </div>
       </div>
 
@@ -60,7 +65,24 @@ export default function RituelCoordination({ ouvrirDossier, versPlanning }) {
         </div>
       )}
 
-      {rien && d && (
+      {demarrage && (
+        <div style={S.carte}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.encre }}>
+            Aucun chantier dans les deux prochaines semaines.
+          </div>
+          <div style={{ fontSize: 12.5, color: C.muet, marginTop: 5,
+                        lineHeight: 1.55 }}>
+            Cet écran montrera deux choses dès qu'il y aura de quoi : les
+            chantiers dont la date est posée mais sans équipe affectée, et les
+            dossiers confirmés pour lesquels aucune date n'a encore été posée —
+            ceux-là n'apparaissent sur aucun planning.
+            {d.volume.dossiersActifs > 0
+              && ` Vous avez ${d.volume.dossiersActifs} dossier${d.volume.dossiersActifs > 1 ? "s" : ""} en cours.`}
+          </div>
+        </div>
+      )}
+
+      {rien && !demarrage && d && (
         <div style={{ ...S.carte, background: C.teinteVerte,
                       border: `1px solid ${C.filetVert}` }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: C.encreVert }}>
