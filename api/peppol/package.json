@@ -1,0 +1,19 @@
+{
+  "name": "dashprod-erp",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "node --test packages/domaine/tests/*.test.js",
+    "lint": "echo \"(lint configuré au module frontend)\" && exit 0",
+    "build": "npm run build --workspace @dashprod/web",
+    "garde:depot": "node outils/garde-depot.mjs",
+    "garde:poids": "node outils/garde-poids.mjs --plafond=220",
+    "verifier": "npm run garde:depot && npm test && npm run build && npm run garde:poids && npm run pilotage:verifier",
+    "pilotage": "node outils/pilotage.mjs",
+    "pilotage:verifier": "node outils/pilotage.mjs --verifier"
+  }
+}
