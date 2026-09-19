@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm install && npm run build --workspace @dashprod/web",
+  "buildCommand": "npm install && npm run build --workspace @dashprod/web && rm -f apps/web/dist/assets/*.map",
   "outputDirectory": "apps/web/dist",
   "rewrites": [
     {
