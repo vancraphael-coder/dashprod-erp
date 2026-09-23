@@ -82,12 +82,15 @@ insert into missions (org_id, affaire_id, type, date, heure, etat)
 select a.org_id, a.id, 'demenagement', a.date_souhaitee,
        coalesce(a.heure_souhaitee, '08:00'::time), 'planifiee'
   from affaires a
-<<<<<<< HEAD
- where a.etat in ('confirme', 'effectue', 'facture', 'paye')
+-- MARQUEURS DE CONFLIT RÉSOLUS le 2026-09-19. Le fichier était livré avec un
+-- conflit de fusion non résolu : il ne pouvait donc être appliqué NULLE PART,
+-- pas même en production. Les deux versions ne différaient que par la liste
+-- des états à rattraper. La liste LARGE est retenue : le but de ce rattrapage
+-- est de donner une mission à toute affaire ayant dépassé la confirmation, et
+-- 'planifie', 'en_cours' et 'clos' en font partie. Les douze valeurs de
+-- `etat_affaire` (0005) les acceptent toutes, et le `not exists` ci-dessous
+-- rend l'opération sans effet sur une affaire déjà pourvue.
+ where a.etat in ('confirme', 'planifie', 'en_cours', 'effectue', 'facture',
+                  'paye', 'clos')
    and not exists (select 1 from missions m
                     where m.affaire_id = a.id and m.type = 'demenagement');
-=======
- where a.etat in ('confirme', 'planifie', 'en_cours', 'effectue', 'facture', 'paye', 'clos')
-   and not exists (select 1 from missions m
-                    where m.affaire_id = a.id and m.type = 'demenagement');
->>>>>>> 1302b51 (sql 20 et 21 orga)
