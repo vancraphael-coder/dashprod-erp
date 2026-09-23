@@ -1,0 +1,7 @@
+{
+  "commentaire": "Nombre de migrations qui s'appliquent sur une base vierge. La CI échoue si ce nombre baisse. Il monte à chaque réparation ; il n'atteindra le total qu'une fois le socle reconstruit depuis la production (63 migrations sont des stubs sans SQL).",
+  "migrations_qui_passent": 149,
+  "total_fichiers": 207,
+  "arret_sur": "0144_equipe_vehicules.sql",
+  "pose_le": "2026-09-19"
+}
