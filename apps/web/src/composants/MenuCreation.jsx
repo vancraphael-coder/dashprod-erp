@@ -78,7 +78,8 @@ export default function MenuCreation({ ouvert, basculer, choisir, modules = null
 
       {ouvert && (
         <div role="menu" aria-label="Que voulez-vous créer ?" style={{
-          position: "fixed", right: 18, bottom: 152, zIndex: 41,
+          position: "fixed", right: "var(--dp-marge-droite)",
+          bottom: "calc(var(--dp-barre) + 84px)", zIndex: 41,
           width: "min(344px, calc(100vw - 36px))",
           display: "flex", flexDirection: "column", gap: 9,
         }}>
