@@ -6,7 +6,7 @@
 # Logistique mobilier — le parcours réel
 
 État : généré
-Dernière revue : 2026-09-23
+Dernière revue : 2026-09-24
 
 > Arrivages, quais, zones : le débit sous contrôle.
 
