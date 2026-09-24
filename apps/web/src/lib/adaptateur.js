@@ -1926,6 +1926,32 @@ export function refPrixDepuis(parametres) {
            ...(Object.keys(tarifs).length ? { tarifs } : {}) };
 }
 
+// =============================================================================
+// ÉTAPES DE LA JOURNÉE (0204) — le chef avance, le bureau voit la jauge.
+// Les séquences vivent dans le domaine (operations/etapes-journee.js).
+// =============================================================================
+
+/** L'étape atteinte par mission : { [missionId]: { etape, rang, maj_le } }. */
+export async function etapesMissions(ids) {
+  if (modeDonnees() !== "reel" || !ids?.length) return {};
+  const { data, error } = await supabase.from("mission_etapes")
+    .select("mission_id, etape, rang, maj_le").in("mission_id", ids);
+  if (error) throw new Error(error.message);
+  return Object.fromEntries((data || []).map((r) => [r.mission_id, r]));
+}
+
+/**
+ * Un pas en avant ou en arrière. `rangVu` est le rang affiché : si un autre
+ * chef l'a changé entre-temps, rien ne bouge et { conflit: true } revient.
+ */
+export async function etapeDeplacer(missionId, rangVu, rang, etape) {
+  const { data, error } = await supabase.rpc("cmd_etape_deplacer", {
+    p_mission: missionId, p_rang_vu: rangVu, p_rang: rang, p_etape: etape,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 /** Ajoute une pause déclarée (début et fin fournis). */
 export async function pauseAjouter(missionId, debut, fin) {
   const { data, error } = await supabase.rpc("cmd_pause_ajouter", {
