@@ -41,7 +41,20 @@
         sur la droite. La cause est corrigée à la source (les grilles utilisent
         `minmax(min(Npx, 100%), 1fr)`), ces règles sont la ceinture de sécurité.
       */
-      html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+      /*
+        `overflow-x: hidden` sur html ET body faisait de <body> un conteneur de
+        défilement sur Safari iOS : la page ne défilait plus dans la fenêtre
+        mais dans body. Conséquence directe sur la barre du bas, pourtant en
+        `position: fixed` — elle sautait au repli de la barre d'adresse,
+        disparaissait pendant le rebond, et le point touché ne correspondait
+        plus toujours à l'onglet vu. `clip` coupe le débordement SANS créer de
+        conteneur de défilement. Repli `hidden` sur body seul pour les
+        navigateurs d'avant 2022.
+      */
+      html, body { width: 100%; max-width: 100%; overflow-x: clip; }
+      @supports not (overflow: clip) { body { overflow-x: hidden; } }
+      /* Pas de rebond élastique vertical : c'est lui qui entraînait la barre. */
+      html, body { overscroll-behavior-y: none; }
       img, svg, video, canvas { max-width: 100%; height: auto; }
       html, body { margin: 0; background: #F1F5FB; }
       /* iOS zoome les champs sous 16px : on impose 16 pour éviter le saut. */
