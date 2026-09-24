@@ -461,7 +461,11 @@ if (VERIFIER) {
   for (const [chemin, contenu] of generes) {
     const actuel = existsSync(chemin) ? readFileSync(chemin, "utf8") : null;
     // La date de régénération change chaque jour : on compare le fond, pas elle.
-    const sansDate = (t) => t.replace(/^(Dernière (revue|régénération)) : .*$/gm, "$1 : —");
+    // Les dates changent chaque jour, y compris dans les tableaux de suivi :
+    // on compare le FOND, pas le jour où le fichier a été régénéré.
+    const sansDate = (t) => t
+      .replace(/^(Dernière (revue|régénération)) : .*$/gm, "$1 : —")
+      .replace(/\d{4}-\d{2}-\d{2}/g, "—");
     if (actuel === null) perimes.push([chemin, "absent"]);
     else if (sansDate(actuel) !== sansDate(contenu)) perimes.push([chemin, "périmé"]);
   }
