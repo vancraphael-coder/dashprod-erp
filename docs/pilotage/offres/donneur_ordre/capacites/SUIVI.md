@@ -2,7 +2,7 @@
 
 # Donneur d'ordre · capacites — suivi
 
-Dernière régénération : 2026-09-23
+Dernière régénération : 2026-09-24
 
 > Ce que l'offre ouvre réellement — modules, parcours.
 
@@ -11,8 +11,8 @@ Dernière régénération : 2026-09-23
 
 | Fichier | État | Dernière revue |
 |---|---|---|
-| [`modules.md`](modules.md) | ⚙️ généré | 2026-09-23 |
-| [`parcours.md`](parcours.md) | ⚙️ généré | 2026-09-23 |
+| [`modules.md`](modules.md) | ⚙️ généré | 2026-09-24 |
+| [`parcours.md`](parcours.md) | ⚙️ généré | 2026-09-24 |
 
 ---
 

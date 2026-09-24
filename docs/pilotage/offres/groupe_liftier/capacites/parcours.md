@@ -6,7 +6,7 @@
 # Groupe liftier — le parcours réel
 
 État : généré
-Dernière revue : 2026-09-23
+Dernière revue : 2026-09-24
 
 > Votre flotte, vos couronnes, vos équipes — au même endroit.
 

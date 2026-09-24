@@ -2,7 +2,7 @@
 
 # Garde-meubles · usages-reels — suivi
 
-Dernière régénération : 2026-09-23
+Dernière régénération : 2026-09-24
 
 > Qui fait quoi chez un client, cas terrain observés.
 

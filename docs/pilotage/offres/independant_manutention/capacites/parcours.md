@@ -6,7 +6,7 @@
 # Indépendant manutention — le parcours réel
 
 État : généré
-Dernière revue : 2026-09-23
+Dernière revue : 2026-09-24
 
 > Être trouvé, planifié, prouvé, payé — sans relancer personne.
 

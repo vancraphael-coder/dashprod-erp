@@ -6,7 +6,7 @@
 # Donneur d'ordre — le parcours réel
 
 État : généré
-Dernière revue : 2026-09-23
+Dernière revue : 2026-09-24
 
 > Envoyer une mission, la suivre, en garder la preuve.
 
