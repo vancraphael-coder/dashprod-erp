@@ -1862,6 +1862,70 @@ export async function pointageDefinir(missionId, { depart, arrivee } = {}) {
   return data;
 }
 
+// =============================================================================
+// DÉCOMPTE DE FIN DE CHANTIER (0202) — chef d'équipe → bureau → client.
+// Le calcul se fait dans le domaine (operations/decompte-chantier.js) ; la base
+// garde ce qui a été validé, par qui, et fait respecter l'ordre des étapes.
+// Mode démo : aucun décompte (la carte ne s'affiche pas).
+// =============================================================================
+
+async function rpcDecompte(nom, params, messageRefus) {
+  const { data, error } = await supabase.rpc(nom, params);
+  if (error) throw new Error(error.message);
+  if (data && data.ok === false) throw new Error(data.message || messageRefus);
+  return data;
+}
+
+/** Tout ce qu'il faut au chef pour calculer, pour UNE mission. */
+export async function decompteContexte(missionId) {
+  if (modeDonnees() !== "reel") return null;
+  return rpcDecompte("cmd_decompte_contexte", { p_mission: missionId });
+}
+
+/** Les décomptes des missions d'un dossier, côté bureau. */
+export async function decomptesAffaire(affaireId) {
+  if (modeDonnees() !== "reel") return [];
+  return (await rpcDecompte("cmd_decomptes_affaire", { p_affaire: affaireId })) || [];
+}
+
+/** 1 · Le chef d'équipe valide les heures et le montant qu'il a sous les yeux. */
+export async function decompteValiderChef(missionId, d) {
+  return rpcDecompte("cmd_decompte_valider_chef", {
+    p_mission: missionId, p_moment: d.moment,
+    p_calcule_le: new Date(d.calculeLe || Date.now()).toISOString(),
+    p_lignes: d.lignes || {}, p_heures: d.heures,
+    p_htva_centimes: d.htvaCentimes, p_tvac_centimes: d.tvacCentimes,
+  }, "Validation refusée.");
+}
+
+/** 2 · Validation finale du bureau. */
+export async function decompteValiderBureau(missionId, d) {
+  return rpcDecompte("cmd_decompte_valider_bureau", {
+    p_mission: missionId, p_heures: d.heures,
+    p_htva_centimes: d.htvaCentimes, p_tvac_centimes: d.tvacCentimes,
+    p_note: d.note || null,
+  }, "Validation refusée.");
+}
+
+/** 3 · Le montant a été annoncé au client par téléphone. */
+export async function decompteCommunique(missionId) {
+  return rpcDecompte("cmd_decompte_communique", { p_mission: missionId }, "Refusé.");
+}
+
+/** Rendre la main au chef (erreur, contestation). */
+export async function decompteRouvrir(missionId) {
+  return rpcDecompte("cmd_decompte_rouvrir", { p_mission: missionId }, "Refusé.");
+}
+
+/** Barème et tarifs au format attendu par le moteur (clés numériques). */
+export function refPrixDepuis(parametres) {
+  const bareme = {}, tarifs = {};
+  Object.entries(parametres?.bareme_horaire || {}).forEach(([k, v]) => { bareme[Number(k)] = Number(v); });
+  Object.entries(parametres?.tarifs || {}).forEach(([k, v]) => { tarifs[k] = Number(v); });
+  return { ...(Object.keys(bareme).length ? { bareme } : {}),
+           ...(Object.keys(tarifs).length ? { tarifs } : {}) };
+}
+
 /** Ajoute une pause déclarée (début et fin fournis). */
 export async function pauseAjouter(missionId, debut, fin) {
   const { data, error } = await supabase.rpc("cmd_pause_ajouter", {
