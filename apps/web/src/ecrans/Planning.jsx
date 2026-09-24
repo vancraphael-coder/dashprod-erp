@@ -24,6 +24,7 @@ import { qualifierJour } from "@domaine/planning/jours-feries.js";
 import { hhmm, resumeHoraires, verifierHoraires, HEURE_DEFAUT }
   from "@domaine/operations/horaires.js";
 import { NoteRapideJour, EquipesDuJour } from "../composants/PlanningJour.jsx";
+import EtapesMission, { useEtapesMissions } from "../composants/JaugeEtapes.jsx";
 import { C, S, Confirmation, couleurPlanning, couleurMission } from "../lib/theme.jsx";
 import { lireFiltre, ecrireFiltre, basculerMasque } from "../lib/preferences-planning.js";
 
@@ -122,6 +123,12 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
   // même si l'on masque son type — ils ne font que taire ce qu'on ne veut pas
   // voir aujourd'hui.
   const duJourComplet = useMemo(() => missionsDuJour(missionsCentre, jourSel), [missionsCentre, jourSel]);
+  // Les étapes des missions de la journée affichée, relues toutes les 15 s :
+  // le bureau voit l'équipe avancer sans recharger.
+  const caps = profil?.capacites || [];
+  const [etapesJour, rechargerEtapes] = useEtapesMissions(
+    useMemo(() => duJourComplet.map((m) => m.id), [duJourComplet]));
+
   const duJour = useMemo(
     () => filtrerMissions(duJourComplet, { typesMasques, membresMasques }),
     [duJourComplet, typesMasques, membresMasques]);
@@ -538,6 +545,14 @@ export default function Planning({ ouvrirDossier, lectureSeule = false, jourInit
                 </button>
               )}
             </div>
+            {/* ÉTAPES DE LA JOURNÉE — KPI rapide. Les commandes s'affichent pour
+                le chef d'équipe affecté, et pour le bureau qui corrige au
+                téléphone ; jamais dans l'espace client. */}
+            <EtapesMission mission={m} etat={etapesJour[m.id] || null}
+              couleur={couleurMission(m.type)} compact onChange={rechargerEtapes}
+              peutPiloter={!lectureSeule && (caps.includes("gerer_planning")
+                || (caps.includes("cloturer_chantier")
+                    && affectes.includes(profil?.utilisateur_id)))} />
 
             {affectes.length === 0 && !ouvertIci && (
               <div style={{ marginTop: 8, fontSize: 11.5, color: C.ambre, fontWeight: 600 }}>

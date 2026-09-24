@@ -22,6 +22,8 @@ import { resumeHoraires } from "@domaine/operations/horaires.js";
 import { libelleTypeMission } from "@domaine/operations/missions.js";
 import RapportChantier from "./RapportChantier.jsx";
 import DecompteChef from "../composants/DecompteChef.jsx";
+import EtapesMission, { useEtapesMissions } from "../composants/JaugeEtapes.jsx";
+import { momentDecompteSuggere } from "@domaine/operations/etapes-journee.js";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlVersAdresse } from "@domaine/communication/brief.js";
 import { C, S, Confirmation, couleurMission } from "../lib/theme.jsx";
@@ -56,6 +58,11 @@ export default function Terrain({ profil, versConsult }) {
     setChargement(false);
   }
   useEffect(() => { recharger(); }, [profil?.utilisateur_id]);
+
+  // L'étape de chaque mission, relue toutes les 15 s : un second chef sur la
+  // même équipe voit la jauge bouger sans recharger.
+  const idsMissions = useMemo(() => missions.map((m) => m.id), [missions]);
+  const [etapes, rechargerEtapes] = useEtapesMissions(idsMissions);
 
   const triees = useMemo(() => {
     const auj = aujourdhui();
@@ -112,6 +119,7 @@ export default function Terrain({ profil, versConsult }) {
 
       {triees.map((m) => (
         <Chantier org={org} key={m.id} mission={m} profil={profil}
+                  etape={etapes[m.id] || null} onEtape={rechargerEtapes}
                   ouvert={ouvert === m.id}
                   onToggle={() => setOuvert(ouvert === m.id ? null : m.id)}
                   onChrono={recharger} versConsult={versConsult} />
@@ -120,7 +128,8 @@ export default function Terrain({ profil, versConsult }) {
   );
 }
 
-function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsult }) {
+function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsult,
+                    etape, onEtape }) {
   // Clôturer arrête le décompte de toute l'équipe : geste du chef d'équipe.
   const caps = profil?.capacites || [];
   const peutCloturer = caps.includes("cloturer_chantier")
@@ -240,6 +249,16 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
           {dateLongue(mission.date)}{mission.heure ? ` · ${(mission.heure || "").slice(0, 5)}` : ""}
         </div>
       </div>
+
+      {/* ÉTAPES DE LA JOURNÉE — la jauge (KPI rapide) et, pour le chef
+          d'équipe, les deux commandes avancer / reculer. Visible carte fermée :
+          on avance d'un pouce sans ouvrir le chantier. Seulement le jour même
+          (ou si l'équipe a déjà commencé) : une mission de mardi prochain n'a
+          pas d'étape. */}
+      {(estAujourdhui || (etape?.rang || 0) > 0) && (
+        <EtapesMission mission={mission} etat={etape} couleur={couleurMission(mission.type)}
+                       peutPiloter={peutCloturer} compact={!ouvert} onChange={onEtape} />
+      )}
 
       {ouvert && (
         <div style={{ marginTop: 12 }}>
@@ -382,7 +401,8 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
               à qui clôture : c'est le geste du chef d'équipe. Une visite ne se
               facture pas à l'heure. */}
           {depart && peutCloturer && mission.type !== "visite" && (
-            <DecompteChef missionId={mission.id} />
+            <DecompteChef missionId={mission.id}
+                          momentSuggere={momentDecompteSuggere(etape?.etape)} />
           )}
 
           {depart && (
