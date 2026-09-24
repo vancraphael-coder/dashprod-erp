@@ -187,17 +187,22 @@ function traceIcone(nom) {
 const CSS_NAV = `
 .dpnav { --draw: 2.1s; --move: 1.6s; --bounce: cubic-bezier(0.34,1.56,0.64,1);
          --smooth: cubic-bezier(0.4,0,0.2,1); }
-.dpnav-item { position: relative; flex: 1; display: flex; justify-content: center;
-  align-items: center; background: transparent; border: none; cursor: pointer;
+/* LES DEUX CALQUES (repos / actif) OCCUPENT LA MÊME CELLULE DE GRILLE.
+   Avant, le calque actif était posé en absolu à 9 px du haut pendant que le
+   calque de repos était centré : dès que la hauteur de la barre a été fixée,
+   les deux ont divergé (3 px, 7 px sur la barre dense) et l'animation se
+   dessinait à côté de l'icône. Superposés dans une seule cellule, ils ne
+   peuvent plus se séparer, quelle que soit la hauteur. */
+.dpnav-item { position: relative; flex: 1; display: grid; place-items: center;
+  background: transparent; border: none; cursor: pointer;
   outline: none; user-select: none; -webkit-tap-highlight-color: transparent;
   transition: transform .5s var(--smooth); padding: 9px 4px 7px; }
 .dpnav-item:active { transform: scale(0.92); }
-.dpnav-content { display: flex; flex-direction: column; align-items: center; gap: 4px;
+.dpnav-content { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
   font-size: 10px; font-weight: 700; letter-spacing: .2px; }
 .dpnav-content.default { color: var(--nav-off); }
 .dpnav-content.default svg { stroke: var(--nav-off); fill: none; }
-.dpnav-content.colored { position: absolute; top: 9px; left: 50%; transform: translateX(-50%);
-  color: var(--nav-on); white-space: nowrap; opacity: 0; pointer-events: none;
+.dpnav-content.colored { color: var(--nav-on); white-space: nowrap; opacity: 0; pointer-events: none;
   transition: opacity .5s ease; }
 .dpnav-content.colored svg { stroke: var(--nav-on); fill: none; }
 .dpnav-content.colored svg * { stroke-dasharray: 1; stroke-dashoffset: 1;
@@ -233,7 +238,6 @@ const CSS_NAV = `
 .dpnav-dense .dpnav-item { flex: 1 0 62px; padding: 8px 2px 6px; }
 .dpnav-dense svg { width: 19px; height: 19px; }
 .dpnav-dense .dpnav-content { font-size: 9.5px; gap: 2px; }
-.dpnav-dense .dpnav-content.colored { top: 8px; }
 @media (prefers-reduced-motion: reduce) {
   .dpnav-content.colored svg *, .dpnav-content.colored span { transition: none; }
   .dpnav-item.active svg { animation: none !important; }
