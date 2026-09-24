@@ -343,12 +343,9 @@ function BarreNav({ actif, aller, peutGererEquipe, modules = [], posture = null 
         <SelecteurRotatif onglets={rotatif} actif={actif} aller={aller} />
       </div>
       <style>{CSS_NAV}</style>
-      <nav className="dpnav" aria-label="Navigation principale" style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+      <nav className="dpnav dp-barre" aria-label="Navigation principale" style={{
         display: "flex", justifyContent: "space-between",
         background: C.blanc, borderTop: `1px solid ${C.bord}`,
-        maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto",
-        paddingBottom: "env(safe-area-inset-bottom)",
         borderRadius: "22px 22px 0 0",
         boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
         "--nav-on": C.bleu, "--nav-off": C.muet,
@@ -476,11 +473,9 @@ function AppTerrain({ profil }) {
 
         {/* Sous-navigation du parcours */}
         <style>{CSS_NAV}</style>
-        <nav className="dpnav dpnav-dense" aria-label="Sections du dossier" style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+        <nav className="dpnav dpnav-dense dp-barre" aria-label="Sections du dossier" style={{
           display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
-          maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto", overflowX: "auto",
-          paddingBottom: "env(safe-area-inset-bottom)",
+          overflowX: "auto",
           borderRadius: "22px 22px 0 0",
           boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
           "--nav-on": C.bleu, "--nav-off": C.muet,
@@ -536,11 +531,8 @@ function AppTerrain({ profil }) {
                         .map(([cle, icone, lib]) => ({ cle, icone, label: lib }))}
           actif={ecran} aller={setEcran} />
       </div>
-      <div style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+      <nav className="dp-barre" aria-label="Navigation terrain" style={{
         display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
-        maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto",
-        paddingBottom: "env(safe-area-inset-bottom)",
       }}>
         {items.map(([cle, icone, lib]) => {
           const estActif = ecran === cle;
@@ -557,7 +549,7 @@ function AppTerrain({ profil }) {
             </button>
           );
         })}
-      </div>
+      </nav>
     </div>
   );
 }
@@ -607,11 +599,9 @@ function SousNavDossier({ actif, aller, nature }) {
   return (
     <>
       <style>{CSS_NAV}</style>
-      <nav className="dpnav dpnav-dense" aria-label="Sections du dossier" style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 10,
+      <nav className="dpnav dpnav-dense dp-barre" aria-label="Sections du dossier" style={{
         display: "flex", background: C.blanc, borderTop: `1px solid ${C.bord}`,
-        maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto", overflowX: "auto",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        overflowX: "auto",
         borderRadius: "22px 22px 0 0",
         boxShadow: "0 -10px 25px -8px rgba(8,12,26,.12)",
         "--nav-on": C.bleu, "--nav-off": C.muet,
@@ -1193,7 +1183,7 @@ function ChoixSociete({ societes }) {
   const [erreur, setErreur] = React.useState(null);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F1F5FB", display: "flex",
+    <div style={{ minHeight: "var(--dp-vh, 100vh)", background: "#F1F5FB", display: "flex",
                   alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div style={{ width: "100%", maxWidth: 420, background: "#fff",
                     borderRadius: 16, padding: 24,
