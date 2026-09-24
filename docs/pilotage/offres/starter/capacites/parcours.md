@@ -6,7 +6,7 @@
 # Basique — le parcours réel
 
 État : généré
-Dernière revue : 2026-09-17
+Dernière revue : 2026-09-23
 
 > Sortir du papier sans changer de métier.
 

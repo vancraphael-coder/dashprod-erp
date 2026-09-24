@@ -6,7 +6,7 @@
 # Regular — capacités ouvertes
 
 État : généré
-Dernière revue : 2026-09-17
+Dernière revue : 2026-09-23
 
 16 module(s) ouvert(s) — dont 8 du socle et 8 propre(s) à l'offre.
 

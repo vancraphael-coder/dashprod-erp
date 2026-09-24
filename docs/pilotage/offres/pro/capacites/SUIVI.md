@@ -2,7 +2,7 @@
 
 # Pro · capacites — suivi
 
-Dernière régénération : 2026-09-17
+Dernière régénération : 2026-09-23
 
 > Ce que l'offre ouvre réellement — modules, parcours.
 
@@ -11,8 +11,8 @@ Dernière régénération : 2026-09-17
 
 | Fichier | État | Dernière revue |
 |---|---|---|
-| [`modules.md`](modules.md) | ⚙️ généré | 2026-09-17 |
-| [`parcours.md`](parcours.md) | ⚙️ généré | 2026-09-17 |
+| [`modules.md`](modules.md) | ⚙️ généré | 2026-09-23 |
+| [`parcours.md`](parcours.md) | ⚙️ généré | 2026-09-23 |
 
 ---
 

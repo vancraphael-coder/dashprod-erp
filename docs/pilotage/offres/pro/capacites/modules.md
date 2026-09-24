@@ -6,7 +6,7 @@
 # Pro — capacités ouvertes
 
 État : généré
-Dernière revue : 2026-09-17
+Dernière revue : 2026-09-23
 
 19 module(s) ouvert(s) — dont 8 du socle et 11 propre(s) à l'offre.
 
