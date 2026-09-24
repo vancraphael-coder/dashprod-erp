@@ -12,8 +12,10 @@
     "build": "npm run build --workspace @dashprod/web",
     "garde:depot": "node outils/garde-depot.mjs",
     "garde:poids": "node outils/garde-poids.mjs --plafond=220",
-    "verifier": "npm run garde:depot && npm test && npm run build && npm run garde:poids && npm run pilotage:verifier",
+    "verifier": "npm run garde:depot && npm run garde:migrations && npm test && npm run build && npm run garde:poids && npm run pilotage:verifier",
     "pilotage": "node outils/pilotage.mjs",
-    "pilotage:verifier": "node outils/pilotage.mjs --verifier"
+    "pilotage:verifier": "node outils/pilotage.mjs --verifier",
+    "garde:migrations": "node outils/garde-migrations.mjs",
+    "rejeu": "node outils/rejeu-migrations.mjs"
   }
 }
