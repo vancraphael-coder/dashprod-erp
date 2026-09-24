@@ -132,7 +132,8 @@ if (typeof document !== "undefined" && !document.getElementById("champs-dashprod
        la barre d'onglets du bas reste la commande — le sélecteur est un
        repère de confort sur grand écran, pas une béquille. */
     .selecteur-rotatif-cadre {
-      position: fixed; right: 18px; bottom: 74px; z-index: 40;
+      position: fixed; right: var(--dp-marge-droite);
+      bottom: calc(var(--dp-barre) + 14px); z-index: 40;
       padding: 6px; border-radius: 50%;
       background: radial-gradient(120% 120% at 50% 0%, rgba(16,28,54,.92), rgba(8,12,22,.94));
       border: 1px solid rgba(255,255,255,.07);
@@ -161,10 +162,76 @@ if (typeof document !== "undefined" && !document.getElementById("champs-dashprod
        illisible. La transition rend le redimensionnement fluide, pas saccadé.
        Les barres fixes (bas, sections) suivent la même largeur, centrées. */
     :root { --dp-largeur: 520px; }
-    @media (min-width: 760px)  { :root { --dp-largeur: 600px; } }
-    @media (min-width: 1024px) { :root { --dp-largeur: 720px; } }
-    @media (min-width: 1440px) { :root { --dp-largeur: 820px; } }
-    .dpnav, .selecteur-rotatif-cadre { }  /* alignés via leur propre maxWidth */
+    @media (min-width: 640px)  { :root { --dp-largeur: 560px; } }   /* sm  */
+    @media (min-width: 768px)  { :root { --dp-largeur: 620px; } }   /* md  */
+    @media (min-width: 1024px) { :root { --dp-largeur: 720px; } }   /* lg  */
+    @media (min-width: 1280px) { :root { --dp-largeur: 780px; } }   /* xl  */
+    @media (min-width: 1536px) { :root { --dp-largeur: 860px; } }   /* 2xl */
+
+    /* ─────────────────────────────────────────────────────────────────────
+       LA BARRE DU BAS — une géométrie, une seule source.
+
+       LE DÉFAUT. Quatre barres fixes (principale, sections de dossier ×2,
+       terrain) recopiaient chacune leur position en ligne, et les éléments
+       posés au-dessus d'elles (bouton +, menu de création, sélecteur rotatif)
+       codaient leur distance en pixels bruts : 84, 152, 74. Or la barre mesure
+       ~58 px PLUS la zone du geste d'accueil de l'iPhone (~34 px). Sur un
+       iPhone, le bouton + (bottom 84) empiétait donc sur le haut de la barre :
+       un doigt visant un onglet touchait le bouton. Et la barre, à z-index 10,
+       passait SOUS tout élément de l'écran empilé plus haut.
+
+       LA RÈGLE. La hauteur de la barre est une variable : --dp-barre. Tout ce
+       qui se pose au-dessus s'y réfère, rien ne la devine. Elle est FIXE en
+       hauteur (le libellé animé ne peut plus la faire respirer) et vit sur sa
+       propre couche de composition : elle ne tremble plus au défilement.
+
+       LES COUCHES, du bas vers le haut — toute nouvelle couche s'y range :
+         contenu 0–5 · en-têtes collants 20 · barre 30 · flottants 42
+         voiles 40–41 · balise 45 · modales et chargement 60 · zoom photo 1000 */
+    :root {
+      --dp-barre-h: 60px;
+      --dp-barre: calc(var(--dp-barre-h) + env(safe-area-inset-bottom, 0px));
+      /* Distance d'un élément flottant au bord droit de la COLONNE, pas de
+         l'écran : sur ordinateur, le bouton + reste à portée du contenu au
+         lieu de partir au bout d'un moniteur de 2 mètres. */
+      --dp-marge-droite: max(18px, calc((100vw - var(--dp-largeur)) / 2 + 18px));
+      --dp-vh: 100vh;
+    }
+    @supports (height: 100dvh) { :root { --dp-vh: 100dvh; } }
+    @media (max-width: 359.98px) { :root { --dp-barre-h: 56px; } }     /* xs  */
+
+    .dp-barre {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+      margin: 0 auto; max-width: var(--dp-largeur);
+      height: var(--dp-barre); box-sizing: border-box;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      align-items: stretch;
+      /* Sa propre couche : le défilement, le rebond iOS et le repli de la
+         barre d'adresse ne la font plus sauter. */
+      transform: translateZ(0); -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      /* Un geste qui commence sur la barre ne fait pas défiler la page. */
+      touch-action: manipulation; overscroll-behavior: contain;
+    }
+    .dp-barre > button { min-height: 44px;          /* cible tactile Apple */
+      /* Sans min-width: 0, un onglet ne rétrécit jamais sous la largeur de son
+         libellé : six onglets à libellé long faisaient 547 px sur un écran de
+         375 — les deux derniers sortaient de l'écran, intouchables. */
+      min-width: 0; }
+    .dpnav .dpnav-content { max-width: 100%; min-width: 0; }
+
+    /* xs : iPhone SE 1re génération, petits Android. Six onglets à 53 px :
+       icône et libellé se resserrent, le libellé s'abrège plutôt que de
+       déborder sur le voisin. */
+    @media (max-width: 359.98px) {
+      .dpnav .dpnav-item { padding: 7px 1px 5px; }
+      .dpnav svg { width: 20px; height: 20px; }
+      .dpnav .dpnav-content { font-size: 9px; gap: 3px; }
+    }
+    .dpnav .dpnav-content > span {
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     /* ─────────────────────────────────────────────────────────────────────
        LES LISTES DE RÉGLAGES (Compte, Paramètres).
@@ -311,12 +378,14 @@ export function euros(centimes) {
 
 /** Styles de base réutilisés par tous les écrans. */
 export const S = {
-  page: { minHeight: "100vh", background: fondPage(APP, C), fontFamily: FS,
+  page: { minHeight: "var(--dp-vh, 100vh)", background: fondPage(APP, C), fontFamily: FS,
           // La colonne épouse l'écran : 520 par défaut (mobile inchangé), mais
           // la variable --dp-largeur l'élargit modérément sur grand écran, en
           // gardant une largeur de LECTURE (un texte plein écran est illisible).
           maxWidth: "var(--dp-largeur, 520px)", margin: "0 auto",
-          paddingBottom: 96, color: C.encre },
+          // Le dernier élément de la page doit rester au-dessus de la barre,
+          // zone du geste d'accueil comprise — jamais dessous.
+          paddingBottom: "calc(var(--dp-barre) + 36px)", color: C.encre },
   entete: { position: "sticky", top: 0, zIndex: 5,
             background: APP.mode === "nuit" ? "rgba(7,11,24,.88)" : "rgba(244,247,254,.92)",
             backdropFilter: "blur(8px)", padding: "16px 16px 10px",
@@ -366,7 +435,8 @@ export const S = {
                  fontFamily: FS },
   boutonLien: { background: "none", border: "none", color: C.bleu, fontSize: 13,
                 fontWeight: 600, cursor: "pointer", padding: 6, fontFamily: FS },
-  flottant: { position: "fixed", right: 18, bottom: 84, width: 56, height: 56,
+  flottant: { position: "fixed", right: "var(--dp-marge-droite)",
+              bottom: "calc(var(--dp-barre) + 16px)", width: 56, height: 56,
               borderRadius: 16, border: "none",
               background: `linear-gradient(135deg, ${C.bleu}, ${C.bleuFonce})`,
               color: "#fff", fontSize: 26, fontWeight: 700, cursor: "pointer",
