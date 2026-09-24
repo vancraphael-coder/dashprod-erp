@@ -24,6 +24,7 @@ import { libelleTva, tauxTva } from "@domaine/organisation/identite.js";
 import { lignesMainOeuvre, coutMainOeuvre, mentionLignesRetirees, TON_HISTORIQUE }
   from "@domaine/rh/main-oeuvre.js";
 import { calculDefinitif, euroCentimes } from "@domaine/pilotage/calcul-definitif.js";
+import DecompteBureau from "../composants/DecompteBureau.jsx";
 import { valoriserVenteEmballage } from "@domaine/stocks/emballage.js";
 import { catalogue as catalogueDom } from "@domaine/stocks/catalogues.js";
 import { coutInterne, effetSurCalcul, MOTIFS_INTERNES }
@@ -722,6 +723,11 @@ function CalculDefinitif({ affaireId, affaire, coutsReels, equipe, heuresMO, fou
 
   return (
     <div>
+      {/* DÉCOMPTE DE FIN DE CHANTIER — la proposition du chef d'équipe, la
+          validation finale, l'annonce au client. En tête : c'est ce que le
+          bureau regarde pendant que le chef est au téléphone. */}
+      <DecompteBureau affaireId={affaireId} />
+
       {/* Les trois colonnes */}
       <div style={S.carte}>
         <div style={{ fontSize: 13, fontWeight: 800, color: C.encre, marginBottom: 10 }}>

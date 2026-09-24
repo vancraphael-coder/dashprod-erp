@@ -21,6 +21,7 @@ import {
 import { resumeHoraires } from "@domaine/operations/horaires.js";
 import { libelleTypeMission } from "@domaine/operations/missions.js";
 import RapportChantier from "./RapportChantier.jsx";
+import DecompteChef from "../composants/DecompteChef.jsx";
 import { listerConges, obtenirOrganisation } from "../lib/adaptateur.js";
 import { urlVersAdresse } from "@domaine/communication/brief.js";
 import { C, S, Confirmation, couleurMission } from "../lib/theme.jsx";
@@ -375,6 +376,15 @@ function Chantier({ mission, profil, org, ouvert, onToggle, onChrono, versConsul
               le départ déclaré — un dommage se constate à l'arrivée, pas à la
               fin. Tout membre affecté peut constater ; seul le chef rédige le
               déroulé. */}
+          {/* DÉCOMPTE DE FIN DE CHANTIER — le chef calcule ce que le client
+              doit (avant déchargement ou avant retour dépôt), valide, et le
+              montant validé par le bureau revient ici sans recharger. Réservé
+              à qui clôture : c'est le geste du chef d'équipe. Une visite ne se
+              facture pas à l'heure. */}
+          {depart && peutCloturer && mission.type !== "visite" && (
+            <DecompteChef missionId={mission.id} />
+          )}
+
           {depart && (
             <RapportChantier mission={mission} peutRediger={peutCloturer} />
           )}

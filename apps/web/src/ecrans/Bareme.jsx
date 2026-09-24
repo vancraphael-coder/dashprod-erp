@@ -10,6 +10,8 @@ import { obtenirParametresPrix, sauverParametresPrix } from "../lib/adaptateur.j
 import { catalogueSupplements, ajouterSupplement, retirerSupplement, UNITES_SUPPLEMENT }
   from "@domaine/chiffrage/supplements.js";
 import { lireBareme, MODES_BAREME } from "@domaine/stocks/stockage.js";
+import { PAS_POSSIBLES, reglesDecompte, decrireRegles }
+  from "@domaine/operations/decompte-chantier.js";
 import { C, S, declarerModifs} from "../lib/theme.jsx";
 
 export default function Bareme({ retour }) {
@@ -26,6 +28,10 @@ export default function Bareme({ retour }) {
 
   function majBareme(cle, v) {
     setParams((p) => ({ ...p, bareme_horaire: { ...p.bareme_horaire, [cle]: num(v) } }));
+    marquerTouche();
+  }
+  function majDecompte(cle, v) {
+    setParams((p) => ({ ...p, decompte: { ...reglesDecompte(p.decompte), [cle]: v } }));
     marquerTouche();
   }
   function majTarif(cle, v) {
@@ -111,6 +117,51 @@ export default function Bareme({ retour }) {
                  value={params.bareme_horaire?.[n]}
                  onChange={(v) => majBareme(n, v)} />
         ))}
+      </Section>
+
+      {/* DÉCOMPTE DE FIN DE CHANTIER — comment le chef d'équipe arrondit les
+          heures d'un déménagement à l'heure. Trois règles, parce que ce sont
+          les trois sur lesquelles deux entreprises facturent différemment ;
+          le taux, lui, vient du tarif horaire juste au-dessus. */}
+      <Section titre="Décompte de fin de chantier">
+        {(() => {
+          const r = reglesDecompte(params.decompte);
+          return (
+            <>
+              <div style={{ fontSize: 12, color: C.muet, lineHeight: 1.45, marginBottom: 10 }}>
+                Utilisé par le chef d'équipe pour calculer le montant avant le
+                déchargement ou avant le retour au dépôt, puis par le bureau
+                pour la validation finale.
+              </div>
+              <label style={{ ...S.label, marginTop: 0 }}>Arrondi des heures</label>
+              <div style={{ display: "grid", gap: 6,
+                            gridTemplateColumns: "repeat(auto-fit, minmax(min(150px, 100%), 1fr))" }}>
+                {PAS_POSSIBLES.map((o) => {
+                  const actif = r.pas_minutes === o.minutes;
+                  return (
+                    <button key={o.minutes} onClick={() => majDecompte("pas_minutes", o.minutes)}
+                      style={{ minHeight: 44, padding: "8px 10px", borderRadius: 10,
+                               cursor: "pointer", fontSize: 13, fontWeight: 700,
+                               border: `1.5px solid ${actif ? C.bleu : C.bord}`,
+                               background: actif ? C.bleuClair : C.blanc,
+                               color: actif ? C.bleu : C.encre }}>{o.libelle}</button>
+                  );
+                })}
+              </div>
+              <Champ label="Minimum facturé (0 = aucun)" value={r.minimum_heures}
+                     suffixe="heures" onChange={(v) => majDecompte("minimum_heures", num(v))} />
+              <Champ label="Retour au dépôt habituel" value={r.retour_defaut_minutes ?? ""}
+                     suffixe="min" onChange={(v) => majDecompte("retour_defaut_minutes",
+                                                  v === "" ? null : num(v))} />
+              <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: 9,
+                            background: C.teinteBleue, color: C.encreBleu, fontSize: 12.5,
+                            fontWeight: 700 }}>
+                Règle appliquée : {decrireRegles(r)}
+                {r.retour_defaut_minutes != null ? ` · retour pré-rempli à ${r.retour_defaut_minutes} min` : ""}
+              </div>
+            </>
+          );
+        })()}
       </Section>
 
       <Section titre="Forfait & déplacement">
