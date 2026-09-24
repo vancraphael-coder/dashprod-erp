@@ -59,7 +59,17 @@ grant usage on schema auth, storage, extensions to anon, authenticated, service_
 -- `extensions.digest` et `extensions.gen_random_bytes` sont appelés en toutes
 -- lettres par une migration : pgcrypto DOIT vivre dans ce schéma-là.
 create extension if not exists pgcrypto with schema extensions;
+create extension if not exists "uuid-ossp" with schema extensions;
+-- citext vit dans PUBLIC en production (vérifié le 2026-09-19) : ses colonnes
+-- s'y réfèrent sans préfixe. Le déplacer ici casserait le socle.
 create extension if not exists citext;
+
+-- La publication temps réel de Supabase : certaines extractions de schéma y
+-- rattachent des tables. Vide ici, elle suffit à ce que la référence tienne.
+do $$ begin
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+    then create publication supabase_realtime; end if;
+end $$;
 
 -- ── auth.users : la table à laquelle les clés étrangères se rattachent ──────
 -- Colonnes réduites à ce que les migrations référencent réellement. Supabase
