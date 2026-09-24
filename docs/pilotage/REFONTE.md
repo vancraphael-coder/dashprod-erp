@@ -8,6 +8,21 @@ Dernière revue : 2026-09-19
 
 ---
 
+## Lot 4 — Étapes de la journée : jauge et commandes du chef · livré
+
+Terrain (carte de mission, visible même fermée) et bureau (Planning → journée) :
+une jauge étapée — trois vagues translucides, un camion sur le front — et deux
+commandes pour le chef d'équipe : ◀ reculer, « Étape suivante » avancer. Le
+bureau peut corriger ; l'espace client ne voit rien. Relecture toutes les 15 s.
+Séquences par type (déménagement 6 étapes, emballage 4, lift 5, visite 3) dans
+`operations/etapes-journee.js`. Base : 0204 (`mission_etapes`), appliquée en
+production le 2026-09-24 ; refuse les sauts et les écrasements entre deux chefs.
+L'étape pré-choisit le moment du décompte (déchargement → « avant
+déchargement », retour → « avant retour dépôt »).
+
+**Ce que la jauge ne fait PAS** : elle ne pointe pas les heures et ne touche ni
+à la paie ni au décompte.
+
 ## Lot 3 — Décompte de fin de chantier, barre alignée · livré
 
 **Décompte.** Le chef d'équipe calcule le montant avant le déchargement ou
