@@ -2,7 +2,7 @@
 
 # Donneur d'ordre · limites — suivi
 
-Dernière régénération : 2026-09-17
+Dernière régénération : 2026-09-23
 
 > Plafonds, prix, verrous de vente, dette connue.
 
@@ -12,8 +12,8 @@ Dernière régénération : 2026-09-17
 | Fichier | État | Dernière revue |
 |---|---|---|
 | [`dette.md`](dette.md) | 🔴 à écrire | — |
-| [`plafonds.md`](plafonds.md) | ⚙️ généré | 2026-09-17 |
-| [`verrous.md`](verrous.md) | ⚙️ généré | 2026-09-17 |
+| [`plafonds.md`](plafonds.md) | ⚙️ généré | 2026-09-23 |
+| [`verrous.md`](verrous.md) | ⚙️ généré | 2026-09-23 |
 
 ---
 

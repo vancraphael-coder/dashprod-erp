@@ -6,6 +6,6 @@
 # Donneur d'ordre — capacités ouvertes
 
 État : généré
-Dernière revue : 2026-09-17
+Dernière revue : 2026-09-23
 
 **Aucun module ouvert.** Ce n'est pas un oubli : le parcours de cette offre n'existe pas encore, donc rien ne s'ouvre. La contrainte de base 0179 interdit de la rendre souscriptible tant que cette liste est vide.

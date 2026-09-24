@@ -6,7 +6,7 @@
 # Indépendant manutention — capacités ouvertes
 
 État : généré
-Dernière revue : 2026-09-17
+Dernière revue : 2026-09-23
 
 6 module(s) ouvert(s) — dont 4 du socle et 2 propre(s) à l'offre.
 

@@ -6,7 +6,7 @@
 # Garde-meubles — le parcours réel
 
 État : généré
-Dernière revue : 2026-09-17
+Dernière revue : 2026-09-23
 
 > Vos contrats se facturent chaque mois, sans y penser.
 

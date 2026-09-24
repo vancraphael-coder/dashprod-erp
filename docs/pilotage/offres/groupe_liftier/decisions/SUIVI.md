@@ -2,7 +2,7 @@
 
 # Groupe liftier · decisions — suivi
 
-Dernière régénération : 2026-09-17
+Dernière régénération : 2026-09-23
 
 > Journal daté des décisions prises sur l'offre.
 
