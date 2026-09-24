@@ -3,7 +3,7 @@
 # Centre de pilotage — Dashprod
 
 État : généré
-Dernière revue : 2026-09-23
+Dernière revue : 2026-09-24
 
 > **Où regarder d'abord :** [`SUIVI.md`](SUIVI.md).
 

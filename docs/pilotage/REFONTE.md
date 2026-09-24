@@ -8,6 +8,28 @@ Dernière revue : 2026-09-19
 
 ---
 
+## Lot 3 — Décompte de fin de chantier, barre alignée · livré
+
+**Décompte.** Le chef d'équipe calcule le montant avant le déchargement ou
+avant le retour au dépôt, valide ; le bureau voit la proposition dans
+Devis → Calcul définitif, ajuste, donne la validation finale ; le montant
+validé revient sur le terrain en 10 s ; le bureau note l'annonce au client
+(téléphone). Montant calculé par le moteur du devis, identique des deux côtés.
+Base : 0202 (table `decomptes_chantier`, 7 commandes) et 0203, appliquées en
+production le 2026-09-24, circuit complet essayé puis annulé.
+
+**Paramètres de l'entreprise.** Barème → « Décompte de fin de chantier » :
+arrondi (¼ h, ½ h, heure entamée, minute), minimum facturé, retour au dépôt
+habituel (pré-rempli sur le terrain). Stocké dans `parametres_prix.decompte`.
+
+**Barre du bas.** Les animations se dessinaient à côté des icônes (3 px, 7 px
+sur la barre dense) depuis la hauteur fixe du Lot 2. Calques superposés dans
+une seule cellule : 0 px sur 12 cas mesurés.
+
+**Ouvert.** Le montant validé n'alimente pas encore la facture (annonce par
+téléphone pour l'instant). `.github/` jamais arrivé sur GitHub (dossier masqué
+par macOS) : CI et photo nocturne inactives.
+
 ## Lot 2 — Socle de production, sauvegarde nocturne, barre du bas · livré
 
 **Socle (A).** Workflow `schema-production.yml`, mode « socle », lancé une
