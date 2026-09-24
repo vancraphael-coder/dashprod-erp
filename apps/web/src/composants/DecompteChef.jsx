@@ -28,7 +28,7 @@ const RAFRAICHIR_MS = 10000;
 const heure = (v) => (v ? new Date(v).toLocaleTimeString("fr-BE",
   { hour: "2-digit", minute: "2-digit" }) : "—");
 
-export default function DecompteChef({ missionId, api = adaptateur, maintenant }) {
+export default function DecompteChef({ missionId, api = adaptateur, maintenant, momentSuggere }) {
   const [ctx, setCtx] = useState(null);
   const [erreur, setErreur] = useState(null);
   const [moment, setMoment] = useState(null);
@@ -72,6 +72,12 @@ export default function DecompteChef({ missionId, api = adaptateur, maintenant }
     const t = setInterval(() => setHorloge(new Date()), 30000);
     return () => clearInterval(t);
   }, [maintenant]);
+
+  // L'étape de la journée suggère le moment : arrivé au déchargement, le
+  // calcul est « avant déchargement ». Une suggestion, jamais un verrou.
+  useEffect(() => {
+    if (ctx && !ctx.decompte && !moment && momentSuggere) setMoment(momentSuggere);
+  }, [ctx && 1, momentSuggere]);
 
   // Reprendre les valeurs du chef quand un décompte existe déjà.
   useEffect(() => {
